@@ -56,7 +56,7 @@ export function NewWeaponForm() {
 
           <div>
             <label className="text-xs text-white/60">Image (optionnelle)</label>
-            <ImageDropzone file={file} onFileChange={setFile} />
+            <ImageDropzone label="Image (optionnelle)" onChange={setFile} />
           </div>
 
           <div>
