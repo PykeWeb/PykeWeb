@@ -43,7 +43,7 @@ export async function createDrugItem(args: {
   const { data: inserted, error: insertError } = await supabase
     .from('drug_items')
     .insert({
-      type: args.kind,
+      type: args.type,
       name: args.name,
       price: args.price,
       description: args.description || null,
