@@ -1,43 +1,52 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { getUiSettings, upsertUiSettings, type UiSettingsRow } from '@/lib/uiSettingsApi'
+import { useEffect, useState } from 'react'
+import {
+  DEFAULT_LABELS,
+  DEFAULT_LAYOUTS,
+  getUiSettings,
+  updateUiLabels,
+  updateUiLayouts,
+  type UiLabels,
+  type UiLayouts,
+} from '@/lib/uiSettingsApi'
 
 export function useUiSettings() {
-  const [settings, setSettings] = useState<UiSettingsRow | null>(null)
+  const [labels, setLabels] = useState<UiLabels>(DEFAULT_LABELS)
+  const [layouts, setLayouts] = useState<UiLayouts>(DEFAULT_LAYOUTS)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let mounted = true
+    let alive = true
     ;(async () => {
       try {
+        setLoading(true)
         const s = await getUiSettings()
-        if (mounted) setSettings(s)
+        if (!alive) return
+        setLabels(s.labels)
+        setLayouts(s.layouts)
+      } catch (e: any) {
+        if (!alive) return
+        setError(e?.message || 'Erreur')
       } finally {
-        if (mounted) setLoading(false)
+        if (alive) setLoading(false)
       }
     })()
     return () => {
-      mounted = false
+      alive = false
     }
   }, [])
 
-  const labels = useMemo(() => settings?.labels ?? {}, [settings])
-  const layouts = useMemo(() => settings?.layouts ?? {}, [settings])
-
-  const setLabel = async (key: string, value: string) => {
-    const next = { ...(settings?.labels ?? {}), [key]: value }
-    await upsertUiSettings({ labels: next, layouts: settings?.layouts ?? null })
-    setSettings((prev) => ({ group_key: prev?.group_key ?? 'default', labels: next, layouts: prev?.layouts ?? null }))
+  async function saveLabels(next: UiLabels) {
+    setLabels(next)
+    await updateUiLabels(next)
   }
 
-  const setLayout = async (key: string, value: any) => {
-    const next = { ...(settings?.layouts ?? {}), [key]: value }
-    await upsertUiSettings({ labels: settings?.labels ?? null, layouts: next })
-    setSettings((prev) => ({ group_key: prev?.group_key ?? 'default', labels: prev?.labels ?? null, layouts: next }))
+  async function saveLayouts(next: UiLayouts) {
+    setLayouts(next)
+    await updateUiLayouts(next)
   }
 
-  const t = (key: string, fallback: string) => (labels[key] ? String(labels[key]) : fallback)
-
-  return { settings, loading, labels, layouts, setLabel, setLayout, t }
+  return { labels, layouts, loading, error, saveLabels, saveLayouts }
 }
