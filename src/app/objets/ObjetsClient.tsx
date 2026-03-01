@@ -116,7 +116,7 @@ export default function ObjetsClient() {
   }, [txs])
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+    <div className="space-y-4">
       {/* Main */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -267,49 +267,31 @@ export default function ObjetsClient() {
         )}
       </div>
 
-      {/* Right rail */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <p className="text-sm font-semibold">Raccourcis</p>
-
-        <div className="mt-3 grid gap-2">
-          <Link href="/objets/nouveau">
-            <Button className="w-full">Ajouter un objet</Button>
-          </Link>
-          <Link href="/transactions/nouveau?type=purchase">
-            <Button variant="secondary" className="w-full">
-              Nouvel achat
-            </Button>
-          </Link>
-          <Link href="/transactions/nouveau?type=sale">
-            <Button variant="secondary" className="w-full">
-              Nouvelle sortie
-            </Button>
-          </Link>
-        </div>
-
-        {/* Mini carré / widget transactions */}
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-white/60">Transactions</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums">{txToday}</p>
-              <p className="text-xs text-white/50">aujourd’hui</p>
-            </div>
-            <div className="flex gap-2">
-              <Link href="/objets?tab=transactions">
-                <Button variant="ghost">Voir</Button>
-              </Link>
+        {/* Footer inside main */}
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-white/60">Transactions</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums">{txToday}</p>
+                <p className="text-xs text-white/50">aujourd’hui</p>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/objets?tab=transactions">
+                  <Button variant="ghost">Voir</Button>
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/60">
-          <p className="font-semibold text-white/80">Mode RP</p>
-          <ul className="mt-2 list-disc space-y-1 pl-4">
-            <li>Achat : tu ajoutes au stock + le total te dit combien payer</li>
-            <li>Sortie : tu retires du stock (vente / perte / transfert)</li>
-            <li>Historique : utile pour justifier qui a pris quoi et quand</li>
-          </ul>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-white/60">
+            <p className="font-semibold text-white/80">Mode RP</p>
+            <ul className="mt-2 list-disc space-y-1 pl-4">
+              <li>Achat : tu ajoutes au stock + le total te dit combien payer</li>
+              <li>Sortie : tu retires du stock (vente / perte / transfert)</li>
+              <li>Historique : utile pour justifier qui a pris quoi et quand</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

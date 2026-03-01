@@ -45,7 +45,7 @@ export function ArmesClient() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -132,29 +132,19 @@ export function ArmesClient() {
         <p className="mt-3 text-xs text-white/50">
           Astuce : <span className="text-white/70">+</span> quand vous récupérez une arme, <span className="text-white/70">−</span> quand une arme est perdue/vendue. Pour un prêt, utilisez “Prêter”.
         </p>
-      </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <p className="text-sm font-semibold">Raccourcis</p>
-        <div className="mt-3 grid gap-2">
-          <Link href="/armes/nouveau">
-            <Button className="w-full">Ajouter une arme</Button>
-          </Link>
-          <Link href="/armes/prets">
-            <Button variant="secondary" className="w-full">
-              Voir les prêts en cours
-            </Button>
-          </Link>
-        </div>
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/60">
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-white/60">
           <p className="font-semibold text-white/80">Mode RP</p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
             <li>Le stock des armes se gère en unités (1, 2, 3…)</li>
             <li>Prêt = l’arme sort du stock, retour = elle revient</li>
-            <li>Les mouvements sont historisés pour retrouver rapidement les prêts</li>
+            <li>“Sortie” = vente / perte / transfert (retire du stock)</li>
           </ul>
         </div>
+
       </div>
+
+
     </div>
   )
 }
