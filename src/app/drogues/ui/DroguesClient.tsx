@@ -15,12 +15,12 @@ function kindLabel(k: DrugKind) {
       return 'Drogue'
     case 'seed':
       return 'Graine'
-    case 'supply':
-      return 'Supply'
-    case 'lab':
-      return 'Lab'
-    case 'output':
-      return 'Output'
+    case 'planting':
+      return 'Plantation'
+    case 'pouch':
+      return 'Pochon'
+    case 'other':
+      return 'Autre'
     default:
       return k
   }
