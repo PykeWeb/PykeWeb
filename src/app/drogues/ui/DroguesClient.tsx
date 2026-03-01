@@ -9,6 +9,11 @@ import { listDrugItems, adjustDrugStock, type DbDrugItem, type DrugKind } from '
 const TAB_KEYS = ['catalogue', 'plantations'] as const
 type TabKey = (typeof TAB_KEYS)[number]
 
+// Ordre (draggable) des cartes dans l'onglet "Plantations"
+const PLANT_CARD_IDS = ['prod_coke', 'prod_meth', 'recipe_coke', 'recipe_meth'] as const
+type PlantCardId = (typeof PLANT_CARD_IDS)[number]
+const defaultPlantOrder: PlantCardId[] = [...PLANT_CARD_IDS]
+
 function kindLabel(k: DrugKind) {
   switch (k) {
     case 'drug':
@@ -79,9 +84,7 @@ export default function DroguesClient() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // --- Plantations layout (drag & drop) ---
-  type PlantCardId = 'prod_coke' | 'prod_meth' | 'recipe_coke' | 'recipe_meth'
-  const defaultPlantOrder: PlantCardId[] = ['prod_coke', 'prod_meth', 'recipe_coke', 'recipe_meth']
+  // Drag & drop (ordre des cartes "Plantations")
   const [plantOrder, setPlantOrder] = useState<PlantCardId[]>(defaultPlantOrder)
   const [draggingCard, setDraggingCard] = useState<PlantCardId | null>(null)
 
@@ -135,9 +138,8 @@ useEffect(() => {
   }, [items, query, kind])
 
   const itemByName = useMemo(() => {
-    // Index rapide par nom (le type DbDrugItem est la source de vérité)
     const m = new Map<string, DbDrugItem>()
-    for (const it of items) m.set((it.name || '').toLowerCase(), it)
+    for (const it of items) m.set(it.name.toLowerCase(), it)
     return m
   }, [items])
 
