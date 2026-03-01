@@ -8,10 +8,17 @@ import { listTransactions, type DbTransaction } from '@/lib/transactionsApi'
 import { ArrowDownRight, ArrowUpRight, Plus } from 'lucide-react'
 
 function Badge({ type }: { type: DbTransaction['type'] }) {
-  const label = type === 'purchase' ? 'Achat' : 'Sortie'
+  const isEntry = type === 'purchase'
+  const label = isEntry ? 'Entrée' : 'Sortie'
   const Icon = type === 'purchase' ? ArrowDownRight : ArrowUpRight
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80">
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs ${
+        isEntry
+          ? 'border-emerald-300/40 bg-emerald-500/10 text-emerald-100'
+          : 'border-orange-300/40 bg-orange-500/10 text-orange-100'
+      }`}
+    >
       <Icon className="h-3.5 w-3.5" />
       {label}
     </span>
@@ -83,6 +90,7 @@ export default function TransactionsClient() {
                 <tr>
                   <th className="px-4 py-3 text-left">Type</th>
                   <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left">Description</th>
                   <th className="px-4 py-3 text-left">Interlocuteur</th>
                   <th className="px-4 py-3 text-right">Total</th>
                 </tr>
@@ -90,19 +98,19 @@ export default function TransactionsClient() {
               <tbody className="divide-y divide-white/10">
                 {loading ? (
                   <tr>
-                    <td className="px-4 py-4 text-white/60" colSpan={4}>
+                    <td className="px-4 py-4 text-white/60" colSpan={5}>
                       Chargement…
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td className="px-4 py-4 text-rose-200" colSpan={4}>
+                    <td className="px-4 py-4 text-rose-200" colSpan={5}>
                       {error}
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-4 text-white/60" colSpan={4}>
+                    <td className="px-4 py-4 text-white/60" colSpan={5}>
                       Aucune transaction pour le moment.
                     </td>
                   </tr>
@@ -115,6 +123,7 @@ export default function TransactionsClient() {
                       <td className="px-4 py-3 text-white/80">
                         {new Date(r.created_at).toLocaleString()}
                       </td>
+                      <td className="px-4 py-3 text-white/80">{r.notes?.trim() ? r.notes : '—'}</td>
                       <td className="px-4 py-3 text-white/80">{r.counterparty ?? '—'}</td>
                       <td className="px-4 py-3 text-right text-white/90">
                         {r.total == null ? '—' : `${Number(r.total).toFixed(2)} $`}

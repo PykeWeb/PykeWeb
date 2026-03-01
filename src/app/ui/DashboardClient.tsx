@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
-import { Activity, Box, Crosshair, Handshake, Plus, Repeat, ArrowRight } from 'lucide-react'
+import { Box, Crosshair, Handshake, Plus, Repeat, ArrowRight } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -173,45 +173,45 @@ export function DashboardClient() {
           <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
 
           <div className="mt-4 space-y-3">
-            <Link href="/objets/nouveau" className="block">
+            <Link href="/transactions/nouveau?type=purchase" className="block">
               <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]">
                 <div className="flex items-center gap-3">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10">
                     <Plus className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold">Ajouter un objet</p>
-                    <p className="text-xs text-white/60">Catalogue objets</p>
+                    <p className="text-sm font-semibold">Nouvel achat</p>
+                    <p className="text-xs text-white/60">Créer une entrée stock</p>
                   </div>
                 </div>
                 <ArrowRight className="h-5 w-5 text-white/50" />
               </div>
             </Link>
 
-            <Link href="/armes/nouveau" className="block">
+            <Link href="/armes/prets" className="block">
               <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]">
                 <div className="flex items-center gap-3">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10">
-                    <Crosshair className="h-5 w-5" />
+                    <Handshake className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold">Ajouter une arme</p>
-                    <p className="text-xs text-white/60">Catalogue armes</p>
+                    <p className="text-sm font-semibold">Prêts en cours</p>
+                    <p className="text-xs text-white/60">Suivre les prêts actifs</p>
                   </div>
                 </div>
                 <ArrowRight className="h-5 w-5 text-white/50" />
               </div>
             </Link>
 
-            <Link href="/objets?tab=transactions" className="block">
+            <Link href="/objets" className="block">
               <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]">
                 <div className="flex items-center gap-3">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10">
-                    <Activity className="h-5 w-5" />
+                    <Box className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold">Transactions</p>
-                    <p className="text-xs text-white/60">Achat / sortie</p>
+                    <p className="text-sm font-semibold">Catalogue</p>
+                    <p className="text-xs text-white/60">Voir tous les objets</p>
                   </div>
                 </div>
                 <ArrowRight className="h-5 w-5 text-white/50" />
