@@ -230,9 +230,9 @@ export default function NouvelleDepensePage() {
                   const item = itemType === 'custom' ? null : items.find((x) => x.id === pickedId) || null
                   await createExpense({
                     member_name: memberName.trim(),
-                    item_type: itemType,
-                    item_ref_id: item ? item.id : null,
-                    item_name: itemType === 'custom' ? customName.trim() : item?.name || 'Item',
+                    item_source: itemType,
+                    item_id: item ? item.id : null,
+                    item_label: itemType === 'custom' ? customName.trim() : item?.name || 'Item',
                     unit_price: Number(unitPrice),
                     quantity: Number(quantity),
                     description: description.trim() || undefined,
