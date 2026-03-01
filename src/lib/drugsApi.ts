@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabaseClient'
 
-export type DrugKind = 'drug' | 'seed' | 'supply' | 'lab' | 'output'
+export type DrugKind = 'drug' | 'seed' | 'planting' | 'pouch' | 'other'
 
 export type DbDrugItem = {
   id: string
-  kind: DrugKind
+  type: DrugKind
   name: string
   price: number
   description?: string | null
@@ -27,14 +27,14 @@ function getExt(file: File) {
 export async function listDrugItems(): Promise<DbDrugItem[]> {
   const { data, error } = await supabase
     .from('drug_items')
-    .select('id,kind,name,price,description,image_url,stock,created_at')
+    .select('id,type,name,price,description,image_url,stock,created_at')
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as any
 }
 
 export async function createDrugItem(args: {
-  kind: DrugKind
+  type: DrugKind
   name: string
   price: number
   description?: string
@@ -43,12 +43,12 @@ export async function createDrugItem(args: {
   const { data: inserted, error: insertError } = await supabase
     .from('drug_items')
     .insert({
-      kind: args.kind,
+      type: args.kind,
       name: args.name,
       price: args.price,
       description: args.description || null,
     })
-    .select('id,kind,name,price,description,image_url,stock,created_at')
+    .select('id,type,name,price,description,image_url,stock,created_at')
     .single()
 
   if (insertError) throw insertError
@@ -71,7 +71,7 @@ export async function createDrugItem(args: {
       .from('drug_items')
       .update({ image_url })
       .eq('id', inserted.id)
-      .select('id,kind,name,price,description,image_url,stock,created_at')
+      .select('id,type,name,price,description,image_url,stock,created_at')
       .single()
     if (updateError) throw updateError
     return updated as any

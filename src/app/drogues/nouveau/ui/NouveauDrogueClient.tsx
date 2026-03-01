@@ -11,9 +11,9 @@ import { createDrugItem, type DrugKind } from '@/lib/drugsApi'
 const KIND_LABEL: Record<DrugKind, string> = {
   drug: 'Drogue (pochons / items)',
   seed: 'Graine',
-  supply: 'Consommable plantation (eau, engrais, etc.)',
-  lab: 'Équipement labo (table, batterie, lampe UV, etc.)',
-  output: 'Production (feuilles, etc.)',
+  planting: 'Plantation (pots, engrais, eau, lampes, etc.)',
+  pouch: 'Pochons / vente (produit fini)',
+  other: 'Autre / divers',
 }
 
 export default function NouveauDrogueClient() {

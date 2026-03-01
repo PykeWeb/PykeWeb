@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt } from 'lucide-react'
 import { BRAND, GROUP } from '@/lib/brand'
@@ -19,7 +20,9 @@ export function Sidebar() {
     <aside className="hidden w-[280px] shrink-0 flex-col gap-4 md:flex">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500/70 to-sky-400/70" />
+          <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+          </div>
           <div>
             <p className="text-sm font-semibold leading-tight">{BRAND.name}</p>
             <p className="text-xs text-white/60">{BRAND.tagline}</p>

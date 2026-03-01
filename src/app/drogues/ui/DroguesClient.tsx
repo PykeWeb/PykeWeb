@@ -38,36 +38,16 @@ type Recipe = {
 const RECIPES: Recipe[] = [
   {
     key: 'coke_leaf',
-    title: 'Plantation coca → feuilles',
-    subtitle: 'Consomme graines/pots/engrais/eau + lampes UV',
+    title: 'Plantation coke (1 pot)',
+    subtitle: '1 pot + 1 graine + 1 engrais + 3 eau = 1 feuille',
     requirements: [
-      // Stack de 9 pots
-      { name: 'Graine', qty: 9 },
-      { name: 'Pot', qty: 9 },
-      { name: 'Engrais', qty: 9 },
-      { name: 'Eau', qty: 27 },
-      // 2 lampes UV par stack
-      { name: 'Lampe UV', qty: 2 },
+      { name: 'Pot', qty: 1 },
+      { name: 'Graine de coke', qty: 1 },
+      { name: 'Engrais', qty: 1 },
+      { name: 'Eau', qty: 3 },
     ],
-    // 1 pot = 1 feuille, donc stack de 9 → 9 feuilles
-    output: { name: 'Feuille', qty: 9 },
-    note: 'Le calcul est basé sur le stock des items qui contiennent ces mots dans leur nom.',
-  },
-  {
-    key: 'meth_kit',
-    title: 'Cuisine meth (kit)',
-    subtitle: 'Recette “kit” (10 à 30 meth brut selon votre RP)',
-    requirements: [
-      { name: 'Table', qty: 1 },
-      { name: 'Meth', qty: 1 },
-      // 2 batteries (souvent demandé)
-      { name: 'Batterie', qty: 2 },
-      // 15 + 1 ammoniaque
-      { name: 'Ammoniaque', qty: 16 },
-      { name: 'Methylamine', qty: 15 },
-    ],
-    output: { name: 'Meth brut', qty: 10 },
-    note: 'Le calcul se base sur des mots-clés. Crée les items (table, batteries, ammoniaque, methylamine) dans le catalogue pour que tout s’aligne.',
+    output: { name: 'Feuille de coke', qty: 1 },
+    note: 'Stacks RP : 9 pots par stack + 2 lampes UV (par stack). Le calcul ci-dessus est “par pot”.',
   },
 ]
 
@@ -102,7 +82,7 @@ export default function DroguesClient() {
 
   const filtered = useMemo(() => {
     let arr = items
-    if (kind !== 'all') arr = arr.filter((it) => it.kind === kind)
+    if (kind !== 'all') arr = arr.filter((it) => it.type === kind)
     const q = query.trim().toLowerCase()
     if (!q) return arr
     return arr.filter((o) => (o.name || '').toLowerCase().includes(q))
@@ -122,12 +102,16 @@ export default function DroguesClient() {
     return res
   }, [items])
 
-  const producedCounts = useMemo(() => {
-    // Ce sont des “compteurs” pratiques : ce que vous avez déjà produit/stocké.
-    const leaf = findByKeyword(items, 'feuille').reduce((sum, it) => sum + (it.stock || 0), 0)
-    const methBrut = findByKeyword(items, 'meth brut').reduce((sum, it) => sum + (it.stock || 0), 0)
-    return { leaf, methBrut }
+  const producedCokeLeaves = useMemo(() => {
+    const list = findByKeyword(items, 'Feuille de coke')
+    return list.reduce((sum, it) => sum + Number(it.stock || 0), 0)
   }, [items])
+
+  const producedMethBrut = useMemo(() => {
+    const list = findByKeyword(items, 'Meth brut')
+    return list.reduce((sum, it) => sum + Number(it.stock || 0), 0)
+  }, [items])
+
 
   async function produce(recipe: Recipe) {
     const batches = possibleBatches[recipe.key] ?? 0
@@ -220,9 +204,9 @@ export default function DroguesClient() {
                 <option value="all">Tous</option>
                 <option value="drug">Drogue</option>
                 <option value="seed">Graine</option>
-                <option value="supply">Supply</option>
-                <option value="lab">Lab</option>
-                <option value="output">Output</option>
+                <option value="planting">Plantation</option>
+                <option value="pouch">Pochons / vente</option>
+                <option value="other">Autre</option>
               </select>
 
               <div className="text-xs text-white/60">{filtered.length} item(s)</div>
@@ -269,7 +253,7 @@ export default function DroguesClient() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3">{kindLabel(it.kind)}</td>
+                        <td className="px-4 py-3">{kindLabel(it.type)}</td>
                         <td className="px-4 py-3">{Number(it.price).toFixed(2)} $</td>
                         <td className="px-4 py-3">{it.stock}</td>
                         <td className="px-4 py-3">
@@ -323,27 +307,34 @@ export default function DroguesClient() {
           </>
         ) : (
           <>
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="text-xs text-white/60">Feuilles de coke en stock</p>
-                <p className="mt-1 text-2xl font-semibold">{producedCounts.leaf}</p>
-                <p className="mt-1 text-xs text-white/50">Mot-clé: “feuille”</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="text-xs text-white/60">Meth brut en stock</p>
-                <p className="mt-1 text-2xl font-semibold">{producedCounts.methBrut}</p>
-                <p className="mt-1 text-xs text-white/50">Mot-clé: “meth brut”</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="text-xs text-white/60">Rappel</p>
-                <p className="mt-2 text-sm text-white/70">
-                  Les calculs utilisent des mots-clés dans les noms d’items. Ex: “Pot”, “Engrais”, “Lampe UV”, “Meth brut”.
-                </p>
-              </div>
-            </div>
-
             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {RECIPES.map((r) => {
+              
+              <div className="mb-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
+                  <p className="text-xs text-white/60">Production en stock</p>
+                  <p className="mt-1 text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
+                  <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke” dans ton catalogue.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
+                  <p className="text-xs text-white/60">Production en stock</p>
+                  <p className="mt-1 text-lg font-semibold">Meth brut : {producedMethBrut}</p>
+                  <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
+                </div>
+              </div>
+
+              <div className="mb-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
+                  <p className="text-xs text-white/60">Production en stock</p>
+                  <p className="mt-1 text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
+                  <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke” dans ton catalogue.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
+                  <p className="text-xs text-white/60">Production en stock</p>
+                  <p className="mt-1 text-lg font-semibold">Meth brut : {producedMethBrut}</p>
+                  <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
+                </div>
+              </div>
+{RECIPES.map((r) => {
                 const batches = possibleBatches[r.key] ?? 0
                 return (
                   <div key={r.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -384,25 +375,6 @@ export default function DroguesClient() {
                         <p className="text-xs font-semibold text-white/80">Output</p>
                         <p className="mt-2 text-sm font-semibold">{r.output.name}</p>
                         <p className="text-xs text-white/60">+{r.output.qty}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                      <p className="text-xs font-semibold text-white/80">Stock → batches</p>
-                      <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {r.requirements.map((req) => {
-                          const matches = findByKeyword(items, req.name)
-                          const totalStock = matches.reduce((sum, it) => sum + (it.stock || 0), 0)
-                          const b = req.qty > 0 ? Math.floor(totalStock / req.qty) : 0
-                          return (
-                            <div key={req.name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                              <span className="text-xs text-white/70">{req.name}</span>
-                              <span className="text-xs font-semibold text-white/80">
-                                {totalStock} → {b}
-                              </span>
-                            </div>
-                          )
-                        })}
                       </div>
                     </div>
 

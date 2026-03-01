@@ -45,11 +45,11 @@ export default function DepensesClient() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return items
-    return items.filter((e) => (e.member_name || '').toLowerCase().includes(q) || (e.item_name || '').toLowerCase().includes(q))
+    return items.filter((e) => (e.member_name || '').toLowerCase().includes(q) || (e.item_label || '').toLowerCase().includes(q))
   }, [items, query])
 
-  const pendingSum = useMemo(() => filtered.filter((e) => e.status !== 'paid').reduce((s, e) => s + (e.total_price || 0), 0), [filtered])
-  const paidSum = useMemo(() => filtered.filter((e) => e.status === 'paid').reduce((s, e) => s + (e.total_price || 0), 0), [filtered])
+  const pendingSum = useMemo(() => filtered.filter((e) => e.status !== 'paid').reduce((s, e) => s + (e.total || 0), 0), [filtered])
+  const paidSum = useMemo(() => filtered.filter((e) => e.status === 'paid').reduce((s, e) => s + (e.total || 0), 0), [filtered])
 
   return (
     <div className="space-y-4">
@@ -113,7 +113,7 @@ export default function DepensesClient() {
                       <div className="text-xs text-white/50">{new Date(e.created_at).toLocaleString()}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-semibold">{e.item_name}</div>
+                      <div className="font-semibold">{e.item_label}</div>
                       {e.description ? <div className="text-xs text-white/60 line-clamp-1">{e.description}</div> : null}
                       {e.proof_image_url ? (
                         <a href={e.proof_image_url} target="_blank" className="text-xs text-white/60 underline underline-offset-2">
@@ -122,7 +122,7 @@ export default function DepensesClient() {
                       ) : null}
                     </td>
                     <td className="px-4 py-3">{e.quantity}</td>
-                    <td className="px-4 py-3">{Number(e.total_price).toFixed(2)} $</td>
+                    <td className="px-4 py-3">{Number(e.total).toFixed(2)} $</td>
                     <td className="px-4 py-3">{badge(e.status)}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end">
