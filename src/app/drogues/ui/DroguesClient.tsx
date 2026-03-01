@@ -79,6 +79,12 @@ export default function DroguesClient() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // --- Plantations layout (drag & drop) ---
+  type PlantCardId = 'prod_coke' | 'prod_meth' | 'recipe_coke' | 'recipe_meth'
+  const defaultPlantOrder: PlantCardId[] = ['prod_coke', 'prod_meth', 'recipe_coke', 'recipe_meth']
+  const [plantOrder, setPlantOrder] = useState<PlantCardId[]>(defaultPlantOrder)
+  const [draggingCard, setDraggingCard] = useState<PlantCardId | null>(null)
+
   async function refresh() {
     setLoading(true)
     try {
