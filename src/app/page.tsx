@@ -1,7 +1,5 @@
 import { Suspense } from 'react'
 import { PageHeader } from '@/components/PageHeader'
-import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
 import { DashboardClient } from './ui/DashboardClient'
 
 export default function Page() {
@@ -10,16 +8,6 @@ export default function Page() {
       <PageHeader
         title="Dashboard"
         subtitle="Vue globale : objets, transactions, armes et prêts"
-        actions={
-          <>
-            <Link href="/objets">
-              <Button variant="secondary">Objets</Button>
-            </Link>
-            <Link href="/armes">
-              <Button variant="secondary">Armes</Button>
-            </Link>
-          </>
-        }
       />
 
       <Suspense

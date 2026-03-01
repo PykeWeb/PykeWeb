@@ -81,10 +81,15 @@ export function DashboardClient() {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <StatCard title="Objets" value={loading ? '—' : String(objectCount)} icon={<Box className="h-5 w-5" />} />
-          <StatCard title="Armes" value={loading ? '—' : String(weaponCount)} icon={<Crosshair className="h-5 w-5" />} />
-          <StatCard title="Prêts en cours" value={loading ? '—' : String(activeLoans)} icon={<Handshake className="h-5 w-5" />} />
-          <StatCard title="Transactions aujourd’hui" value={loading ? '—' : String(txToday)} icon={<Repeat className="h-5 w-5" />} />
+          <StatCard title="Objets" value={loading ? '—' : String(objectCount)} icon={<Box className="h-5 w-5" />} href="/objets" />
+          <StatCard title="Armes" value={loading ? '—' : String(weaponCount)} icon={<Crosshair className="h-5 w-5" />} href="/armes" />
+          <StatCard title="Prêts en cours" value={loading ? '—' : String(activeLoans)} icon={<Handshake className="h-5 w-5" />} href="/armes/prets" />
+          <StatCard
+            title="Transactions aujourd’hui"
+            value={loading ? '—' : String(txToday)}
+            icon={<Repeat className="h-5 w-5" />}
+            href="/objets?tab=transactions"
+          />
         </div>
 
         <Panel>

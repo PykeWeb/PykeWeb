@@ -97,6 +97,9 @@ export default function ObjetsClient() {
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
+            <Link href="/" className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
+              ← Retour
+            </Link>
             <button
               onClick={() => setTab('catalogue')}
               className={`rounded-xl px-3 py-1.5 text-sm border border-white/10 ${tab === 'catalogue' ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10'}`}
@@ -109,18 +112,12 @@ export default function ObjetsClient() {
             >
               Transactions
             </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href="/objets/nouveau" className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
-              Ajouter un objet
-            </Link>
-            <button
-              onClick={() => setTab('transactions')}
+            <Link
+              href="/objets/nouveau"
               className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
             >
-              Transactions
-            </button>
+              Ajouter un objet
+            </Link>
           </div>
         </div>
 
