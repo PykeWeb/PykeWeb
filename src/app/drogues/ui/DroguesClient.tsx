@@ -339,19 +339,6 @@ export default function DroguesClient() {
                   <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
                 </div>
               </div>
-
-              <div className="mb-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-                  <p className="text-xs text-white/60">Production en stock</p>
-                  <p className="mt-1 text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
-                  <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke” dans ton catalogue.</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-                  <p className="text-xs text-white/60">Production en stock</p>
-                  <p className="mt-1 text-lg font-semibold">Meth brut : {producedMethBrut}</p>
-                  <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
-                </div>
-              </div>
 {RECIPES.map((r) => {
                 const batches = possibleBatches[r.key] ?? 0
                 return (
