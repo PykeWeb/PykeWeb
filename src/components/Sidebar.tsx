@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { LayoutGrid, Package, Crosshair } from 'lucide-react'
-import { BRAND } from '@/lib/brand'
+import { BRAND, GROUP } from '@/lib/brand'
 
 const NavItem = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => {
   return (
@@ -27,10 +27,10 @@ export function Sidebar() {
         </div>
 
         <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-          <p className="text-xs text-white/60">Utilisateur</p>
-          <p className="mt-1 text-sm font-semibold">admin</p>
+          <p className="text-xs text-white/60">Groupe</p>
+          <p className="mt-1 text-sm font-semibold">{GROUP.name}</p>
           <div className="mt-2 inline-flex rounded-lg bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/80">
-            ADMIN
+            {GROUP.badge}
           </div>
         </div>
       </div>
