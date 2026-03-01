@@ -1,10 +1,7 @@
-'use client'
-
 import Image from 'next/image'
 import Link from 'next/link'
-import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt, Settings } from 'lucide-react'
+import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt } from 'lucide-react'
 import { BRAND, GROUP } from '@/lib/brand'
-import { useUiSettings } from '@/lib/useUiSettings'
 
 const NavItem = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => {
   return (
@@ -19,34 +16,40 @@ const NavItem = ({ href, label, icon }: { href: string; label: string; icon: Rea
 }
 
 export function Sidebar() {
-  const { t } = useUiSettings()
-  const brandName = t('brand.name', BRAND.name)
-
   return (
     <aside className="hidden w-[280px] shrink-0 flex-col gap-4 md:flex">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
         <div className="flex items-center gap-3">
-          <div className="relative h-11 w-11 overflow-hidden rounded-xl bg-black/30">
-            <Image src="/logo.png" alt={brandName} fill className="object-contain p-1.5" />
+          <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            <Image src="/logo.png" alt="Logo" fill className="object-cover" />
           </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{brandName}</div>
-            <div className="truncate text-xs text-white/60">
-              {GROUP.badge} • {GROUP.name}
-            </div>
+          <div>
+            <p className="text-sm font-semibold leading-tight">{BRAND.name}</p>
+            <p className="text-xs text-white/60">{BRAND.tagline}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+          <p className="text-xs text-white/60">Groupe</p>
+          <p className="mt-1 text-sm font-semibold">{GROUP.name}</p>
+          <div className="mt-2 inline-flex rounded-lg bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/80">
+            {GROUP.badge}
           </div>
         </div>
       </div>
 
-      <nav className="flex flex-col gap-3">
-        <NavItem href="/" label={t('nav.dashboard', 'Dashboard')} icon={<LayoutGrid className="h-5 w-5" />} />
-        <NavItem href="/objets" label={t('nav.objets', 'Objets')} icon={<Package className="h-5 w-5" />} />
-        <NavItem href="/armes" label={t('nav.armes', 'Armes')} icon={<Crosshair className="h-5 w-5" />} />
-        <NavItem href="/equipement" label={t('nav.equipement', 'Équipement')} icon={<Wrench className="h-5 w-5" />} />
-        <NavItem href="/drogues" label={t('nav.drogues', 'Drogues')} icon={<Leaf className="h-5 w-5" />} />
-        <NavItem href="/depenses" label={t('nav.depenses', 'Dépenses')} icon={<Receipt className="h-5 w-5" />} />
-        <NavItem href="/reglages" label={t('nav.reglages', 'Réglages')} icon={<Settings className="h-5 w-5" />} />
-      </nav>
+      <div className="flex flex-col gap-3">
+        <NavItem href="/" label="Dashboard" icon={<LayoutGrid className="h-4 w-4" />} />
+        <NavItem href="/objets" label="Objets" icon={<Package className="h-4 w-4" />} />
+        <NavItem href="/armes" label="Armes" icon={<Crosshair className="h-4 w-4" />} />
+        <NavItem href="/equipement" label="Équipement" icon={<Wrench className="h-4 w-4" />} />
+        <NavItem href="/drogues" label="Drogues" icon={<Leaf className="h-4 w-4" />} />
+        <NavItem href="/depenses" label="Dépenses" icon={<Receipt className="h-4 w-4" />} />
+      </div>
+
+      <div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-white/60 shadow-glow">
+        Version maquette UI • Simple, clean, ready à brancher.
+      </div>
     </aside>
   )
 }
