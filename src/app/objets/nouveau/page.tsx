@@ -6,14 +6,19 @@ import { PageHeader } from '@/components/PageHeader'
 import Link from 'next/link'
 import { ImageDropzone } from '@/components/objets/ImageDropzone'
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createObject } from '@/lib/objectsApi'
 
 export default function NouveauObjetPage() {
+  const router = useRouter()
   const [name, setName] = useState('')
   const [price, setPrice] = useState<string>('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [description, setDescription] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const canSave = useMemo(() => name.trim().length > 0 && Number(price) >= 0, [name, price])
+  const canSave = useMemo(() => name.trim().length > 0 && Number(price) >= 0 && !saving, [name, price, saving])
 
   return (
     <div className="flex flex-col gap-6">
@@ -62,7 +67,7 @@ export default function NouveauObjetPage() {
             <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-white/60">
               <li>Tu peux coller une image directement (Ctrl+V) dans la zone image.</li>
               <li>PNG/JPEG supportés (et WebP).</li>
-              <li>On branchera l’upload Supabase Storage après.</li>
+              <li>L’image sera upload dans Supabase Storage (bucket public).</li>
             </ul>
           </div>
 
@@ -78,6 +83,12 @@ export default function NouveauObjetPage() {
             />
           </div>
 
+          {error ? (
+            <div className="md:col-span-2 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+              ❌ {error}
+            </div>
+          ) : null}
+
           <div className="md:col-span-2 flex items-center justify-end gap-3">
             <button type="button" className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium hover:bg-white/10">
               Annuler
@@ -89,19 +100,29 @@ export default function NouveauObjetPage() {
                 'rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold shadow-glow transition ' +
                 (canSave ? 'bg-white/10 hover:bg-white/15' : 'cursor-not-allowed bg-white/[0.04] text-white/40')
               }
-              onClick={() => {
-                // UI only (pour l'instant)
-                console.log({ name, price: Number(price), imageFile, description })
+              onClick={async () => {
+                if (!canSave) return
+                try {
+                  setSaving(true)
+                  setError(null)
+                  await createObject({
+                    name: name.trim(),
+                    price: Number(price),
+                    description: description.trim() || undefined,
+                    imageFile,
+                  })
+                  router.push('/objets?added=1')
+                } catch (e: any) {
+                  setError(e?.message || 'Erreur Supabase (création objet)')
+                } finally {
+                  setSaving(false)
+                }
               }}
             >
-              Enregistrer
+              {saving ? 'Enregistrement…' : 'Enregistrer'}
             </button>
           </div>
         </form>
-
-        <p className="mt-4 text-xs text-white/50">
-          Pour l’instant le bouton “Enregistrer” ne fait rien (pas de base branchée). Prochaine étape : table “objets” + upload image (Supabase Storage).
-        </p>
       </Panel>
     </div>
   )
