@@ -2,16 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
-  Native <select> dropdown options are rendered by the OS/UI and often default to white
-  which can make items unreadable in our dark theme.
-*/
-select option,
-select optgroup {
-  background-color: rgba(9, 12, 20, 1);
-  color: rgba(255, 255, 255, 0.92);
-}
-
 :root {
   color-scheme: dark;
 }
