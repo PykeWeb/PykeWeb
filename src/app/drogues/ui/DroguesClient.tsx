@@ -510,7 +510,7 @@ return (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                   <p className="mb-2 text-xs font-semibold text-white/80">Requis (par batch)</p>
                   <div className="space-y-2">
-                    {recipe.inputs.map((it) => (
+                    {recipe.requirements.map((it) => (
                       <div key={it.name}>{renderItemLine(it.name, it.qty)}</div>
                     ))}
                   </div>
