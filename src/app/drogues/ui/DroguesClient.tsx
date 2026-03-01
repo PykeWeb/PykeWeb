@@ -2,7 +2,18 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart3, Boxes, FlaskConical, GripVertical, Leaf, Plus, Search, Settings2 } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  BarChart3,
+  Boxes,
+  FlaskConical,
+  GripVertical,
+  Leaf,
+  Plus,
+  Search,
+  Settings2,
+} from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { listDrugItems, adjustDrugStock, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
 
