@@ -56,9 +56,9 @@ export async function createExpense(args: {
     .from('expenses')
     .insert({
       member_name: args.member_name,
-      item_source: args.item_source,
-      item_id: args.item_id || null,
-      item_label: args.item_label,
+      item_source: args.item_type,
+      item_id: args.item_ref_id || null,
+      item_label: args.item_name,
       unit_price: args.unit_price,
       quantity: args.quantity,
       total,
