@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Sidebar } from '@/components/Sidebar'
 import { Topbar } from '@/components/Topbar'
 import { BRAND } from '@/lib/brand'
+import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
   title: `${BRAND.name} — ${BRAND.tagline}`,
@@ -22,7 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
           </div>
         </div>
-      </body>
+            <Toaster richColors closeButton />
+    </body>
     </html>
   )
 }
