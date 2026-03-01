@@ -64,13 +64,12 @@ export function NewWeaponLoanForm() {
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
-      <div className="flex justify-end">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm text-white/60">Nouveau prêt d’arme</p>
         <Link href="/armes/prets">
           <Button variant="secondary">Retour</Button>
         </Link>
       </div>
-
-      <div className="h-2" />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">

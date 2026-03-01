@@ -28,7 +28,8 @@ export default function NouveauObjetPage() {
       />
 
       <Panel>
-        <div className="flex justify-end">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-white/60">Nouveau dans le catalogue objets</p>
           <Link
             href="/objets"
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium shadow-glow transition hover:bg-white/10"
@@ -36,8 +37,6 @@ export default function NouveauObjetPage() {
             Retour
           </Link>
         </div>
-
-        <div className="h-2" />
 
         <form className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
