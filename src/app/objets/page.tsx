@@ -1,7 +1,5 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
 import { PageHeader } from '@/components/PageHeader'
-import { Button } from '@/components/ui/Button'
 import ObjetsClient from './ObjetsClient'
 
 export default function Page() {
@@ -10,16 +8,6 @@ export default function Page() {
       <PageHeader
         title="Objets"
         subtitle="Catalogue + stock + transactions (achats / sorties)"
-        actions={
-          <>
-            <Link href="/objets?tab=transactions">
-              <Button variant="secondary">Transactions</Button>
-            </Link>
-            <Link href="/objets/nouveau">
-              <Button>Ajouter</Button>
-            </Link>
-          </>
-        }
       />
 
       <Suspense

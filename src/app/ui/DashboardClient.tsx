@@ -212,6 +212,21 @@ export function DashboardClient() {
                 <ArrowRight className="h-5 w-5 text-white/50" />
               </div>
             </Link>
+
+            <Link href="/armes/prets" className="block">
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10">
+                    <Handshake className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold">Prêts en cours</p>
+                    <p className="text-xs text-white/60">Armes prêtées</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-5 w-5 text-white/50" />
+              </div>
+            </Link>
           </div>
         </Panel>
 

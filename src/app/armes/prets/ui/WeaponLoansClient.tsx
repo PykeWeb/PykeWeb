@@ -42,9 +42,14 @@ export function WeaponLoansClient() {
         <p className="text-sm text-white/70">
           {loading ? 'Chargement…' : `${loans.length} prêt(s) en cours`}
         </p>
-        <Link href="/armes/prets/nouveau">
-          <Button>Créer un prêt</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/armes">
+            <Button variant="secondary">Retour</Button>
+          </Link>
+          <Link href="/armes/prets/nouveau">
+            <Button>Créer un prêt</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
