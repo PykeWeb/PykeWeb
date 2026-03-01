@@ -39,12 +39,15 @@ export function WeaponLoansClient() {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-white/70">
-          {loading ? 'Chargement…' : `${loans.length} prêt(s) en cours`}
-        </p>
-        <Link href="/armes/prets/nouveau">
-          <Button>Créer un prêt</Button>
-        </Link>
+        <p className="text-sm text-white/70">{loading ? 'Chargement…' : `${loans.length} prêt(s) en cours`}</p>
+        <div className="flex items-center gap-2">
+          <Link href="/armes">
+            <Button variant="secondary">Retour</Button>
+          </Link>
+          <Link href="/armes/prets/nouveau">
+            <Button>Créer un prêt</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-white/10">

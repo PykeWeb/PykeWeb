@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
@@ -63,6 +64,12 @@ export function NewWeaponLoanForm() {
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
+      <div className="mb-4 flex justify-end">
+        <Link href="/armes/prets">
+          <Button variant="secondary">Retour</Button>
+        </Link>
+      </div>
+
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
           <div>

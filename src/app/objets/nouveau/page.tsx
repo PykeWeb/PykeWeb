@@ -25,17 +25,18 @@ export default function NouveauObjetPage() {
       <PageHeader
         title="Ajouter un objet"
         subtitle="Nom • prix • image (upload / coller)"
-        actions={
+      />
+
+      <Panel>
+        <div className="mb-4 flex justify-end">
           <Link
             href="/objets"
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium shadow-glow transition hover:bg-white/10"
           >
             Retour
           </Link>
-        }
-      />
+        </div>
 
-      <Panel>
         <form className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <label className="text-sm text-white/70">Nom</label>
