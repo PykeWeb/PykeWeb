@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Factory, Plus } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
+import { useUiSettings } from '@/lib/useUiSettings'
 import { listDrugItems, adjustDrugStock, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
 
 const TAB_KEYS = ['catalogue', 'plantations'] as const
@@ -25,6 +26,8 @@ function kindLabel(k: DrugKind) {
       return 'Autre'
   }
 }
+
+type PlantModuleId = 'production' | 'coke_leaf' | 'meth_brut'
 
 type Recipe = {
   key: string
@@ -72,6 +75,53 @@ function findByKeyword(items: DbDrugItem[], keyword: string) {
 
 export default function DroguesClient() {
   const [tab, setTab] = useState<TabKey>('catalogue')
+  const { layouts, setLayout, t } = useUiSettings()
+  const defaultPlantOrder: PlantModuleId[] = ['production', 'coke_leaf', 'meth_brut']
+  const [plantOrder, setPlantOrder] = useState<PlantModuleId[]>(defaultPlantOrder)
+  const [draggingPlant, setDraggingPlant] = useState<PlantModuleId | null>(null)
+
+  useEffect(() => {
+    const saved = layouts?.['drogues.plantationsOrder']
+    if (Array.isArray(saved)) {
+      const clean = saved.filter((x): x is PlantModuleId => defaultPlantOrder.includes(x))
+      const merged = Array.from(new Set([...clean, ...defaultPlantOrder])) as PlantModuleId[]
+      setPlantOrder(merged)
+    } else {
+      setPlantOrder(defaultPlantOrder)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layouts?.['drogues.plantationsOrder']])
+
+  const handlePlantDragStart = (id: PlantModuleId) => {
+    setDraggingPlant(id)
+  }
+
+  const handlePlantDropOn = async (target: PlantModuleId) => {
+    if (!draggingPlant || draggingPlant === target) return
+    setPlantOrder((prev) => {
+      const next = [...prev]
+      const from = next.indexOf(draggingPlant)
+      const to = next.indexOf(target)
+      if (from === -1 || to === -1) return prev
+      next.splice(from, 1)
+      next.splice(to, 0, draggingPlant)
+      return next
+    })
+    setDraggingPlant(null)
+  }
+
+  useEffect(() => {
+    // save after changes
+    ;(async () => {
+      try {
+        await setLayout('drogues.plantationsOrder', plantOrder)
+      } catch {
+        // ignore (missing table / RLS). On garde l'ordre en mémoire.
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plantOrder])
+
   const [items, setItems] = useState<DbDrugItem[]>([])
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<DrugKind | 'all'>('all')
@@ -127,52 +177,105 @@ export default function DroguesClient() {
   }, [items])
 
 
-  async function produce(recipe: Recipe) {
-    const batches = possibleBatches[recipe.key] ?? 0
-    if (batches <= 0) return
-
-    setError(null)
-    setBusyId(recipe.key)
-
-    try {
-      // Consume requirements (simple strategy: consume from first matching items)
-      for (const req of recipe.requirements) {
-        let remaining = req.qty
-        const matches = findByKeyword(items, req.name).sort((a, b) => (b.stock || 0) - (a.stock || 0))
-        for (const it of matches) {
-          if (remaining <= 0) break
-          const take = Math.min(it.stock || 0, remaining)
-          if (take > 0) {
-            await adjustDrugStock({ itemId: it.id, delta: -take, note: `Production: ${recipe.title}` })
-            remaining -= take
-          }
-        }
-      }
-
-      // Add output to first matching output item; if none exists, do nothing but show a hint.
-      const outMatches = findByKeyword(items, recipe.output.name)
-      if (outMatches.length === 0) {
-        throw new Error(`Crée l'item output “${recipe.output.name}” dans le catalogue pour recevoir la production.`)
-      }
-      const delta = recipe.output.range
-        ? Math.floor(Math.random() * (recipe.output.range[1] - recipe.output.range[0] + 1)) + recipe.output.range[0]
-        : recipe.output.qty
-
-      await adjustDrugStock({
-        itemId: outMatches[0].id,
-        delta,
-        note: `Production: ${recipe.title}`,
-      })
-
-      await refresh()
-    } catch (e: any) {
-      setError(e?.message || 'Erreur')
-    } finally {
-      setBusyId(null)
-    }
+const itemIndex = useMemo(() => {
+  const m = new Map<string, DbDrugItem>()
+  for (const it of items) {
+    if (it.name) m.set(it.name.toLowerCase(), it)
   }
+  return m
+}, [items])
+
+const renderItemLine = (name: string, qty: number) => {
+  const key = (name || '').toLowerCase()
+  const direct = itemIndex.get(key)
+  const fallback = findByKeyword(items, name)[0]
+  const it = direct || fallback
+
+  const img =
+    (it as any)?.image_url ??
+    (it as any)?.imageUrl ??
+    null
 
   return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+          {img ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt={name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[10px] text-white/40">
+              —
+            </div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm text-white/90">{name}</p>
+          {it?.type ? <p className="text-xs text-white/50">{kindLabel(it.type)}</p> : null}
+        </div>
+      </div>
+
+      <div className="text-sm font-semibold text-white/90">x{qty}</div>
+    </div>
+  )
+}
+
+async function produce(recipe: Recipe) {
+  const batches = possibleBatches[recipe.key] ?? 0
+  if (batches <= 0) return
+
+  setError(null)
+  setBusyId(recipe.key)
+
+  try {
+    // Consume requirements (simple strategy: consume from first matching items)
+    for (const req of recipe.requirements) {
+      let remaining = req.qty
+      const matches = findByKeyword(items, req.name).sort((a, b) => (b.stock || 0) - (a.stock || 0))
+      for (const it of matches) {
+        if (remaining <= 0) break
+        const take = Math.min(it.stock || 0, remaining)
+        if (take > 0) {
+          await adjustDrugStock({ itemId: it.id, delta: -take, note: `Production: ${recipe.title}` })
+          remaining -= take
+        }
+      }
+    }
+
+    // Add output to first matching output item; if none exists, show a hint.
+    const outMatches = findByKeyword(items, recipe.output.name)
+    if (outMatches.length === 0) {
+      throw new Error(`Crée l'item output “${recipe.output.name}” dans le catalogue pour recevoir la production.`)
+    }
+    const delta = recipe.output.range
+      ? Math.floor(Math.random() * (recipe.output.range[1] - recipe.output.range[0] + 1)) + recipe.output.range[0]
+      : recipe.output.qty
+
+    await adjustDrugStock({
+      itemId: outMatches[0].id,
+      delta,
+      note: `Production: ${recipe.title}`,
+    })
+
+    await refresh()
+  } catch (e: any) {
+    setError(e?.message || 'Erreur')
+  } finally {
+    setBusyId(null)
+  }
+}
+
+async function runProduction(recipeKey: Recipe['key'], times: number) {
+  const recipe = RECIPES.find((r) => r.key === recipeKey)
+  if (!recipe) return
+  const count = Math.max(1, Math.min(10, times || 1))
+  for (let i = 0; i < count; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    await produce(recipe)
+  }
+}
+
+return (
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -325,78 +428,111 @@ export default function DroguesClient() {
           </>
         ) : (
           <>
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              
-              <div className="mb-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-                  <p className="text-xs text-white/60">Production en stock</p>
-                  <p className="mt-1 text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
-                  <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke” dans ton catalogue.</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-                  <p className="text-xs text-white/60">Production en stock</p>
-                  <p className="mt-1 text-lg font-semibold">Meth brut : {producedMethBrut}</p>
-                  <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
-                </div>
-              </div>
-{RECIPES.map((r) => {
-                const batches = possibleBatches[r.key] ?? 0
-                return (
-                  <div key={r.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white/90">
-                            <Factory className="h-4 w-4" />
-                          </span>
-                          <div>
-                            <p className="text-sm font-semibold">{r.title}</p>
-                            <p className="text-xs text-white/60">{r.subtitle}</p>
-                          </div>
+            <div className="mt-4">
+              <p className="text-sm text-white/70">{t('title.drogues.plantations', 'Plantations')}</p>
+              <p className="mt-1 text-xs text-white/50">Tu peux glisser-déposer les modules pour réorganiser l’affichage (ordre sauvegardé pour ce groupe).</p>
+            </div>
+
+            <div className="mt-4 grid gap-4">
+              {plantOrder.map((cardId) => {
+                const common = {
+                  draggable: true,
+                  onDragStart: () => handlePlantDragStart(cardId),
+                  onDragOver: (e: DragEvent<HTMLDivElement>) => e.preventDefault(),
+                  onDrop: () => handlePlantDropOn(cardId),
+                }
+
+                if (cardId === 'production') {
+                  return (
+                    <div key={cardId} {...common} className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white/90">
+                          <Factory className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold">Production en stock</p>
+                          <p className="text-xs text-white/60">Ce que tu as déjà produit (basé sur le nom exact des items).</p>
                         </div>
-                        {r.note ? <p className="mt-3 text-xs text-white/50">{r.note}</p> : null}
                       </div>
 
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                          <p className="text-xs font-semibold text-white/80">Feuilles de coke</p>
+                          <p className="mt-2 text-2xl font-semibold">{producedCokeLeaves}</p>
+                          <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke”.</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                          <p className="text-xs font-semibold text-white/80">Meth brut</p>
+                          <p className="mt-2 text-2xl font-semibold">{producedMethBrut}</p>
+                          <p className="text-xs text-white/50">Basé sur l’item “Meth brut”.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
+                const recipe = RECIPES.find((r) => r.key === cardId)
+                if (!recipe) return null
+                const batches = possibleBatches[recipe.key] ?? 0
+
+                return (
+                  <div key={cardId} {...common} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-white/90">
+                          <Factory className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold">{recipe.title}</p>
+                          <p className="text-xs text-white/60">{recipe.subtitle}</p>
+                          {recipe.note ? <p className="mt-2 text-xs text-white/50">{recipe.note}</p> : null}
+                        </div>
+                      </div>
                       <div className="text-right">
                         <p className="text-xs text-white/60">Batches possibles</p>
-                        <p className="mt-1 text-2xl font-semibold">{batches}</p>
+                        <p className="text-2xl font-semibold">{batches}</p>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <p className="text-xs font-semibold text-white/80">Requis (par batch)</p>
-                        <ul className="mt-2 space-y-1 text-xs text-white/60">
-                          {r.requirements.map((req) => (
-                            <li key={req.name} className="flex items-center justify-between">
-                              <span>{req.name}</span>
-                              <span className="font-semibold text-white/70">x{req.qty}</span>
-                            </li>
+                    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <p className="mb-2 text-xs font-semibold text-white/80">Requis (par batch)</p>
+                        <div className="space-y-2">
+                          {recipe.requirements.map((it) => (
+                            <div key={it.name}>{renderItemLine(it.name, it.qty)}</div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
-
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <p className="text-xs font-semibold text-white/80">Output</p>
-                        <p className="mt-2 text-sm font-semibold">{r.output.name}</p>
-                        <p className="text-xs text-white/60">
-                          {r.output.range ? `+${r.output.range[0]} à +${r.output.range[1]}` : `+${r.output.qty}`}
-                        </p>
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <p className="mb-2 text-xs font-semibold text-white/80">Output</p>
+                        <div className="space-y-2">
+                          {recipe.output.range ? (
+                            <div>{renderItemLine(recipe.output.name, recipe.output.range[0])}</div>
+                          ) : (
+                            <div>{renderItemLine(recipe.output.name, recipe.output.qty)}</div>
+                          )}
+                          {recipe.output.range ? (
+                            <p className="text-xs text-white/50">Output aléatoire : {recipe.output.range[0]} à {recipe.output.range[1]}</p>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-end gap-2">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       <button
-                        disabled={busyId === r.key || batches <= 0}
-                        onClick={() => produce(r)}
-                        className={
-                          'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-glow transition ' +
-                          (batches > 0 ? 'bg-white text-black hover:bg-white/90' : 'bg-white/20 text-white/50')
-                        }
+                        onClick={() => runProduction(recipe.key, 1)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10"
                       >
-                        <Plus className="h-4 w-4" />
-                        Produire 1 batch
+                        <ArrowDownLeft className="h-4 w-4" /> Produire x1
                       </button>
+                      <button
+                        onClick={() => runProduction(recipe.key, Math.min(5, batches || 0))}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10"
+                        disabled={batches <= 0}
+                      >
+                        <ArrowDownLeft className="h-4 w-4" /> Produire max (≤5)
+                      </button>
+                      <div className="ml-auto text-xs text-white/50">Glisse la carte pour la déplacer</div>
                     </div>
                   </div>
                 )
