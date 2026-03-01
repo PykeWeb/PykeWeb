@@ -3,6 +3,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { listObjects, type DbObject } from '@/lib/objectsApi'
@@ -13,7 +14,7 @@ import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 
 type TabKey = 'catalogue' | 'transactions'
 
-function TabButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function TabButton({ active, children, onClick }: { active: boolean; children: ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
