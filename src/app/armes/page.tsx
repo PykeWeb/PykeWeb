@@ -1,5 +1,7 @@
 import { Suspense } from 'react'
 import { PageHeader } from '@/components/PageHeader'
+import { Button } from '@/components/ui/Button'
+import Link from 'next/link'
 import { ArmesClient } from './ui/ArmesClient'
 
 export default function Page() {
@@ -8,6 +10,16 @@ export default function Page() {
       <PageHeader
         title="Armes"
         subtitle="Catalogue et stock (sans prix) + prêts aux membres"
+        actions={
+          <>
+            <Link href="/armes/prets">
+              <Button variant="secondary">Prêts en cours</Button>
+            </Link>
+            <Link href="/armes/nouveau">
+              <Button>Ajouter</Button>
+            </Link>
+          </>
+        }
       />
       <Suspense
         fallback={

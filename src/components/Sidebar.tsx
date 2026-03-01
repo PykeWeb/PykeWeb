@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { LayoutGrid, Package, Crosshair } from 'lucide-react'
+import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt } from 'lucide-react'
 import { BRAND, GROUP } from '@/lib/brand'
 
 const NavItem = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => {
@@ -39,6 +39,9 @@ export function Sidebar() {
         <NavItem href="/" label="Dashboard" icon={<LayoutGrid className="h-4 w-4" />} />
         <NavItem href="/objets" label="Objets" icon={<Package className="h-4 w-4" />} />
         <NavItem href="/armes" label="Armes" icon={<Crosshair className="h-4 w-4" />} />
+        <NavItem href="/equipement" label="Équipement" icon={<Wrench className="h-4 w-4" />} />
+        <NavItem href="/drogues" label="Drogues" icon={<Leaf className="h-4 w-4" />} />
+        <NavItem href="/depenses" label="Dépenses" icon={<Receipt className="h-4 w-4" />} />
       </div>
 
       <div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-white/60 shadow-glow">

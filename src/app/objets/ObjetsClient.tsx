@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 
 type ObjRow = {
   id: string;
@@ -20,7 +19,6 @@ type TxRow = {
   total: number | null;
   counterparty: string | null;
   created_at: string;
-  transaction_items?: { quantity: number | null; name_snapshot: string | null }[] | null;
 };
 
 function getSupabase() {
@@ -60,11 +58,7 @@ export default function ObjetsClient() {
 
         const [{ data: oData }, { data: tData }] = await Promise.all([
           supabase.from('objects').select('id,name,price,stock,image_url').order('created_at', { ascending: false }),
-          supabase
-            .from('transactions')
-            .select('id,type,total,counterparty,created_at,transaction_items(quantity,name_snapshot)')
-            .order('created_at', { ascending: false })
-            .limit(25),
+          supabase.from('transactions').select('id,type,total,counterparty,created_at').order('created_at', { ascending: false }).limit(25),
         ]);
 
         if (!alive) return;
@@ -189,13 +183,13 @@ export default function ObjetsClient() {
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex items-center gap-2">
                             <Link
-                              href={`/transactions/nouveau?type=purchase&prefill=${encodeURIComponent(o.id)}`}
+                              href={`/transactions/nouveau?prefill=${encodeURIComponent(o.id)}`}
                               className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
                             >
                               Achat
                             </Link>
                             <Link
-                              href={`/transactions/nouveau?type=sale&prefill=${encodeURIComponent(o.id)}`}
+                              href={`/transactions/sortie?prefill=${encodeURIComponent(o.id)}`}
                               className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
                             >
                               Sortie
@@ -242,25 +236,10 @@ export default function ObjetsClient() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-white/70">Dernières transactions</div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setTab('catalogue');
-                    router.replace('/objets');
-                  }}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-                >
-                  Retour
-                </button>
-                <Link
-                  href="/transactions/nouveau?type=purchase"
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-                >
+                <Link href="/transactions/nouveau" className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
                   Nouvel achat
                 </Link>
-                <Link
-                  href="/transactions/nouveau?type=sale"
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-                >
+                <Link href="/transactions/sortie" className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
                   Nouvelle sortie
                 </Link>
               </div>
@@ -271,7 +250,6 @@ export default function ObjetsClient() {
                 <thead className="bg-white/5 text-white/70">
                   <tr>
                     <th className="px-4 py-3 text-left">Type</th>
-                    <th className="px-4 py-3 text-left">Détails</th>
                     <th className="px-4 py-3 text-left">Partenaire</th>
                     <th className="px-4 py-3 text-left">Total</th>
                     <th className="px-4 py-3 text-right">Date</th>
@@ -280,13 +258,13 @@ export default function ObjetsClient() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className="px-4 py-6 text-white/60" colSpan={5}>
+                      <td className="px-4 py-6 text-white/60" colSpan={4}>
                         Chargement...
                       </td>
                     </tr>
                   ) : txs.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-6 text-white/60" colSpan={5}>
+                      <td className="px-4 py-6 text-white/60" colSpan={4}>
                         Aucune transaction pour le moment.
                       </td>
                     </tr>
@@ -294,36 +272,7 @@ export default function ObjetsClient() {
                     txs.map((t) => (
                       <tr key={t.id} className="border-t border-white/10">
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/10 bg-white/5">
-                              {t.type === 'purchase' ? (
-                                <ArrowDownLeft className="h-4 w-4 text-white/80" />
-                              ) : t.type === 'sale' ? (
-                                <ArrowUpRight className="h-4 w-4 text-white/80" />
-                              ) : (
-                                <span className="text-xs text-white/70">?</span>
-                              )}
-                            </span>
-                            <span className="font-medium">
-                              {t.type === 'purchase' ? 'Entrée (achat)' : t.type === 'sale' ? 'Sortie' : t.type}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {t.transaction_items && t.transaction_items.length > 0 ? (
-                            <div className="space-y-1">
-                              {t.transaction_items.slice(0, 3).map((it, idx) => (
-                                <div key={idx} className="text-xs text-white/70">
-                                  <span className="font-semibold text-white/80">{it.quantity ?? 0}×</span> {it.name_snapshot ?? '—'}
-                                </div>
-                              ))}
-                              {t.transaction_items.length > 3 ? (
-                                <div className="text-xs text-white/50">+{t.transaction_items.length - 3} autres…</div>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-white/50">—</span>
-                          )}
+                          {t.type === 'purchase' ? 'Achat' : t.type === 'sale' ? 'Sortie' : t.type}
                         </td>
                         <td className="px-4 py-3">{t.counterparty ?? '—'}</td>
                         <td className="px-4 py-3">{money(t.total)}</td>
