@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { updateObject } from '@/lib/objectsApi';
+import { ImageDropzone } from '@/components/objets/ImageDropzone';
 
 type ObjRow = {
   id: string;
@@ -41,7 +43,6 @@ function money(v: number | null | undefined) {
 }
 
 export default function ObjetsClient() {
-  const router = useRouter();
   const sp = useSearchParams();
 
   const [tab, setTab] = useState<'catalogue' | 'transactions'>('catalogue');
@@ -49,6 +50,13 @@ export default function ObjetsClient() {
   const [objs, setObjs] = useState<ObjRow[]>([]);
   const [txs, setTxs] = useState<TxRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [editingObj, setEditingObj] = useState<ObjRow | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // allow opening /objets?tab=transactions
   useEffect(() => {
@@ -90,6 +98,55 @@ export default function ObjetsClient() {
     if (!s) return objs;
     return objs.filter((o) => (o.name ?? '').toLowerCase().includes(s));
   }, [objs, q]);
+
+
+  function startEdit(o: ObjRow) {
+    setEditingObj(o);
+    setEditName(o.name ?? '');
+    setEditPrice(String(o.price ?? 0));
+    setEditImageFile(null);
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditingObj(null);
+    setEditName('');
+    setEditPrice('');
+    setEditImageFile(null);
+    setEditError(null);
+  }
+
+  async function saveEdit() {
+    if (!editingObj) return;
+    if (!editName.trim()) {
+      setEditError('Le nom est obligatoire.');
+      return;
+    }
+    if (Number.isNaN(Number(editPrice)) || Number(editPrice) < 0) {
+      setEditError('Le prix doit être un nombre positif.');
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      setEditError(null);
+      await updateObject({
+        id: editingObj.id,
+        name: editName.trim(),
+        price: Number(editPrice),
+        imageFile: editImageFile,
+      });
+
+      const supabase = getSupabase();
+      const { data: updatedObjects } = await supabase.from('objects').select('id,name,price,stock,image_url').order('created_at', { ascending: false });
+      setObjs((updatedObjects ?? []) as ObjRow[]);
+      cancelEdit();
+    } catch (e: any) {
+      setEditError(e?.message || 'Impossible de modifier cet objet.');
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   const todayTxCount = useMemo(() => {
     const today = new Date();
@@ -149,6 +206,66 @@ export default function ObjetsClient() {
               </div>
             </div>
 
+
+            {editingObj ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold">Modifier l’objet : {editingObj.name ?? 'Sans nom'}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingEdit}
+                      onClick={saveEdit}
+                      className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-xs text-white/60">Nom</label>
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/60">Prix</label>
+                    <input
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      inputMode="decimal"
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-xs text-white/60">Image actuelle</p>
+                  <div className="mt-1 h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                    {editingObj.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img alt="" src={editingObj.image_url} className="h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+                </div>
+
+                <ImageDropzone label="Remplacer l’image (optionnel)" onChange={setEditImageFile} />
+
+                {editError ? <p className="mt-2 text-sm text-rose-200">{editError}</p> : null}
+              </div>
+            ) : null}
+
             <div className="overflow-hidden rounded-2xl border border-white/10">
               <table className="w-full text-sm">
                 <thead className="bg-white/5 text-white/70">
@@ -202,6 +319,13 @@ export default function ObjetsClient() {
                             >
                               Sortie
                             </Link>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(o)}
+                              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                            >
+                              Modifier
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -252,6 +376,66 @@ export default function ObjetsClient() {
                 </Link>
               </div>
             </div>
+
+
+            {editingObj ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold">Modifier l’objet : {editingObj.name ?? 'Sans nom'}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingEdit}
+                      onClick={saveEdit}
+                      className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-xs text-white/60">Nom</label>
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/60">Prix</label>
+                    <input
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      inputMode="decimal"
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-xs text-white/60">Image actuelle</p>
+                  <div className="mt-1 h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                    {editingObj.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img alt="" src={editingObj.image_url} className="h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+                </div>
+
+                <ImageDropzone label="Remplacer l’image (optionnel)" onChange={setEditImageFile} />
+
+                {editError ? <p className="mt-2 text-sm text-rose-200">{editError}</p> : null}
+              </div>
+            ) : null}
 
             <div className="overflow-hidden rounded-2xl border border-white/10">
               <table className="w-full text-sm">
