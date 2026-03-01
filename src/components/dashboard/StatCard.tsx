@@ -18,13 +18,14 @@ export function StatCard({
   const card = (
     <Panel
       className={clsx(
+        'h-full',
         variant === 'accent' && 'bg-gradient-to-br from-white/[0.07] to-white/[0.03]',
         href && 'cursor-pointer transition hover:bg-white/[0.07]'
       )}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-white/60">{title}</p>
+          <p className="min-h-[2.5rem] text-sm text-white/60">{title}</p>
           <p className="mt-2 text-3xl font-semibold leading-none">{value}</p>
         </div>
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-white/80">{icon}</div>
@@ -35,7 +36,7 @@ export function StatCard({
   if (!href) return card
 
   return (
-    <Link href={href} className="block">
+    <Link href={href} className="block h-full">
       {card}
     </Link>
   )
