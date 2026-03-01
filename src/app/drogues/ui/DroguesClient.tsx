@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, Factory, Plus } from 'lucide-react'
+import { BarChart3, Boxes, FlaskConical, GripVertical, Leaf, Plus, Search, Settings2 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { listDrugItems, adjustDrugStock, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
 
@@ -90,7 +90,33 @@ export default function DroguesClient() {
     }
   }
 
+  
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem('pyke:plantationsLayout:v1')
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        const clean = parsed.filter((x): x is PlantCardId => defaultPlantOrder.includes(x))
+        // s'assurer que toutes les cartes existent
+        const merged = Array.from(new Set([...clean, ...defaultPlantOrder])) as PlantCardId[]
+        setPlantOrder(merged)
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('pyke:plantationsLayout:v1', JSON.stringify(plantOrder))
+    } catch {
+      // ignore
+    }
+  }, [plantOrder])
+
+useEffect(() => {
     refresh()
   }, [])
 
@@ -101,6 +127,15 @@ export default function DroguesClient() {
     if (!q) return arr
     return arr.filter((o) => (o.name || '').toLowerCase().includes(q))
   }, [items, query, kind])
+
+  const itemByName = useMemo(() => {
+    const m = new Map<string, Item>()
+    for (const it of items) m.set(it.name.toLowerCase(), it)
+    return m
+  }, [items])
+
+  const getItem = (name: string) => itemByName.get(name.toLowerCase())
+
 
   const possibleBatches = useMemo(() => {
     const res: Record<string, number> = {}
@@ -172,7 +207,49 @@ export default function DroguesClient() {
     }
   }
 
-  return (
+  
+  const handlePlantDragStart = (id: PlantCardId) => {
+    setDraggingCard(id)
+  }
+
+  const handlePlantDropOn = (targetId: PlantCardId) => {
+    setPlantOrder((prev) => {
+      if (!draggingCard || draggingCard === targetId) return prev
+      const next = [...prev]
+      const from = next.indexOf(draggingCard)
+      const to = next.indexOf(targetId)
+      if (from === -1 || to === -1) return prev
+      next.splice(from, 1)
+      next.splice(to, 0, draggingCard)
+      return next
+    })
+    setDraggingCard(null)
+  }
+
+  const plantCardClass =
+    'group relative rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm'
+
+  const renderItemLine = (name: string, qty: number) => {
+    const it = getItem(name)
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-black/20">
+            {it?.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full" />
+            )}
+          </div>
+          <div className="truncate">{name}</div>
+        </div>
+        <div className="tabular-nums text-white/80">x{qty}</div>
+      </div>
+    )
+  }
+
+return (
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -325,84 +402,151 @@ export default function DroguesClient() {
           </>
         ) : (
           <>
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              
-              <div className="mb-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-                  <p className="text-xs text-white/60">Production en stock</p>
-                  <p className="mt-1 text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
-                  <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke” dans ton catalogue.</p>
+            
+<div className="mt-4">
+  <div className="grid gap-4 md:grid-cols-2">
+    {plantOrder.map((cardId) => {
+      const commonProps = {
+        draggable: true,
+        onDragStart: () => handlePlantDragStart(cardId),
+        onDragOver: (e) => e.preventDefault(),
+        onDrop: () => handlePlantDropOn(cardId),
+        className:
+          plantCardClass +
+          ' cursor-grab active:cursor-grabbing ' +
+          (draggingCard === cardId ? ' ring-2 ring-white/20' : ''),
+      }
+
+      if (cardId === 'prod_coke') {
+        return (
+          <div key={cardId} {...commonProps}>
+            <div className="absolute right-3 top-3 opacity-60 transition group-hover:opacity-100">
+              <GripVertical className="h-4 w-4" />
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/10">
+                <Leaf className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-white/70">Production en stock</p>
+                <p className="mt-1 truncate text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
+                <p className="mt-1 text-xs text-white/60">Basé sur l'item "Feuille de coke" dans ton catalogue.</p>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      if (cardId === 'prod_meth') {
+        return (
+          <div key={cardId} {...commonProps}>
+            <div className="absolute right-3 top-3 opacity-60 transition group-hover:opacity-100">
+              <GripVertical className="h-4 w-4" />
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/10">
+                <FlaskConical className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-white/70">Production en stock</p>
+                <p className="mt-1 truncate text-lg font-semibold">Meth brut : {producedMethBrut}</p>
+                <p className="mt-1 text-xs text-white/60">Basé sur l'item "Meth brut" dans ton catalogue.</p>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const recipe = cardId === 'recipe_coke' ? RECIPES.find((r) => r.key === 'coke') : RECIPES.find((r) => r.key === 'meth')
+      if (!recipe) return null
+      const batches = possibleBatches[recipe.key] ?? 0
+      const isCoke = recipe.key === 'coke'
+
+      return (
+        <div key={cardId} {...commonProps}>
+          <div className="absolute right-3 top-3 opacity-60 transition group-hover:opacity-100">
+            <GripVertical className="h-4 w-4" />
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/10">
+              {isCoke ? <Leaf className="h-5 w-5" /> : <FlaskConical className="h-5 w-5" />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs text-white/70">{isCoke ? 'Plantation coke' : 'Cook meth'} ({recipe.key === 'coke' ? '1 pot' : '1 batch'})</p>
+                  <p className="mt-1 truncate text-base font-semibold">{recipe.title}</p>
+                  <p className="mt-1 text-xs text-white/60">{recipe.subtitle}</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-                  <p className="text-xs text-white/60">Production en stock</p>
-                  <p className="mt-1 text-lg font-semibold">Meth brut : {producedMethBrut}</p>
-                  <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
+                <div className="text-right">
+                  <p className="text-xs text-white/60">Batches possibles</p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums">{batches}</p>
                 </div>
               </div>
-{RECIPES.map((r) => {
-                const batches = possibleBatches[r.key] ?? 0
-                return (
-                  <div key={r.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white/90">
-                            <Factory className="h-4 w-4" />
-                          </span>
-                          <div>
-                            <p className="text-sm font-semibold">{r.title}</p>
-                            <p className="text-xs text-white/60">{r.subtitle}</p>
-                          </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="mb-2 text-xs font-semibold text-white/80">Requis (par batch)</p>
+                  <div className="space-y-2">
+                    {recipe.inputs.map((it) => (
+                      <div key={it.name}>{renderItemLine(it.name, it.qty)}</div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="mb-2 text-xs font-semibold text-white/80">Output</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-black/20">
+                          {getItem(recipe.output.name)?.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={getItem(recipe.output.name)!.image_url!}
+                              alt={recipe.output.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full" />
+                          )}
                         </div>
-                        {r.note ? <p className="mt-3 text-xs text-white/50">{r.note}</p> : null}
+                        <div className="truncate">{recipe.output.name}</div>
                       </div>
-
-                      <div className="text-right">
-                        <p className="text-xs text-white/60">Batches possibles</p>
-                        <p className="mt-1 text-2xl font-semibold">{batches}</p>
+                      <div className="tabular-nums text-white/80">
+                        {recipe.output.range ? `+${recipe.output.range[0]} à +${recipe.output.range[1]}` : `+${recipe.output.qty}`}
                       </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <p className="text-xs font-semibold text-white/80">Requis (par batch)</p>
-                        <ul className="mt-2 space-y-1 text-xs text-white/60">
-                          {r.requirements.map((req) => (
-                            <li key={req.name} className="flex items-center justify-between">
-                              <span>{req.name}</span>
-                              <span className="font-semibold text-white/70">x{req.qty}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <p className="text-xs font-semibold text-white/80">Output</p>
-                        <p className="mt-2 text-sm font-semibold">{r.output.name}</p>
-                        <p className="text-xs text-white/60">
-                          {r.output.range ? `+${r.output.range[0]} à +${r.output.range[1]}` : `+${r.output.qty}`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-end gap-2">
-                      <button
-                        disabled={busyId === r.key || batches <= 0}
-                        onClick={() => produce(r)}
-                        className={
-                          'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-glow transition ' +
-                          (batches > 0 ? 'bg-white text-black hover:bg-white/90' : 'bg-white/20 text-white/50')
-                        }
-                      >
-                        <Plus className="h-4 w-4" />
-                        Produire 1 batch
-                      </button>
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  disabled={busyId === recipe.key || batches <= 0}
+                  onClick={() => produce(recipe)}
+                  className={
+                    'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-glow transition ' +
+                    (batches > 0 ? 'bg-white text-black hover:bg-white/90' : 'bg-white/20 text-white/50')
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                  Produire 1 batch
+                </button>
+              </div>
             </div>
-          </>
+          </div>
+        </div>
+      )
+    })}
+  </div>
+
+  <p className="mt-3 text-xs text-white/50">
+    Astuce : tu peux <span className="text-white/70">glisser-déposer</span> les cartes pour changer l'ordre (c'est enregistré sur ton navigateur).
+  </p>
+</div>
+</>
         )}
 
         {error ? (
