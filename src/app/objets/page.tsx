@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/PageHeader'
 import Link from 'next/link'
 import { Plus, Search } from 'lucide-react'
 
-const MOCK = [] as Array<{ id: string; name: string; category: string; stock: number }>
+const MOCK = [] as Array<{ id: string; name: string; price: number; imageUrl?: string; stock: number }>
 
 export default function ObjetsPage() {
   return (
@@ -36,9 +36,9 @@ export default function ObjetsPage() {
 
         <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
           <div className="grid grid-cols-12 bg-white/[0.03] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white/60">
-            <div className="col-span-7">Nom</div>
-            <div className="col-span-3">Catégorie</div>
-            <div className="col-span-2 text-right">Stock</div>
+            <div className="col-span-6">Objet</div>
+            <div className="col-span-3">Prix</div>
+            <div className="col-span-3 text-right">Stock</div>
           </div>
 
           {MOCK.length === 0 ? (
@@ -48,9 +48,12 @@ export default function ObjetsPage() {
           ) : (
             MOCK.map((it) => (
               <div key={it.id} className="grid grid-cols-12 border-t border-white/10 px-4 py-3 text-sm">
-                <div className="col-span-7 font-medium">{it.name}</div>
-                <div className="col-span-3 text-white/70">{it.category}</div>
-                <div className="col-span-2 text-right tabular-nums">{it.stock}</div>
+                <div className="col-span-6 flex items-center gap-3 font-medium">
+                  <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/[0.04]" />
+                  <span>{it.name}</span>
+                </div>
+                <div className="col-span-3 text-white/70 tabular-nums">${it.price.toLocaleString('fr-FR')}</div>
+                <div className="col-span-3 text-right tabular-nums">{it.stock}</div>
               </div>
             ))
           )}

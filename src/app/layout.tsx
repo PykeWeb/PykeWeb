@@ -2,10 +2,11 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Sidebar } from '@/components/Sidebar'
 import { Topbar } from '@/components/Topbar'
+import { BRAND } from '@/lib/brand'
 
 export const metadata: Metadata = {
-  title: 'Z2T — Gestion de stock RP',
-  description: 'Dashboard de gestion de stock pour groupe RP (FiveM)'
+  title: `${BRAND.name} — ${BRAND.tagline}`,
+  description: BRAND.description
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

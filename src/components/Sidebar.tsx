@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { LayoutGrid, Package } from 'lucide-react'
+import { BRAND } from '@/lib/brand'
 
 const NavItem = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => {
   return (
@@ -20,8 +21,8 @@ export function Sidebar() {
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500/70 to-sky-400/70" />
           <div>
-            <p className="text-sm font-semibold leading-tight">Z2T</p>
-            <p className="text-xs text-white/60">Gestion de stock RP</p>
+            <p className="text-sm font-semibold leading-tight">{BRAND.name}</p>
+            <p className="text-xs text-white/60">{BRAND.tagline}</p>
           </div>
         </div>
 
