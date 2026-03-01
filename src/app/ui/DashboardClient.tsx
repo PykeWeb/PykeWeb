@@ -21,7 +21,7 @@ type Loan = {
   borrower_name: string
   quantity: number
   loaned_at: string
-  weapons: { name: string | null; weapon_id: string | null } | null
+  weapons: { name: string | null; weapon_id: string | null }[] | null
 }
 
 function startOfTodayIso() {
@@ -146,7 +146,7 @@ export function DashboardClient() {
                     <div key={l.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">
-                          {l.weapons?.name ?? 'Arme'} {l.weapons?.weapon_id ? `(${l.weapons.weapon_id})` : ''} ×{l.quantity}
+                          {(() => { const w = l.weapons?.[0]; return `${w?.name ?? 'Arme'}${w?.weapon_id ? ` (${w.weapon_id})` : ''} ×${l.quantity}` })()}
                         </p>
                         <p className="text-xs text-white/60">
                           Prêté à <span className="font-semibold text-white/80">{l.borrower_name}</span> • {new Date(l.loaned_at).toLocaleString()}
