@@ -19,9 +19,10 @@ const KIND_LABEL: Record<DrugKind, string> = {
 export default function NouveauDrogueClient() {
   const router = useRouter()
   const sp = useSearchParams()
-  const defaultKind = (sp.get('kind') as DrugKind) || 'drug'
+  // Accept both ?type= and legacy ?kind= in the URL.
+  const defaultType = ((sp.get('type') || sp.get('kind')) as DrugKind) || 'drug'
 
-  const [kind, setKind] = useState<DrugKind>(defaultKind)
+  const [type, setType] = useState<DrugKind>(defaultType)
   const [name, setName] = useState('')
   const [price, setPrice] = useState<string>('')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -51,8 +52,8 @@ export default function NouveauDrogueClient() {
           <div className="md:col-span-2">
             <label className="text-sm text-white/70">Type</label>
             <select
-              value={kind}
-              onChange={(e) => setKind(e.target.value as DrugKind)}
+              value={type}
+              onChange={(e) => setType(e.target.value as DrugKind)}
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-white/20"
             >
               {Object.keys(KIND_LABEL).map((k) => (
@@ -129,7 +130,7 @@ export default function NouveauDrogueClient() {
                 setError(null)
                 try {
                   await createDrugItem({
-                    kind,
+                    type,
                     name: name.trim(),
                     price: Number(price),
                     description: description.trim() || undefined,
