@@ -1,41 +1,107 @@
 /* eslint-disable @next/next/no-img-element */
 'use client'
 
-import { Panel } from '@/components/ui/Panel'
-import { PageHeader } from '@/components/PageHeader'
 import Link from 'next/link'
-import { Plus, Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { listObjects, type DbObject } from '@/lib/objectsApi'
+import { listTransactions, type DbTransaction } from '@/lib/transactionsApi'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
+
+type TabKey = 'catalogue' | 'transactions'
+
+function TabButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        'rounded-xl border px-3 py-2 text-sm font-medium transition ' +
+        (active
+          ? 'border-white/20 bg-white/10 text-white shadow-glow'
+          : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white')
+      }
+    >
+      {children}
+    </button>
+  )
+}
+
+function TxBadge({ type }: { type: DbTransaction['type'] }) {
+  const label = type === 'purchase' ? 'Achat' : 'Sortie'
+  const Icon = type === 'purchase' ? ArrowDownRight : ArrowUpRight
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80">
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </span>
+  )
+}
 
 export default function ObjetsClient() {
-  const [items, setItems] = useState<DbObject[]>([])
-  const [q, setQ] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
   const searchParams = useSearchParams()
+
+  const initialTab = (searchParams.get('tab') as TabKey) || 'catalogue'
+  const [tab, setTab] = useState<TabKey>(initialTab)
+
+  const [items, setItems] = useState<DbObject[]>([])
+  const [txs, setTxs] = useState<DbTransaction[]>([])
+  const [loadingObjects, setLoadingObjects] = useState(true)
+  const [loadingTx, setLoadingTx] = useState(true)
+  const [q, setQ] = useState('')
+
   const added = searchParams.get('added') === '1'
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await listObjects()
-        if (!cancelled) setItems(data)
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Erreur chargement Supabase')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
+  function setTabAndUrl(next: TabKey) {
+    setTab(next)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', next)
+    router.replace(`/objets?${params.toString()}`)
+  }
 
-    return () => {
-      cancelled = true
+  async function refreshObjects() {
+    setLoadingObjects(true)
+    try {
+      const data = await listObjects()
+      setItems(data)
+    } catch (e: any) {
+      toast.error(e?.message || 'Impossible de charger les objets')
+    } finally {
+      setLoadingObjects(false)
     }
+  }
+
+  async function refreshTx() {
+    setLoadingTx(true)
+    try {
+      const data = await listTransactions(50)
+      setTxs(data)
+    } catch (e: any) {
+      toast.error(e?.message || 'Impossible de charger les transactions')
+    } finally {
+      setLoadingTx(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshObjects()
+    refreshTx()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Sync tab when URL changes (back/forward)
+  useEffect(() => {
+    const next = ((searchParams.get('tab') as TabKey) || 'catalogue') as TabKey
+    setTab(next)
+  }, [searchParams])
+
+  useEffect(() => {
+    if (added) toast.success('Objet enregistré')
+  }, [added])
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase()
@@ -43,86 +109,209 @@ export default function ObjetsClient() {
     return items.filter((it) => it.name.toLowerCase().includes(query))
   }, [items, q])
 
+  const txToday = useMemo(() => {
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    return txs.filter((t) => new Date(t.created_at).getTime() >= start).length
+  }, [txs])
+
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Objets"
-        subtitle="Catalogue + stock (version simple)"
-        actions={
-          <Link
-            href="/objets/nouveau"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium shadow-glow transition hover:bg-white/10"
-          >
-            <Plus className="h-4 w-4" />
-            Ajouter
-          </Link>
-        }
-      />
-
-      {added ? (
-        <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-          ✅ Objet enregistré.
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
-          ❌ {error}
-          <div className="mt-1 text-xs text-rose-100/80">
-            Vérifie tes variables Vercel / .env.local et que la table <span className="font-semibold">objects</span> existe.
-          </div>
-        </div>
-      ) : null}
-
-      <Panel>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Rechercher un objet…"
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm outline-none placeholder:text-white/40 focus:border-white/20"
-            />
-          </div>
-          <div className="text-sm text-white/60">{filtered.length} objet(s)</div>
-        </div>
-
-        <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
-          <div className="grid grid-cols-12 bg-white/[0.03] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white/60">
-            <div className="col-span-6">Objet</div>
-            <div className="col-span-3">Prix</div>
-            <div className="col-span-3 text-right">Stock</div>
+    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+      {/* Main */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <TabButton active={tab === 'catalogue'} onClick={() => setTabAndUrl('catalogue')}>
+              Catalogue
+            </TabButton>
+            <TabButton active={tab === 'transactions'} onClick={() => setTabAndUrl('transactions')}>
+              Transactions
+            </TabButton>
           </div>
 
-          {loading ? (
-            <div className="p-6 text-sm text-white/60">Chargement…</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-6 text-sm text-white/60">
-              Aucun objet pour le moment. Clique sur <span className="text-white">Ajouter</span>.
-            </div>
-          ) : (
-            filtered.map((it) => (
-              <div key={it.id} className="grid grid-cols-12 border-t border-white/10 px-4 py-3 text-sm">
-                <div className="col-span-6 flex items-center gap-3 font-medium">
-                  {it.image_url ? (
-                    <img
-                      src={it.image_url}
-                      alt={it.name}
-                      className="h-9 w-9 rounded-lg border border-white/10 object-cover"
-                    />
-                  ) : (
-                    <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/[0.04]" />
-                  )}
-                  <span className="truncate">{it.name}</span>
-                </div>
-                <div className="col-span-3 text-white/70 tabular-nums">${it.price.toLocaleString('fr-FR')}</div>
-                <div className="col-span-3 text-right tabular-nums">{it.stock}</div>
+          <div className="flex items-center gap-2">
+            {tab === 'transactions' ? (
+              <>
+                <Link href="/transactions/nouveau?type=purchase">
+                  <Button>Nouvel achat</Button>
+                </Link>
+                <Link href="/transactions/nouveau?type=sale">
+                  <Button variant="secondary">Nouvelle sortie</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/objets/nouveau">
+                  <Button>Ajouter un objet</Button>
+                </Link>
+                <Link href="/objets?tab=transactions">
+                  <Button variant="secondary">Transactions</Button>
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+
+        {tab === 'catalogue' ? (
+          <>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom)…" className="w-[280px]" />
+                <span className="text-xs text-white/60">{filtered.length} objet(s)</span>
               </div>
-            ))
-          )}
+              <div className="text-xs text-white/50">Astuce : utilise “Achat” pour entrer du stock et “Sortie” pour retirer.</div>
+            </div>
+
+            <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-white/[0.04] text-white/70">
+                  <tr>
+                    <th className="px-4 py-3">Objet</th>
+                    <th className="px-4 py-3">Prix</th>
+                    <th className="px-4 py-3">Stock</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingObjects ? (
+                    <tr>
+                      <td className="px-4 py-6 text-white/60" colSpan={4}>
+                        Chargement…
+                      </td>
+                    </tr>
+                  ) : filtered.length === 0 ? (
+                    <tr>
+                      <td className="px-4 py-6 text-white/60" colSpan={4}>
+                        Aucun objet pour le moment.
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((it) => (
+                      <tr key={it.id} className="border-t border-white/10">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                              {it.image_url ? (
+                                <img src={it.image_url} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="h-full w-full bg-gradient-to-br from-white/10 to-white/[0.02]" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold">{it.name}</p>
+                              {it.description ? <p className="text-xs text-white/60 line-clamp-1">{it.description}</p> : null}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-white/80 tabular-nums">{Number(it.price).toFixed(2)} $</td>
+                        <td className="px-4 py-3 font-semibold">{it.stock}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-2">
+                            <Link href="/transactions/nouveau?type=purchase">
+                              <Button variant="secondary">Achat</Button>
+                            </Link>
+                            <Link href="/transactions/nouveau?type=sale">
+                              <Button variant="secondary">Sortie</Button>
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-white/[0.04] text-white/70">
+                  <tr>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Interlocuteur</th>
+                    <th className="px-4 py-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingTx ? (
+                    <tr>
+                      <td className="px-4 py-6 text-white/60" colSpan={4}>
+                        Chargement…
+                      </td>
+                    </tr>
+                  ) : txs.length === 0 ? (
+                    <tr>
+                      <td className="px-4 py-6 text-white/60" colSpan={4}>
+                        Aucune transaction pour le moment.
+                      </td>
+                    </tr>
+                  ) : (
+                    txs.map((t) => (
+                      <tr key={t.id} className="border-t border-white/10 hover:bg-white/5">
+                        <td className="px-4 py-3">
+                          <TxBadge type={t.type} />
+                        </td>
+                        <td className="px-4 py-3 text-white/80">{new Date(t.created_at).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-white/80">{t.counterparty ?? '—'}</td>
+                        <td className="px-4 py-3 text-right text-white/90">{t.total == null ? '—' : `${Number(t.total).toFixed(2)} $`}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-white/50">Tip : “Achat” = entrée stock, “Sortie” = retrait stock (vente / perte / transfert).</p>
+          </>
+        )}
+      </div>
+
+      {/* Right rail */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
+        <p className="text-sm font-semibold">Raccourcis</p>
+
+        <div className="mt-3 grid gap-2">
+          <Link href="/objets/nouveau">
+            <Button className="w-full">Ajouter un objet</Button>
+          </Link>
+          <Link href="/transactions/nouveau?type=purchase">
+            <Button variant="secondary" className="w-full">
+              Nouvel achat
+            </Button>
+          </Link>
+          <Link href="/transactions/nouveau?type=sale">
+            <Button variant="secondary" className="w-full">
+              Nouvelle sortie
+            </Button>
+          </Link>
         </div>
-      </Panel>
+
+        {/* Mini carré / widget transactions */}
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-white/60">Transactions</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">{txToday}</p>
+              <p className="text-xs text-white/50">aujourd’hui</p>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/objets?tab=transactions">
+                <Button variant="ghost">Voir</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/60">
+          <p className="font-semibold text-white/80">Mode RP</p>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            <li>Achat : tu ajoutes au stock + le total te dit combien payer</li>
+            <li>Sortie : tu retires du stock (vente / perte / transfert)</li>
+            <li>Historique : utile pour justifier qui a pris quoi et quand</li>
+          </ul>
+        </div>
+      </div>
     </div>
   )
 }
