@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
-import { Box, Crosshair, Handshake, Plus, Repeat, ArrowRight, ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import { Box, Crosshair, Handshake, Plus, Repeat, ArrowRight, ArrowDownRight, ArrowUpRight, Receipt } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -238,6 +238,22 @@ export function DashboardClient() {
                   <div>
                     <p className="text-sm font-semibold">Catalogue</p>
                     <p className="text-xs text-white/60">Voir tous les objets</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-5 w-5 text-white/50" />
+              </div>
+            </Link>
+
+
+            <Link href="/depenses" className="block">
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10">
+                    <Receipt className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold">Dépenses</p>
+                    <p className="text-xs text-white/60">Voir les dépenses</p>
                   </div>
                 </div>
                 <ArrowRight className="h-5 w-5 text-white/50" />
