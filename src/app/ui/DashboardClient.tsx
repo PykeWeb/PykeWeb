@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
-import { Box, Crosshair, Handshake, Plus, Repeat, ArrowRight } from 'lucide-react'
+import { Box, Crosshair, Handshake, Plus, Repeat, ArrowRight, ArrowDownRight, ArrowUpRight } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -14,6 +14,7 @@ type Tx = {
   total: number | null
   counterparty: string | null
   created_at: string
+  transaction_items?: { name_snapshot: string | null; quantity: number | null }[] | null
 }
 
 type Loan = {
@@ -51,7 +52,11 @@ export function DashboardClient() {
         supabase.from('weapons').select('id', { count: 'exact', head: true }),
         supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).is('returned_at', null),
         supabase.from('transactions').select('id', { count: 'exact', head: true }).gte('created_at', todayIso),
-        supabase.from('transactions').select('id,type,total,counterparty,created_at').order('created_at', { ascending: false }).limit(7),
+        supabase
+          .from('transactions')
+          .select('id,type,total,counterparty,created_at,transaction_items(name_snapshot,quantity)')
+          .order('created_at', { ascending: false })
+          .limit(7),
         supabase
           .from('weapon_loans')
           .select('id,borrower_name,quantity,loaned_at,weapons(name,weapon_id)')
@@ -122,9 +127,30 @@ export function DashboardClient() {
                     <div key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">
-                          {t.type === 'purchase' ? 'Achat' : 'Sortie'} {t.counterparty ? `• ${t.counterparty}` : ''}
+                          <span
+                            className={`mr-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
+                              t.type === 'purchase'
+                                ? 'border-emerald-300/40 bg-emerald-500/10 text-emerald-100'
+                                : 'border-orange-300/40 bg-orange-500/10 text-orange-100'
+                            }`}
+                          >
+                            {t.type === 'purchase' ? (
+                              <ArrowDownRight className="h-3 w-3" />
+                            ) : (
+                              <ArrowUpRight className="h-3 w-3" />
+                            )}
+                            {t.type === 'purchase' ? 'Entrée' : 'Sortie'}
+                          </span>
+                          {t.counterparty ? `• ${t.counterparty}` : ''}
                         </p>
                         <p className="text-xs text-white/60">{new Date(t.created_at).toLocaleString()}</p>
+                        <p className="truncate text-xs text-white/50">
+                          {t.transaction_items?.length
+                            ? t.transaction_items
+                                .map((item) => `${item.name_snapshot ?? 'Objet'} ×${item.quantity ?? 0}`)
+                                .join(', ')
+                            : 'Aucun objet renseigné'}
+                        </p>
                       </div>
                       <div className="text-sm font-semibold text-white/80">{t.total ?? '—'}</div>
                     </div>

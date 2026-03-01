@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
 type ObjRow = {
   id: string;
@@ -13,12 +14,18 @@ type ObjRow = {
   image_url: string | null;
 };
 
+type TxItemRow = {
+  name_snapshot: string | null;
+  quantity: number | null;
+};
+
 type TxRow = {
   id: string;
   type: 'purchase' | 'sale' | string;
   total: number | null;
   counterparty: string | null;
   created_at: string;
+  transaction_items?: TxItemRow[] | null;
 };
 
 function getSupabase() {
@@ -58,7 +65,11 @@ export default function ObjetsClient() {
 
         const [{ data: oData }, { data: tData }] = await Promise.all([
           supabase.from('objects').select('id,name,price,stock,image_url').order('created_at', { ascending: false }),
-          supabase.from('transactions').select('id,type,total,counterparty,created_at').order('created_at', { ascending: false }).limit(25),
+          supabase
+            .from('transactions')
+            .select('id,type,total,counterparty,created_at,transaction_items(name_snapshot,quantity)')
+            .order('created_at', { ascending: false })
+            .limit(25),
         ]);
 
         if (!alive) return;
@@ -151,13 +162,13 @@ export default function ObjetsClient() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className="px-4 py-6 text-white/60" colSpan={4}>
+                      <td className="px-4 py-6 text-white/60" colSpan={5}>
                         Chargement...
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-6 text-white/60" colSpan={4}>
+                      <td className="px-4 py-6 text-white/60" colSpan={5}>
                         Aucun objet pour le moment.
                       </td>
                     </tr>
@@ -247,6 +258,7 @@ export default function ObjetsClient() {
                 <thead className="bg-white/5 text-white/70">
                   <tr>
                     <th className="px-4 py-3 text-left">Type</th>
+                    <th className="px-4 py-3 text-left">Objets</th>
                     <th className="px-4 py-3 text-left">Partenaire</th>
                     <th className="px-4 py-3 text-left">Total</th>
                     <th className="px-4 py-3 text-right">Date</th>
@@ -255,13 +267,13 @@ export default function ObjetsClient() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className="px-4 py-6 text-white/60" colSpan={4}>
+                      <td className="px-4 py-6 text-white/60" colSpan={5}>
                         Chargement...
                       </td>
                     </tr>
                   ) : txs.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-6 text-white/60" colSpan={4}>
+                      <td className="px-4 py-6 text-white/60" colSpan={5}>
                         Aucune transaction pour le moment.
                       </td>
                     </tr>
@@ -269,7 +281,24 @@ export default function ObjetsClient() {
                     txs.map((t) => (
                       <tr key={t.id} className="border-t border-white/10">
                         <td className="px-4 py-3">
-                          {t.type === 'purchase' ? 'Achat' : t.type === 'sale' ? 'Sortie' : t.type}
+                          {t.type === 'purchase' ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-100">
+                              <ArrowDownRight className="h-3.5 w-3.5" /> Entrée
+                            </span>
+                          ) : t.type === 'sale' ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-orange-300/40 bg-orange-500/10 px-2 py-1 text-xs text-orange-100">
+                              <ArrowUpRight className="h-3.5 w-3.5" /> Sortie
+                            </span>
+                          ) : (
+                            t.type
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-white/80">
+                          {t.transaction_items?.length
+                            ? t.transaction_items
+                                .map((item) => `${item.name_snapshot ?? 'Objet'} ×${item.quantity ?? 0}`)
+                                .join(', ')
+                            : '—'}
                         </td>
                         <td className="px-4 py-3">{t.counterparty ?? '—'}</td>
                         <td className="px-4 py-3">{money(t.total)}</td>
