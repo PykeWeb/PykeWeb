@@ -6,6 +6,7 @@ import { listWeapons, adjustWeaponStock, type DbWeapon } from '@/lib/weaponsApi'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { toast } from 'sonner'
+import { ArrowLeft } from 'lucide-react'
 
 export function ArmesClient() {
   const [items, setItems] = useState<DbWeapon[]>([])
@@ -49,8 +50,12 @@ export function ArmesClient() {
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Link href="/" className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
-              ← Retour
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Retour
             </Link>
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom ou ID)..." className="w-[280px]" />
             <span className="text-xs text-white/60">{filtered.length} arme(s)</span>
@@ -58,7 +63,7 @@ export function ArmesClient() {
         </div>
 
         {/* Actions (dans la bulle principale, pas en haut à droite) */}
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
           <Link href="/armes/nouveau" className="block">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]">
               <p className="text-sm font-semibold">Ajouter une arme</p>
@@ -69,6 +74,12 @@ export function ArmesClient() {
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]">
               <p className="text-sm font-semibold">Prêts en cours</p>
               <p className="mt-1 text-xs text-white/60">Voir / gérer les prêts</p>
+            </div>
+          </Link>
+          <Link href="/armes/prets/nouveau" className="block">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]">
+              <p className="text-sm font-semibold">Créer un prêt</p>
+              <p className="mt-1 text-xs text-white/60">Nouveau prêt d’arme</p>
             </div>
           </Link>
         </div>

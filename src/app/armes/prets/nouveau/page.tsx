@@ -1,7 +1,5 @@
 import { Suspense } from 'react'
 import { PageHeader } from '@/components/PageHeader'
-import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
 import { NewWeaponLoanForm } from './ui/NewWeaponLoanForm'
 
 export default function Page() {
@@ -10,11 +8,6 @@ export default function Page() {
       <PageHeader
         title="Créer un prêt"
         subtitle="Sélectionner l’arme • le membre • la quantité"
-        actions={
-          <Link href="/armes/prets">
-            <Button variant="secondary">Retour</Button>
-          </Link>
-        }
       />
       <Suspense
         fallback={
