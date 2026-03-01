@@ -1,5 +1,6 @@
 'use client'
 
+import type { ClipboardEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Image as ImageIcon, Upload, X } from 'lucide-react'
 
@@ -51,7 +52,7 @@ export function ImageDropzone({ label = 'Image', onChange }: Props) {
   )
 
   const onPaste = useCallback(
-    (e: React.ClipboardEvent) => {
+    (e: ClipboardEvent<HTMLDivElement>) => {
       const items = e.clipboardData?.items
       if (!items) return
       for (const item of items) {
