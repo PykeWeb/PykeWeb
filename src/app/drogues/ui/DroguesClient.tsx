@@ -22,8 +22,7 @@ function kindLabel(k: DrugKind) {
     case 'other':
       return 'Autre'
     default:
-      // Exhaustive guard – should never happen, but keeps UI resilient
-      return String(k)
+      return 'Autre'
   }
 }
 
