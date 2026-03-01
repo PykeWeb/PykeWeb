@@ -129,6 +129,42 @@ export default function DroguesClient() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+
+  const itemByName = useMemo(() => {
+    const m = new Map<string, DbDrugItem>()
+    for (const it of items) {
+      const n = (it.name || '').trim()
+      if (n) m.set(n.toLowerCase(), it)
+    }
+    return m
+  }, [items])
+
+  const renderItemLine = (name: string, qty: number) => {
+    const it = itemByName.get(name.toLowerCase())
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+            {it?.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-[10px] text-white/35">IMG</div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm text-white/90">{name}</p>
+            {it?.type ? <p className="text-xs text-white/50">{kindLabel(it.type)}</p> : null}
+          </div>
+        </div>
+        <div className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-sm text-white/90">
+          x{qty}
+        </div>
+      </div>
+    )
+  }
+
+
   async function refresh() {
     setLoading(true)
     try {
