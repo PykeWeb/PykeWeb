@@ -13,10 +13,10 @@ import { listEquipment, type DbEquipment } from '@/lib/equipmentApi'
 import { listDrugItems, type DbDrugItem } from '@/lib/drugsApi'
 
 type PickItem =
-  | { type: 'objects'; id: string; name: string; price: number }
-  | { type: 'weapons'; id: string; name: string; price: number }
-  | { type: 'equipment'; id: string; name: string; price: number }
-  | { type: 'drugs'; id: string; name: string; price: number }
+  | { type: 'objects'; id: string; name: string; price: number; image_url?: string | null }
+  | { type: 'weapons'; id: string; name: string; price: number; image_url?: string | null }
+  | { type: 'equipment'; id: string; name: string; price: number; image_url?: string | null }
+  | { type: 'drugs'; id: string; name: string; price: number; image_url?: string | null }
 
 export default function NouvelleDepensePage() {
   const router = useRouter()
@@ -36,6 +36,7 @@ export default function NouvelleDepensePage() {
   const [error, setError] = useState<string | null>(null)
 
   const total = useMemo(() => Number(unitPrice || 0) * Number(quantity || 0), [unitPrice, quantity])
+  const pickedItem = useMemo(() => items.find((x) => x.id === pickedId) || null, [items, pickedId])
 
   const canSave = useMemo(() => {
     if (!memberName.trim()) return false
@@ -57,22 +58,46 @@ export default function NouvelleDepensePage() {
         if (itemType === 'objects') {
           const data = await listObjects()
           setItems(
-            data.map((o: DbObject) => ({ type: 'objects', id: o.id, name: o.name, price: o.price })) as any
+            data.map((o: DbObject) => ({
+              type: 'objects',
+              id: o.id,
+              name: o.name,
+              price: o.price,
+              image_url: o.image_url,
+            }))
           )
         } else if (itemType === 'weapons') {
           const data = await listWeapons()
           setItems(
-            data.map((w: DbWeapon) => ({ type: 'weapons', id: w.id, name: w.name || w.weapon_id || 'Arme', price: 0 })) as any
+            data.map((w: DbWeapon) => ({
+              type: 'weapons',
+              id: w.id,
+              name: w.name || w.weapon_id || 'Arme',
+              price: 0,
+              image_url: w.image_url,
+            }))
           )
         } else if (itemType === 'equipment') {
           const data = await listEquipment()
           setItems(
-            data.map((e: DbEquipment) => ({ type: 'equipment', id: e.id, name: e.name, price: e.price })) as any
+            data.map((e: DbEquipment) => ({
+              type: 'equipment',
+              id: e.id,
+              name: e.name,
+              price: e.price,
+              image_url: e.image_url,
+            }))
           )
         } else if (itemType === 'drugs') {
           const data = await listDrugItems()
           setItems(
-            data.map((d: DbDrugItem) => ({ type: 'drugs', id: d.id, name: d.name, price: d.price })) as any
+            data.map((d: DbDrugItem) => ({
+              type: 'drugs',
+              id: d.id,
+              name: d.name,
+              price: d.price,
+              image_url: d.image_url,
+            }))
           )
         }
       } catch (e: any) {
@@ -88,7 +113,10 @@ export default function NouvelleDepensePage() {
     if (itemType === 'custom') return
     if (!pickedId) return
     const it = items.find((x) => x.id === pickedId)
-    if (it) setUnitPrice(String(it.price ?? 0))
+    if (it) {
+      setItemLabel(it.name)
+      setUnitPrice(String(it.price ?? 0))
+    }
   }, [pickedId, items, itemType])
 
   return (
@@ -125,10 +153,10 @@ export default function NouvelleDepensePage() {
               onChange={(e) => setItemType(e.target.value as ExpenseItemType)}
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-white/20"
             >
-              <option value="object">Objet</option>
+              <option value="objects">Objets</option>
+              <option value="weapons">Armes (prix = 0 par défaut)</option>
               <option value="equipment">Équipement</option>
-              <option value="drug">Drogue</option>
-              <option value="weapon">Arme (prix = 0 par défaut)</option>
+              <option value="drugs">Drogues</option>
               <option value="custom">Custom (autre item)</option>
             </select>
           </div>
@@ -159,6 +187,20 @@ export default function NouvelleDepensePage() {
                   </option>
                 ))}
               </select>
+
+              {pickedItem?.image_url ? (
+                <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="h-12 w-12 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={pickedItem.image_url} alt="" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{pickedItem.name}</p>
+                    <p className="text-xs text-white/60">Prix par défaut: {Number(pickedItem.price || 0).toFixed(2)} $</p>
+                  </div>
+                </div>
+              ) : null}
+
               <p className="mt-2 text-xs text-white/50">Le prix se remplit automatiquement mais tu peux le modifier.</p>
             </div>
           )}
@@ -179,13 +221,35 @@ export default function NouvelleDepensePage() {
 
           <div>
             <label className="text-sm text-white/70">Quantité</label>
-            <input
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              inputMode="numeric"
-              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-white/40 focus:border-white/20"
-              placeholder="1"
-            />
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                className="h-11 w-11 rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                onClick={() => {
+                  const q = Math.max(1, Number(quantity || 1) - 1)
+                  setQuantity(String(q))
+                }}
+              >
+                −
+              </button>
+              <input
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                inputMode="numeric"
+                className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none placeholder:text-white/40 focus:border-white/20"
+                placeholder="1"
+              />
+              <button
+                type="button"
+                className="h-11 w-11 rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                onClick={() => {
+                  const q = Math.max(1, Number(quantity || 1) + 1)
+                  setQuantity(String(q))
+                }}
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <div className="md:col-span-2">

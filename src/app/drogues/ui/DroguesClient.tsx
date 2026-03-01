@@ -31,7 +31,7 @@ type Recipe = {
   title: string
   subtitle: string
   requirements: { name: string; qty: number }[]
-  output: { name: string; qty: number }
+  output: { name: string; qty: number; range?: [number, number] }
   note?: string
 }
 
@@ -48,6 +48,20 @@ const RECIPES: Recipe[] = [
     ],
     output: { name: 'Feuille de coke', qty: 1 },
     note: 'Stacks RP : 9 pots par stack + 2 lampes UV (par stack). Le calcul ci-dessus est “par pot”.',
+  },
+  {
+    key: 'meth_brut',
+    title: 'Cook meth (1 batch)',
+    subtitle: 'Table + Meth + Batteries + chimie = 10 à 30 meth brut',
+    requirements: [
+      { name: 'Table', qty: 1 },
+      { name: 'Meth', qty: 1 },
+      { name: 'Batterie', qty: 2 },
+      { name: 'Ammoniaque', qty: 16 },
+      { name: 'Methylamine', qty: 15 },
+    ],
+    output: { name: 'Meth brut', qty: 0, range: [10, 30] },
+    note: 'Output aléatoire : entre 10 et 30 meth brut par batch. (Tu peux ajuster plus tard si besoin.)',
   },
 ]
 
@@ -140,9 +154,13 @@ export default function DroguesClient() {
       if (outMatches.length === 0) {
         throw new Error(`Crée l'item output “${recipe.output.name}” dans le catalogue pour recevoir la production.`)
       }
+      const delta = recipe.output.range
+        ? Math.floor(Math.random() * (recipe.output.range[1] - recipe.output.range[0] + 1)) + recipe.output.range[0]
+        : recipe.output.qty
+
       await adjustDrugStock({
         itemId: outMatches[0].id,
-        delta: recipe.output.qty,
+        delta,
         note: `Production: ${recipe.title}`,
       })
 
@@ -374,7 +392,9 @@ export default function DroguesClient() {
                       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                         <p className="text-xs font-semibold text-white/80">Output</p>
                         <p className="mt-2 text-sm font-semibold">{r.output.name}</p>
-                        <p className="text-xs text-white/60">+{r.output.qty}</p>
+                        <p className="text-xs text-white/60">
+                          {r.output.range ? `+${r.output.range[0]} à +${r.output.range[1]}` : `+${r.output.qty}`}
+                        </p>
                       </div>
                     </div>
 
