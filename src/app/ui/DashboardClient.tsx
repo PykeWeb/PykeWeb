@@ -6,13 +6,14 @@ import { supabase } from '@/lib/supabaseClient'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
-import { Activity, Box, Crosshair, Handshake, Plus, Repeat, ArrowRight } from 'lucide-react'
+import { Activity, Box, Crosshair, Handshake, Plus, Repeat, ArrowRight, ArrowDownRight, ArrowUpRight } from 'lucide-react'
 
 type Tx = {
   id: string
   type: 'purchase' | 'sale'
   total: number | null
   counterparty: string | null
+  notes: string | null
   created_at: string
 }
 
@@ -51,7 +52,11 @@ export function DashboardClient() {
         supabase.from('weapons').select('id', { count: 'exact', head: true }),
         supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).is('returned_at', null),
         supabase.from('transactions').select('id', { count: 'exact', head: true }).gte('created_at', todayIso),
-        supabase.from('transactions').select('id,type,total,counterparty,created_at').order('created_at', { ascending: false }).limit(7),
+        supabase
+          .from('transactions')
+          .select('id,type,total,counterparty,notes,created_at')
+          .order('created_at', { ascending: false })
+          .limit(7),
         supabase
           .from('weapon_loans')
           .select('id,borrower_name,quantity,loaned_at,weapons(name,weapon_id)')
@@ -122,9 +127,24 @@ export function DashboardClient() {
                     <div key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">
-                          {t.type === 'purchase' ? 'Achat' : 'Sortie'} {t.counterparty ? `• ${t.counterparty}` : ''}
+                          <span className="inline-flex items-center gap-1">
+                            {t.type === 'purchase' ? (
+                              <ArrowDownRight className="h-4 w-4 text-white/70" />
+                            ) : (
+                              <ArrowUpRight className="h-4 w-4 text-white/70" />
+                            )}
+                            {t.type === 'purchase' ? 'Achat' : 'Sortie'}
+                          </span>
+                          {t.counterparty ? <span className="text-white/70"> • {t.counterparty}</span> : null}
                         </p>
-                        <p className="text-xs text-white/60">{new Date(t.created_at).toLocaleString()}</p>
+                        {t.notes ? (
+                          <p className="truncate text-xs text-white/60">{t.notes}</p>
+                        ) : (
+                          <p className="text-xs text-white/60">{new Date(t.created_at).toLocaleString()}</p>
+                        )}
+                        {t.notes ? (
+                          <p className="text-[11px] text-white/50">{new Date(t.created_at).toLocaleString()}</p>
+                        ) : null}
                       </div>
                       <div className="text-sm font-semibold text-white/80">{t.total ?? '—'}</div>
                     </div>

@@ -84,25 +84,26 @@ export default function TransactionsClient() {
                   <th className="px-4 py-3 text-left">Type</th>
                   <th className="px-4 py-3 text-left">Date</th>
                   <th className="px-4 py-3 text-left">Interlocuteur</th>
+                  <th className="px-4 py-3 text-left">Description</th>
                   <th className="px-4 py-3 text-right">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {loading ? (
                   <tr>
-                    <td className="px-4 py-4 text-white/60" colSpan={4}>
+                    <td className="px-4 py-4 text-white/60" colSpan={5}>
                       Chargement…
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td className="px-4 py-4 text-rose-200" colSpan={4}>
+                    <td className="px-4 py-4 text-rose-200" colSpan={5}>
                       {error}
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-4 text-white/60" colSpan={4}>
+                    <td className="px-4 py-4 text-white/60" colSpan={5}>
                       Aucune transaction pour le moment.
                     </td>
                   </tr>
@@ -116,6 +117,9 @@ export default function TransactionsClient() {
                         {new Date(r.created_at).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-white/80">{r.counterparty ?? '—'}</td>
+                      <td className="px-4 py-3 text-white/80">
+                        <span className="block max-w-[520px] truncate">{r.notes ?? '—'}</span>
+                      </td>
                       <td className="px-4 py-3 text-right text-white/90">
                         {r.total == null ? '—' : `${Number(r.total).toFixed(2)} $`}
                       </td>
