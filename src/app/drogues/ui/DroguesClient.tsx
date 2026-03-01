@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import type { DragEvent } from 'react'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -429,7 +430,7 @@ return (
       const commonProps = {
         draggable: true,
         onDragStart: () => handlePlantDragStart(cardId),
-        onDragOver: (e) => e.preventDefault(),
+        onDragOver: (e: DragEvent<HTMLElement>) => e.preventDefault(),
         onDrop: () => handlePlantDropOn(cardId),
         className:
           plantCardClass +
