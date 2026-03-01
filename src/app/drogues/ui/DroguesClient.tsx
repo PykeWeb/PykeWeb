@@ -4,9 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Factory, Plus } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
-import { DraggableModules, type DraggableModule } from '@/components/drag/DraggableModules'
 import { listDrugItems, adjustDrugStock, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
-import { useUiSettings } from '@/lib/useUiSettings'
 
 const TAB_KEYS = ['catalogue', 'plantations'] as const
 type TabKey = (typeof TAB_KEYS)[number]
@@ -73,8 +71,6 @@ function findByKeyword(items: DbDrugItem[], keyword: string) {
 }
 
 export default function DroguesClient() {
-  const { layouts, saveLayouts } = useUiSettings()
-
   const [tab, setTab] = useState<TabKey>('catalogue')
   const [items, setItems] = useState<DbDrugItem[]>([])
   const [query, setQuery] = useState('')
@@ -336,10 +332,6 @@ export default function DroguesClient() {
                 possibleBatches={possibleBatches}
                 busyId={busyId}
                 onProduce={produce}
-                order={layouts.drogues_plantations || ['prod', 'coke', 'meth']}
-                onOrderChange={async (next) => {
-                  await saveLayouts({ ...layouts, drogues_plantations: next })
-                }}
               />
             </div>
           </>
@@ -361,9 +353,7 @@ function DraggablePlantations({
   recipes,
   possibleBatches,
   busyId,
-  onProduce,
-  order,
-  onOrderChange,
+  onProduce
 }: {
   producedCokeLeaves: number
   producedMethBrut: number
@@ -371,91 +361,89 @@ function DraggablePlantations({
   possibleBatches: Record<string, number>
   busyId: string | null
   onProduce: (r: Recipe) => void
-  order: string[]
-  onOrderChange: (next: string[]) => void
 }) {
-  const mods: DraggableModule[] = [
-    {
-      id: 'prod',
-      element: (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-            <p className="text-xs text-white/60">Production en stock</p>
-            <p className="mt-1 text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
-            <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke” dans ton catalogue.</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-            <p className="text-xs text-white/60">Production en stock</p>
-            <p className="mt-1 text-lg font-semibold">Meth brut : {producedMethBrut}</p>
-            <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
-          </div>
+  const recipesById = new Map(recipes.map((r) => [r.key === 'coke_leaf' ? 'coke' : r.key === 'meth_brut' ? 'meth' : r.key, r]))
+  const orderedRecipes = ['coke', 'meth']
+    .map((id) => recipesById.get(id))
+    .filter((r): r is Recipe => Boolean(r))
+
+  return (
+    <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
+          <p className="text-xs text-white/60">Production en stock</p>
+          <p className="mt-1 text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
+          <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke” dans ton catalogue.</p>
         </div>
-      ),
-    },
-    ...recipes.map((r) => ({
-      id: r.key === 'coke_leaf' ? 'coke' : r.key === 'meth_brut' ? 'meth' : r.key,
-      element: (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white/90">
-                  <Factory className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold">{r.title}</p>
-                  <p className="text-xs text-white/60">{r.subtitle}</p>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
+          <p className="text-xs text-white/60">Production en stock</p>
+          <p className="mt-1 text-lg font-semibold">Meth brut : {producedMethBrut}</p>
+          <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {orderedRecipes.map((r) => (
+          <div key={r.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white/90">
+                    <Factory className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold">{r.title}</p>
+                    <p className="text-xs text-white/60">{r.subtitle}</p>
+                  </div>
                 </div>
+                {r.note ? <p className="mt-3 text-xs text-white/50">{r.note}</p> : null}
               </div>
-              {r.note ? <p className="mt-3 text-xs text-white/50">{r.note}</p> : null}
+
+              <div className="text-right">
+                <p className="text-xs text-white/60">Batches possibles</p>
+                <p className="mt-1 text-2xl font-semibold">{possibleBatches[r.key] ?? 0}</p>
+              </div>
             </div>
 
-            <div className="text-right">
-              <p className="text-xs text-white/60">Batches possibles</p>
-              <p className="mt-1 text-2xl font-semibold">{possibleBatches[r.key] ?? 0}</p>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs font-semibold text-white/80">Requis (par batch)</p>
+                <ul className="mt-2 space-y-1 text-xs text-white/60">
+                  {r.requirements.map((req) => (
+                    <li key={req.name} className="flex items-center justify-between">
+                      <span>{req.name}</span>
+                      <span className="font-semibold text-white/70">x{req.qty}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs font-semibold text-white/80">Output</p>
+                <p className="mt-2 text-sm font-semibold">{r.output.name}</p>
+                <p className="text-xs text-white/60">
+                  {r.output.range ? `+${r.output.range[0]} à +${r.output.range[1]}` : `+${r.output.qty}`}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                disabled={busyId === r.key || (possibleBatches[r.key] ?? 0) <= 0}
+                onClick={() => onProduce(r)}
+                className={
+                  'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-glow transition ' +
+                  ((possibleBatches[r.key] ?? 0) > 0 ? 'bg-white text-black hover:bg-white/90' : 'bg-white/20 text-white/50')
+                }
+              >
+                <Plus className="h-4 w-4" />
+                Produire 1 batch
+              </button>
             </div>
           </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <p className="text-xs font-semibold text-white/80">Requis (par batch)</p>
-              <ul className="mt-2 space-y-1 text-xs text-white/60">
-                {r.requirements.map((req) => (
-                  <li key={req.name} className="flex items-center justify-between">
-                    <span>{req.name}</span>
-                    <span className="font-semibold text-white/70">x{req.qty}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <p className="text-xs font-semibold text-white/80">Output</p>
-              <p className="mt-2 text-sm font-semibold">{r.output.name}</p>
-              <p className="text-xs text-white/60">
-                {r.output.range ? `+${r.output.range[0]} à +${r.output.range[1]}` : `+${r.output.qty}`}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-end gap-2">
-            <button
-              disabled={busyId === r.key || (possibleBatches[r.key] ?? 0) <= 0}
-              onClick={() => onProduce(r)}
-              className={
-                'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-glow transition ' +
-                ((possibleBatches[r.key] ?? 0) > 0 ? 'bg-white text-black hover:bg-white/90' : 'bg-white/20 text-white/50')
-              }
-            >
-              <Plus className="h-4 w-4" />
-              Produire 1 batch
-            </button>
-          </div>
-        </div>
-      ),
-    })),
-  ]
-
-  return <DraggableModules modules={mods} order={order} onOrderChange={onOrderChange} className="grid grid-cols-1 gap-4 lg:grid-cols-2" />
+        ))}
+      </div>
+    </div>
+  )
 }
 
