@@ -114,7 +114,6 @@ export default function NouvelleDepensePage() {
     if (!pickedId) return
     const it = items.find((x) => x.id === pickedId)
     if (it) {
-      setItemLabel(it.name)
       setUnitPrice(String(it.price ?? 0))
     }
   }, [pickedId, items, itemType])
