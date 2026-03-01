@@ -135,8 +135,9 @@ useEffect(() => {
   }, [items, query, kind])
 
   const itemByName = useMemo(() => {
-    const m = new Map<string, Item>()
-    for (const it of items) m.set(it.name.toLowerCase(), it)
+    // Index rapide par nom (le type DbDrugItem est la source de vérité)
+    const m = new Map<string, DbDrugItem>()
+    for (const it of items) m.set((it.name || '').toLowerCase(), it)
     return m
   }, [items])
 
