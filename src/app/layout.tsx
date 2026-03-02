@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { Topbar } from '@/components/Topbar'
 import { BRAND } from '@/lib/brand'
 import { Toaster } from 'sonner'
+import { SiteTextModWidget } from '@/components/SiteTextModWidget'
 
 export const metadata: Metadata = {
   title: `${BRAND.name} — ${BRAND.tagline}`,
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
             <Toaster richColors closeButton />
+            <SiteTextModWidget />
     </body>
     </html>
   )
