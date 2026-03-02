@@ -8,7 +8,7 @@ import { StatCard } from '@/components/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { listActivePatchNotes, createSupportTicket, getCurrentGroupAccessInfo, type PatchNote } from '@/lib/communicationApi'
-import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt } from 'lucide-react'
+import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -28,6 +28,9 @@ type Loan = {
 }
 
 type AccessInfo = { paid_until: string | null; active: boolean }
+type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string }
+type DrugItem = { id: string; name: string; stock: number; type: string }
+type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
 
 function startOfTodayIso() {
   const d = new Date()
@@ -43,6 +46,10 @@ export function DashboardClient() {
   const [txToday, setTxToday] = useState(0)
   const [recentTx, setRecentTx] = useState<Tx[]>([])
   const [recentLoans, setRecentLoans] = useState<Loan[]>([])
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
+  const [drugItems, setDrugItems] = useState<DrugItem[]>([])
+  const [activityView, setActivityView] = useState<ActivityView>('transactions')
+  const [pauseAutoUntil, setPauseAutoUntil] = useState(0)
   const [accessInfo, setAccessInfo] = useState<AccessInfo | null>(null)
   const [patchNotes, setPatchNotes] = useState<PatchNote[]>([])
   const [ticketKind, setTicketKind] = useState<'bug' | 'message'>('bug')
@@ -58,7 +65,7 @@ export function DashboardClient() {
       setLoading(true)
       try {
         const groupId = currentGroupId()
-        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, access, notes] = await Promise.all([
+        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes, access, notes] = await Promise.all([
           supabase.from('objects').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapons').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).eq('group_id', groupId).is('returned_at', null),
@@ -76,6 +83,18 @@ export function DashboardClient() {
             .is('returned_at', null)
             .order('loaned_at', { ascending: false })
             .limit(5),
+          supabase
+            .from('expenses')
+            .select('id,item_label,total,quantity,created_at')
+            .eq('group_id', groupId)
+            .order('created_at', { ascending: false })
+            .limit(5),
+          supabase
+            .from('drug_items')
+            .select('id,name,stock,type')
+            .eq('group_id', groupId)
+            .order('stock', { ascending: false })
+            .limit(8),
           getCurrentGroupAccessInfo(),
           listActivePatchNotes(3),
         ])
@@ -87,6 +106,8 @@ export function DashboardClient() {
         setTxToday(txRes.count ?? 0)
         setRecentTx((recentTxRes.data as Tx[]) ?? [])
         setRecentLoans((recentLoansRes.data as Loan[]) ?? [])
+        setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
+        setDrugItems((drugItemsRes.data as DrugItem[]) ?? [])
         setAccessInfo(access ? { paid_until: access.paid_until, active: access.active } : null)
         setPatchNotes(notes)
       } finally {
@@ -100,6 +121,18 @@ export function DashboardClient() {
       alive = false
     }
   }, [todayIso])
+
+  useEffect(() => {
+    const views: ActivityView[] = ['transactions', 'loans', 'expenses', 'plantations']
+    const timer = window.setInterval(() => {
+      if (Date.now() < pauseAutoUntil) return
+      setActivityView((prev) => {
+        const idx = views.indexOf(prev)
+        return views[(idx + 1) % views.length]
+      })
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [pauseAutoUntil])
 
   const expirationLabel = useMemo(() => {
     if (!accessInfo) return '—'
@@ -134,6 +167,11 @@ export function DashboardClient() {
     }
   }
 
+  function selectActivity(view: ActivityView) {
+    setActivityView(view)
+    setPauseAutoUntil(Date.now() + 12000)
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
@@ -146,10 +184,28 @@ export function DashboardClient() {
 
         <Panel>
           <h3 className="text-sm font-semibold">Dernière activité</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              ['transactions', 'Transactions'],
+              ['loans', 'Prêts'],
+              ['expenses', 'Dépenses'],
+              ['plantations', 'Plantations'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => selectActivity(key as ActivityView)}
+                className={`rounded-lg border px-2.5 py-1 text-xs ${activityView === key ? 'border-white/30 bg-white/15 text-white' : 'border-white/10 bg-white/5 text-white/70'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="mt-3 space-y-2">
-            {recentTx.length === 0 ? (
+            {activityView === 'transactions' && recentTx.length === 0 ? (
               <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune transaction pour le moment.</div>
-            ) : (
+            ) : null}
+            {activityView === 'transactions' ? (
               recentTx.map((t) => (
                 <div key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0">
@@ -171,57 +227,126 @@ export function DashboardClient() {
                   <div className="text-sm font-semibold text-white/80">{t.total ?? '—'}</div>
                 </div>
               ))
-            )}
-          </div>
-        </Panel>
-
-        <Panel>
-          <h3 className="text-sm font-semibold">Patch notes</h3>
-          <div className="mt-3 space-y-2">
-            {patchNotes.length === 0 ? (
-              <p className="text-xs text-white/60">Aucune note active.</p>
-            ) : (
-              patchNotes.map((n) => (
-                <div key={n.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-sm font-semibold">{n.title}</p>
-                  <p className="mt-1 text-xs text-white/70">{n.content}</p>
-                  <p className="mt-1 text-[11px] text-white/50">{new Date(n.created_at).toLocaleDateString('fr-FR')}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </Panel>
-
-        <Panel>
-          <h3 className="text-sm font-semibold">Support</h3>
-          <div className="mt-3 space-y-2">
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setTicketKind('bug')} className={`rounded-lg border px-2 py-1 text-xs ${ticketKind === 'bug' ? 'border-rose-300/50 bg-rose-500/10 text-rose-100' : 'border-white/10 bg-white/5'}`}>Signaler un bug</button>
-              <button type="button" onClick={() => setTicketKind('message')} className={`rounded-lg border px-2 py-1 text-xs ${ticketKind === 'message' ? 'border-cyan-300/50 bg-cyan-500/10 text-cyan-100' : 'border-white/10 bg-white/5'}`}>Message</button>
-            </div>
-            <textarea value={ticketMessage} onChange={(e) => setTicketMessage(e.target.value)} placeholder={ticketKind === 'bug' ? 'Décris le bug...' : 'Ton message...'} className="h-24 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
-            <input type="file" accept="image/*" onChange={(e) => setTicketImage(e.target.files?.[0] ?? null)} className="w-full text-xs text-white/70" />
-            <Button onClick={submitTicket}>{ticketKind === 'bug' ? 'Envoyer le bug' : 'Envoyer le message'}</Button>
-            {ticketStatus ? <p className="text-xs text-white/70">{ticketStatus}</p> : null}
-          </div>
-        </Panel>
-      </div>
-
-      <div className="flex h-full flex-col gap-4">
-        <Panel>
-          <h3 className="text-sm font-semibold">Quick actions</h3>
-          <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
-          <div className="mt-4 space-y-3">
-            <Link href="/transactions/nouveau?type=purchase" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">+ Nouvel achat</Link>
-            <Link href="/armes/prets" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Prêts en cours</Link>
-            <Link href="/objets" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Catalogue</Link>
+            ) : null}
+            {activityView === 'loans' ? (
+              recentLoans.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucun prêt actif.</div>
+              ) : (
+                recentLoans.map((l) => (
+                  <div key={l.id} className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                    <p className="text-sm font-medium">{l.borrower_name} • x{l.quantity}</p>
+                    <p className="text-xs text-white/60">{new Date(l.loaned_at).toLocaleString()}</p>
+                  </div>
+                ))
+              )
+            ) : null}
+            {activityView === 'expenses' ? (
+              recentExpenses.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune dépense récente.</div>
+              ) : (
+                recentExpenses.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium">{e.item_label} • x{e.quantity}</p>
+                      <p className="text-xs text-white/60">{new Date(e.created_at).toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-white/80">{e.total}$</p>
+                  </div>
+                ))
+              )
+            ) : null}
+            {activityView === 'plantations' ? (
+              drugItems.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune donnée plantation.</div>
+              ) : (
+                drugItems.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                    <p className="text-sm font-medium">{d.name}</p>
+                    <p className="text-xs text-white/70">Stock: {d.stock}</p>
+                  </div>
+                ))
+              )
+            ) : null}
           </div>
         </Panel>
 
         <div className="lg:mt-auto">
           <Panel>
             <h3 className="text-sm font-semibold">Accès</h3>
-            <p className={`mt-2 text-sm font-semibold ${expirationClass}`}>{expirationLabel}</p>
+            <p className={`mt-2 text-sm font-semibold ${expirationClass}`}>Accès : {expirationLabel}</p>
+          </Panel>
+        </div>
+
+      </div>
+
+      <div className="flex h-full flex-col gap-4">
+        <Panel>
+          <h3 className="text-sm font-semibold">Quick actions</h3>
+          <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
+          <div className="mt-3 space-y-2">
+            <Link href="/transactions/nouveau?type=purchase" className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><ShoppingCart className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-sm font-medium">Nouvel achat</p>
+                  <p className="text-xs text-white/60">Créer une entrée stock</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/60" />
+            </Link>
+            <Link href="/armes/prets" className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><Handshake className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-sm font-medium">Prêts en cours</p>
+                  <p className="text-xs text-white/60">Suivre les prêts actifs</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/60" />
+            </Link>
+            <Link href="/objets" className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><FolderOpen className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-sm font-medium">Catalogue</p>
+                  <p className="text-xs text-white/60">Voir tous les objets</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/60" />
+            </Link>
+          </div>
+        </Panel>
+
+        <Panel>
+          <h3 className="text-sm font-semibold">Support</h3>
+          <div className="mt-2 space-y-2">
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setTicketKind('bug')} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${ticketKind === 'bug' ? 'border-rose-300/50 bg-rose-500/10 text-rose-100' : 'border-white/10 bg-white/5'}`}><Bug className="h-3 w-3" />Signaler un bug</button>
+              <button type="button" onClick={() => setTicketKind('message')} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${ticketKind === 'message' ? 'border-cyan-300/50 bg-cyan-500/10 text-cyan-100' : 'border-white/10 bg-white/5'}`}><MessageSquare className="h-3 w-3" />Message</button>
+            </div>
+            <textarea value={ticketMessage} onChange={(e) => setTicketMessage(e.target.value)} placeholder={ticketKind === 'bug' ? 'Décris le bug...' : 'Ton message...'} className="h-20 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
+            <input type="file" accept="image/*" onChange={(e) => setTicketImage(e.target.files?.[0] ?? null)} className="w-full text-xs text-white/70" />
+            <Button onClick={submitTicket}>{ticketKind === 'bug' ? 'Envoyer le bug' : 'Envoyer le message'}</Button>
+            {ticketStatus ? <p className="text-xs text-white/70">{ticketStatus}</p> : null}
+          </div>
+        </Panel>
+
+        <div className="lg:mt-auto">
+          <Panel>
+            <h3 className="text-sm font-semibold">Patch notes</h3>
+            <div className="mt-2 space-y-2">
+              {patchNotes.length === 0 ? (
+                <p className="text-xs text-white/60">Aucune note active.</p>
+              ) : (
+                patchNotes.map((n) => (
+                  <div key={n.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <p className="text-sm font-semibold">{n.title}</p>
+                    <p className="mt-1 text-xs text-white/70 line-clamp-2">{n.content}</p>
+                    <p className="mt-1 text-[11px] text-white/50">{new Date(n.created_at).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                ))
+              )}
+            </div>
           </Panel>
         </div>
       </div>

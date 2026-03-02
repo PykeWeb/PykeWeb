@@ -74,8 +74,9 @@ function findByKeyword(items: DbDrugItem[], keyword: string) {
 type CalcMode = 'coke' | 'meth'
 
 type CalculatorResult = {
-  requirements: { label: string; qty: number }[]
-  total: number | null
+  requirements: { label: string; qty: number; unitPrice: number | null; subtotal: number | null }[]
+  totalKnown: number
+  hasMissingPrices: boolean
   missingPrices: string[]
 }
 
@@ -93,55 +94,38 @@ function findPriceByKeywords(items: DbDrugItem[], keywords: string[]): number | 
 function buildCalculatorResult(mode: CalcMode, qty: number, items: DbDrugItem[]): CalculatorResult {
   if (mode === 'coke') {
     const requirements = [
-      { label: 'Pots', qty },
-      { label: 'Fertilisant', qty },
-      { label: 'Lampes', qty },
-      { label: 'Eau', qty: qty * 3 },
+      { label: 'Pots', qty, unitPrice: 10 },
+      { label: 'Fertilisant', qty, unitPrice: 10 },
+      { label: 'Lampes', qty: Math.ceil(qty / 9), unitPrice: 36 },
+      { label: 'Eau', qty: qty * 3, unitPrice: findPriceByKeywords(items, ['eau', 'water']) },
     ]
-
-    const priceMap: Record<string, number | null> = {
-      Pots: 10,
-      Fertilisant: 10,
-      Lampes: 36,
-      Eau: findPriceByKeywords(items, ['eau', 'water']),
-    }
-
-    const missingPrices = Object.entries(priceMap)
-      .filter(([, price]) => price === null)
-      .map(([name]) => name)
-
-    const total = missingPrices.length
-      ? null
-      : requirements.reduce((sum, req) => sum + req.qty * Number(priceMap[req.label] ?? 0), 0)
-
-    return { requirements, total, missingPrices }
+    const normalized = requirements.map((req) => ({
+      label: req.label,
+      qty: req.qty,
+      unitPrice: req.unitPrice,
+      subtotal: req.unitPrice === null ? null : req.qty * req.unitPrice,
+    }))
+    const missingPrices = normalized.filter((req) => req.unitPrice === null).map((req) => req.label)
+    const totalKnown = normalized.reduce((sum, req) => sum + (req.subtotal ?? 0), 0)
+    return { requirements: normalized, totalKnown, hasMissingPrices: missingPrices.length > 0, missingPrices }
   }
 
   const requirements = [
-    { label: 'Tables', qty },
-    { label: 'Meth', qty },
-    { label: 'Batteries', qty: qty * 2 },
-    { label: 'Ammoniaque', qty: qty * 16 },
-    { label: 'Methylamine', qty: qty * 15 },
+    { label: 'Tables', qty, unitPrice: findPriceByKeywords(items, ['table']) },
+    { label: 'Meth', qty, unitPrice: findPriceByKeywords(items, ['meth']) },
+    { label: 'Batteries', qty: qty * 2, unitPrice: findPriceByKeywords(items, ['batterie', 'battery']) },
+    { label: 'Ammoniaque', qty: qty * 16, unitPrice: findPriceByKeywords(items, ['ammoniaque']) },
+    { label: 'Methylamine', qty: qty * 15, unitPrice: findPriceByKeywords(items, ['methylamine']) },
   ]
-
-  const priceMap: Record<string, number | null> = {
-    Tables: findPriceByKeywords(items, ['table']),
-    Meth: findPriceByKeywords(items, ['meth']),
-    Batteries: findPriceByKeywords(items, ['batterie', 'battery']),
-    Ammoniaque: findPriceByKeywords(items, ['ammoniaque']),
-    Methylamine: findPriceByKeywords(items, ['methylamine']),
-  }
-
-  const missingPrices = Object.entries(priceMap)
-    .filter(([, price]) => price === null)
-    .map(([name]) => name)
-
-  const total = missingPrices.length
-    ? null
-    : requirements.reduce((sum, req) => sum + req.qty * Number(priceMap[req.label] ?? 0), 0)
-
-  return { requirements, total, missingPrices }
+  const normalized = requirements.map((req) => ({
+    label: req.label,
+    qty: req.qty,
+    unitPrice: req.unitPrice,
+    subtotal: req.unitPrice === null ? null : req.qty * req.unitPrice,
+  }))
+  const missingPrices = normalized.filter((req) => req.unitPrice === null).map((req) => req.label)
+  const totalKnown = normalized.reduce((sum, req) => sum + (req.subtotal ?? 0), 0)
+  return { requirements: normalized, totalKnown, hasMissingPrices: missingPrices.length > 0, missingPrices }
 }
 
 export default function DroguesClient() {
@@ -595,14 +579,16 @@ export default function DroguesClient() {
               {calculatorResult.requirements.map((req) => (
                 <div key={req.label} className="flex items-center justify-between">
                   <span>{req.label}</span>
-                  <span>× {req.qty}</span>
+                  <span className="text-xs text-white/70">x{req.qty}</span>
+                  <span className="text-xs text-white/70">{req.unitPrice === null ? 'Prix manquant' : `${req.unitPrice.toFixed(0)}$/u`}</span>
+                  <span className="text-xs text-white/70">{req.subtotal === null ? '—' : `${req.subtotal.toFixed(0)}$`}</span>
                 </div>
               ))}
             </div>
 
-            {calculatorResult.total !== null ? (
-              <p className="mt-3 font-semibold text-emerald-300">💰 Total : {calculatorResult.total.toFixed(2)} $</p>
-            ) : null}
+            <p className="mt-3 font-semibold text-emerald-300">
+              💰 Prix : {calculatorResult.totalKnown.toFixed(0)}$ {calculatorResult.hasMissingPrices ? 'sans le(s) prix manquant(s)' : ''}
+            </p>
 
             {calculatorResult.missingPrices.length ? (
               <p className="mt-2 text-amber-300">⚠️ Prix manquants : {calculatorResult.missingPrices.join(', ')}</p>
