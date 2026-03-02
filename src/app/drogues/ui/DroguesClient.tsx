@@ -82,6 +82,7 @@ export default function DroguesClient() {
 
   const [editingItem, setEditingItem] = useState<DbDrugItem | null>(null)
   const [editName, setEditName] = useState('')
+  const [editType, setEditType] = useState<DrugKind>('other')
   const [editPrice, setEditPrice] = useState('')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
@@ -136,6 +137,7 @@ export default function DroguesClient() {
   function startEdit(item: DbDrugItem) {
     setEditingItem(item)
     setEditName(item.name || '')
+    setEditType(item.type)
     setEditPrice(String(item.price ?? 0))
     setEditImageFile(null)
     setError(null)
@@ -144,6 +146,7 @@ export default function DroguesClient() {
   function cancelEdit() {
     setEditingItem(null)
     setEditName('')
+    setEditType('other')
     setEditPrice('')
     setEditImageFile(null)
   }
@@ -164,7 +167,7 @@ export default function DroguesClient() {
       setError(null)
       await updateDrugItem({
         id: editingItem.id,
-        type: editingItem.type,
+        type: editType,
         name: editName.trim(),
         price: Number(editPrice),
         imageFile: editImageFile,
@@ -297,6 +300,20 @@ export default function DroguesClient() {
                       onChange={(e) => setEditName(e.target.value)}
                       className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/60">Type</label>
+                    <select
+                      value={editType}
+                      onChange={(e) => setEditType(e.target.value as DrugKind)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    >
+                      <option value="drug">Drogue</option>
+                      <option value="seed">Graine</option>
+                      <option value="planting">Plantation</option>
+                      <option value="pouch">Pochon</option>
+                      <option value="other">Autre</option>
+                    </select>
                   </div>
                   <div>
                     <label className="text-xs text-white/60">Prix</label>
