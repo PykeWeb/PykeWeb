@@ -80,7 +80,38 @@ export async function listSupportTicketsAdmin(kind: 'bug' | 'message') {
     .eq('kind', kind)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (data ?? []) as SupportTicket[]
+
+  const rows = (data ?? []) as Array<{
+    id: unknown
+    group_id: unknown
+    kind: unknown
+    message: unknown
+    image_url: unknown
+    status: unknown
+    created_at: unknown
+    tenant_groups?: unknown
+  }>
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    group_id: String(row.group_id),
+    kind: row.kind as SupportTicket['kind'],
+    message: String(row.message ?? ''),
+    image_url: (row.image_url ?? null) as string | null,
+    status: row.status as SupportTicket['status'],
+    created_at: String(row.created_at),
+    tenant_groups: Array.isArray(row.tenant_groups)
+      ? {
+          name: (row.tenant_groups[0] as { name?: string | null } | undefined)?.name ?? null,
+          badge: (row.tenant_groups[0] as { badge?: string | null } | undefined)?.badge ?? null,
+        }
+      : row.tenant_groups && typeof row.tenant_groups === 'object'
+        ? {
+            name: (row.tenant_groups as { name?: string | null }).name ?? null,
+            badge: (row.tenant_groups as { badge?: string | null }).badge ?? null,
+          }
+        : null,
+  }))
 }
 
 export async function createSupportTicket(input: { kind: 'bug' | 'message'; message: string; imageFile?: File | null }) {
