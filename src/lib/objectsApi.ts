@@ -9,6 +9,8 @@ export type DbObject = {
   image_url?: string | null
   stock: number
   created_at: string
+  is_global?: boolean
+  global_item_id?: string
 }
 
 const BUCKET = 'object-images'
@@ -24,14 +26,28 @@ function getExt(file: File) {
 
 export async function listObjects(): Promise<DbObject[]> {
   const groupId = currentGroupId()
-  const { data, error } = await supabase
-    .from('objects')
-    .select('id,name,price,description,image_url,stock,created_at')
-    .eq('group_id', groupId)
-    .order('created_at', { ascending: false })
+  const [{ data: locals, error }, globalRes] = await Promise.all([
+    supabase.from('objects').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId).order('created_at', { ascending: false }),
+    fetch('/api/catalog/items?category=object', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+  ])
 
   if (error) throw error
-  return (data ?? []) as DbObject[]
+  const localRows = (locals ?? []) as DbObject[]
+  const globalRows = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({
+    id: g.id,
+    name: g.name,
+    price: Number(g.price ?? 0),
+    description: g.description,
+    image_url: g.image_url,
+    stock: 0,
+    created_at: g.created_at,
+    is_global: true,
+    global_item_id: g.global_item_id,
+  })) as DbObject[]
+
+  const byName = new Set(localRows.map((o) => (o.name || '').toLowerCase()))
+  const dedupedGlobals = globalRows.filter((g) => !byName.has((g.name || '').toLowerCase()))
+  return [...localRows, ...dedupedGlobals]
 }
 
 export async function createObject(args: {
@@ -44,12 +60,7 @@ export async function createObject(args: {
   const groupId = currentGroupId()
   const quantity = Math.max(1, Math.floor(args.quantity ?? 1))
 
-  const { data: existing } = await supabase
-    .from('objects')
-    .select('id,stock')
-    .eq('group_id', groupId)
-    .eq('name', args.name)
-    .maybeSingle()
+  const { data: existing } = await supabase.from('objects').select('id,stock').eq('group_id', groupId).eq('name', args.name).maybeSingle()
 
   if (existing?.id) {
     const { data: bumped, error: bumpErr } = await supabase
@@ -63,32 +74,19 @@ export async function createObject(args: {
     return bumped as DbObject
   }
 
-  // 1) Create the row first (so we get the id)
   const { data: inserted, error: insertError } = await supabase
     .from('objects')
-    .insert({
-      group_id: groupId,
-      name: args.name,
-      price: args.price,
-      stock: quantity,
-      description: args.description || null,
-    })
+    .insert({ group_id: groupId, name: args.name, price: args.price, stock: quantity, description: args.description || null })
     .select('id,name,price,description,image_url,stock,created_at')
     .single()
 
   if (insertError) throw insertError
   if (!inserted) throw new Error('Insert failed')
 
-  // 2) Optional image upload
   if (args.imageFile) {
     const ext = getExt(args.imageFile)
     const path = `${inserted.id}/main.${ext}`
-
-    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, args.imageFile, {
-      upsert: true,
-      contentType: args.imageFile.type || undefined,
-    })
-
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, args.imageFile, { upsert: true, contentType: args.imageFile.type || undefined })
     if (uploadError) throw uploadError
 
     const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path)
@@ -108,19 +106,21 @@ export async function createObject(args: {
   return inserted as DbObject
 }
 
+export async function updateObject(args: { id: string; name: string; price: number; imageFile?: File | null }) {
+  if (args.id.startsWith('global:')) {
+    const globalId = args.id.replace('global:', '')
+    const res = await fetch('/api/catalog/overrides', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ global_item_id: globalId, override_name: args.name, override_price: args.price, is_hidden: false }),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return
+  }
 
-export async function updateObject(args: {
-  id: string
-  name: string
-  price: number
-  imageFile?: File | null
-}) {
   const { data: updatedBase, error: baseErr } = await supabase
     .from('objects')
-    .update({
-      name: args.name,
-      price: args.price,
-    })
+    .update({ name: args.name, price: args.price })
     .eq('id', args.id)
     .eq('group_id', currentGroupId())
     .select('id,name,price,description,image_url,stock,created_at')
@@ -131,11 +131,7 @@ export async function updateObject(args: {
   if (args.imageFile) {
     const ext = getExt(args.imageFile)
     const path = `${args.id}/main.${ext}`
-
-    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, args.imageFile, {
-      upsert: true,
-      contentType: args.imageFile.type || undefined,
-    })
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, args.imageFile, { upsert: true, contentType: args.imageFile.type || undefined })
     if (uploadError) throw uploadError
 
     const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path)
@@ -145,7 +141,7 @@ export async function updateObject(args: {
       .from('objects')
       .update({ image_url })
       .eq('id', args.id)
-    .eq('group_id', currentGroupId())
+      .eq('group_id', currentGroupId())
       .select('id,name,price,description,image_url,stock,created_at')
       .single()
 
@@ -157,6 +153,16 @@ export async function updateObject(args: {
 }
 
 export async function deleteObject(objectId: string) {
+  if (objectId.startsWith('global:')) {
+    const globalId = objectId.replace('global:', '')
+    const res = await fetch('/api/catalog/overrides', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ global_item_id: globalId, is_hidden: true }),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return
+  }
   const { error } = await supabase.from('objects').delete().eq('id', objectId).eq('group_id', currentGroupId())
   if (error) throw error
 }

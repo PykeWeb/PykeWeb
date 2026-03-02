@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { ArrowDownRight, ArrowUpRight, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
-import { updateObject, deleteObject } from '@/lib/objectsApi';
+import { listObjects, updateObject, deleteObject } from '@/lib/objectsApi';
 import { ImageDropzone } from '@/components/objets/ImageDropzone';
 import { currentGroupId } from '@/lib/tenantScope';
 
@@ -72,18 +72,18 @@ export default function ObjetsClient() {
         setLoading(true);
         const supabase = getSupabase();
 
-        const [{ data: oData }, { data: tData }] = await Promise.all([
-          supabase.from('objects').select('id,name,price,stock,image_url').eq('group_id', currentGroupId()).order('created_at', { ascending: false }),
+        const [{ data: tData }, mergedObjects] = await Promise.all([
           supabase
             .from('transactions')
             .select('id,type,total,counterparty,created_at,transaction_items(name_snapshot,quantity)')
             .eq('group_id', currentGroupId())
             .order('created_at', { ascending: false })
             .limit(25),
+          listObjects(),
         ]);
 
         if (!alive) return;
-        setObjs((oData ?? []) as ObjRow[]);
+        setObjs((mergedObjects ?? []) as ObjRow[]);
         setTxs((tData ?? []) as TxRow[]);
       } finally {
         if (alive) setLoading(false);
@@ -139,9 +139,7 @@ export default function ObjetsClient() {
         imageFile: editImageFile,
       });
 
-      const supabase = getSupabase();
-      const { data: updatedObjects } = await supabase.from('objects').select('id,name,price,stock,image_url').eq('group_id', currentGroupId()).order('created_at', { ascending: false });
-      setObjs((updatedObjects ?? []) as ObjRow[]);
+      setObjs((await listObjects()) as ObjRow[]);
       cancelEdit();
     } catch (e: any) {
       setEditError(e?.message || 'Impossible de modifier cet objet.');
@@ -156,9 +154,7 @@ export default function ObjetsClient() {
     if (!window.confirm(`Supprimer définitivement "${o.name ?? 'cet objet'}" ?`)) return;
     try {
       await deleteObject(o.id);
-      const supabase = getSupabase();
-      const { data: updatedObjects } = await supabase.from('objects').select('id,name,price,stock,image_url').eq('group_id', currentGroupId()).order('created_at', { ascending: false });
-      setObjs((updatedObjects ?? []) as ObjRow[]);
+      setObjs((await listObjects()) as ObjRow[]);
     } catch (e: any) {
       setEditError(e?.message || 'Impossible de supprimer cet objet.');
     }
@@ -380,14 +376,6 @@ export default function ObjetsClient() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-sm font-semibold">Mode RP</div>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-white/70">
-                  <li>Achat : tu ajoutes au stock + le total te dit combien payer</li>
-                  <li>Sortie : tu retires du stock (vente / perte / transfert)</li>
-                  <li>Historique : utile pour justifier qui a pris quoi et quand</li>
-                </ul>
-              </div>
             </div>
           </div>
         ) : (

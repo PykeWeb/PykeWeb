@@ -33,13 +33,15 @@ function getExt(file: File) {
 }
 
 export async function listWeapons(): Promise<DbWeapon[]> {
-  const { data, error } = await supabase
-    .from('weapons')
-    .select('id,weapon_id,name,description,image_url,stock,created_at')
-    .eq('group_id', currentGroupId())
-    .order('created_at', { ascending: false })
+  const [{ data, error }, globalRes] = await Promise.all([
+    supabase.from('weapons').select('id,weapon_id,name,description,image_url,stock,created_at').eq('group_id', currentGroupId()).order('created_at', { ascending: false }),
+    fetch('/api/catalog/items?category=weapon', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+  ])
   if (error) throw error
-  return (data ?? []) as DbWeapon[]
+  const locals = (data ?? []) as DbWeapon[]
+  const names = new Set(locals.map((w) => (w.name || '').toLowerCase()))
+  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: g.id, weapon_id: g.weapon_id, name: g.name, description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbWeapon[]
+  return [...locals, ...globals.filter((g) => !names.has((g.name || '').toLowerCase()))]
 }
 
 export async function createWeapon(args: {
@@ -118,6 +120,7 @@ export async function createWeapon(args: {
 }
 
 export async function adjustWeaponStock(args: { weaponId: string; delta: number; note?: string }) {
+  if (args.weaponId.startsWith('global:')) throw new Error('Stock des items globaux: crée un item local ou override dédié.')
   // Read current stock
   const { data: row, error: getErr } = await supabase.from('weapons').select('id,stock').eq('id', args.weaponId).eq('group_id', currentGroupId()).single()
   if (getErr) throw getErr
@@ -203,6 +206,15 @@ export async function updateWeapon(args: {
   description?: string | null
   imageFile?: File | null
 }) {
+  if (args.id.startsWith('global:')) {
+    const res = await fetch('/api/catalog/overrides', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ global_item_id: args.id.replace('global:', ''), override_name: args.name, override_weapon_id: args.weapon_id, is_hidden: false }),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return
+  }
+
   const { data: updatedBase, error: baseErr } = await supabase
     .from('weapons')
     .update({
@@ -242,6 +254,11 @@ export async function updateWeapon(args: {
 }
 
 export async function deleteWeapon(weaponId: string) {
+  if (weaponId.startsWith('global:')) {
+    const res = await fetch('/api/catalog/overrides', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ global_item_id: weaponId.replace('global:', ''), is_hidden: true }) })
+    if (!res.ok) throw new Error(await res.text())
+    return
+  }
   const { error } = await supabase.from('weapons').delete().eq('id', weaponId).eq('group_id', currentGroupId())
   if (error) throw error
 }

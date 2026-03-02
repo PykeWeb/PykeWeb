@@ -33,6 +33,21 @@ type Expense = { id: string; item_label: string; total: number; quantity: number
 type DrugItem = { id: string; name: string; stock: number; type: string }
 type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
 
+type QuickActionKey = 'purchase' | 'loans' | 'catalogue'
+type CardKey = 'objects' | 'weapons' | 'loans' | 'transactions'
+
+const QUICK_ACTION_OPTIONS: { key: QuickActionKey; title: string; subtitle: string; href: string; icon: any }[] = [
+  { key: 'purchase', title: 'Nouvel achat', subtitle: 'Créer une entrée stock', href: '/transactions/nouveau?type=purchase', icon: ShoppingCart },
+  { key: 'loans', title: 'Prêts en cours', subtitle: 'Suivre les prêts actifs', href: '/armes/prets', icon: Handshake },
+  { key: 'catalogue', title: 'Catalogue', subtitle: 'Voir tous les objets', href: '/objets', icon: FolderOpen },
+]
+const CARD_OPTIONS: { key: CardKey; title: string; href: string; icon: any; getValue: (v: any) => string }[] = [
+  { key: 'objects', title: 'Objets', href: '/objets', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.objectCount)) },
+  { key: 'weapons', title: 'Armes', href: '/armes', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.weaponCount)) },
+  { key: 'loans', title: 'Prêts en cours', href: '/armes/prets', icon: Handshake, getValue: (v) => (v.loading ? '—' : String(v.activeLoans)) },
+  { key: 'transactions', title: "Transactions aujourd'hui", href: '/transactions', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.txToday)) },
+]
+
 function startOfTodayIso() {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
@@ -59,6 +74,9 @@ export function DashboardClient() {
   const [ticketStatus, setTicketStatus] = useState('')
   const [supportOpen, setSupportOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
+  const pressTimerRef = useRef<number | null>(null)
+  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['purchase', 'loans', 'catalogue'])
+  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['objects', 'weapons', 'loans', 'transactions'])
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
 
   useEffect(() => {
@@ -87,6 +105,25 @@ export function DashboardClient() {
       window.removeEventListener('mousedown', onMouseDown)
     }
   }, [supportOpen])
+
+
+  useEffect(() => {
+    ;(async () => {
+      const res = await fetch('/api/ui-layouts', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      if (Array.isArray(data.dashboard_quick_actions) && data.dashboard_quick_actions.length) setQuickActions(data.dashboard_quick_actions)
+      if (Array.isArray(data.dashboard_cards) && data.dashboard_cards.length) setDashboardCards(data.dashboard_cards)
+    })()
+  }, [])
+
+  async function persistLayouts(nextQuick = quickActions, nextCards = dashboardCards) {
+    await fetch('/api/ui-layouts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dashboard_quick_actions: nextQuick, dashboard_cards: nextCards }),
+    })
+  }
 
   const todayIso = useMemo(() => startOfTodayIso(), [])
 
@@ -203,6 +240,44 @@ export function DashboardClient() {
     setPauseAutoUntil(Date.now() + 12000)
   }
 
+
+  function addQuickAction() {
+    const available = QUICK_ACTION_OPTIONS.filter((a) => !quickActions.includes(a.key))
+    if (!available.length) return
+    const picked = window.prompt(`Choisir un raccourci: ${available.map((a) => a.key).join(', ')}`, available[0].key)
+    const selected = available.find((a) => a.key === picked)
+    if (!selected) return
+    const next = [...quickActions, selected.key]
+    setQuickActions(next)
+    void persistLayouts(next, dashboardCards)
+  }
+
+  function removeQuickAction() {
+    if (!quickActions.length) return
+    const next = quickActions.slice(0, -1)
+    setQuickActions(next)
+    void persistLayouts(next, dashboardCards)
+  }
+
+  function onCardPressStart(cardKey: CardKey) {
+    if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current)
+    pressTimerRef.current = window.setTimeout(() => {
+      const picked = window.prompt(`Changer la carte ${cardKey} vers: ${CARD_OPTIONS.map((c) => c.key).join(', ')}`)
+      if (!picked) return
+      const selected = CARD_OPTIONS.find((c) => c.key === picked)
+      if (!selected) return
+      const next = dashboardCards.map((c) => (c === cardKey ? selected.key : c))
+      setDashboardCards(next)
+      void persistLayouts(quickActions, next)
+    }, 550)
+  }
+  function onCardPressEnd() {
+    if (pressTimerRef.current) {
+      window.clearTimeout(pressTimerRef.current)
+      pressTimerRef.current = null
+    }
+  }
+
   function onSupportPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
     const files = Array.from(e.clipboardData.items)
       .filter((i) => i.type.startsWith('image/'))
@@ -219,10 +294,15 @@ export function DashboardClient() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <StatCard title="Objets" value={loading ? '—' : String(objectCount)} icon={<Box className="h-5 w-5" />} href="/objets" />
-          <StatCard title="Armes" value={loading ? '—' : String(weaponCount)} icon={<Box className="h-5 w-5" />} href="/armes" />
-          <StatCard title="Prêts en cours" value={loading ? '—' : String(activeLoans)} icon={<Handshake className="h-5 w-5" />} href="/armes/prets" />
-          <StatCard title="Transactions aujourd'hui" value={loading ? '—' : String(txToday)} icon={<Receipt className="h-5 w-5" />} href="/transactions" />
+          {dashboardCards.map((cardKey, idx) => {
+            const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
+            const Icon = card.icon
+            return (
+              <div key={`${card.key}-${idx}`} onMouseDown={() => onCardPressStart(card.key)} onMouseUp={onCardPressEnd} onMouseLeave={onCardPressEnd} onContextMenu={(e) => { e.preventDefault(); onCardPressStart(card.key) }}>
+                <StatCard title={card.title} value={card.getValue({ loading, objectCount, weaponCount, activeLoans, txToday })} icon={<Icon className="h-5 w-5" />} href={card.href} />
+              </div>
+            )
+          })}
         </div>
 
         <Panel>
@@ -317,39 +397,32 @@ export function DashboardClient() {
 
       <div className="flex h-full flex-col gap-4">
         <Panel>
-          <h3 className="text-sm font-semibold">Quick actions</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Quick actions</h3>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={addQuickAction} className="rounded-md border border-white/10 bg-white/5 px-2 text-xs">+</button>
+              <button type="button" onClick={removeQuickAction} className="rounded-md border border-white/10 bg-white/5 px-2 text-xs">−</button>
+            </div>
+          </div>
           <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
           <div className="mt-3 space-y-2">
-            <Link href="/transactions/nouveau?type=purchase" className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><ShoppingCart className="h-4 w-4" /></span>
-                <div>
-                  <p className="text-sm font-medium">Nouvel achat</p>
-                  <p className="text-xs text-white/60">Créer une entrée stock</p>
-                </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-white/60" />
-            </Link>
-            <Link href="/armes/prets" className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><Handshake className="h-4 w-4" /></span>
-                <div>
-                  <p className="text-sm font-medium">Prêts en cours</p>
-                  <p className="text-xs text-white/60">Suivre les prêts actifs</p>
-                </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-white/60" />
-            </Link>
-            <Link href="/objets" className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><FolderOpen className="h-4 w-4" /></span>
-                <div>
-                  <p className="text-sm font-medium">Catalogue</p>
-                  <p className="text-xs text-white/60">Voir tous les objets</p>
-                </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-white/60" />
-            </Link>
+            {quickActions.map((actionKey, idx) => {
+              const action = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey) || QUICK_ACTION_OPTIONS[idx]
+              if (!action) return null
+              const Icon = action.icon
+              return (
+                <Link key={`${action.key}-${idx}`} href={action.href} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><Icon className="h-4 w-4" /></span>
+                    <div>
+                      <p className="text-sm font-medium">{action.title}</p>
+                      <p className="text-xs text-white/60">{action.subtitle}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-white/60" />
+                </Link>
+              )
+            })}
           </div>
         </Panel>
 
@@ -373,7 +446,7 @@ export function DashboardClient() {
           <div className="mt-4">
             <Panel>
               <h3 className="text-sm font-semibold">Accès</h3>
-              <p className={`mt-2 text-sm font-semibold ${expirationClass}`}>Accès : {expirationLabel}</p>
+              <p className={`mt-2 text-sm font-semibold ${expirationClass}`}>{expirationLabel}</p>
             </Panel>
           </div>
         </div>

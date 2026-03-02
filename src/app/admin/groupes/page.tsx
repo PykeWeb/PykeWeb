@@ -33,6 +33,10 @@ export default function AdminGroupsPage() {
   const [pnTitle, setPnTitle] = useState('')
   const [pnContent, setPnContent] = useState('')
   const [showResolvedTickets, setShowResolvedTickets] = useState(false)
+  const [globalCategory, setGlobalCategory] = useState<'object' | 'weapon' | 'equipment' | 'drug'>('object')
+  const [globalName, setGlobalName] = useState('')
+  const [globalPrice, setGlobalPrice] = useState('0')
+  const [globalItems, setGlobalItems] = useState<any[]>([])
 
   const now = Date.now()
   const activeCount = groups.filter((g) => g.active).length
@@ -41,16 +45,18 @@ export default function AdminGroupsPage() {
 
   async function refresh(showResolved = showResolvedTickets) {
     try {
-      const [tenantGroups, notes, bugRows, msgRows] = await Promise.all([
+      const [tenantGroups, notes, bugRows, msgRows, globals] = await Promise.all([
         listTenantGroups(),
         listPatchNotesAdmin(),
         listSupportTicketsAdmin('bug', showResolved),
         listSupportTicketsAdmin('message', showResolved),
+        fetch('/api/admin/global-catalog', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
       ])
       setGroups(tenantGroups)
       setPatchNotes(notes)
       setBugs(bugRows)
       setMessages(msgRows)
+      setGlobalItems(Array.isArray(globals) ? globals : [])
       setError(null)
     } catch (e: any) {
       setError(e?.message || 'Erreur chargement admin')
@@ -163,6 +169,38 @@ export default function AdminGroupsPage() {
     }
   }
 
+
+  async function addGlobalItem() {
+    if (!globalName.trim()) return
+    try {
+      const res = await fetch('/api/admin/global-catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: globalCategory, name: globalName.trim(), price: Number(globalPrice || 0) }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setGlobalName('')
+      setGlobalPrice('0')
+      await refresh(showResolvedTickets)
+    } catch (e: any) {
+      setError(e?.message || 'Impossible d’ajouter un item global.')
+    }
+  }
+
+  async function deleteGlobalItem(id: string) {
+    try {
+      const res = await fetch('/api/admin/global-catalog', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      await refresh(showResolvedTickets)
+    } catch (e: any) {
+      setError(e?.message || 'Impossible de supprimer l’item global.')
+    }
+  }
+
   async function addPatchNote() {
     if (!pnTitle.trim() || !pnContent.trim()) return
     try {
@@ -220,6 +258,28 @@ export default function AdminGroupsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
+        <h2 className="text-lg font-semibold">Catalogue global</h2>
+        <p className="mt-1 text-xs text-white/70">Les items ajoutés ici apparaissent dans tous les groupes (override local possible).</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-[180px_1fr_160px_auto]">
+          <select value={globalCategory} onChange={(e) => setGlobalCategory(e.target.value as any)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
+            <option value="object">Objets</option><option value="weapon">Armes</option><option value="equipment">Équipement</option><option value="drug">Drogues</option>
+          </select>
+          <input value={globalName} onChange={(e) => setGlobalName(e.target.value)} placeholder="Nom" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
+          <input value={globalPrice} onChange={(e) => setGlobalPrice(e.target.value)} placeholder="Prix" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
+          <button onClick={() => void addGlobalItem()} className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold">Ajouter</button>
+        </div>
+        <div className="mt-3 space-y-2">
+          {globalItems.filter((it) => it.category === globalCategory).map((it) => (
+            <div key={it.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
+              <p>{it.name} <span className="text-white/60">({Number(it.price || 0).toFixed(2)}$)</span></p>
+              <button onClick={() => void deleteGlobalItem(it.id)} className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200">Supprimer</button>
+            </div>
+          ))}
         </div>
       </div>
 
