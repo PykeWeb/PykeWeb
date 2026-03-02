@@ -1,13 +1,23 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { Topbar } from '@/components/Topbar'
+import { getTenantSession } from '@/lib/tenantSession'
 
 export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isLogin = pathname === '/login'
+
+  useEffect(() => {
+    if (isLogin) return
+    const session = getTenantSession()
+    if (!session?.groupId || !session?.groupName?.trim()) {
+      window.location.href = '/login'
+    }
+  }, [isLogin])
 
   if (isLogin) {
     return <main className="mx-auto min-h-screen w-full max-w-[1480px] px-4 py-6">{children}</main>

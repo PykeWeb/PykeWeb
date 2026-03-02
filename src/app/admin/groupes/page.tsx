@@ -19,6 +19,11 @@ export default function AdminGroupsPage() {
   const [newLogin, setNewLogin] = useState('')
   const [newPassword, setNewPassword] = useState('')
 
+  const now = Date.now()
+  const activeCount = groups.filter((g) => g.active).length
+  const expiredCount = groups.filter((g) => g.paid_until && new Date(g.paid_until).getTime() < now).length
+  const unlimitedCount = groups.filter((g) => !g.paid_until).length
+
   async function refresh() {
     try {
       setGroups(await listTenantGroups())
@@ -179,6 +184,21 @@ export default function AdminGroupsPage() {
 
         {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
 
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
+            <p className="text-white/60">Groupes actifs</p>
+            <p className="text-lg font-semibold">{activeCount}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
+            <p className="text-white/60">Groupes expirés</p>
+            <p className="text-lg font-semibold">{expiredCount}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
+            <p className="text-white/60">Groupes illimités</p>
+            <p className="text-lg font-semibold">{unlimitedCount}</p>
+          </div>
+        </div>
+
         <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
           <table className="w-full text-sm">
             <thead className="bg-white/5 text-white/70">
@@ -257,6 +277,16 @@ export default function AdminGroupsPage() {
               ) : null}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/80">
+          <p className="font-semibold">Idées utiles à ajouter ensuite</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-white/70">
+            <li>Dernière connexion par groupe.</li>
+            <li>Compteur d'objets / armes / transactions par groupe.</li>
+            <li>Export CSV des groupes et statuts de paiement.</li>
+            <li>Historique admin (qui a modifié quoi).</li>
+          </ul>
         </div>
       </div>
     </div>

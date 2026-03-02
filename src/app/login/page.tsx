@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { loginTenant } from '@/lib/tenantAuthApi'
 import { saveTenantSession } from '@/lib/tenantSession'
-import { Shield, Users } from 'lucide-react'
+import { Shield, Users, Clock3, Database, LayoutDashboard, Lock } from 'lucide-react'
 
 const SUPERADMIN_LOGIN = 'admin'
 const SUPERADMIN_PASSWORD = 'santa1234'
@@ -49,19 +49,44 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-[85vh] place-items-center">
-      <div className="w-full max-w-4xl rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <h1 className="text-2xl font-bold">Portail multi-groupes</h1>
-            <p className="mt-2 text-sm text-white/70">Connexion sécurisée par groupe avec données isolées, statut actif et échéance de paiement.</p>
-            <div className="mt-4 space-y-3 text-sm text-white/80">
-              <div className="flex items-center gap-2"><Users className="h-4 w-4" /> Un espace indépendant par groupe</div>
-              <div className="flex items-center gap-2"><Shield className="h-4 w-4" /> Gestion admin globale</div>
+      <div className="w-full max-w-5xl rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow">
+        <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+          <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div>
+              <h1 className="text-2xl font-bold">Portail multi-groupes</h1>
+              <p className="mt-2 text-sm text-white/70">
+                Connexion sécurisée par groupe avec données isolées, statut actif et échéance de paiement.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                <p className="flex items-center gap-2 font-medium"><Users className="h-4 w-4" /> 1 groupe = 1 espace</p>
+                <p className="mt-1 text-white/70">Chaque groupe voit uniquement ses propres données.</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                <p className="flex items-center gap-2 font-medium"><Database className="h-4 w-4" /> Stockage en ligne</p>
+                <p className="mt-1 text-white/70">Objets, armes, transactions et dépenses sont sur Supabase.</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                <p className="flex items-center gap-2 font-medium"><Clock3 className="h-4 w-4" /> Gestion des accès</p>
+                <p className="mt-1 text-white/70">Active, désactive, prolonge ou passe un groupe en illimité.</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                <p className="flex items-center gap-2 font-medium"><LayoutDashboard className="h-4 w-4" /> Admin central</p>
+                <p className="mt-1 text-white/70">Une page admin pour gérer tous les groupes en un endroit.</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70">
+              <p className="flex items-center gap-2 font-semibold text-white"><Lock className="h-4 w-4" /> Sécurité session</p>
+              <p className="mt-1">Après redéploiement, les anciennes sessions sont invalidées automatiquement pour forcer une reconnexion propre.</p>
             </div>
           </div>
 
           <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <h2 className="text-lg font-semibold">Connexion</h2>
+            <p className="mt-1 text-xs text-white/60">Utilise l'identifiant du groupe (ou admin).</p>
             <div className="mt-4 space-y-3">
               <input
                 value={login}
