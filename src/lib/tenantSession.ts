@@ -1,14 +1,16 @@
 export type TenantSession = {
+  v?: number
   groupId: string
   groupName: string
   groupBadge?: string | null
   isAdmin?: boolean
 }
 
-const STORAGE_KEY = 'pykeweb:tenant-session:v2'
-const LEGACY_STORAGE_KEYS = ['pykeweb:tenant-session', 'pykeweb:tenant-session:v1']
-const COOKIE_KEY = 'tenant_session_v2'
-const LEGACY_COOKIE_KEYS = ['tenant_session']
+const SESSION_VERSION = 3
+const STORAGE_KEY = 'pykeweb:tenant-session:v3'
+const LEGACY_STORAGE_KEYS = ['pykeweb:tenant-session', 'pykeweb:tenant-session:v1', 'pykeweb:tenant-session:v2']
+const COOKIE_KEY = 'tenant_session_v3'
+const LEGACY_COOKIE_KEYS = ['tenant_session', 'tenant_session_v2']
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -27,6 +29,8 @@ function encode(session: TenantSession) {
 
 function isValidSession(session: TenantSession | null): session is TenantSession {
   if (!session?.groupId || typeof session.groupId !== 'string') return false
+  if (!session.groupName || !session.groupName.trim()) return false
+  if ((session.v ?? 0) !== SESSION_VERSION) return false
   if (session.groupId === 'admin') return true
   return UUID_RE.test(session.groupId)
 }
@@ -68,9 +72,14 @@ export function getTenantSession(): TenantSession | null {
 
 export function saveTenantSession(session: TenantSession) {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+  const normalized: TenantSession = {
+    ...session,
+    v: SESSION_VERSION,
+  }
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   clearLegacySessionArtifacts()
-  const payload = encode(session)
+  const payload = encode(normalized)
   document.cookie = `${COOKIE_KEY}=${payload}; path=/; max-age=${60 * 60 * 24 * 14}; SameSite=Lax`
 }
 
