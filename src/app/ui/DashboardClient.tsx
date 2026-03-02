@@ -102,12 +102,12 @@ export function DashboardClient() {
   }, [todayIso])
 
   const expirationLabel = useMemo(() => {
-    if (!accessInfo) return 'Accès : —'
-    if (!accessInfo.active) return 'Expiré (désactivé)'
+    if (!accessInfo) return '—'
+    if (!accessInfo.active) return 'Accès expiré'
     if (!accessInfo.paid_until) return 'Accès illimité'
     const ts = new Date(accessInfo.paid_until).getTime()
-    if (ts < Date.now()) return 'Expiré'
-    return `Accès valide jusqu’au : ${new Date(accessInfo.paid_until).toLocaleDateString('fr-FR')}`
+    if (ts < Date.now()) return 'Accès expiré'
+    return `Valide jusqu’au : ${new Date(accessInfo.paid_until).toLocaleDateString('fr-FR')}`
   }, [accessInfo])
 
   const expirationClass = useMemo(() => {
@@ -176,22 +176,6 @@ export function DashboardClient() {
         </Panel>
 
         <Panel>
-          <p className={`text-sm font-semibold ${expirationClass}`}>{expirationLabel}</p>
-        </Panel>
-      </div>
-
-      <div className="flex flex-col gap-4">
-        <Panel>
-          <h3 className="text-sm font-semibold">Quick actions</h3>
-          <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
-          <div className="mt-4 space-y-3">
-            <Link href="/transactions/nouveau?type=purchase" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">+ Nouvel achat</Link>
-            <Link href="/armes/prets" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Prêts en cours</Link>
-            <Link href="/objets" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Catalogue</Link>
-          </div>
-        </Panel>
-
-        <Panel>
           <h3 className="text-sm font-semibold">Patch notes</h3>
           <div className="mt-3 space-y-2">
             {patchNotes.length === 0 ? (
@@ -221,6 +205,25 @@ export function DashboardClient() {
             {ticketStatus ? <p className="text-xs text-white/70">{ticketStatus}</p> : null}
           </div>
         </Panel>
+      </div>
+
+      <div className="flex h-full flex-col gap-4">
+        <Panel>
+          <h3 className="text-sm font-semibold">Quick actions</h3>
+          <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
+          <div className="mt-4 space-y-3">
+            <Link href="/transactions/nouveau?type=purchase" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">+ Nouvel achat</Link>
+            <Link href="/armes/prets" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Prêts en cours</Link>
+            <Link href="/objets" className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Catalogue</Link>
+          </div>
+        </Panel>
+
+        <div className="lg:mt-auto">
+          <Panel>
+            <h3 className="text-sm font-semibold">Accès</h3>
+            <p className={`mt-2 text-sm font-semibold ${expirationClass}`}>{expirationLabel}</p>
+          </Panel>
+        </div>
       </div>
     </div>
   )
