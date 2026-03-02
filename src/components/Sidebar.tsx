@@ -25,11 +25,13 @@ export function Sidebar() {
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
   const [groupBadge, setGroupBadge] = useState('GROUPE')
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const session = getTenantSession()
     setGroupName(session?.groupName || 'Groupe')
     setGroupBadge(session?.groupBadge || 'GROUPE')
+    setIsAdmin(Boolean(session?.isAdmin))
   }, [])
 
   return (
@@ -53,12 +55,18 @@ export function Sidebar() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <NavItem href="/" label={labels.nav_dashboard || 'Dashboard'} icon={<LayoutGrid className="h-4 w-4" />} />
-        <NavItem href="/objets" label={labels.nav_objets || 'Objets'} icon={<Package className="h-4 w-4" />} />
-        <NavItem href="/armes" label={labels.nav_armes || 'Armes'} icon={<Crosshair className="h-4 w-4" />} />
-        <NavItem href="/equipement" label={labels.nav_equipement || 'Équipement'} icon={<Wrench className="h-4 w-4" />} />
-        <NavItem href="/drogues" label={labels.nav_drogues || 'Drogues'} icon={<Leaf className="h-4 w-4" />} />
-        <NavItem href="/depenses" label={labels.nav_depenses || 'Dépenses'} icon={<Receipt className="h-4 w-4" />} />
+        {isAdmin ? (
+          <NavItem href="/admin/groupes" label="Admin groupes" icon={<LayoutGrid className="h-4 w-4" />} />
+        ) : (
+          <>
+            <NavItem href="/" label={labels.nav_dashboard || 'Dashboard'} icon={<LayoutGrid className="h-4 w-4" />} />
+            <NavItem href="/objets" label={labels.nav_objets || 'Objets'} icon={<Package className="h-4 w-4" />} />
+            <NavItem href="/armes" label={labels.nav_armes || 'Armes'} icon={<Crosshair className="h-4 w-4" />} />
+            <NavItem href="/equipement" label={labels.nav_equipement || 'Équipement'} icon={<Wrench className="h-4 w-4" />} />
+            <NavItem href="/drogues" label={labels.nav_drogues || 'Drogues'} icon={<Leaf className="h-4 w-4" />} />
+            <NavItem href="/depenses" label={labels.nav_depenses || 'Dépenses'} icon={<Receipt className="h-4 w-4" />} />
+          </>
+        )}
       </div>
     </aside>
   )

@@ -15,8 +15,20 @@ Exécute le script suivant dans **Supabase SQL Editor**:
 - Backfill des données existantes vers un groupe par défaut (`login = main`).
 - Ajoute FK + index + contraintes `NOT NULL` sur `group_id`.
 - Ignore automatiquement les tables optionnelles absentes (ex: `weapon_stock_movements`) pour éviter les erreurs SQL 42P01.
+- Désactive RLS sur `tenant_groups` pour permettre la gestion des groupes depuis l'interface admin du site (clé anon côté client).
 
-## 3) Après exécution
+## 3) Si la migration a déjà été lancée avant cette correction
+
+Lance aussi ce SQL une fois dans Supabase SQL Editor :
+
+```sql
+alter table if exists public.tenant_groups disable row level security;
+```
+
+Sinon l'admin peut voir l'erreur :
+`new row violates row-level security policy for table "tenant_groups"`.
+
+## 4) Après exécution
 
 - Connecte-toi en superadmin depuis `/login`:
   - login: `admin`
@@ -24,7 +36,12 @@ Exécute le script suivant dans **Supabase SQL Editor**:
 - Va sur **Admin groupes** pour créer les groupes clients (login/mdp distincts).
 - Le groupe "main" est un fallback technique; change son mot de passe rapidement.
 
-## 4) Important pour la suite
+## 5) Important pour la suite
 
 Pour chaque future fonctionnalité, si une nouvelle table est créée côté app et doit être multi-groupe,
 **il faudra aussi ajouter `group_id uuid not null references tenant_groups(id)` + index**.
+
+## 6) Stockage en ligne (pas local)
+
+- Les données métier (groupes, objets, armes, drogues, équipements, transactions, dépenses) sont stockées en ligne dans Supabase.
+- Le navigateur stocke seulement la session de connexion (cookie/localStorage) pour garder l'utilisateur connecté.

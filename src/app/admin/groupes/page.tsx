@@ -15,7 +15,7 @@ export default function AdminGroupsPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [newName, setNewName] = useState('')
-  const [newBadge, setNewBadge] = useState('GROUPE')
+  const [newBadge, setNewBadge] = useState('PF')
   const [newLogin, setNewLogin] = useState('')
   const [newPassword, setNewPassword] = useState('')
 
@@ -50,7 +50,7 @@ export default function AdminGroupsPage() {
       const paidUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       await createTenantGroup({
         name: newName.trim(),
-        badge: newBadge.trim() || 'GROUPE',
+        badge: newBadge,
         login: newLogin.trim(),
         password: newPassword,
         active: true,
@@ -58,7 +58,7 @@ export default function AdminGroupsPage() {
       })
 
       setNewName('')
-      setNewBadge('GROUPE')
+      setNewBadge('PF')
       setNewLogin('')
       setNewPassword('')
       await refresh()
@@ -90,12 +90,17 @@ export default function AdminGroupsPage() {
             placeholder="Nom groupe"
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
           />
-          <input
+          <select
             value={newBadge}
             onChange={(e) => setNewBadge(e.target.value)}
-            placeholder="Badge"
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
-          />
+          >
+            <option value="PF">PF</option>
+            <option value="Gang">Gang</option>
+            <option value="Organisation">Organisation</option>
+            <option value="Famille">Famille</option>
+            <option value="Indépendant">Indépendant</option>
+          </select>
           <input
             value={newLogin}
             onChange={(e) => setNewLogin(e.target.value)}

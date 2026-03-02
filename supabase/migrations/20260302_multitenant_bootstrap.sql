@@ -23,6 +23,10 @@ create unique index if not exists tenant_groups_login_unique_idx on public.tenan
 create index if not exists tenant_groups_active_idx on public.tenant_groups (active);
 create index if not exists tenant_groups_paid_until_idx on public.tenant_groups (paid_until);
 
+
+-- Allow admin group management from client app (anon key) when RLS is enabled in project defaults
+alter table if exists public.tenant_groups disable row level security;
+
 -- 3) Create a fallback/default tenant for existing data migration
 insert into public.tenant_groups (name, badge, login, password, active, paid_until)
 select 'Groupe Principal', 'MAIN', 'main', 'change_me_main_password', true, now() + interval '365 days'
