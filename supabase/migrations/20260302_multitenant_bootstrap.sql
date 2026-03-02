@@ -29,10 +29,15 @@ alter table if exists public.tenant_groups disable row level security;
 
 -- 3) Create a fallback/default tenant for existing data migration
 insert into public.tenant_groups (name, badge, login, password, active, paid_until)
-select 'Groupe Principal', 'MAIN', 'main', 'change_me_main_password', true, now() + interval '365 days'
+select 'Groupe Test', 'TEST', 'main', 'change_me_main_password', true, null
 where not exists (
   select 1 from public.tenant_groups where login = 'main'
 );
+
+update public.tenant_groups
+set name = 'Groupe Test',
+    badge = coalesce(nullif(badge, ''), 'TEST')
+where login = 'main';
 
 -- 4) Add group_id to tenant-scoped business tables (if missing)
 --    NOTE: these are the tables used by current frontend code.

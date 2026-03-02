@@ -69,6 +69,60 @@ export default function AdminGroupsPage() {
     }
   }
 
+  async function editGroupIdentity(group: TenantGroup) {
+    const nextName = window.prompt('Nom du groupe :', group.name)
+    if (nextName === null) return
+
+    const nextBadge = window.prompt('Badge (PF / Gang / Organisation / Famille / Indépendant) :', group.badge || 'PF')
+    if (nextBadge === null) return
+
+    const nextLogin = window.prompt('Identifiant :', group.login)
+    if (nextLogin === null) return
+
+    const nextPassword = window.prompt('Mot de passe :', group.password || '')
+    if (nextPassword === null) return
+
+    try {
+      await updateTenantGroup(group.id, {
+        name: nextName.trim() || group.name,
+        badge: nextBadge.trim() || group.badge,
+        login: nextLogin.trim() || group.login,
+        password: nextPassword,
+      })
+      await refresh()
+    } catch (e: any) {
+      setError(e?.message || 'Impossible de modifier le groupe.')
+    }
+  }
+
+  async function addCustomDays(group: TenantGroup) {
+    const rawDays = window.prompt('Ajouter combien de jours ?', '7')
+    if (rawDays === null) return
+    const days = Number(rawDays)
+    if (!Number.isFinite(days) || days <= 0) {
+      setError('Nombre de jours invalide.')
+      return
+    }
+
+    try {
+      const baseTs = group.paid_until ? new Date(group.paid_until).getTime() : Date.now()
+      const next = new Date(Math.max(Date.now(), baseTs) + days * 24 * 60 * 60 * 1000)
+      await updateTenantGroup(group.id, { paid_until: next.toISOString() })
+      await refresh()
+    } catch (e: any) {
+      setError(e?.message || 'Impossible de prolonger le groupe.')
+    }
+  }
+
+  async function setUnlimited(group: TenantGroup) {
+    try {
+      await updateTenantGroup(group.id, { paid_until: null })
+      await refresh()
+    } catch (e: any) {
+      setError(e?.message || 'Impossible de passer en illimité.')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
@@ -149,6 +203,14 @@ export default function AdminGroupsPage() {
                     <div className="inline-flex gap-2">
                       <button
                         onClick={async () => {
+                          await editGroupIdentity(g)
+                        }}
+                        className="rounded-lg border border-white/10 bg-white/5 px-2 py-1"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        onClick={async () => {
                           await updateTenantGroup(g.id, { active: !g.active })
                           refresh()
                         }}
@@ -158,26 +220,19 @@ export default function AdminGroupsPage() {
                       </button>
                       <button
                         onClick={async () => {
-                          const next = new Date(
-                            Math.max(Date.now(), new Date(g.paid_until || Date.now()).getTime()) + 7 * 24 * 60 * 60 * 1000,
-                          )
-                          await updateTenantGroup(g.id, { paid_until: next.toISOString() })
-                          refresh()
+                          await addCustomDays(g)
                         }}
                         className="rounded-lg border border-white/10 bg-white/5 px-2 py-1"
                       >
-                        +7 jours
+                        + jours
                       </button>
                       <button
                         onClick={async () => {
-                          const pass = window.prompt('Nouveau mot de passe :', g.password || '')
-                          if (pass === null) return
-                          await updateTenantGroup(g.id, { password: pass })
-                          refresh()
+                          await setUnlimited(g)
                         }}
                         className="rounded-lg border border-white/10 bg-white/5 px-2 py-1"
                       >
-                        MDP
+                        Illimité
                       </button>
                       <button
                         onClick={async () => {

@@ -12,7 +12,7 @@ Exécute le script suivant dans **Supabase SQL Editor**:
 
 - Crée `public.tenant_groups`.
 - Ajoute `group_id` sur les tables métier utilisées par l'app.
-- Backfill des données existantes vers un groupe par défaut (`login = main`).
+- Backfill des données existantes vers un groupe par défaut (`login = main`), nommé **Groupe Test**.
 - Ajoute FK + index + contraintes `NOT NULL` sur `group_id`.
 - Ignore automatiquement les tables optionnelles absentes (ex: `weapon_stock_movements`) pour éviter les erreurs SQL 42P01.
 - Désactive RLS sur `tenant_groups` pour permettre la gestion des groupes depuis l'interface admin du site (clé anon côté client).
@@ -34,7 +34,7 @@ Sinon l'admin peut voir l'erreur :
   - login: `admin`
   - mdp: `santa1234`
 - Va sur **Admin groupes** pour créer les groupes clients (login/mdp distincts).
-- Le groupe "main" est un fallback technique; change son mot de passe rapidement.
+- Le groupe `main` sert de **groupe de test** pour faire essayer le site; change son mot de passe rapidement.
 
 ## 5) Important pour la suite
 
