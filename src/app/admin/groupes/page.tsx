@@ -32,19 +32,20 @@ export default function AdminGroupsPage() {
   const [messages, setMessages] = useState<SupportTicket[]>([])
   const [pnTitle, setPnTitle] = useState('')
   const [pnContent, setPnContent] = useState('')
+  const [showResolvedTickets, setShowResolvedTickets] = useState(false)
 
   const now = Date.now()
   const activeCount = groups.filter((g) => g.active).length
   const expiredCount = groups.filter((g) => g.paid_until && new Date(g.paid_until).getTime() < now).length
   const unlimitedCount = groups.filter((g) => !g.paid_until).length
 
-  async function refresh() {
+  async function refresh(showResolved = showResolvedTickets) {
     try {
       const [tenantGroups, notes, bugRows, msgRows] = await Promise.all([
         listTenantGroups(),
         listPatchNotesAdmin(),
-        listSupportTicketsAdmin('bug'),
-        listSupportTicketsAdmin('message'),
+        listSupportTicketsAdmin('bug', showResolved),
+        listSupportTicketsAdmin('message', showResolved),
       ])
       setGroups(tenantGroups)
       setPatchNotes(notes)
@@ -64,6 +65,10 @@ export default function AdminGroupsPage() {
     }
     void refresh()
   }, [])
+
+  useEffect(() => {
+    void refresh(showResolvedTickets)
+  }, [showResolvedTickets])
 
   async function addGroup() {
     if (!newName.trim() || !newLogin.trim() || !newPassword.trim()) {
@@ -148,6 +153,16 @@ export default function AdminGroupsPage() {
     }
   }
 
+
+  async function setTicketStatus(id: string, status: SupportTicket['status']) {
+    try {
+      await updateSupportTicketStatus(id, status)
+      await refresh(showResolvedTickets)
+    } catch (e: any) {
+      setError(e?.message || 'Impossible de mettre à jour le ticket.')
+    }
+  }
+
   async function addPatchNote() {
     if (!pnTitle.trim() || !pnContent.trim()) return
     try {
@@ -196,10 +211,10 @@ export default function AdminGroupsPage() {
                   <td className="px-3 py-2">{g.paid_until ? new Date(g.paid_until).toLocaleDateString('fr-FR') : '—'}</td>
                   <td className="px-3 py-2 text-right"><div className="inline-flex gap-2">
                     <button onClick={() => void editGroupIdentity(g)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">Modifier</button>
-                    <button onClick={() => void updateTenantGroup(g.id, { active: !g.active }).then(refresh)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">{g.active ? 'Désactiver' : 'Activer'}</button>
+                    <button onClick={() => void updateTenantGroup(g.id, { active: !g.active }).then(() => refresh())} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">{g.active ? 'Désactiver' : 'Activer'}</button>
                     <button onClick={() => void addCustomDays(g)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">+ jours</button>
                     <button onClick={() => void setUnlimited(g)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">Illimité</button>
-                    <button onClick={() => void (window.confirm(`Supprimer ${g.name} ?`) ? deleteTenantGroup(g.id).then(refresh) : Promise.resolve())} className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-rose-200">Supprimer</button>
+                    <button onClick={() => void (window.confirm(`Supprimer ${g.name} ?`) ? deleteTenantGroup(g.id).then(() => refresh()) : Promise.resolve())} className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-rose-200">Supprimer</button>
                   </div></td>
                 </tr>
               ))}
@@ -222,24 +237,31 @@ export default function AdminGroupsPage() {
                 <p className="text-sm font-semibold">{p.title}</p>
                 <p className="text-xs text-white/70">{p.content}</p>
               </div>
-              <button onClick={() => void updatePatchNote(p.id, { is_active: !p.is_active }).then(refresh)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs">{p.is_active ? 'Désactiver' : 'Activer'}</button>
+              <button onClick={() => void updatePatchNote(p.id, { is_active: !p.is_active }).then(() => refresh())} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs">{p.is_active ? 'Désactiver' : 'Activer'}</button>
             </div>
           ))}
         </div>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <h2 className="text-lg font-semibold">Tickets Support</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Tickets Support</h2>
+          <label className="inline-flex items-center gap-2 text-xs text-white/80">
+            <input type="checkbox" checked={showResolvedTickets} onChange={(e) => setShowResolvedTickets(e.target.checked)} className="h-3.5 w-3.5 rounded border-white/20 bg-white/5" />
+            Afficher les résolus
+          </label>
+        </div>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm font-semibold">Bugs</p>
             <div className="mt-2 space-y-2">
+              {bugs.length === 0 ? <p className="text-xs text-white/60">Aucun ticket bug.</p> : null}
               {bugs.map((b) => (
                 <div key={b.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs">
                   <p className="font-medium">{b.tenant_groups?.name || b.group_id} — {new Date(b.created_at).toLocaleString()}</p>
                   <p className="mt-1 text-white/70">{b.message}</p>
                   {b.image_url ? <a href={b.image_url} target="_blank" className="mt-1 block underline">Voir image</a> : null}
-                  <select value={b.status} onChange={(e) => void updateSupportTicketStatus(b.id, e.target.value as any).then(refresh)} className="mt-2 rounded border border-white/10 bg-white/5 px-2 py-1">
+                  <select value={b.status} onChange={(e) => void setTicketStatus(b.id, e.target.value as SupportTicket['status'])} className="mt-2 rounded border border-white/10 bg-white/5 px-2 py-1">
                     <option value="open">Ouvert</option><option value="in_progress">En cours</option><option value="resolved">Résolu</option>
                   </select>
                 </div>
@@ -250,12 +272,13 @@ export default function AdminGroupsPage() {
           <div>
             <p className="text-sm font-semibold">Messages</p>
             <div className="mt-2 space-y-2">
+              {messages.length === 0 ? <p className="text-xs text-white/60">Aucun message.</p> : null}
               {messages.map((m) => (
                 <div key={m.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs">
                   <p className="font-medium">{m.tenant_groups?.name || m.group_id} — {new Date(m.created_at).toLocaleString()}</p>
                   <p className="mt-1 text-white/70">{m.message}</p>
                   {m.image_url ? <a href={m.image_url} target="_blank" className="mt-1 block underline">Voir image</a> : null}
-                  <select value={m.status} onChange={(e) => void updateSupportTicketStatus(m.id, e.target.value as any).then(refresh)} className="mt-2 rounded border border-white/10 bg-white/5 px-2 py-1">
+                  <select value={m.status} onChange={(e) => void setTicketStatus(m.id, e.target.value as SupportTicket['status'])} className="mt-2 rounded border border-white/10 bg-white/5 px-2 py-1">
                     <option value="open">Ouvert</option><option value="in_progress">En cours</option><option value="resolved">Résolu</option>
                   </select>
                 </div>

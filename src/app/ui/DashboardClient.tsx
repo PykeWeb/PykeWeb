@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ClipboardEvent } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
@@ -9,7 +9,7 @@ import { StatCard } from '@/components/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { listActivePatchNotes, createSupportTicket, getCurrentGroupAccessInfo, type PatchNote } from '@/lib/communicationApi'
-import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare } from 'lucide-react'
+import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -57,6 +57,8 @@ export function DashboardClient() {
   const [ticketMessage, setTicketMessage] = useState('')
   const [ticketImage, setTicketImage] = useState<File | null>(null)
   const [ticketStatus, setTicketStatus] = useState('')
+  const [supportOpen, setSupportOpen] = useState(false)
+  const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
 
   useEffect(() => {
@@ -64,6 +66,27 @@ export function DashboardClient() {
       if (ticketPreviewUrl) URL.revokeObjectURL(ticketPreviewUrl)
     }
   }, [ticketPreviewUrl])
+
+  useEffect(() => {
+    if (!supportOpen) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSupportOpen(false)
+    }
+
+    const onMouseDown = (event: MouseEvent) => {
+      if (!supportPanelRef.current) return
+      if (supportPanelRef.current.contains(event.target as Node)) return
+      setSupportOpen(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('mousedown', onMouseDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('mousedown', onMouseDown)
+    }
+  }, [supportOpen])
 
   const todayIso = useMemo(() => startOfTodayIso(), [])
 
@@ -192,7 +215,8 @@ export function DashboardClient() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+    <>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <StatCard title="Objets" value={loading ? '—' : String(objectCount)} icon={<Box className="h-5 w-5" />} href="/objets" />
@@ -329,32 +353,6 @@ export function DashboardClient() {
           </div>
         </Panel>
 
-        <Panel>
-          <h3 className="text-sm font-semibold">Support</h3>
-          <div className="mt-2 space-y-2">
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setTicketKind('bug')} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${ticketKind === 'bug' ? 'border-rose-300/50 bg-rose-500/10 text-rose-100' : 'border-white/10 bg-white/5'}`}><Bug className="h-3 w-3" />Signaler un bug</button>
-              <button type="button" onClick={() => setTicketKind('message')} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${ticketKind === 'message' ? 'border-cyan-300/50 bg-cyan-500/10 text-cyan-100' : 'border-white/10 bg-white/5'}`}><MessageSquare className="h-3 w-3" />Message</button>
-            </div>
-            <textarea
-              value={ticketMessage}
-              onChange={(e) => setTicketMessage(e.target.value)}
-              onPaste={onSupportPaste}
-              placeholder={ticketKind === 'bug' ? 'Décris le bug... (Ctrl+V image accepté)' : 'Ton message... (Ctrl+V image accepté)'}
-              className="h-20 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
-            />
-            <input type="file" accept="image/*" onChange={(e) => setTicketImage(e.target.files?.[0] ?? null)} className="w-full text-xs text-white/70" />
-            {ticketImage ? (
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={ticketPreviewUrl || ''} alt="Preview support" className="max-h-28 rounded-md object-contain" />
-              </div>
-            ) : null}
-            <Button onClick={submitTicket}>{ticketKind === 'bug' ? 'Envoyer le bug' : 'Envoyer le message'}</Button>
-            {ticketStatus ? <p className="text-xs text-white/70">{ticketStatus}</p> : null}
-          </div>
-        </Panel>
-
         <div className="lg:mt-auto">
           <Panel>
             <h3 className="text-sm font-semibold">Patch notes</h3>
@@ -381,5 +379,52 @@ export function DashboardClient() {
         </div>
       </div>
     </div>
+      <button
+        type="button"
+        onClick={() => setSupportOpen((value) => !value)}
+        className="fixed bottom-3 left-3 z-40 inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/70 px-2 py-1 text-[10px] text-white/80 hover:bg-black/90"
+      >
+        <LifeBuoy className="h-3 w-3" />
+        Support
+      </button>
+
+      {supportOpen ? (
+        <div className="fixed inset-0 z-40 bg-black/40">
+          <div
+            ref={supportPanelRef}
+            className="absolute bottom-14 left-3 w-[min(92vw,380px)] rounded-2xl border border-white/20 bg-slate-950/95 p-3 shadow-2xl"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Support</h3>
+              <button type="button" onClick={() => setSupportOpen(false)} className="rounded-md border border-white/10 bg-white/5 p-1">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setTicketKind('bug')} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${ticketKind === 'bug' ? 'border-rose-300/50 bg-rose-500/10 text-rose-100' : 'border-white/10 bg-white/5'}`}><Bug className="h-3 w-3" />Signaler un bug</button>
+                <button type="button" onClick={() => setTicketKind('message')} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${ticketKind === 'message' ? 'border-cyan-300/50 bg-cyan-500/10 text-cyan-100' : 'border-white/10 bg-white/5'}`}><MessageSquare className="h-3 w-3" />Message</button>
+              </div>
+              <textarea
+                value={ticketMessage}
+                onChange={(e) => setTicketMessage(e.target.value)}
+                onPaste={onSupportPaste}
+                placeholder={ticketKind === 'bug' ? 'Décris le bug... (Ctrl+V image accepté)' : 'Ton message... (Ctrl+V image accepté)'}
+                className="h-20 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+              />
+              <input type="file" accept="image/*" onChange={(e) => setTicketImage(e.target.files?.[0] ?? null)} className="w-full text-xs text-white/70" />
+              {ticketImage ? (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={ticketPreviewUrl || ''} alt="Preview support" className="max-h-28 rounded-md object-contain" />
+                </div>
+              ) : null}
+              <Button onClick={submitTicket}>{ticketKind === 'bug' ? 'Envoyer le bug' : 'Envoyer le message'}</Button>
+              {ticketStatus ? <p className="text-xs text-white/70">{ticketStatus}</p> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }

@@ -576,14 +576,14 @@ export default function DroguesClient() {
           <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
             <p className="font-semibold">Résultat ({calcMode === 'coke' ? 'Coke' : 'Meth'})</p>
             <div className="mt-2 space-y-1 text-white/80">
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 border-b border-white/10 pb-1 text-[11px] uppercase tracking-wide text-white/50">
+              <div className="grid grid-cols-[minmax(120px,1fr)_88px_110px_110px] gap-3 border-b border-white/10 pb-1 text-[11px] uppercase tracking-wide text-white/50">
                 <span>Item</span>
                 <span className="text-right">Qté</span>
                 <span className="text-right">Prix/u</span>
                 <span className="text-right">Sous-total</span>
               </div>
               {calculatorResult.requirements.map((req) => (
-                <div key={req.label} className="grid grid-cols-[1fr_auto_auto_auto] gap-3">
+                <div key={req.label} className="grid grid-cols-[minmax(120px,1fr)_88px_110px_110px] gap-3">
                   <span>{req.label}</span>
                   <span className="text-right text-xs text-white/70">x{req.qty}</span>
                   <span className="text-right text-xs text-white/70">{req.unitPrice === null ? 'Prix manquant' : `${req.unitPrice.toFixed(0)}$/u`}</span>
@@ -653,11 +653,11 @@ function DraggablePlantations({
             <p className="text-sm font-semibold">{r.title}</p>
             <p className="mt-1 text-xs text-white/60">{r.subtitle}</p>
 
-            <div className="mt-3 space-y-1 text-xs text-white/70">
+            <div className="mt-3 max-w-md space-y-2 text-xs text-white/70">
               {r.requirements.map((req) => (
-                <div key={req.name} className="flex items-center justify-between">
-                  <span>{req.name}</span>
-                  <span>× {req.qty}</span>
+                <div key={req.name} className="grid grid-cols-2 items-center gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                  <span className="truncate">{req.name}</span>
+                  <span className="pr-1 text-right">× {req.qty}</span>
                 </div>
               ))}
             </div>

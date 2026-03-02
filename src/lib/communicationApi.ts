@@ -61,8 +61,8 @@ export async function deletePatchNote(id: string) {
   if (!res.ok) throw new Error(await res.text())
 }
 
-export async function listSupportTicketsAdmin(kind: 'bug' | 'message') {
-  const res = await fetch(`/api/admin/support-tickets?kind=${kind}`, { cache: 'no-store' })
+export async function listSupportTicketsAdmin(kind: 'bug' | 'message', includeResolved = false) {
+  const res = await fetch(`/api/admin/support-tickets?kind=${kind}&includeResolved=${includeResolved ? '1' : '0'}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Impossible de charger les tickets')
   const rows = (await res.json()) as any[]
   return rows.map((row) => ({

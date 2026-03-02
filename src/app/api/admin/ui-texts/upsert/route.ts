@@ -17,11 +17,46 @@ export async function POST(request: Request) {
     if (!key) return NextResponse.json({ error: 'key requis' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
-    const { error } = await supabase
-      .from('ui_texts')
-      .upsert({ key, value, scope, group_id, updated_at: new Date().toISOString() }, { onConflict: 'key,scope,group_id' })
+    const payload = { key, value, scope, group_id, updated_at: new Date().toISOString() }
+    let operationError: string | null = null
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (scope === 'group') {
+      const { data: existing, error: findError } = await supabase
+        .from('ui_texts')
+        .select('id')
+        .eq('key', key)
+        .eq('scope', 'group')
+        .eq('group_id', group_id)
+        .maybeSingle()
+      if (findError) return NextResponse.json({ error: findError.message }, { status: 500 })
+
+      if (existing?.id) {
+        const { error } = await supabase.from('ui_texts').update(payload).eq('id', existing.id)
+        if (error) operationError = error.message
+      } else {
+        const { error } = await supabase.from('ui_texts').insert(payload)
+        if (error) operationError = error.message
+      }
+    } else {
+      const { data: existing, error: findError } = await supabase
+        .from('ui_texts')
+        .select('id')
+        .eq('key', key)
+        .eq('scope', 'global')
+        .is('group_id', null)
+        .maybeSingle()
+      if (findError) return NextResponse.json({ error: findError.message }, { status: 500 })
+
+      if (existing?.id) {
+        const { error } = await supabase.from('ui_texts').update(payload).eq('id', existing.id)
+        if (error) operationError = error.message
+      } else {
+        const { error } = await supabase.from('ui_texts').insert(payload)
+        if (error) operationError = error.message
+      }
+    }
+
+    if (operationError) return NextResponse.json({ error: operationError }, { status: 500 })
 
     const { count } = await supabase.from('ui_texts').select('id', { count: 'exact', head: true })
     return NextResponse.json({ ok: true, count: count ?? 0 })
