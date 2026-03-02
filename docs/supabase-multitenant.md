@@ -16,6 +16,8 @@ Exécute le script suivant dans **Supabase SQL Editor**:
 - Ajoute FK + index + contraintes `NOT NULL` sur `group_id`.
 - Ignore automatiquement les tables optionnelles absentes (ex: `weapon_stock_movements`) pour éviter les erreurs SQL 42P01.
 - Désactive RLS sur `tenant_groups` pour permettre la gestion des groupes depuis l'interface admin du site (clé anon côté client).
+- Crée `patch_notes` (notes de mise à jour administrables).
+- Crée `support_tickets` (bugs/messages avec statut).
 
 ## 3) Si la migration a déjà été lancée avant cette correction
 

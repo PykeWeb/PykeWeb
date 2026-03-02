@@ -120,6 +120,32 @@ begin
   end loop;
 end $$;
 
+
+-- 9) Global patch notes (visible on login + dashboards)
+create table if not exists public.patch_notes (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  content text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists patch_notes_is_active_idx on public.patch_notes(is_active);
+create index if not exists patch_notes_created_at_idx on public.patch_notes(created_at desc);
+
+-- 10) Support tickets (bugs/messages)
+create table if not exists public.support_tickets (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.tenant_groups(id) on delete cascade,
+  kind text not null check (kind in ('bug','message')),
+  message text not null,
+  image_url text,
+  status text not null default 'open' check (status in ('open','in_progress','resolved')),
+  created_at timestamptz not null default now()
+);
+create index if not exists support_tickets_group_id_idx on public.support_tickets(group_id);
+create index if not exists support_tickets_kind_idx on public.support_tickets(kind);
+create index if not exists support_tickets_status_idx on public.support_tickets(status);
+
 commit;
 
 -- Optional security hardening (RLS) can be added later.

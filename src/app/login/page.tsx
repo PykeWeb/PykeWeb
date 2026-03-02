@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { loginTenant } from '@/lib/tenantAuthApi'
 import { saveTenantSession } from '@/lib/tenantSession'
+import { listActivePatchNotes, type PatchNote } from '@/lib/communicationApi'
 import { Shield, Users, Clock3, Database, LayoutDashboard, Lock } from 'lucide-react'
 
 const SUPERADMIN_LOGIN = 'admin'
@@ -14,6 +15,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notes, setNotes] = useState<PatchNote[]>([])
+
+  useEffect(() => {
+    void listActivePatchNotes(3)
+      .then(setNotes)
+      .catch(() => setNotes([]))
+  }, [])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -79,8 +87,16 @@ export default function LoginPage() {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70">
-              <p className="flex items-center gap-2 font-semibold text-white"><Lock className="h-4 w-4" /> Sécurité session</p>
-              <p className="mt-1">Après redéploiement, les anciennes sessions sont invalidées automatiquement pour forcer une reconnexion propre.</p>
+              <p className="flex items-center gap-2 font-semibold text-white"><Lock className="h-4 w-4" /> Patch notes récentes</p>
+              {notes.length === 0 ? (
+                <p className="mt-1">Aucune note publiée.</p>
+              ) : (
+                <ul className="mt-1 space-y-1">
+                  {notes.map((n) => (
+                    <li key={n.id}>• <span className="font-medium text-white">{n.title}</span> — {new Date(n.created_at).toLocaleDateString('fr-FR')}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 

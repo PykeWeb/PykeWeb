@@ -52,26 +52,24 @@ async function readOverridesFromDatabase(): Promise<Overrides> {
 }
 
 async function writeOverridesToDatabase(overrides: Overrides) {
-  try {
-    const { data, error } = await supabase
-      .from('ui_settings')
-      .select('labels')
-      .eq('key', SETTINGS_KEY)
-      .maybeSingle()
+  const { data, error } = await supabase
+    .from('ui_settings')
+    .select('labels')
+    .eq('key', SETTINGS_KEY)
+    .maybeSingle()
 
-    if (error) return
+  if (error) throw error
 
-    const labels = {
-      ...(data?.labels ?? {}),
-      [OVERRIDES_LABEL_KEY]: JSON.stringify(overrides)
-    }
-
-    await supabase
-      .from('ui_settings')
-      .upsert({ key: SETTINGS_KEY, labels, updated_at: new Date().toISOString() }, { onConflict: 'key' })
-  } catch {
-    // Ignore network/db errors: localStorage remains the fallback persistence.
+  const labels = {
+    ...(data?.labels ?? {}),
+    [OVERRIDES_LABEL_KEY]: JSON.stringify(overrides)
   }
+
+  const { error: upsertError } = await supabase
+    .from('ui_settings')
+    .upsert({ key: SETTINGS_KEY, labels, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+
+  if (upsertError) throw upsertError
 }
 
 function shouldSkipNode(parent: Node | null) {
@@ -137,6 +135,7 @@ export function SiteTextModWidget() {
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [overrides, setOverrides] = useState<Overrides>({})
+  const [dbStatus, setDbStatus] = useState<string>('')
 
   useEffect(() => {
     let alive = true
@@ -146,10 +145,19 @@ export function SiteTextModWidget() {
       const fromDatabase = await readOverridesFromDatabase()
       if (!alive) return
 
-      const merged = { ...fromDatabase, ...fromStorage }
+      const merged = Object.keys(fromDatabase).length ? fromDatabase : fromStorage
       setOverrides(merged)
       writeOverrides(merged)
       setTimeout(() => applyOverrides(merged), 0)
+
+      if (Object.keys(fromStorage).length && Object.keys(fromDatabase).length === 0) {
+        try {
+          await writeOverridesToDatabase(fromStorage)
+          setDbStatus('Textes synchronisés vers Supabase.')
+        } catch {
+          setDbStatus('Erreur sync Supabase (fallback local actif).')
+        }
+      }
     })()
 
     return () => {
@@ -194,6 +202,8 @@ export function SiteTextModWidget() {
       setOverrides(nextOverrides)
       writeOverrides(nextOverrides)
       void writeOverridesToDatabase(nextOverrides)
+        .then(() => setDbStatus('Modifications sauvegardées en base.'))
+        .catch(() => setDbStatus('Erreur base, sauvegarde locale uniquement.'))
     }
 
     document.addEventListener('click', onClick, true)
@@ -217,6 +227,8 @@ export function SiteTextModWidget() {
     setOverrides(cleared)
     writeOverrides(cleared)
     void writeOverridesToDatabase(cleared)
+      .then(() => setDbStatus('Réinitialisation sauvegardée en base.'))
+      .catch(() => setDbStatus('Erreur base, réinitialisation locale uniquement.'))
     window.location.reload()
   }
 
@@ -266,6 +278,7 @@ export function SiteTextModWidget() {
             <div className="space-y-2">
               <p className="font-semibold">Mode modification</p>
               <p className="text-white/70">Textes sauvegardés : {overrideCount}</p>
+              {dbStatus ? <p className="text-[11px] text-cyan-200">{dbStatus}</p> : null}
               <button
                 type="button"
                 onClick={() => setModMode((value) => !value)}
