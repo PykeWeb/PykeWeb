@@ -14,6 +14,7 @@ Exécute le script suivant dans **Supabase SQL Editor**:
 - Ajoute `group_id` sur les tables métier utilisées par l'app.
 - Backfill des données existantes vers un groupe par défaut (`login = main`).
 - Ajoute FK + index + contraintes `NOT NULL` sur `group_id`.
+- Ignore automatiquement les tables optionnelles absentes (ex: `weapon_stock_movements`) pour éviter les erreurs SQL 42P01.
 
 ## 3) Après exécution
 
