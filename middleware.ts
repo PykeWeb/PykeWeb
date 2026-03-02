@@ -7,7 +7,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next()
 
-  const token = request.cookies.get('tenant_session')?.value
+  const token = request.cookies.get('tenant_session_v2')?.value
   if (!token) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

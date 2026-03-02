@@ -5,8 +5,8 @@ export type TenantSession = {
   isAdmin?: boolean
 }
 
-const STORAGE_KEY = 'pykeweb:tenant-session'
-const COOKIE_KEY = 'tenant_session'
+const STORAGE_KEY = 'pykeweb:tenant-session:v2'
+const COOKIE_KEY = 'tenant_session_v2'
 
 function decode(raw: string): TenantSession | null {
   try {
