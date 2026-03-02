@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
+import { currentGroupId } from '@/lib/tenantScope'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
@@ -88,23 +89,25 @@ export function DashboardClient() {
       setLoading(true)
 
       const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes] = await Promise.all([
-        supabase.from('objects').select('id', { count: 'exact', head: true }),
-        supabase.from('weapons').select('id', { count: 'exact', head: true }),
-        supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).is('returned_at', null),
-        supabase.from('transactions').select('id', { count: 'exact', head: true }).gte('created_at', todayIso),
+        supabase.from('objects').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
+        supabase.from('weapons').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
+        supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).eq('group_id', groupId).is('returned_at', null),
+        supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('group_id', groupId).gte('created_at', todayIso),
         supabase
           .from('transactions')
           .select('id,type,total,counterparty,created_at,transaction_items(name_snapshot,quantity)')
+          .eq('group_id', groupId)
           .order('created_at', { ascending: false })
           .limit(7),
         supabase
           .from('weapon_loans')
           .select('id,borrower_name,quantity,loaned_at,weapons(name,weapon_id)')
+          .eq('group_id', groupId)
           .is('returned_at', null)
           .order('loaned_at', { ascending: false })
           .limit(7),
-        supabase.from('expenses').select('id,member_name,item_label,total,status,created_at').order('created_at', { ascending: false }).limit(7),
-        supabase.from('drug_items').select('id,name,stock'),
+        supabase.from('expenses').select('id,member_name,item_label,total,status,created_at').eq('group_id', groupId).order('created_at', { ascending: false }).limit(7),
+        supabase.from('drug_items').select('id,name,stock').eq('group_id', groupId),
       ])
 
       if (!alive) return

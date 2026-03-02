@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { currentGroupId } from '@/lib/tenantScope'
 import type { DbObject } from '@/lib/objectsApi'
 
 export type TxType = 'purchase' | 'sale'
@@ -33,7 +34,7 @@ function round2(n: number) {
 }
 
 async function getStocks(ids: string[]) {
-  const { data, error } = await supabase.from('objects').select('id, stock').in('id', ids)
+  const { data, error } = await supabase.from('objects').select('id, stock').in('id', ids).eq('group_id', currentGroupId())
   if (error) throw error
   const map = new Map<string, number>()
   for (const row of data ?? []) map.set(row.id, row.stock ?? 0)
@@ -41,7 +42,7 @@ async function getStocks(ids: string[]) {
 }
 
 async function setStock(id: string, stock: number) {
-  const { error } = await supabase.from('objects').update({ stock }).eq('id', id)
+  const { error } = await supabase.from('objects').update({ stock }).eq('id', id).eq('group_id', currentGroupId())
   if (error) throw error
 }
 
@@ -83,6 +84,7 @@ export async function createTransaction(params: {
   const { data: tx, error: txErr } = await supabase
     .from('transactions')
     .insert({
+      group_id: currentGroupId(),
       type,
       counterparty: params.counterparty ?? null,
       total: txTotal,
@@ -97,6 +99,7 @@ export async function createTransaction(params: {
   const { error: itemsErr } = await supabase.from('transaction_items').insert(
     computedItems.map((it) => ({
       transaction_id: tx.id,
+      group_id: currentGroupId(),
       ...it,
     }))
   )
@@ -120,6 +123,7 @@ export async function createTransaction(params: {
   const { error: mvErr } = await supabase.from('stock_movements').insert(
     computedItems.map((it) => ({
       transaction_id: tx.id,
+      group_id: currentGroupId(),
       object_id: it.object_id,
       delta: type === 'purchase' ? it.quantity : -it.quantity,
       unit_price_snapshot: it.unit_price_snapshot,
@@ -134,6 +138,7 @@ export async function listTransactions(limit = 50) {
   const { data, error } = await supabase
     .from('transactions')
     .select('*')
+    .eq('group_id', currentGroupId())
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
@@ -141,12 +146,13 @@ export async function listTransactions(limit = 50) {
 }
 
 export async function getTransaction(id: string) {
-  const { data: tx, error: txErr } = await supabase.from('transactions').select('*').eq('id', id).single()
+  const { data: tx, error: txErr } = await supabase.from('transactions').select('*').eq('id', id).eq('group_id', currentGroupId()).single()
   if (txErr) throw txErr
   const { data: items, error: itErr } = await supabase
     .from('transaction_items')
     .select('*')
     .eq('transaction_id', id)
+    .eq('group_id', currentGroupId())
     .order('created_at', { ascending: true })
   if (itErr) throw itErr
   return { transaction: tx as DbTransaction, items: (items ?? []) as DbTransactionItem[] }

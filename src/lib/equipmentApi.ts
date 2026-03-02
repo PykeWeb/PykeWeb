@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { currentGroupId } from '@/lib/tenantScope'
 
 export type DbEquipment = {
   id: string
@@ -25,6 +26,7 @@ export async function listEquipment(): Promise<DbEquipment[]> {
   const { data, error } = await supabase
     .from('equipment')
     .select('id,name,price,description,image_url,stock,created_at')
+    .eq('group_id', currentGroupId())
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as DbEquipment[]
@@ -39,6 +41,7 @@ export async function createEquipment(args: {
   const { data: inserted, error: insertError } = await supabase
     .from('equipment')
     .insert({
+      group_id: currentGroupId(),
       name: args.name,
       price: args.price,
       description: args.description || null,
@@ -76,18 +79,19 @@ export async function createEquipment(args: {
 }
 
 export async function adjustEquipmentStock(args: { equipmentId: string; delta: number; note?: string }) {
-  const { data: row, error: getErr } = await supabase.from('equipment').select('id,stock').eq('id', args.equipmentId).single()
+  const { data: row, error: getErr } = await supabase.from('equipment').select('id,stock').eq('id', args.equipmentId).eq('group_id', currentGroupId()).single()
   if (getErr) throw getErr
   const current = row?.stock ?? 0
   const next = current + args.delta
   if (next < 0) throw new Error('Stock insuffisant')
 
-  const { error: updErr } = await supabase.from('equipment').update({ stock: next }).eq('id', args.equipmentId)
+  const { error: updErr } = await supabase.from('equipment').update({ stock: next }).eq('id', args.equipmentId).eq('group_id', currentGroupId())
   if (updErr) throw updErr
 
   try {
     await supabase.from('equipment_stock_movements').insert({
       equipment_id: args.equipmentId,
+      group_id: currentGroupId(),
       delta: args.delta,
       note: args.note || null,
     })
@@ -113,6 +117,7 @@ export async function updateEquipment(args: {
       description: args.description || null,
     })
     .eq('id', args.id)
+    .eq('group_id', currentGroupId())
     .select('id,name,price,description,image_url,stock,created_at')
     .single()
 
@@ -132,6 +137,7 @@ export async function updateEquipment(args: {
       .from('equipment')
       .update({ image_url: publicData.publicUrl })
       .eq('id', args.id)
+    .eq('group_id', currentGroupId())
       .select('id,name,price,description,image_url,stock,created_at')
       .single()
     if (imageErr) throw imageErr
@@ -142,6 +148,6 @@ export async function updateEquipment(args: {
 }
 
 export async function deleteEquipment(equipmentId: string) {
-  const { error } = await supabase.from('equipment').delete().eq('id', equipmentId)
+  const { error } = await supabase.from('equipment').delete().eq('id', equipmentId).eq('group_id', currentGroupId())
   if (error) throw error
 }

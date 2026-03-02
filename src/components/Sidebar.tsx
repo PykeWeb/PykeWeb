@@ -3,8 +3,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt } from 'lucide-react'
-import { BRAND, GROUP } from '@/lib/brand'
+import { BRAND } from '@/lib/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
+import { useEffect, useState } from 'react'
+import { getTenantSession } from '@/lib/tenantSession'
 
 const NavItem = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => {
   return (
@@ -20,6 +22,14 @@ const NavItem = ({ href, label, icon }: { href: string; label: string; icon: Rea
 
 export function Sidebar() {
   const { labels } = useUiSettings()
+  const [groupName, setGroupName] = useState('Groupe')
+  const [groupBadge, setGroupBadge] = useState('GROUPE')
+
+  useEffect(() => {
+    const session = getTenantSession()
+    setGroupName(session?.groupName || 'Groupe')
+    setGroupBadge(session?.groupBadge || 'GROUPE')
+  }, [])
 
   return (
     <aside className="hidden w-[280px] shrink-0 flex-col gap-4 md:flex">
@@ -36,10 +46,8 @@ export function Sidebar() {
 
         <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3">
           <p className="text-xs text-white/60">Groupe</p>
-          <p className="mt-1 text-sm font-semibold">{GROUP.name}</p>
-          <div className="mt-2 inline-flex rounded-lg bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/80">
-            {GROUP.badge}
-          </div>
+          <p className="mt-1 text-sm font-semibold">{groupName}</p>
+          <div className="mt-2 inline-flex rounded-lg bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/80">{groupBadge}</div>
         </div>
       </div>
 
@@ -51,7 +59,6 @@ export function Sidebar() {
         <NavItem href="/drogues" label={labels.nav_drogues || 'Drogues'} icon={<Leaf className="h-4 w-4" />} />
         <NavItem href="/depenses" label={labels.nav_depenses || 'Dépenses'} icon={<Receipt className="h-4 w-4" />} />
       </div>
-
     </aside>
   )
 }

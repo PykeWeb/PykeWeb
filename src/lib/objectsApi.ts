@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { currentGroupId } from '@/lib/tenantScope'
 
 export type DbObject = {
   id: string
@@ -22,9 +23,11 @@ function getExt(file: File) {
 }
 
 export async function listObjects(): Promise<DbObject[]> {
+  const groupId = currentGroupId()
   const { data, error } = await supabase
     .from('objects')
     .select('id,name,price,description,image_url,stock,created_at')
+    .eq('group_id', groupId)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -41,6 +44,7 @@ export async function createObject(args: {
   const { data: inserted, error: insertError } = await supabase
     .from('objects')
     .insert({
+      group_id: currentGroupId(),
       name: args.name,
       price: args.price,
       description: args.description || null,
@@ -94,6 +98,7 @@ export async function updateObject(args: {
       price: args.price,
     })
     .eq('id', args.id)
+    .eq('group_id', currentGroupId())
     .select('id,name,price,description,image_url,stock,created_at')
     .single()
 
@@ -116,6 +121,7 @@ export async function updateObject(args: {
       .from('objects')
       .update({ image_url })
       .eq('id', args.id)
+    .eq('group_id', currentGroupId())
       .select('id,name,price,description,image_url,stock,created_at')
       .single()
 
@@ -127,6 +133,6 @@ export async function updateObject(args: {
 }
 
 export async function deleteObject(objectId: string) {
-  const { error } = await supabase.from('objects').delete().eq('id', objectId)
+  const { error } = await supabase.from('objects').delete().eq('id', objectId).eq('group_id', currentGroupId())
   if (error) throw error
 }

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { currentGroupId } from '@/lib/tenantScope'
 
 export type ExpenseStatus = 'pending' | 'paid'
 
@@ -35,6 +36,7 @@ export async function listExpenses(): Promise<DbExpense[]> {
   const { data, error } = await supabase
     .from('expenses')
     .select('id,member_name,item_source,item_id,item_label,unit_price,quantity,total,description,proof_image_url,status,created_at,paid_at')
+    .eq('group_id', currentGroupId())
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as any
@@ -55,6 +57,7 @@ export async function createExpense(args: {
   const { data: inserted, error: insertError } = await supabase
     .from('expenses')
     .insert({
+      group_id: currentGroupId(),
       member_name: args.member_name,
       item_source: args.item_source,
       item_id: args.item_id || null,
@@ -88,6 +91,7 @@ export async function createExpense(args: {
       .from('expenses')
       .update({ proof_image_url })
       .eq('id', inserted.id)
+      .eq('group_id', currentGroupId())
       .select('id,member_name,item_source,item_id,item_label,unit_price,quantity,total,description,proof_image_url,status,created_at,paid_at')
       .single()
     if (updateError) throw updateError
@@ -102,6 +106,6 @@ export async function setExpenseStatus(args: { expenseId: string; status: Expens
   if (args.status === 'paid') patch.paid_at = new Date().toISOString()
   if (args.status === 'pending') patch.paid_at = null
 
-  const { error } = await supabase.from('expenses').update(patch).eq('id', args.expenseId)
+  const { error } = await supabase.from('expenses').update(patch).eq('id', args.expenseId).eq('group_id', currentGroupId())
   if (error) throw error
 }

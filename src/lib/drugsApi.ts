@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { currentGroupId } from '@/lib/tenantScope'
 
 export type DrugKind = 'drug' | 'seed' | 'planting' | 'pouch' | 'other'
 
@@ -28,6 +29,7 @@ export async function listDrugItems(): Promise<DbDrugItem[]> {
   const { data, error } = await supabase
     .from('drug_items')
     .select('id,type,name,price,description,image_url,stock,created_at')
+    .eq('group_id', currentGroupId())
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as any
@@ -43,6 +45,7 @@ export async function createDrugItem(args: {
   const { data: inserted, error: insertError } = await supabase
     .from('drug_items')
     .insert({
+      group_id: currentGroupId(),
       type: args.type,
       name: args.name,
       price: args.price,
@@ -81,18 +84,19 @@ export async function createDrugItem(args: {
 }
 
 export async function adjustDrugStock(args: { itemId: string; delta: number; note?: string }) {
-  const { data: row, error: getErr } = await supabase.from('drug_items').select('id,stock').eq('id', args.itemId).single()
+  const { data: row, error: getErr } = await supabase.from('drug_items').select('id,stock').eq('id', args.itemId).eq('group_id', currentGroupId()).single()
   if (getErr) throw getErr
   const current = row?.stock ?? 0
   const next = current + args.delta
   if (next < 0) throw new Error('Stock insuffisant')
 
-  const { error: updErr } = await supabase.from('drug_items').update({ stock: next }).eq('id', args.itemId)
+  const { error: updErr } = await supabase.from('drug_items').update({ stock: next }).eq('id', args.itemId).eq('group_id', currentGroupId())
   if (updErr) throw updErr
 
   try {
     await supabase.from('drug_stock_movements').insert({
       drug_item_id: args.itemId,
+      group_id: currentGroupId(),
       delta: args.delta,
       note: args.note || null,
     })
@@ -120,6 +124,7 @@ export async function updateDrugItem(args: {
       description: args.description || null,
     })
     .eq('id', args.id)
+    .eq('group_id', currentGroupId())
     .select('id,type,name,price,description,image_url,stock,created_at')
     .single()
 
@@ -139,6 +144,7 @@ export async function updateDrugItem(args: {
       .from('drug_items')
       .update({ image_url: publicData.publicUrl })
       .eq('id', args.id)
+    .eq('group_id', currentGroupId())
       .select('id,type,name,price,description,image_url,stock,created_at')
       .single()
     if (imageErr) throw imageErr
@@ -149,6 +155,6 @@ export async function updateDrugItem(args: {
 }
 
 export async function deleteDrugItem(itemId: string) {
-  const { error } = await supabase.from('drug_items').delete().eq('id', itemId)
+  const { error } = await supabase.from('drug_items').delete().eq('id', itemId).eq('group_id', currentGroupId())
   if (error) throw error
 }

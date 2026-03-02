@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { currentGroupId } from '@/lib/tenantScope'
 
 export type DbWeapon = {
   id: string
@@ -35,6 +36,7 @@ export async function listWeapons(): Promise<DbWeapon[]> {
   const { data, error } = await supabase
     .from('weapons')
     .select('id,weapon_id,name,description,image_url,stock,created_at')
+    .eq('group_id', currentGroupId())
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as DbWeapon[]
@@ -49,6 +51,7 @@ export async function createWeapon(args: {
   const { data: inserted, error: insertError } = await supabase
     .from('weapons')
     .insert({
+      group_id: currentGroupId(),
       weapon_id: args.weapon_id || null,
       name: args.name || null,
       description: args.description || null,
@@ -87,18 +90,19 @@ export async function createWeapon(args: {
 
 export async function adjustWeaponStock(args: { weaponId: string; delta: number; note?: string }) {
   // Read current stock
-  const { data: row, error: getErr } = await supabase.from('weapons').select('id,stock').eq('id', args.weaponId).single()
+  const { data: row, error: getErr } = await supabase.from('weapons').select('id,stock').eq('id', args.weaponId).eq('group_id', currentGroupId()).single()
   if (getErr) throw getErr
   const current = row?.stock ?? 0
   const next = current + args.delta
   if (next < 0) throw new Error('Stock insuffisant')
 
-  const { error: updErr } = await supabase.from('weapons').update({ stock: next }).eq('id', args.weaponId)
+  const { error: updErr } = await supabase.from('weapons').update({ stock: next }).eq('id', args.weaponId).eq('group_id', currentGroupId())
   if (updErr) throw updErr
 
   // Optional: log movement (table weapon_stock_movements). If the table is not created yet, ignore.
   try {
     await supabase.from('weapon_stock_movements').insert({
+      group_id: currentGroupId(),
       weapon_id: args.weaponId,
       delta: args.delta,
       note: args.note || null,
@@ -114,6 +118,7 @@ export async function listActiveWeaponLoans(): Promise<(DbWeaponLoan & { weapon?
   const { data, error } = await supabase
     .from('weapon_loans')
     .select('id,weapon_id,borrower_name,quantity,loaned_at,returned_at,note, weapons:weapon_id (id,weapon_id,name,description,image_url,stock,created_at)')
+    .eq('group_id', currentGroupId())
     .is('returned_at', null)
     .order('loaned_at', { ascending: false })
   if (error) throw error
@@ -127,6 +132,7 @@ export async function createWeaponLoan(args: { weaponId: string; borrowerName: s
   const { data, error } = await supabase
     .from('weapon_loans')
     .insert({
+      group_id: currentGroupId(),
       weapon_id: args.weaponId,
       borrower_name: args.borrowerName,
       quantity: Math.abs(args.quantity),
@@ -143,6 +149,7 @@ export async function closeWeaponLoan(args: { loanId: string }) {
     .from('weapon_loans')
     .select('id,weapon_id,borrower_name,quantity,returned_at')
     .eq('id', args.loanId)
+    .eq('group_id', currentGroupId())
     .single()
   if (getErr) throw getErr
   if (!loan) throw new Error('Loan not found')
@@ -153,6 +160,7 @@ export async function closeWeaponLoan(args: { loanId: string }) {
     .from('weapon_loans')
     .update({ returned_at: new Date().toISOString() })
     .eq('id', args.loanId)
+    .eq('group_id', currentGroupId())
   if (updErr) throw updErr
 
   // Increment stock back
@@ -174,6 +182,7 @@ export async function updateWeapon(args: {
       description: args.description || null,
     })
     .eq('id', args.id)
+    .eq('group_id', currentGroupId())
     .select('id,weapon_id,name,description,image_url,stock,created_at')
     .single()
 
@@ -193,6 +202,7 @@ export async function updateWeapon(args: {
       .from('weapons')
       .update({ image_url: publicData.publicUrl })
       .eq('id', args.id)
+    .eq('group_id', currentGroupId())
       .select('id,weapon_id,name,description,image_url,stock,created_at')
       .single()
     if (imageErr) throw imageErr
@@ -203,6 +213,6 @@ export async function updateWeapon(args: {
 }
 
 export async function deleteWeapon(weaponId: string) {
-  const { error } = await supabase.from('weapons').delete().eq('id', weaponId)
+  const { error } = await supabase.from('weapons').delete().eq('id', weaponId).eq('group_id', currentGroupId())
   if (error) throw error
 }

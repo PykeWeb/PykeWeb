@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { ArrowDownRight, ArrowUpRight, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 import { updateObject, deleteObject } from '@/lib/objectsApi';
 import { ImageDropzone } from '@/components/objets/ImageDropzone';
+import { currentGroupId } from '@/lib/tenantScope';
 
 type ObjRow = {
   id: string;
@@ -72,10 +73,11 @@ export default function ObjetsClient() {
         const supabase = getSupabase();
 
         const [{ data: oData }, { data: tData }] = await Promise.all([
-          supabase.from('objects').select('id,name,price,stock,image_url').order('created_at', { ascending: false }),
+          supabase.from('objects').select('id,name,price,stock,image_url').eq('group_id', currentGroupId()).order('created_at', { ascending: false }),
           supabase
             .from('transactions')
             .select('id,type,total,counterparty,created_at,transaction_items(name_snapshot,quantity)')
+            .eq('group_id', currentGroupId())
             .order('created_at', { ascending: false })
             .limit(25),
         ]);
@@ -138,7 +140,7 @@ export default function ObjetsClient() {
       });
 
       const supabase = getSupabase();
-      const { data: updatedObjects } = await supabase.from('objects').select('id,name,price,stock,image_url').order('created_at', { ascending: false });
+      const { data: updatedObjects } = await supabase.from('objects').select('id,name,price,stock,image_url').eq('group_id', currentGroupId()).order('created_at', { ascending: false });
       setObjs((updatedObjects ?? []) as ObjRow[]);
       cancelEdit();
     } catch (e: any) {
@@ -155,7 +157,7 @@ export default function ObjetsClient() {
     try {
       await deleteObject(o.id);
       const supabase = getSupabase();
-      const { data: updatedObjects } = await supabase.from('objects').select('id,name,price,stock,image_url').order('created_at', { ascending: false });
+      const { data: updatedObjects } = await supabase.from('objects').select('id,name,price,stock,image_url').eq('group_id', currentGroupId()).order('created_at', { ascending: false });
       setObjs((updatedObjects ?? []) as ObjRow[]);
     } catch (e: any) {
       setEditError(e?.message || 'Impossible de supprimer cet objet.');
