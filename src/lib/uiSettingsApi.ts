@@ -21,7 +21,6 @@ export const DEFAULT_LABELS: UiLabels = {
   nav_equipement: 'Équipement',
   nav_drogues: 'Drogues',
   nav_depenses: 'Dépenses',
-  nav_reglages: 'Réglages',
 }
 
 export const DEFAULT_LAYOUTS: UiLayouts = {

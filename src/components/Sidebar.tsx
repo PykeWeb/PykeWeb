@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt, Settings } from 'lucide-react'
+import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt } from 'lucide-react'
 import { BRAND, GROUP } from '@/lib/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 
@@ -50,12 +50,8 @@ export function Sidebar() {
         <NavItem href="/equipement" label={labels.nav_equipement || 'Équipement'} icon={<Wrench className="h-4 w-4" />} />
         <NavItem href="/drogues" label={labels.nav_drogues || 'Drogues'} icon={<Leaf className="h-4 w-4" />} />
         <NavItem href="/depenses" label={labels.nav_depenses || 'Dépenses'} icon={<Receipt className="h-4 w-4" />} />
-        <NavItem href="/reglages" label={labels.nav_reglages || 'Réglages'} icon={<Settings className="h-4 w-4" />} />
       </div>
 
-      <div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-white/60 shadow-glow">
-        Version maquette UI • Simple, clean, ready à brancher.
-      </div>
     </aside>
   )
 }
