@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Settings2 } from 'lucide-react'
+import { supabase } from '@/lib/supabaseClient'
+
+const SETTINGS_KEY = 'default'
+const OVERRIDES_LABEL_KEY = '__mod_text_overrides__'
 
 const STORAGE_KEY = 'pykeweb:text-overrides:v1'
 const ADMIN_USER = 'admin'
@@ -23,6 +27,51 @@ function readOverrides(): Overrides {
 
 function writeOverrides(overrides: Overrides) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
+}
+
+
+
+async function readOverridesFromDatabase(): Promise<Overrides> {
+  try {
+    const { data, error } = await supabase
+      .from('ui_settings')
+      .select('labels')
+      .eq('key', SETTINGS_KEY)
+      .maybeSingle()
+
+    if (error) return {}
+
+    const raw = data?.labels?.[OVERRIDES_LABEL_KEY]
+    if (!raw || typeof raw !== 'string') return {}
+
+    const parsed = JSON.parse(raw) as Overrides
+    return parsed ?? {}
+  } catch {
+    return {}
+  }
+}
+
+async function writeOverridesToDatabase(overrides: Overrides) {
+  try {
+    const { data, error } = await supabase
+      .from('ui_settings')
+      .select('labels')
+      .eq('key', SETTINGS_KEY)
+      .maybeSingle()
+
+    if (error) return
+
+    const labels = {
+      ...(data?.labels ?? {}),
+      [OVERRIDES_LABEL_KEY]: JSON.stringify(overrides)
+    }
+
+    await supabase
+      .from('ui_settings')
+      .upsert({ key: SETTINGS_KEY, labels, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  } catch {
+    // Ignore network/db errors: localStorage remains the fallback persistence.
+  }
 }
 
 function shouldSkipNode(parent: Node | null) {
@@ -90,9 +139,22 @@ export function SiteTextModWidget() {
   const [overrides, setOverrides] = useState<Overrides>({})
 
   useEffect(() => {
-    const fromStorage = readOverrides()
-    setOverrides(fromStorage)
-    setTimeout(() => applyOverrides(fromStorage), 0)
+    let alive = true
+
+    ;(async () => {
+      const fromStorage = readOverrides()
+      const fromDatabase = await readOverridesFromDatabase()
+      if (!alive) return
+
+      const merged = { ...fromDatabase, ...fromStorage }
+      setOverrides(merged)
+      writeOverrides(merged)
+      setTimeout(() => applyOverrides(merged), 0)
+    })()
+
+    return () => {
+      alive = false
+    }
   }, [])
 
   useEffect(() => {
@@ -131,6 +193,7 @@ export function SiteTextModWidget() {
 
       setOverrides(nextOverrides)
       writeOverrides(nextOverrides)
+      void writeOverridesToDatabase(nextOverrides)
     }
 
     document.addEventListener('click', onClick, true)
@@ -153,6 +216,7 @@ export function SiteTextModWidget() {
     const cleared = {}
     setOverrides(cleared)
     writeOverrides(cleared)
+    void writeOverridesToDatabase(cleared)
     window.location.reload()
   }
 
