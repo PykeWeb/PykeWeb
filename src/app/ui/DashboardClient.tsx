@@ -87,6 +87,8 @@ export function DashboardClient() {
     let alive = true
     ;(async () => {
       setLoading(true)
+      try {
+        const groupId = currentGroupId()
 
       const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes] = await Promise.all([
         supabase.from('objects').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
@@ -121,7 +123,11 @@ export function DashboardClient() {
       setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
       setDrugItems((drugItemsRes.data as DrugItem[]) ?? [])
 
-      setLoading(false)
+      } catch {
+        if (alive) setLoading(false)
+      } finally {
+        if (alive) setLoading(false)
+      }
     })()
 
     return () => {
