@@ -7,6 +7,7 @@ Ce projet attend désormais une structure multi-groupes côté Supabase.
 Exécute le script suivant dans **Supabase SQL Editor**:
 
 - `supabase/migrations/20260302_multitenant_bootstrap.sql`
+- `supabase/migrations/20260303_ui_texts.sql`
 
 ## 2) Ce que le script ajoute
 
@@ -18,6 +19,7 @@ Exécute le script suivant dans **Supabase SQL Editor**:
 - Désactive RLS sur `tenant_groups` pour permettre la gestion des groupes depuis l'interface admin du site (clé anon côté client).
 - Crée `patch_notes` (notes de mise à jour administrables).
 - Crée `support_tickets` (bugs/messages avec statut).
+- Crée `ui_texts` (sauvegarde centrale des textes modifiés via bouton Mod).
 
 ## 3) Si la migration a déjà été lancée avant cette correction
 
@@ -47,3 +49,12 @@ Pour chaque future fonctionnalité, si une nouvelle table est créée côté app
 
 - Les données métier (groupes, objets, armes, drogues, équipements, transactions, dépenses) sont stockées en ligne dans Supabase.
 - Le navigateur stocke seulement la session de connexion (cookie/localStorage) pour garder l'utilisateur connecté.
+
+## 7) Variables serveur (API admin/service role)
+
+Les routes API admin utilisent le **Service Role** pour contourner RLS côté écriture:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL` (ou `SUPABASE_URL`)
+
+Sans ces variables, la création patch notes / tickets support / ui_texts en ligne échouera.

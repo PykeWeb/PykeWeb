@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import type { ClipboardEvent } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import { currentGroupId } from '@/lib/tenantScope'
@@ -56,6 +57,13 @@ export function DashboardClient() {
   const [ticketMessage, setTicketMessage] = useState('')
   const [ticketImage, setTicketImage] = useState<File | null>(null)
   const [ticketStatus, setTicketStatus] = useState('')
+  const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
+
+  useEffect(() => {
+    return () => {
+      if (ticketPreviewUrl) URL.revokeObjectURL(ticketPreviewUrl)
+    }
+  }, [ticketPreviewUrl])
 
   const todayIso = useMemo(() => startOfTodayIso(), [])
 
@@ -172,6 +180,17 @@ export function DashboardClient() {
     setPauseAutoUntil(Date.now() + 12000)
   }
 
+  function onSupportPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.clipboardData.items)
+      .filter((i) => i.type.startsWith('image/'))
+      .map((i) => i.getAsFile())
+      .filter((f): f is File => !!f)
+    if (!files.length) return
+    e.preventDefault()
+    setTicketImage(files[0])
+    setTicketStatus('Image collée depuis le presse-papier.')
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
@@ -270,13 +289,6 @@ export function DashboardClient() {
           </div>
         </Panel>
 
-        <div className="lg:mt-auto">
-          <Panel>
-            <h3 className="text-sm font-semibold">Accès</h3>
-            <p className={`mt-2 text-sm font-semibold ${expirationClass}`}>Accès : {expirationLabel}</p>
-          </Panel>
-        </div>
-
       </div>
 
       <div className="flex h-full flex-col gap-4">
@@ -324,8 +336,20 @@ export function DashboardClient() {
               <button type="button" onClick={() => setTicketKind('bug')} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${ticketKind === 'bug' ? 'border-rose-300/50 bg-rose-500/10 text-rose-100' : 'border-white/10 bg-white/5'}`}><Bug className="h-3 w-3" />Signaler un bug</button>
               <button type="button" onClick={() => setTicketKind('message')} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${ticketKind === 'message' ? 'border-cyan-300/50 bg-cyan-500/10 text-cyan-100' : 'border-white/10 bg-white/5'}`}><MessageSquare className="h-3 w-3" />Message</button>
             </div>
-            <textarea value={ticketMessage} onChange={(e) => setTicketMessage(e.target.value)} placeholder={ticketKind === 'bug' ? 'Décris le bug...' : 'Ton message...'} className="h-20 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
+            <textarea
+              value={ticketMessage}
+              onChange={(e) => setTicketMessage(e.target.value)}
+              onPaste={onSupportPaste}
+              placeholder={ticketKind === 'bug' ? 'Décris le bug... (Ctrl+V image accepté)' : 'Ton message... (Ctrl+V image accepté)'}
+              className="h-20 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+            />
             <input type="file" accept="image/*" onChange={(e) => setTicketImage(e.target.files?.[0] ?? null)} className="w-full text-xs text-white/70" />
+            {ticketImage ? (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={ticketPreviewUrl || ''} alt="Preview support" className="max-h-28 rounded-md object-contain" />
+              </div>
+            ) : null}
             <Button onClick={submitTicket}>{ticketKind === 'bug' ? 'Envoyer le bug' : 'Envoyer le message'}</Button>
             {ticketStatus ? <p className="text-xs text-white/70">{ticketStatus}</p> : null}
           </div>
@@ -348,6 +372,12 @@ export function DashboardClient() {
               )}
             </div>
           </Panel>
+          <div className="mt-4">
+            <Panel>
+              <h3 className="text-sm font-semibold">Accès</h3>
+              <p className={`mt-2 text-sm font-semibold ${expirationClass}`}>Accès : {expirationLabel}</p>
+            </Panel>
+          </div>
         </div>
       </div>
     </div>

@@ -576,12 +576,18 @@ export default function DroguesClient() {
           <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
             <p className="font-semibold">Résultat ({calcMode === 'coke' ? 'Coke' : 'Meth'})</p>
             <div className="mt-2 space-y-1 text-white/80">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 border-b border-white/10 pb-1 text-[11px] uppercase tracking-wide text-white/50">
+                <span>Item</span>
+                <span className="text-right">Qté</span>
+                <span className="text-right">Prix/u</span>
+                <span className="text-right">Sous-total</span>
+              </div>
               {calculatorResult.requirements.map((req) => (
-                <div key={req.label} className="flex items-center justify-between">
+                <div key={req.label} className="grid grid-cols-[1fr_auto_auto_auto] gap-3">
                   <span>{req.label}</span>
-                  <span className="text-xs text-white/70">x{req.qty}</span>
-                  <span className="text-xs text-white/70">{req.unitPrice === null ? 'Prix manquant' : `${req.unitPrice.toFixed(0)}$/u`}</span>
-                  <span className="text-xs text-white/70">{req.subtotal === null ? '—' : `${req.subtotal.toFixed(0)}$`}</span>
+                  <span className="text-right text-xs text-white/70">x{req.qty}</span>
+                  <span className="text-right text-xs text-white/70">{req.unitPrice === null ? 'Prix manquant' : `${req.unitPrice.toFixed(0)}$/u`}</span>
+                  <span className="text-right text-xs text-white/70">{req.subtotal === null ? '—' : `${req.subtotal.toFixed(0)}$`}</span>
                 </div>
               ))}
             </div>

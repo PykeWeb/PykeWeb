@@ -1,8 +1,6 @@
 import { supabase } from '@/lib/supabaseClient'
 import { currentGroupId } from '@/lib/tenantScope'
 
-const SUPPORT_BUCKET = 'expense-proofs'
-
 export type PatchNote = {
   id: string
   title: string
@@ -22,139 +20,83 @@ export type SupportTicket = {
   tenant_groups?: { name: string | null; badge: string | null } | null
 }
 
-function ext(file: File) {
-  const e = file.name.split('.').pop()?.toLowerCase()
-  if (e) return e
-  return 'png'
-}
-
 export async function listActivePatchNotes(limit = 5): Promise<PatchNote[]> {
-  const { data, error } = await supabase
-    .from('patch_notes')
-    .select('id,title,content,is_active,created_at')
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return (data ?? []) as PatchNote[]
+  const res = await fetch(`/api/patch-notes?limit=${limit}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Impossible de charger les patch notes')
+  return (await res.json()) as PatchNote[]
 }
 
 export async function listPatchNotesAdmin(): Promise<PatchNote[]> {
-  const { data, error } = await supabase
-    .from('patch_notes')
-    .select('id,title,content,is_active,created_at')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as PatchNote[]
+  const res = await fetch('/api/admin/patch-notes', { cache: 'no-store' })
+  if (!res.ok) throw new Error('Impossible de charger les patch notes admin')
+  return (await res.json()) as PatchNote[]
 }
 
 export async function createPatchNote(input: { title: string; content: string; is_active: boolean }) {
-  const { data, error } = await supabase
-    .from('patch_notes')
-    .insert({
-      title: input.title,
-      content: input.content,
-      is_active: input.is_active,
-    })
-    .select('id,title,content,is_active,created_at')
-    .single()
-  if (error) throw error
-  return data as PatchNote
+  const res = await fetch('/api/admin/patch-notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as PatchNote
 }
 
 export async function updatePatchNote(id: string, patch: Partial<Pick<PatchNote, 'title' | 'content' | 'is_active'>>) {
-  const { data, error } = await supabase
-    .from('patch_notes')
-    .update(patch)
-    .eq('id', id)
-    .select('id,title,content,is_active,created_at')
-    .single()
-  if (error) throw error
-  return data as PatchNote
+  const res = await fetch('/api/admin/patch-notes', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, patch }),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as PatchNote
+}
+
+export async function deletePatchNote(id: string) {
+  const res = await fetch('/api/admin/patch-notes', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  })
+  if (!res.ok) throw new Error(await res.text())
 }
 
 export async function listSupportTicketsAdmin(kind: 'bug' | 'message') {
-  const { data, error } = await supabase
-    .from('support_tickets')
-    .select('id,group_id,kind,message,image_url,status,created_at,tenant_groups(name,badge)')
-    .eq('kind', kind)
-    .order('created_at', { ascending: false })
-  if (error) throw error
-
-  const rows = (data ?? []) as Array<{
-    id: unknown
-    group_id: unknown
-    kind: unknown
-    message: unknown
-    image_url: unknown
-    status: unknown
-    created_at: unknown
-    tenant_groups?: unknown
-  }>
-
+  const res = await fetch(`/api/admin/support-tickets?kind=${kind}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Impossible de charger les tickets')
+  const rows = (await res.json()) as any[]
   return rows.map((row) => ({
-    id: String(row.id),
-    group_id: String(row.group_id),
-    kind: row.kind as SupportTicket['kind'],
-    message: String(row.message ?? ''),
-    image_url: (row.image_url ?? null) as string | null,
-    status: row.status as SupportTicket['status'],
-    created_at: String(row.created_at),
+    ...row,
     tenant_groups: Array.isArray(row.tenant_groups)
       ? {
-          name: (row.tenant_groups[0] as { name?: string | null } | undefined)?.name ?? null,
-          badge: (row.tenant_groups[0] as { badge?: string | null } | undefined)?.badge ?? null,
+          name: row.tenant_groups[0]?.name ?? null,
+          badge: row.tenant_groups[0]?.badge ?? null,
         }
-      : row.tenant_groups && typeof row.tenant_groups === 'object'
-        ? {
-            name: (row.tenant_groups as { name?: string | null }).name ?? null,
-            badge: (row.tenant_groups as { badge?: string | null }).badge ?? null,
-          }
-        : null,
-  }))
+      : row.tenant_groups ?? null,
+  })) as SupportTicket[]
 }
 
 export async function createSupportTicket(input: { kind: 'bug' | 'message'; message: string; imageFile?: File | null }) {
-  const groupId = currentGroupId()
-  const { data: inserted, error: insertError } = await supabase
-    .from('support_tickets')
-    .insert({
-      group_id: groupId,
-      kind: input.kind,
-      message: input.message,
-      status: 'open',
-    })
-    .select('id,group_id,kind,message,image_url,status,created_at')
-    .single()
+  const formData = new FormData()
+  formData.append('kind', input.kind)
+  formData.append('message', input.message)
+  if (input.imageFile) formData.append('image', input.imageFile)
 
-  if (insertError) throw insertError
-  if (!inserted) throw new Error('Insert failed')
-
-  if (input.imageFile) {
-    const path = `support/${input.kind}/${inserted.id}.${ext(input.imageFile)}`
-    const { error: uploadError } = await supabase.storage.from(SUPPORT_BUCKET).upload(path, input.imageFile, {
-      upsert: true,
-      contentType: input.imageFile.type || undefined,
-    })
-    if (uploadError) throw uploadError
-
-    const { data: publicUrlData } = supabase.storage.from(SUPPORT_BUCKET).getPublicUrl(path)
-    const { data: updated, error: updateError } = await supabase
-      .from('support_tickets')
-      .update({ image_url: publicUrlData.publicUrl })
-      .eq('id', inserted.id)
-      .select('id,group_id,kind,message,image_url,status,created_at')
-      .single()
-    if (updateError) throw updateError
-    return updated as SupportTicket
-  }
-
-  return inserted as SupportTicket
+  const res = await fetch('/api/support/tickets', {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as SupportTicket
 }
 
 export async function updateSupportTicketStatus(id: string, status: SupportTicket['status']) {
-  const { error } = await supabase.from('support_tickets').update({ status }).eq('id', id)
-  if (error) throw error
+  const res = await fetch('/api/admin/support-tickets', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, status }),
+  })
+  if (!res.ok) throw new Error(await res.text())
 }
 
 export async function getCurrentGroupAccessInfo() {
