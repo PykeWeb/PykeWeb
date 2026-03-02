@@ -6,12 +6,19 @@ import { listWeapons, adjustWeaponStock, updateWeapon, deleteWeapon, type DbWeap
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { toast } from 'sonner'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Handshake, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
+import { ImageDropzone } from '@/components/objets/ImageDropzone'
 
 export function ArmesClient() {
   const [items, setItems] = useState<DbWeapon[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
+
+  const [editingItem, setEditingItem] = useState<DbWeapon | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editWeaponId, setEditWeaponId] = useState('')
+  const [editImageFile, setEditImageFile] = useState<File | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   async function refresh() {
     setLoading(true)
@@ -35,27 +42,38 @@ export function ArmesClient() {
     return items.filter((w) => (w.name || '').toLowerCase().includes(query) || (w.weapon_id || '').toLowerCase().includes(query))
   }, [items, q])
 
+  function startEdit(item: DbWeapon) {
+    setEditingItem(item)
+    setEditName(item.name || '')
+    setEditWeaponId(item.weapon_id || '')
+    setEditImageFile(null)
+  }
 
+  function cancelEdit() {
+    setEditingItem(null)
+    setEditName('')
+    setEditWeaponId('')
+    setEditImageFile(null)
+  }
 
-  async function quickEdit(item: DbWeapon) {
-    const nextName = window.prompt("Nom de l'arme :", item.name || '')
-    if (nextName === null) return
-    const nextWeaponId = window.prompt('ID arme (optionnel) :', item.weapon_id || '')
-    if (nextWeaponId === null) return
-    const nextDescription = window.prompt('Description (optionnel) :', item.description || '')
-    if (nextDescription === null) return
+  async function saveEdit() {
+    if (!editingItem) return
 
     try {
+      setSavingEdit(true)
       await updateWeapon({
-        id: item.id,
-        name: nextName.trim() || null,
-        weapon_id: nextWeaponId.trim() || null,
-        description: nextDescription.trim() || null,
+        id: editingItem.id,
+        name: editName.trim() || null,
+        weapon_id: editWeaponId.trim() || null,
+        imageFile: editImageFile,
       })
       await refresh()
       toast.success('Arme modifiée')
+      cancelEdit()
     } catch (e: any) {
       toast.error(e?.message || 'Impossible de modifier')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -97,7 +115,6 @@ export function ArmesClient() {
           </div>
         </div>
 
-        {/* Actions (dans la bulle principale, pas en haut à droite) */}
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <Link href="/armes/nouveau" className="block">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]">
@@ -118,6 +135,62 @@ export function ArmesClient() {
             </div>
           </Link>
         </div>
+
+        {editingItem ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold">Modifier l’arme : {editingItem.name || 'Sans nom'}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  disabled={savingEdit}
+                  onClick={saveEdit}
+                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-xs text-white/60">Nom</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/60">ID arme</label>
+                <input
+                  value={editWeaponId}
+                  onChange={(e) => setEditWeaponId(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-white/60">Image actuelle</p>
+              <div className="mt-1 h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                {editingItem.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img alt="" src={editingItem.image_url} className="h-full w-full object-cover" />
+                ) : null}
+              </div>
+            </div>
+
+            <ImageDropzone label="Remplacer l’image (optionnel)" onChange={setEditImageFile} />
+          </div>
+        ) : null}
 
         <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
           <table className="w-full text-left text-sm">
@@ -165,20 +238,32 @@ export function ArmesClient() {
                     <td className="px-4 py-3 font-semibold">{w.stock}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" onClick={() => bump(w.id, -1)} disabled={w.stock <= 0}>
-                          −
-                        </Button>
                         <Button variant="ghost" onClick={() => bump(w.id, +1)}>
-                          +
+                          <ShoppingCart className="h-4 w-4" />
+                          Achat
+                        </Button>
+                        <Button variant="ghost" onClick={() => bump(w.id, -1)} disabled={w.stock <= 0}>
+                          <ArrowUpRight className="h-4 w-4" />
+                          Sortie
                         </Button>
                         <Link href={`/armes/prets/nouveau?weapon=${w.id}`}>
-                          <Button variant="secondary">Prêter</Button>
+                          <Button variant="secondary">
+                            <Handshake className="h-4 w-4" />
+                            Prêter
+                          </Button>
                         </Link>
-                        <Button variant="secondary" onClick={() => quickEdit(w)}>Modifier</Button>
-                        <Button variant="secondary" onClick={() => removeItem(w)}>Supprimer</Button>
-                        <Link href={`/armes/sortie?weapon=${w.id}`}>
-                          <Button variant="secondary">Sortie</Button>
-                        </Link>
+                        <Button variant="secondary" onClick={() => startEdit(w)}>
+                          <Pencil className="h-4 w-4" />
+                          Modifier
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(w)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Supprimer
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -187,23 +272,7 @@ export function ArmesClient() {
             </tbody>
           </table>
         </div>
-
-        <p className="mt-3 text-xs text-white/50">
-          Astuce : <span className="text-white/70">+</span> quand vous récupérez une arme, <span className="text-white/70">−</span> quand une arme est perdue/vendue. Pour un prêt, utilisez “Prêter”.
-        </p>
-
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-white/60">
-          <p className="font-semibold text-white/80">Mode RP</p>
-          <ul className="mt-2 list-disc space-y-1 pl-4">
-            <li>Le stock des armes se gère en unités (1, 2, 3…)</li>
-            <li>Prêt = l’arme sort du stock, retour = elle revient</li>
-            <li>“Sortie” = vente / perte / transfert (retire du stock)</li>
-          </ul>
-        </div>
-
       </div>
-
-
     </div>
   )
 }

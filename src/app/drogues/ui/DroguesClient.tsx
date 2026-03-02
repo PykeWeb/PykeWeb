@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, Factory, Plus } from 'lucide-react'
+import { ArrowUpRight, Factory, Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { listDrugItems, adjustDrugStock, updateDrugItem, deleteDrugItem, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
+import { ImageDropzone } from '@/components/objets/ImageDropzone'
 
 const TAB_KEYS = ['catalogue', 'plantations'] as const
 type TabKey = (typeof TAB_KEYS)[number]
@@ -79,6 +80,12 @@ export default function DroguesClient() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const [editingItem, setEditingItem] = useState<DbDrugItem | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editPrice, setEditPrice] = useState('')
+  const [editImageFile, setEditImageFile] = useState<File | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
+
   async function refresh() {
     setLoading(true)
     try {
@@ -126,38 +133,48 @@ export default function DroguesClient() {
     return list.reduce((sum, it) => sum + Number(it.stock || 0), 0)
   }, [items])
 
+  function startEdit(item: DbDrugItem) {
+    setEditingItem(item)
+    setEditName(item.name || '')
+    setEditPrice(String(item.price ?? 0))
+    setEditImageFile(null)
+    setError(null)
+  }
 
+  function cancelEdit() {
+    setEditingItem(null)
+    setEditName('')
+    setEditPrice('')
+    setEditImageFile(null)
+  }
 
-  async function quickEdit(item: DbDrugItem) {
-    const nextName = window.prompt('Nom :', item.name || '')
-    if (nextName === null || !nextName.trim()) return
-    const nextType = window.prompt('Type (drug/seed/planting/pouch/other) :', item.type)
-    if (nextType === null) return
-    if (!['drug', 'seed', 'planting', 'pouch', 'other'].includes(nextType)) {
-      setError('Type invalide.')
+  async function saveEdit() {
+    if (!editingItem) return
+    if (!editName.trim()) {
+      setError('Le nom est obligatoire.')
       return
     }
-    const nextPrice = window.prompt('Prix :', String(item.price ?? 0))
-    if (nextPrice === null) return
-    if (Number.isNaN(Number(nextPrice)) || Number(nextPrice) < 0) {
+    if (Number.isNaN(Number(editPrice)) || Number(editPrice) < 0) {
       setError('Le prix doit être un nombre positif.')
       return
     }
-    const nextDescription = window.prompt('Description (optionnel) :', item.description || '')
-    if (nextDescription === null) return
 
     try {
+      setSavingEdit(true)
       setError(null)
       await updateDrugItem({
-        id: item.id,
-        name: nextName.trim(),
-        type: nextType as DrugKind,
-        price: Number(nextPrice),
-        description: nextDescription.trim() || null,
+        id: editingItem.id,
+        type: editingItem.type,
+        name: editName.trim(),
+        price: Number(editPrice),
+        imageFile: editImageFile,
       })
       await refresh()
+      cancelEdit()
     } catch (e: any) {
       setError(e?.message || 'Erreur modification')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -180,7 +197,6 @@ export default function DroguesClient() {
     setBusyId(recipe.key)
 
     try {
-      // Consume requirements (simple strategy: consume from first matching items)
       for (const req of recipe.requirements) {
         let remaining = req.qty
         const matches = findByKeyword(items, req.name).sort((a, b) => (b.stock || 0) - (a.stock || 0))
@@ -194,7 +210,6 @@ export default function DroguesClient() {
         }
       }
 
-      // Add output to first matching output item; if none exists, do nothing but show a hint.
       const outMatches = findByKeyword(items, recipe.output.name)
       if (outMatches.length === 0) {
         throw new Error(`Crée l'item output “${recipe.output.name}” dans le catalogue pour recevoir la production.`)
@@ -251,6 +266,63 @@ export default function DroguesClient() {
 
         {tab === 'catalogue' ? (
           <>
+            {editingItem ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold">Modifier l’item : {editingItem.name}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingEdit}
+                      onClick={saveEdit}
+                      className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-xs text-white/60">Nom</label>
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/60">Prix</label>
+                    <input
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      inputMode="decimal"
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-xs text-white/60">Image actuelle</p>
+                  <div className="mt-1 h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                    {editingItem.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img alt="" src={editingItem.image_url} className="h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+                </div>
+
+                <ImageDropzone label="Remplacer l’image (optionnel)" onChange={setEditImageFile} />
+              </div>
+            ) : null}
+
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <input
                 value={query}
@@ -283,7 +355,7 @@ export default function DroguesClient() {
                     <th className="px-4 py-3 text-left font-medium">Type</th>
                     <th className="px-4 py-3 text-left font-medium">Prix</th>
                     <th className="px-4 py-3 text-left font-medium">Stock</th>
-                    <th className="px-4 py-3 text-right font-medium">Stock</th>
+                    <th className="px-4 py-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -337,8 +409,8 @@ export default function DroguesClient() {
                               }}
                               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10"
                             >
-                              <ArrowDownLeft className="h-4 w-4" />
-                              +
+                              <ShoppingCart className="h-4 w-4" />
+                              Achat
                             </button>
                             <button
                               disabled={busyId === it.id}
@@ -357,10 +429,16 @@ export default function DroguesClient() {
                               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10"
                             >
                               <ArrowUpRight className="h-4 w-4" />
-                              -
+                              Sortie
                             </button>
-                            <button onClick={() => quickEdit(it)} className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10">Modifier</button>
-                            <button onClick={() => removeItem(it)} className="inline-flex items-center rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20">Supprimer</button>
+                            <button onClick={() => startEdit(it)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10">
+                              <Pencil className="h-4 w-4" />
+                              Modifier
+                            </button>
+                            <button onClick={() => removeItem(it)} className="inline-flex items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20">
+                              <Trash2 className="h-4 w-4" />
+                              Supprimer
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -408,90 +486,64 @@ function DraggablePlantations({
   recipes: Recipe[]
   possibleBatches: Record<string, number>
   busyId: string | null
-  onProduce: (r: Recipe) => void
+  onProduce: (recipe: Recipe) => Promise<void>
 }) {
-  const recipesById = new Map(recipes.map((r) => [r.key === 'coke_leaf' ? 'coke' : r.key === 'meth_brut' ? 'meth' : r.key, r]))
-  const orderedRecipes = ['coke', 'meth']
-    .map((id) => recipesById.get(id))
-    .filter((r): r is Recipe => Boolean(r))
-
   return (
-    <div className="grid grid-cols-1 gap-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-          <p className="text-xs text-white/60">Production en stock</p>
-          <p className="mt-1 text-lg font-semibold">Feuilles de coke : {producedCokeLeaves}</p>
-          <p className="text-xs text-white/50">Basé sur l’item “Feuille de coke” dans ton catalogue.</p>
+    <div className="grid gap-4 md:grid-cols-3">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="flex items-center gap-2">
+          <Factory className="h-4 w-4 text-white/80" />
+          <p className="text-sm font-semibold">Production en stock</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-          <p className="text-xs text-white/60">Production en stock</p>
-          <p className="mt-1 text-lg font-semibold">Meth brut : {producedMethBrut}</p>
-          <p className="text-xs text-white/50">Basé sur l’item “Meth brut” dans ton catalogue.</p>
+        <div className="mt-3 space-y-2 text-sm">
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <span>Feuille de coke</span>
+            <span className="font-semibold">{producedCokeLeaves}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <span>Meth brut</span>
+            <span className="font-semibold">{producedMethBrut}</span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {orderedRecipes.map((r) => (
-          <div key={r.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white/90">
-                    <Factory className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold">{r.title}</p>
-                    <p className="text-xs text-white/60">{r.subtitle}</p>
-                  </div>
+      {recipes.map((r) => {
+        const canDo = (possibleBatches[r.key] ?? 0) > 0
+        return (
+          <div key={r.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="text-sm font-semibold">{r.title}</p>
+            <p className="mt-1 text-xs text-white/60">{r.subtitle}</p>
+
+            <div className="mt-3 space-y-1 text-xs text-white/70">
+              {r.requirements.map((req) => (
+                <div key={req.name} className="flex items-center justify-between">
+                  <span>{req.name}</span>
+                  <span>× {req.qty}</span>
                 </div>
-                {r.note ? <p className="mt-3 text-xs text-white/50">{r.note}</p> : null}
-              </div>
-
-              <div className="text-right">
-                <p className="text-xs text-white/60">Batches possibles</p>
-                <p className="mt-1 text-2xl font-semibold">{possibleBatches[r.key] ?? 0}</p>
-              </div>
+              ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-xs font-semibold text-white/80">Requis (par batch)</p>
-                <ul className="mt-2 space-y-1 text-xs text-white/60">
-                  {r.requirements.map((req) => (
-                    <li key={req.name} className="flex items-center justify-between">
-                      <span>{req.name}</span>
-                      <span className="font-semibold text-white/70">x{req.qty}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-xs font-semibold text-white/80">Output</p>
-                <p className="mt-2 text-sm font-semibold">{r.output.name}</p>
-                <p className="text-xs text-white/60">
-                  {r.output.range ? `+${r.output.range[0]} à +${r.output.range[1]}` : `+${r.output.qty}`}
-                </p>
-              </div>
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80">
+              Output : {r.output.name}{' '}
+              {r.output.range ? `(${r.output.range[0]} à ${r.output.range[1]})` : `× ${r.output.qty}`}
             </div>
 
-            <div className="mt-4 flex items-center justify-end gap-2">
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-white/60">Batches possibles : {possibleBatches[r.key] ?? 0}</span>
               <button
-                disabled={busyId === r.key || (possibleBatches[r.key] ?? 0) <= 0}
+                disabled={!canDo || busyId === r.key}
                 onClick={() => onProduce(r)}
-                className={
-                  'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-glow transition ' +
-                  ((possibleBatches[r.key] ?? 0) > 0 ? 'bg-white text-black hover:bg-white/90' : 'bg-white/20 text-white/50')
-                }
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
-                Produire 1 batch
+                Produire
               </button>
             </div>
+
+            {r.note ? <p className="mt-2 text-[11px] text-white/50">{r.note}</p> : null}
           </div>
-        ))}
-      </div>
+        )
+      })}
     </div>
   )
 }
-

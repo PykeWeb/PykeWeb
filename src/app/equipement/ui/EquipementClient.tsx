@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { Minus, Plus, ShoppingCart, ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { listEquipment, adjustEquipmentStock, updateEquipment, deleteEquipment, type DbEquipment } from '@/lib/equipmentApi'
+import { ImageDropzone } from '@/components/objets/ImageDropzone'
 
 export default function EquipementClient() {
   const [items, setItems] = useState<DbEquipment[]>([])
@@ -12,6 +13,12 @@ export default function EquipementClient() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const [editingItem, setEditingItem] = useState<DbEquipment | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editPrice, setEditPrice] = useState('')
+  const [editImageFile, setEditImageFile] = useState<File | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   async function refresh() {
     setLoading(true)
@@ -36,29 +43,47 @@ export default function EquipementClient() {
 
   const total = filtered.length
 
-  async function quickEdit(item: DbEquipment) {
-    const nextName = window.prompt('Nom :', item.name || '')
-    if (nextName === null || !nextName.trim()) return
-    const nextPrice = window.prompt('Prix :', String(item.price ?? 0))
-    if (nextPrice === null) return
-    if (Number.isNaN(Number(nextPrice)) || Number(nextPrice) < 0) {
+  function startEdit(item: DbEquipment) {
+    setEditingItem(item)
+    setEditName(item.name || '')
+    setEditPrice(String(item.price ?? 0))
+    setEditImageFile(null)
+    setError(null)
+  }
+
+  function cancelEdit() {
+    setEditingItem(null)
+    setEditName('')
+    setEditPrice('')
+    setEditImageFile(null)
+  }
+
+  async function saveEdit() {
+    if (!editingItem) return
+    if (!editName.trim()) {
+      setError('Le nom est obligatoire.')
+      return
+    }
+    if (Number.isNaN(Number(editPrice)) || Number(editPrice) < 0) {
       setError('Le prix doit être un nombre positif.')
       return
     }
-    const nextDescription = window.prompt('Description (optionnel) :', item.description || '')
-    if (nextDescription === null) return
 
     try {
+      setSavingEdit(true)
       setError(null)
       await updateEquipment({
-        id: item.id,
-        name: nextName.trim(),
-        price: Number(nextPrice),
-        description: nextDescription.trim() || null,
+        id: editingItem.id,
+        name: editName.trim(),
+        price: Number(editPrice),
+        imageFile: editImageFile,
       })
       await refresh()
+      cancelEdit()
     } catch (e: any) {
       setError(e?.message || 'Erreur modification')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -73,7 +98,6 @@ export default function EquipementClient() {
     }
   }
 
-
   return (
     <div className="space-y-4">
       <Panel>
@@ -82,7 +106,6 @@ export default function EquipementClient() {
             <div className="flex items-center gap-2">
               <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold">Catalogue</button>
             </div>
-            <p className="mt-2 text-xs text-white/60">Astuce : “Achat” = entrer du stock, “Sortie” = retirer (vente / perte / transfert).</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -91,6 +114,63 @@ export default function EquipementClient() {
             </Link>
           </div>
         </div>
+
+        {editingItem ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold">Modifier l’équipement : {editingItem.name}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  disabled={savingEdit}
+                  onClick={saveEdit}
+                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-xs text-white/60">Nom</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/60">Prix</label>
+                <input
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  inputMode="decimal"
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-white/60">Image actuelle</p>
+              <div className="mt-1 h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                {editingItem.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img alt="" src={editingItem.image_url} className="h-full w-full object-cover" />
+                ) : null}
+              </div>
+            </div>
+
+            <ImageDropzone label="Remplacer l’image (optionnel)" onChange={setEditImageFile} />
+          </div>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <input
@@ -184,8 +264,14 @@ export default function EquipementClient() {
                           <ArrowUpRight className="h-4 w-4" />
                           Sortie
                         </button>
-                        <button onClick={() => quickEdit(it)} className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10">Modifier</button>
-                        <button onClick={() => removeItem(it)} className="inline-flex items-center rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20">Supprimer</button>
+                        <button onClick={() => startEdit(it)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10">
+                          <Pencil className="h-4 w-4" />
+                          Modifier
+                        </button>
+                        <button onClick={() => removeItem(it)} className="inline-flex items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20">
+                          <Trash2 className="h-4 w-4" />
+                          Supprimer
+                        </button>
                       </div>
                     </td>
                   </tr>
