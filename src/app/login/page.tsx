@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { loginTenant } from '@/lib/tenantAuthApi'
 import { saveTenantSession } from '@/lib/tenantSession'
 import { Shield, Users } from 'lucide-react'
@@ -14,7 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)

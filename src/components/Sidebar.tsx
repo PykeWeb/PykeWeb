@@ -6,9 +6,10 @@ import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt } from 'lucide-re
 import { BRAND } from '@/lib/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 
-const NavItem = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => {
+const NavItem = ({ href, label, icon }: { href: string; label: string; icon: ReactNode }) => {
   return (
     <Link
       href={href}

@@ -33,10 +33,10 @@ export function getTenantSession(): TenantSession | null {
     }
   }
 
-  const cookie = document.cookie
+  const cookieEntry = document.cookie
     .split('; ')
     .find((v) => v.startsWith(`${COOKIE_KEY}=`))
-    ?.split('=')[1]
+  const cookie = cookieEntry ? cookieEntry.slice(`${COOKIE_KEY}=`.length) : null
   if (!cookie) return null
   return decode(cookie)
 }

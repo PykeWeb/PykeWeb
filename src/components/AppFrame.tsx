@@ -1,10 +1,11 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import type { ReactNode } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { Topbar } from '@/components/Topbar'
 
-export function AppFrame({ children }: { children: React.ReactNode }) {
+export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isLogin = pathname === '/login'
 
