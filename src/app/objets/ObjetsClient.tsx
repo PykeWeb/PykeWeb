@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { updateObject } from '@/lib/objectsApi';
+import { updateObject, deleteObject } from '@/lib/objectsApi';
 import { ImageDropzone } from '@/components/objets/ImageDropzone';
 
 type ObjRow = {
@@ -145,6 +145,20 @@ export default function ObjetsClient() {
       setEditError(e?.message || 'Impossible de modifier cet objet.');
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+
+
+  async function removeObject(o: ObjRow) {
+    if (!window.confirm(`Supprimer définitivement "${o.name ?? 'cet objet'}" ?`)) return;
+    try {
+      await deleteObject(o.id);
+      const supabase = getSupabase();
+      const { data: updatedObjects } = await supabase.from('objects').select('id,name,price,stock,image_url').order('created_at', { ascending: false });
+      setObjs((updatedObjects ?? []) as ObjRow[]);
+    } catch (e: any) {
+      setEditError(e?.message || 'Impossible de supprimer cet objet.');
     }
   }
 
@@ -325,6 +339,13 @@ export default function ObjetsClient() {
                               className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
                             >
                               Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeObject(o)}
+                              className="rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-1.5 text-sm text-rose-100 hover:bg-rose-500/20"
+                            >
+                              Supprimer
                             </button>
                           </div>
                         </td>

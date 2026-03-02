@@ -97,3 +97,51 @@ export async function adjustEquipmentStock(args: { equipmentId: string; delta: n
 
   return next
 }
+
+export async function updateEquipment(args: {
+  id: string
+  name: string
+  price: number
+  description?: string | null
+  imageFile?: File | null
+}) {
+  const { data: updatedBase, error: baseErr } = await supabase
+    .from('equipment')
+    .update({
+      name: args.name,
+      price: args.price,
+      description: args.description || null,
+    })
+    .eq('id', args.id)
+    .select('id,name,price,description,image_url,stock,created_at')
+    .single()
+
+  if (baseErr) throw baseErr
+
+  if (args.imageFile) {
+    const ext = getExt(args.imageFile)
+    const path = `${args.id}/main.${ext}`
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, args.imageFile, {
+      upsert: true,
+      contentType: args.imageFile.type || undefined,
+    })
+    if (uploadError) throw uploadError
+
+    const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path)
+    const { data: updatedWithImage, error: imageErr } = await supabase
+      .from('equipment')
+      .update({ image_url: publicData.publicUrl })
+      .eq('id', args.id)
+      .select('id,name,price,description,image_url,stock,created_at')
+      .single()
+    if (imageErr) throw imageErr
+    return updatedWithImage as DbEquipment
+  }
+
+  return updatedBase as DbEquipment
+}
+
+export async function deleteEquipment(equipmentId: string) {
+  const { error } = await supabase.from('equipment').delete().eq('id', equipmentId)
+  if (error) throw error
+}

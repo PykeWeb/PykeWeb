@@ -158,3 +158,51 @@ export async function closeWeaponLoan(args: { loanId: string }) {
   // Increment stock back
   await adjustWeaponStock({ weaponId: loan.weapon_id, delta: Math.abs(loan.quantity), note: `Retour prêt ${loan.borrower_name}` })
 }
+
+export async function updateWeapon(args: {
+  id: string
+  weapon_id?: string | null
+  name?: string | null
+  description?: string | null
+  imageFile?: File | null
+}) {
+  const { data: updatedBase, error: baseErr } = await supabase
+    .from('weapons')
+    .update({
+      weapon_id: args.weapon_id || null,
+      name: args.name || null,
+      description: args.description || null,
+    })
+    .eq('id', args.id)
+    .select('id,weapon_id,name,description,image_url,stock,created_at')
+    .single()
+
+  if (baseErr) throw baseErr
+
+  if (args.imageFile) {
+    const ext = getExt(args.imageFile)
+    const path = `${args.id}/main.${ext}`
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, args.imageFile, {
+      upsert: true,
+      contentType: args.imageFile.type || undefined,
+    })
+    if (uploadError) throw uploadError
+
+    const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path)
+    const { data: updatedWithImage, error: imageErr } = await supabase
+      .from('weapons')
+      .update({ image_url: publicData.publicUrl })
+      .eq('id', args.id)
+      .select('id,weapon_id,name,description,image_url,stock,created_at')
+      .single()
+    if (imageErr) throw imageErr
+    return updatedWithImage as DbWeapon
+  }
+
+  return updatedBase as DbWeapon
+}
+
+export async function deleteWeapon(weaponId: string) {
+  const { error } = await supabase.from('weapons').delete().eq('id', weaponId)
+  if (error) throw error
+}

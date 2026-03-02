@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus, ShoppingCart, ArrowUpRight } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
-import { listEquipment, adjustEquipmentStock, type DbEquipment } from '@/lib/equipmentApi'
+import { listEquipment, adjustEquipmentStock, updateEquipment, deleteEquipment, type DbEquipment } from '@/lib/equipmentApi'
 
 export default function EquipementClient() {
   const [items, setItems] = useState<DbEquipment[]>([])
@@ -35,6 +35,44 @@ export default function EquipementClient() {
   }, [items, query])
 
   const total = filtered.length
+
+  async function quickEdit(item: DbEquipment) {
+    const nextName = window.prompt('Nom :', item.name || '')
+    if (nextName === null || !nextName.trim()) return
+    const nextPrice = window.prompt('Prix :', String(item.price ?? 0))
+    if (nextPrice === null) return
+    if (Number.isNaN(Number(nextPrice)) || Number(nextPrice) < 0) {
+      setError('Le prix doit être un nombre positif.')
+      return
+    }
+    const nextDescription = window.prompt('Description (optionnel) :', item.description || '')
+    if (nextDescription === null) return
+
+    try {
+      setError(null)
+      await updateEquipment({
+        id: item.id,
+        name: nextName.trim(),
+        price: Number(nextPrice),
+        description: nextDescription.trim() || null,
+      })
+      await refresh()
+    } catch (e: any) {
+      setError(e?.message || 'Erreur modification')
+    }
+  }
+
+  async function removeItem(item: DbEquipment) {
+    if (!window.confirm(`Supprimer définitivement "${item.name}" ?`)) return
+    try {
+      setError(null)
+      await deleteEquipment(item.id)
+      await refresh()
+    } catch (e: any) {
+      setError(e?.message || 'Erreur suppression')
+    }
+  }
+
 
   return (
     <div className="space-y-4">
@@ -146,6 +184,8 @@ export default function EquipementClient() {
                           <ArrowUpRight className="h-4 w-4" />
                           Sortie
                         </button>
+                        <button onClick={() => quickEdit(it)} className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10">Modifier</button>
+                        <button onClick={() => removeItem(it)} className="inline-flex items-center rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20">Supprimer</button>
                       </div>
                     </td>
                   </tr>

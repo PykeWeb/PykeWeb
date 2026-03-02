@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Factory, Plus } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
-import { listDrugItems, adjustDrugStock, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
+import { listDrugItems, adjustDrugStock, updateDrugItem, deleteDrugItem, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
 
 const TAB_KEYS = ['catalogue', 'plantations'] as const
 type TabKey = (typeof TAB_KEYS)[number]
@@ -125,6 +125,52 @@ export default function DroguesClient() {
     const list = findByKeyword(items, 'Meth brut')
     return list.reduce((sum, it) => sum + Number(it.stock || 0), 0)
   }, [items])
+
+
+
+  async function quickEdit(item: DbDrugItem) {
+    const nextName = window.prompt('Nom :', item.name || '')
+    if (nextName === null || !nextName.trim()) return
+    const nextType = window.prompt('Type (drug/seed/planting/pouch/other) :', item.type)
+    if (nextType === null) return
+    if (!['drug', 'seed', 'planting', 'pouch', 'other'].includes(nextType)) {
+      setError('Type invalide.')
+      return
+    }
+    const nextPrice = window.prompt('Prix :', String(item.price ?? 0))
+    if (nextPrice === null) return
+    if (Number.isNaN(Number(nextPrice)) || Number(nextPrice) < 0) {
+      setError('Le prix doit être un nombre positif.')
+      return
+    }
+    const nextDescription = window.prompt('Description (optionnel) :', item.description || '')
+    if (nextDescription === null) return
+
+    try {
+      setError(null)
+      await updateDrugItem({
+        id: item.id,
+        name: nextName.trim(),
+        type: nextType as DrugKind,
+        price: Number(nextPrice),
+        description: nextDescription.trim() || null,
+      })
+      await refresh()
+    } catch (e: any) {
+      setError(e?.message || 'Erreur modification')
+    }
+  }
+
+  async function removeItem(item: DbDrugItem) {
+    if (!window.confirm(`Supprimer définitivement "${item.name}" ?`)) return
+    try {
+      setError(null)
+      await deleteDrugItem(item.id)
+      await refresh()
+    } catch (e: any) {
+      setError(e?.message || 'Erreur suppression')
+    }
+  }
 
   async function produce(recipe: Recipe) {
     const batches = possibleBatches[recipe.key] ?? 0
@@ -313,6 +359,8 @@ export default function DroguesClient() {
                               <ArrowUpRight className="h-4 w-4" />
                               -
                             </button>
+                            <button onClick={() => quickEdit(it)} className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10">Modifier</button>
+                            <button onClick={() => removeItem(it)} className="inline-flex items-center rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20">Supprimer</button>
                           </div>
                         </td>
                       </tr>

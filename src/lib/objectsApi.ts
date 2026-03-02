@@ -125,3 +125,8 @@ export async function updateObject(args: {
 
   return updatedBase as DbObject
 }
+
+export async function deleteObject(objectId: string) {
+  const { error } = await supabase.from('objects').delete().eq('id', objectId)
+  if (error) throw error
+}

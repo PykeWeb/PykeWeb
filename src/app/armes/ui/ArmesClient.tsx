@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { listWeapons, adjustWeaponStock, type DbWeapon } from '@/lib/weaponsApi'
+import { listWeapons, adjustWeaponStock, updateWeapon, deleteWeapon, type DbWeapon } from '@/lib/weaponsApi'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { toast } from 'sonner'
@@ -34,6 +34,41 @@ export function ArmesClient() {
     if (!query) return items
     return items.filter((w) => (w.name || '').toLowerCase().includes(query) || (w.weapon_id || '').toLowerCase().includes(query))
   }, [items, q])
+
+
+
+  async function quickEdit(item: DbWeapon) {
+    const nextName = window.prompt("Nom de l'arme :", item.name || '')
+    if (nextName === null) return
+    const nextWeaponId = window.prompt('ID arme (optionnel) :', item.weapon_id || '')
+    if (nextWeaponId === null) return
+    const nextDescription = window.prompt('Description (optionnel) :', item.description || '')
+    if (nextDescription === null) return
+
+    try {
+      await updateWeapon({
+        id: item.id,
+        name: nextName.trim() || null,
+        weapon_id: nextWeaponId.trim() || null,
+        description: nextDescription.trim() || null,
+      })
+      await refresh()
+      toast.success('Arme modifiée')
+    } catch (e: any) {
+      toast.error(e?.message || 'Impossible de modifier')
+    }
+  }
+
+  async function removeItem(item: DbWeapon) {
+    if (!window.confirm(`Supprimer définitivement "${item.name || 'cette arme'}" ?`)) return
+    try {
+      await deleteWeapon(item.id)
+      await refresh()
+      toast.success('Arme supprimée')
+    } catch (e: any) {
+      toast.error(e?.message || 'Impossible de supprimer')
+    }
+  }
 
   async function bump(id: string, delta: number) {
     try {
@@ -139,6 +174,8 @@ export function ArmesClient() {
                         <Link href={`/armes/prets/nouveau?weapon=${w.id}`}>
                           <Button variant="secondary">Prêter</Button>
                         </Link>
+                        <Button variant="secondary" onClick={() => quickEdit(w)}>Modifier</Button>
+                        <Button variant="secondary" onClick={() => removeItem(w)}>Supprimer</Button>
                         <Link href={`/armes/sortie?weapon=${w.id}`}>
                           <Button variant="secondary">Sortie</Button>
                         </Link>
