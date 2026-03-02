@@ -37,16 +37,40 @@ export async function listObjects(): Promise<DbObject[]> {
 export async function createObject(args: {
   name: string
   price: number
+  quantity?: number
   description?: string
   imageFile?: File | null
 }): Promise<DbObject> {
+  const groupId = currentGroupId()
+  const quantity = Math.max(1, Math.floor(args.quantity ?? 1))
+
+  const { data: existing } = await supabase
+    .from('objects')
+    .select('id,stock')
+    .eq('group_id', groupId)
+    .eq('name', args.name)
+    .maybeSingle()
+
+  if (existing?.id) {
+    const { data: bumped, error: bumpErr } = await supabase
+      .from('objects')
+      .update({ stock: Number(existing.stock ?? 0) + quantity })
+      .eq('id', existing.id)
+      .eq('group_id', groupId)
+      .select('id,name,price,description,image_url,stock,created_at')
+      .single()
+    if (bumpErr) throw bumpErr
+    return bumped as DbObject
+  }
+
   // 1) Create the row first (so we get the id)
   const { data: inserted, error: insertError } = await supabase
     .from('objects')
     .insert({
-      group_id: currentGroupId(),
+      group_id: groupId,
       name: args.name,
       price: args.price,
+      stock: quantity,
       description: args.description || null,
     })
     .select('id,name,price,description,image_url,stock,created_at')

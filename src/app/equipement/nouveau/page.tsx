@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/PageHeader'
 import Link from 'next/link'
 import { ImageDropzone } from '@/components/objets/ImageDropzone'
 import { useMemo, useState } from 'react'
+import { Minus, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createEquipment } from '@/lib/equipmentApi'
 
@@ -13,11 +14,13 @@ export default function NouveauEquipementPage() {
   const [name, setName] = useState('')
   const [price, setPrice] = useState<string>('')
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [quantity, setQuantity] = useState(1)
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const canSave = useMemo(() => name.trim().length > 0 && Number(price) >= 0 && !saving, [name, price, saving])
+  const canSave = useMemo(() => name.trim().length > 0 && Number(price) >= 0 && Number.isInteger(quantity) && quantity >= 1 && !saving, [name, price, quantity, saving])
+  const estimatedTotal = Number(price) >= 0 ? Number(price) * quantity : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,6 +61,20 @@ export default function NouveauEquipementPage() {
                 placeholder="0"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-white/70">Quantité</label>
+            <div className="mt-2 flex items-center gap-2">
+              <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="rounded-xl border border-white/10 bg-white/5 p-2 hover:bg-white/10">
+                <Minus className="h-4 w-4" />
+              </button>
+              <input type="number" min={1} step={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))} className="w-24 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm outline-none focus:border-white/20" />
+              <button type="button" onClick={() => setQuantity((q) => q + 1)} className="rounded-xl border border-white/10 bg-white/5 p-2 hover:bg-white/10">
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+            {estimatedTotal !== null ? <p className="mt-2 text-xs text-white/50">Total estimé : {estimatedTotal.toFixed(2)} $</p> : null}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/60">
@@ -106,6 +123,7 @@ export default function NouveauEquipementPage() {
                     price: Number(price),
                     description: description.trim() || undefined,
                     imageFile,
+                    quantity,
                   })
                   router.push('/equipement')
                   router.refresh()

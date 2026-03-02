@@ -45,15 +45,44 @@ export async function listWeapons(): Promise<DbWeapon[]> {
 export async function createWeapon(args: {
   weapon_id?: string
   name?: string
+  quantity?: number
   description?: string
   imageFile?: File | null
 }): Promise<DbWeapon> {
+  const groupId = currentGroupId()
+  const quantity = Math.max(1, Math.floor(args.quantity ?? 1))
+
+  const identifierColumn = args.weapon_id?.trim() ? 'weapon_id' : args.name?.trim() ? 'name' : null
+  const identifierValue = args.weapon_id?.trim() || args.name?.trim() || null
+
+  if (identifierColumn && identifierValue) {
+    const { data: existing } = await supabase
+      .from('weapons')
+      .select('id,stock')
+      .eq('group_id', groupId)
+      .eq(identifierColumn, identifierValue)
+      .maybeSingle()
+
+    if (existing?.id) {
+      const { data: bumped, error: bumpErr } = await supabase
+        .from('weapons')
+        .update({ stock: Number(existing.stock ?? 0) + quantity })
+        .eq('id', existing.id)
+        .eq('group_id', groupId)
+        .select('id,weapon_id,name,description,image_url,stock,created_at')
+        .single()
+      if (bumpErr) throw bumpErr
+      return bumped as DbWeapon
+    }
+  }
+
   const { data: inserted, error: insertError } = await supabase
     .from('weapons')
     .insert({
-      group_id: currentGroupId(),
+      group_id: groupId,
       weapon_id: args.weapon_id || null,
       name: args.name || null,
+      stock: quantity,
       description: args.description || null,
     })
     .select('id,weapon_id,name,description,image_url,stock,created_at')

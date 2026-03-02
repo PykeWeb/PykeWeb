@@ -7,6 +7,7 @@ import { createWeapon } from '@/lib/weaponsApi'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
+import { Minus, Plus } from 'lucide-react'
 import { ImageDropzone } from '@/components/objets/ImageDropzone'
 
 export function NewWeaponForm() {
@@ -15,6 +16,7 @@ export function NewWeaponForm() {
   const [weaponId, setWeaponId] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [quantity, setQuantity] = useState(1)
   const [saving, setSaving] = useState(false)
 
   const canSave = useMemo(() => {
@@ -29,6 +31,7 @@ export function NewWeaponForm() {
         weapon_id: weaponId.trim() || undefined,
         description: description.trim() || undefined,
         imageFile: file,
+        quantity,
       })
       toast.success('Arme ajoutée')
       router.push('/armes')
@@ -52,6 +55,19 @@ export function NewWeaponForm() {
             <label className="text-xs text-white/60">ID (optionnel)</label>
             <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="Ex: WEAPON_PISTOL, 12345..." />
             <p className="mt-1 text-xs text-white/50">Tu peux mettre l’ID FiveM / inventaire, ou un ID interne.</p>
+          </div>
+
+          <div>
+            <label className="text-xs text-white/60">Quantité</label>
+            <div className="mt-2 flex items-center gap-2">
+              <Button type="button" variant="secondary" onClick={() => setQuantity((q) => Math.max(1, q - 1))}>
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Input type="number" min={1} step={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))} className="w-24" />
+              <Button type="button" variant="secondary" onClick={() => setQuantity((q) => q + 1)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div>

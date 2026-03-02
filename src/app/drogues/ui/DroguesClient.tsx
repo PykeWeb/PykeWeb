@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Factory, Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-react'
+import { ArrowUpRight, Calculator, Factory, Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { listDrugItems, adjustDrugStock, updateDrugItem, deleteDrugItem, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
 import { ImageDropzone } from '@/components/objets/ImageDropzone'
@@ -71,6 +71,79 @@ function findByKeyword(items: DbDrugItem[], keyword: string) {
   return items.filter((it) => (it.name || '').toLowerCase().includes(k))
 }
 
+type CalcMode = 'coke' | 'meth'
+
+type CalculatorResult = {
+  requirements: { label: string; qty: number }[]
+  total: number | null
+  missingPrices: string[]
+}
+
+function findPriceByKeywords(items: DbDrugItem[], keywords: string[]): number | null {
+  const normalized = keywords.map((k) => k.toLowerCase())
+  const match = items.find((item) => {
+    const name = (item.name || '').toLowerCase()
+    return normalized.some((kw) => name.includes(kw))
+  })
+  if (!match) return null
+  const price = Number(match.price)
+  return Number.isFinite(price) && price > 0 ? price : null
+}
+
+function buildCalculatorResult(mode: CalcMode, qty: number, items: DbDrugItem[]): CalculatorResult {
+  if (mode === 'coke') {
+    const requirements = [
+      { label: 'Pots', qty },
+      { label: 'Fertilisant', qty },
+      { label: 'Lampes', qty },
+      { label: 'Eau', qty: qty * 3 },
+    ]
+
+    const priceMap: Record<string, number | null> = {
+      Pots: 10,
+      Fertilisant: 10,
+      Lampes: 36,
+      Eau: findPriceByKeywords(items, ['eau', 'water']),
+    }
+
+    const missingPrices = Object.entries(priceMap)
+      .filter(([, price]) => price === null)
+      .map(([name]) => name)
+
+    const total = missingPrices.length
+      ? null
+      : requirements.reduce((sum, req) => sum + req.qty * Number(priceMap[req.label] ?? 0), 0)
+
+    return { requirements, total, missingPrices }
+  }
+
+  const requirements = [
+    { label: 'Tables', qty },
+    { label: 'Meth', qty },
+    { label: 'Batteries', qty: qty * 2 },
+    { label: 'Ammoniaque', qty: qty * 16 },
+    { label: 'Methylamine', qty: qty * 15 },
+  ]
+
+  const priceMap: Record<string, number | null> = {
+    Tables: findPriceByKeywords(items, ['table']),
+    Meth: findPriceByKeywords(items, ['meth']),
+    Batteries: findPriceByKeywords(items, ['batterie', 'battery']),
+    Ammoniaque: findPriceByKeywords(items, ['ammoniaque']),
+    Methylamine: findPriceByKeywords(items, ['methylamine']),
+  }
+
+  const missingPrices = Object.entries(priceMap)
+    .filter(([, price]) => price === null)
+    .map(([name]) => name)
+
+  const total = missingPrices.length
+    ? null
+    : requirements.reduce((sum, req) => sum + req.qty * Number(priceMap[req.label] ?? 0), 0)
+
+  return { requirements, total, missingPrices }
+}
+
 export default function DroguesClient() {
   const [tab, setTab] = useState<TabKey>('catalogue')
   const [items, setItems] = useState<DbDrugItem[]>([])
@@ -86,6 +159,8 @@ export default function DroguesClient() {
   const [editPrice, setEditPrice] = useState('')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [calcMode, setCalcMode] = useState<CalcMode>('coke')
+  const [calcQuantity, setCalcQuantity] = useState(1)
 
   async function refresh() {
     setLoading(true)
@@ -128,6 +203,8 @@ export default function DroguesClient() {
     const list = findByKeyword(items, 'Feuille de coke')
     return list.reduce((sum, it) => sum + Number(it.stock || 0), 0)
   }, [items])
+
+  const calculatorResult = useMemo(() => buildCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), items), [calcMode, calcQuantity, items])
 
   const producedMethBrut = useMemo(() => {
     const list = findByKeyword(items, 'Meth brut')
@@ -479,6 +556,59 @@ export default function DroguesClient() {
             </div>
           </>
         )}
+
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4 text-white/80" />
+            <p className="text-sm font-semibold">📟 Calculateur</p>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <label className="text-xs text-white/60">Type</label>
+              <select
+                value={calcMode}
+                onChange={(e) => setCalcMode(e.target.value as CalcMode)}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+              >
+                <option value="coke">Coke</option>
+                <option value="meth">Meth</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-white/60">{calcMode === 'coke' ? 'Nombre de graines de coke' : 'Nombre de machines à meth'}</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={calcQuantity}
+                onChange={(e) => setCalcQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+            <p className="font-semibold">Résultat ({calcMode === 'coke' ? 'Coke' : 'Meth'})</p>
+            <div className="mt-2 space-y-1 text-white/80">
+              {calculatorResult.requirements.map((req) => (
+                <div key={req.label} className="flex items-center justify-between">
+                  <span>{req.label}</span>
+                  <span>× {req.qty}</span>
+                </div>
+              ))}
+            </div>
+
+            {calculatorResult.total !== null ? (
+              <p className="mt-3 font-semibold text-emerald-300">💰 Total : {calculatorResult.total.toFixed(2)} $</p>
+            ) : null}
+
+            {calculatorResult.missingPrices.length ? (
+              <p className="mt-2 text-amber-300">⚠️ Prix manquants : {calculatorResult.missingPrices.join(', ')}</p>
+            ) : null}
+          </div>
+        </div>
 
         {error ? (
           <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
