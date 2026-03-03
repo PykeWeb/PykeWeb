@@ -10,6 +10,7 @@ import {
 } from '@/lib/tenantAuthApi'
 import { getTenantSession } from '@/lib/tenantSession'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 type PasswordModal =
   | { type: 'group'; group: TenantGroup }
@@ -231,6 +232,8 @@ export default function AdminGroupsPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [passwordModal, setPasswordModal] = useState<PasswordModal>(null)
+  const [pendingDeleteGroup, setPendingDeleteGroup] = useState<TenantGroup | null>(null)
+  const [deletingGroup, setDeletingGroup] = useState(false)
   const [editModal, setEditModal] = useState<GroupEditModal>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
 
@@ -322,13 +325,17 @@ export default function AdminGroupsPage() {
     }
   }
 
-  async function removeGroup(group: TenantGroup) {
-    if (!window.confirm(`Supprimer le groupe "${group.name}" ?`)) return
+  async function removeGroup() {
+    if (!pendingDeleteGroup) return
     try {
-      await deleteTenantGroup(group.id)
+      setDeletingGroup(true)
+      await deleteTenantGroup(pendingDeleteGroup.id)
       await refresh()
+      setPendingDeleteGroup(null)
     } catch (e: any) {
       setError(e?.message || 'Impossible de supprimer le groupe.')
+    } finally {
+      setDeletingGroup(false)
     }
   }
 
@@ -391,7 +398,7 @@ export default function AdminGroupsPage() {
                         <button onClick={() => void toggleActive(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">{group.active ? 'Désactiver' : 'Activer'}</button>
                         <button onClick={() => void addCustomDays(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">+ jours</button>
                         <button onClick={() => void setUnlimited(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Illimité</button>
-                        <button onClick={() => void removeGroup(group)} className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22">Supprimer</button>
+                        <button onClick={() => setPendingDeleteGroup(group)} className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22">Supprimer</button>
                       </div>
                     </td>
                   </tr>
@@ -407,6 +414,14 @@ export default function AdminGroupsPage() {
       <CreateGroupModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={addGroup} submitting={isSubmitting} />
       <GroupEditIdentityModal group={editModal} onClose={() => setEditModal(null)} onSaved={refresh} />
       <PasswordChangeModal state={passwordModal} onClose={() => setPasswordModal(null)} onSaved={refresh} />
+      <ConfirmDialog
+        open={!!pendingDeleteGroup}
+        title="Supprimer ce groupe ?"
+        description="Cette action est définitive et supprime les données du groupe."
+        loading={deletingGroup}
+        onCancel={() => (!deletingGroup ? setPendingDeleteGroup(null) : null)}
+        onConfirm={removeGroup}
+      />
     </div>
   )
 }

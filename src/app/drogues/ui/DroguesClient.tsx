@@ -7,6 +7,7 @@ import { Panel } from '@/components/ui/Panel'
 import { listDrugItems, adjustDrugStock, updateDrugItem, deleteDrugItem, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs } from '@/components/ui/design-system'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 const TAB_KEYS = ['catalogue', 'plantations', 'calculateur'] as const
 type TabKey = (typeof TAB_KEYS)[number]
@@ -137,6 +138,8 @@ export default function DroguesClient() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<DbDrugItem | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const [editingItem, setEditingItem] = useState<DbDrugItem | null>(null)
   const [editName, setEditName] = useState('')
@@ -247,14 +250,18 @@ export default function DroguesClient() {
     }
   }
 
-  async function removeItem(item: DbDrugItem) {
-    if (!window.confirm(`Supprimer définitivement "${item.name}" ?`)) return
+  async function removeItem() {
+    if (!pendingDelete) return
     try {
+      setDeleting(true)
       setError(null)
-      await deleteDrugItem(item.id)
+      await deleteDrugItem(pendingDelete.id)
       await refresh()
+      setPendingDelete(null)
     } catch (e: any) {
       setError(e?.message || 'Erreur suppression')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -483,7 +490,7 @@ export default function DroguesClient() {
                               Sortie
                             </SecondaryButton>
                             <SecondaryButton onClick={() => startEdit(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton>
-                            <DangerButton onClick={() => removeItem(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
+                            <DangerButton onClick={() => setPendingDelete(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
                           </div>
                         </td>
                       </tr>
@@ -570,13 +577,20 @@ export default function DroguesClient() {
           </div>
         </div>
         ) : null}
-
         {error ? (
           <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
             ❌ {error}
           </div>
         ) : null}
       </Panel>
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Supprimer cet objet ?"
+        description="Cette action est définitive. L’objet et ses transactions associées seront supprimés."
+        loading={deleting}
+        onCancel={() => (!deleting ? setPendingDelete(null) : null)}
+        onConfirm={removeItem}
+      />
     </div>
   )
 }

@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { ArrowDownRight, ArrowUpRight, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { listObjects, updateObject, deleteObject } from '@/lib/objectsApi';
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone';
 import { currentGroupId } from '@/lib/tenantScope';
 import { PrimaryButton, SecondaryButton, DangerButton, SearchInput, SegmentedTabs } from '@/components/ui/design-system';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 type ObjRow = {
   id: string;
@@ -60,6 +62,8 @@ export default function ObjetsClient() {
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ObjRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // allow opening /objets?tab=transactions
   useEffect(() => {
@@ -156,13 +160,18 @@ export default function ObjetsClient() {
 
 
 
-  async function removeObject(o: ObjRow) {
-    if (!window.confirm(`Supprimer définitivement "${o.name ?? 'cet objet'}" ?`)) return;
+  async function removeObject() {
+    if (!pendingDelete) return;
     try {
-      await deleteObject(o.id);
+      setDeleting(true);
+      await deleteObject(pendingDelete.id);
       setObjs((await listObjects()) as ObjRow[]);
+      setPendingDelete(null);
+      toast.success('Objet supprimé.');
     } catch (e: any) {
-      setEditError(e?.message || 'Impossible de supprimer cet objet.');
+      toast.error(e?.message || 'Impossible de supprimer cet objet.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -178,6 +187,7 @@ export default function ObjetsClient() {
   }, [txs]);
 
   return (
+    <>
     <div className="space-y-4">
       {/* Main */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
@@ -319,7 +329,7 @@ export default function ObjetsClient() {
                               Achat
                             </Link>
                             <Link
-                              href={`/transactions/sortie?prefill=${encodeURIComponent(o.id)}`}
+                              href={`/transactions/nouveau?type=sale&prefill=${encodeURIComponent(o.id)}`}
                               className="inline-flex h-10 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]"
                             >
                               <ArrowUpRight className="h-4 w-4" />
@@ -335,7 +345,7 @@ export default function ObjetsClient() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => removeObject(o)}
+                              onClick={() => setPendingDelete(o)}
                               className="inline-flex h-10 items-center gap-2 rounded-2xl border border-rose-400/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -375,11 +385,11 @@ export default function ObjetsClient() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-white/70">Dernières transactions</div>
               <div className="flex items-center gap-2">
-                <Link href="/transactions/nouveau" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">
-                  Nouvel achat
+                <Link href="/transactions/nouveau?type=purchase">
+                  <SecondaryButton icon={<ShoppingCart className="h-4 w-4" />}>Nouvel achat</SecondaryButton>
                 </Link>
-                <Link href="/transactions/sortie" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">
-                  Nouvelle sortie
+                <Link href="/transactions/nouveau?type=sale">
+                  <SecondaryButton icon={<ArrowUpRight className="h-4 w-4" />}>Nouvelle sortie</SecondaryButton>
                 </Link>
               </div>
             </div>
@@ -502,5 +512,14 @@ export default function ObjetsClient() {
         )}
       </div>
     </div>
+    <ConfirmDialog
+      open={!!pendingDelete}
+      title="Supprimer cet objet ?"
+      description="Cette action est définitive. L’objet et ses transactions associées seront supprimés."
+      loading={deleting}
+      onCancel={() => (!deleting ? setPendingDelete(null) : null)}
+      onConfirm={removeObject}
+    />
+    </>
   );
 }

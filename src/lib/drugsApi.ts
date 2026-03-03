@@ -110,20 +110,61 @@ export async function createDrugItem(args: {
   return inserted as any
 }
 
+async function ensureLocalDrugItem(itemId: string) {
+  if (!itemId.startsWith('global:')) return itemId
+
+  const globalItemId = itemId.replace('global:', '')
+  const globalItems = await fetch('/api/catalog/items?category=drug', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : []))
+  const globalItem = Array.isArray(globalItems)
+    ? globalItems.find((it: any) => (it.global_item_id ?? it.id) === globalItemId)
+    : null
+
+  if (!globalItem) throw new Error('Item global introuvable.')
+
+  const { data: existing } = await supabase
+    .from('drug_items')
+    .select('id')
+    .eq('group_id', currentGroupId())
+    .eq('name', globalItem.name)
+    .maybeSingle()
+
+  if (existing?.id) return existing.id as string
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('drug_items')
+    .insert({
+      group_id: currentGroupId(),
+      type: (globalItem.item_type || 'other') as DrugKind,
+      name: globalItem.name,
+      price: Number(globalItem.price ?? 0),
+      description: globalItem.description ?? null,
+      image_url: globalItem.image_url ?? null,
+      stock: 0,
+    })
+    .select('id')
+    .single()
+
+  if (insertError) throw insertError
+  if (!inserted?.id) throw new Error('Impossible de créer le stock local.')
+
+  return inserted.id as string
+}
+
 export async function adjustDrugStock(args: { itemId: string; delta: number; note?: string }) {
-  if (args.itemId.startsWith('global:')) throw new Error('Stock des items globaux: crée un item local ou override dédié.')
-  const { data: row, error: getErr } = await supabase.from('drug_items').select('id,stock').eq('id', args.itemId).eq('group_id', currentGroupId()).single()
+  const resolvedItemId = await ensureLocalDrugItem(args.itemId)
+
+  const { data: row, error: getErr } = await supabase.from('drug_items').select('id,stock').eq('id', resolvedItemId).eq('group_id', currentGroupId()).single()
   if (getErr) throw getErr
   const current = row?.stock ?? 0
   const next = current + args.delta
   if (next < 0) throw new Error('Stock insuffisant')
 
-  const { error: updErr } = await supabase.from('drug_items').update({ stock: next }).eq('id', args.itemId).eq('group_id', currentGroupId())
+  const { error: updErr } = await supabase.from('drug_items').update({ stock: next }).eq('id', resolvedItemId).eq('group_id', currentGroupId())
   if (updErr) throw updErr
 
   try {
     await supabase.from('drug_stock_movements').insert({
-      drug_item_id: args.itemId,
+      drug_item_id: resolvedItemId,
       group_id: currentGroupId(),
       delta: args.delta,
       note: args.note || null,
