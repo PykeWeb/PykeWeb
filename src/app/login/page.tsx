@@ -1,13 +1,13 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { loginTenant } from '@/lib/tenantAuthApi'
 import { saveTenantSession } from '@/lib/tenantSession'
 import { listActivePatchNotes, type PatchNote } from '@/lib/communicationApi'
 import { PatchNoteModal } from '@/components/ui/PatchNoteModal'
+import { PatchNotesRecapModal } from '@/components/ui/PatchNotesRecapModal'
 
 const SUPERADMIN_LOGIN = 'admin'
 const SUPERADMIN_PASSWORD = 'santa1234'
@@ -21,9 +21,10 @@ export default function LoginPage() {
   const [notes, setNotes] = useState<PatchNote[]>([])
   const [entered, setEntered] = useState(false)
   const [selectedNote, setSelectedNote] = useState<PatchNote | null>(null)
+  const [recapOpen, setRecapOpen] = useState(false)
 
   useEffect(() => {
-    void listActivePatchNotes(3)
+    void listActivePatchNotes(50)
       .then(setNotes)
       .catch(() => setNotes([]))
     const id = requestAnimationFrame(() => setEntered(true))
@@ -147,17 +148,26 @@ export default function LoginPage() {
                   ))
                 )}
               </div>
-              <Link
-                href="/patch-notes"
+              <button
+                onClick={() => setRecapOpen(true)}
                 className="mt-4 inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-medium text-white/85 transition hover:bg-white/[0.12]"
               >
                 Voir tout →
-              </Link>
+              </button>
             </aside>
           </div>
         </div>
       </div>
 
+      <PatchNotesRecapModal
+        open={recapOpen}
+        notes={notes}
+        onClose={() => setRecapOpen(false)}
+        onRead={(note) => {
+          setRecapOpen(false)
+          setSelectedNote(note)
+        }}
+      />
       <PatchNoteModal note={selectedNote} onClose={() => setSelectedNote(null)} />
     </>
   )

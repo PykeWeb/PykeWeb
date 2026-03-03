@@ -13,11 +13,13 @@ function formatDate(value: string) {
   }
 }
 
-function PatchNoteEditModal({
+function PatchNoteFormModal({
+  mode,
   note,
   onClose,
   onSaved,
 }: {
+  mode: 'create' | 'edit'
   note: PatchNote | null
   onClose: () => void
   onSaved: () => Promise<void>
@@ -58,7 +60,11 @@ function PatchNoteEditModal({
     setSaving(true)
     setError(null)
     try {
-      await updatePatchNote(note.id, { title: title.trim(), content: content.trim() })
+      if (mode === 'create') {
+        await createPatchNote({ title: title.trim(), content: content.trim(), is_active: true })
+      } else {
+        await updatePatchNote(note.id, { title: title.trim(), content: content.trim() })
+      }
       await onSaved()
       onClose()
     } catch (e: any) {
@@ -74,8 +80,8 @@ function PatchNoteEditModal({
         className="flex w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-[#0f1625]/95 p-5 shadow-glow"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl font-semibold">Éditer patch note</h2>
-        <p className="mt-1 text-xs text-white/60">{formatDate(note.created_at)}</p>
+        <h2 className="text-xl font-semibold">{mode === 'create' ? 'Créer patch note' : 'Éditer patch note'}</h2>
+        <p className="mt-1 text-xs text-white/60">{mode === 'create' ? 'Nouveau patch note' : formatDate(note.created_at)}</p>
 
         <div className="mt-4 space-y-3">
           <input
@@ -97,7 +103,7 @@ function PatchNoteEditModal({
 
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">Annuler</button>
-          <button onClick={() => void save()} disabled={saving} className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14] disabled:opacity-60">{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+          <button onClick={() => void save()} disabled={saving} className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14] disabled:opacity-60">{saving ? 'Enregistrement…' : mode === 'create' ? 'Publier' : 'Enregistrer'}</button>
         </div>
       </div>
     </div>
@@ -117,20 +123,6 @@ function PatchNoteCard({
   onToggleActive: (note: PatchNote) => void
   onDelete: (note: PatchNote) => void
 }) {
-  const previewRef = useRef<HTMLParagraphElement | null>(null)
-  const [isOverflowing, setIsOverflowing] = useState(false)
-
-  useEffect(() => {
-    const el = previewRef.current
-    if (!el) return
-
-    const checkOverflow = () => setIsOverflowing(el.scrollHeight > el.clientHeight + 1)
-
-    checkOverflow()
-    window.addEventListener('resize', checkOverflow)
-    return () => window.removeEventListener('resize', checkOverflow)
-  }, [note.content])
-
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
       <div className="flex items-start justify-between gap-3">
@@ -140,6 +132,7 @@ function PatchNoteCard({
         </button>
 
         <div className="flex shrink-0 gap-2">
+          <button onClick={() => onOpen(note)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Lire</button>
           <button onClick={() => onEdit(note)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Éditer</button>
           <button onClick={() => onToggleActive(note)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">{note.is_active ? 'Désactiver' : 'Activer'}</button>
           <button onClick={() => onDelete(note)} className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22">Supprimer</button>
@@ -148,7 +141,6 @@ function PatchNoteCard({
 
       <button onClick={() => onOpen(note)} className="mt-2 block w-full text-left">
         <p
-          ref={previewRef}
           className="text-xs leading-5 text-white/70 whitespace-pre-wrap"
           style={{
             display: '-webkit-box',
@@ -160,34 +152,16 @@ function PatchNoteCard({
           {note.content}
         </p>
       </button>
-
-      {isOverflowing ? (
-        <button
-          onClick={() => onOpen(note)}
-          className="mt-2 text-xs font-medium text-white/80 underline decoration-white/40 underline-offset-2 hover:text-white"
-        >
-          Voir tout
-        </button>
-      ) : null}
     </div>
   )
 }
 
 export default function AdminPatchNotesPage() {
   const [patchNotes, setPatchNotes] = useState<PatchNote[]>([])
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<PatchNote | null>(null)
   const [editing, setEditing] = useState<PatchNote | null>(null)
-  const contentRef = useRef<HTMLTextAreaElement | null>(null)
-
-  useEffect(() => {
-    const el = contentRef.current
-    if (!el) return
-    el.style.height = '0px'
-    el.style.height = `${Math.max(el.scrollHeight, 120)}px`
-  }, [content])
+  const [creating, setCreating] = useState(false)
 
   async function refresh() {
     try {
@@ -207,47 +181,25 @@ export default function AdminPatchNotesPage() {
     void refresh()
   }, [])
 
-  async function publish() {
-    if (!title.trim() || !content.trim()) return
-    try {
-      await createPatchNote({ title: title.trim(), content: content.trim(), is_active: true })
-      setTitle('')
-      setContent('')
-      await refresh()
-    } catch (e: any) {
-      setError(e?.message || 'Impossible de publier')
-    }
-  }
-
   const sortedNotes = useMemo(
     () => [...patchNotes].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)),
     [patchNotes]
   )
 
+  const createDraft: PatchNote = {
+    id: 'create-draft',
+    title: '',
+    content: '',
+    is_active: true,
+    created_at: new Date().toISOString(),
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <h1 className="text-3xl font-semibold">Patch notes</h1>
-        <div className="mt-4 grid gap-2 md:grid-cols-[1fr_2fr_auto]">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Titre"
-            className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm"
-          />
-          <textarea
-            ref={contentRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Contenu"
-            className="min-h-[120px] resize-y overflow-y-auto whitespace-pre-wrap rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-3 text-sm"
-          />
-          <button
-            onClick={() => void publish()}
-            className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-3 text-sm font-semibold hover:bg-white/[0.14]"
-          >
-            Publier
-          </button>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-3xl font-semibold">Patch notes</h1>
+          <button onClick={() => setCreating(true)} className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14]">Créer</button>
         </div>
 
         <div className="mt-4 space-y-2">
@@ -267,7 +219,8 @@ export default function AdminPatchNotesPage() {
       </div>
 
       <PatchNoteModal note={selected} onClose={() => setSelected(null)} />
-      <PatchNoteEditModal note={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+      <PatchNoteFormModal mode="edit" note={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+      <PatchNoteFormModal mode="create" note={creating ? createDraft : null} onClose={() => setCreating(false)} onSaved={refresh} />
     </div>
   )
 }
