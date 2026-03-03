@@ -7,6 +7,7 @@ import { Panel } from '@/components/ui/Panel'
 import { listEquipment, adjustEquipmentStock, updateEquipment, deleteEquipment, type DbEquipment } from '@/lib/equipmentApi'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 export default function EquipementClient() {
   const [items, setItems] = useState<DbEquipment[]>([])
@@ -14,6 +15,8 @@ export default function EquipementClient() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<DbEquipment | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const [editingItem, setEditingItem] = useState<DbEquipment | null>(null)
   const [editName, setEditName] = useState('')
@@ -92,14 +95,18 @@ export default function EquipementClient() {
     }
   }
 
-  async function removeItem(item: DbEquipment) {
-    if (!window.confirm(`Supprimer définitivement "${item.name}" ?`)) return
+  async function removeItem() {
+    if (!pendingDelete) return
     try {
+      setDeleting(true)
       setError(null)
-      await deleteEquipment(item.id)
+      await deleteEquipment(pendingDelete.id)
       await refresh()
+      setPendingDelete(null)
     } catch (e: any) {
       setError(e?.message || 'Erreur suppression')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -260,7 +267,7 @@ export default function EquipementClient() {
                           Sortie
                         </SecondaryButton>
                         <SecondaryButton onClick={() => startEdit(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton>
-                        <DangerButton onClick={() => removeItem(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
+                        <DangerButton onClick={() => setPendingDelete(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
                       </div>
                     </td>
                   </tr>
@@ -276,6 +283,14 @@ export default function EquipementClient() {
           </div>
         ) : null}
       </Panel>
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Supprimer cet objet ?"
+        description="Cette action est définitive. L’objet et ses transactions associées seront supprimés."
+        loading={deleting}
+        onCancel={() => (!deleting ? setPendingDelete(null) : null)}
+        onConfirm={removeItem}
+      />
     </div>
   )
 }

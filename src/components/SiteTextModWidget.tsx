@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Settings2 } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 const STORAGE_KEY = 'pykeweb:text-overrides:v1'
 const ADMIN_USER = 'admin'
@@ -110,6 +111,7 @@ export function SiteTextModWidget() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [overrides, setOverrides] = useState<Overrides>({})
   const [dbStatus, setDbStatus] = useState<string>('Sauvegarde en ligne active')
   const [dbCount, setDbCount] = useState<number>(0)
@@ -179,7 +181,10 @@ export function SiteTextModWidget() {
   }
 
   const clearOverrides = () => {
-    if (!window.confirm('Réinitialiser tous les textes en base ?')) return
+    setConfirmResetOpen(true)
+  }
+
+  const applyClearOverrides = () => {
     const cleared = {}
     setOverrides(cleared)
     writeOverrides(cleared)
@@ -189,7 +194,10 @@ export function SiteTextModWidget() {
         setDbCount(0)
       })
       .catch((e) => setDbStatus(`Erreur base : ${e?.message || 'inconnue'}`))
-      .finally(() => window.location.reload())
+      .finally(() => {
+        setConfirmResetOpen(false)
+        window.location.reload()
+      })
   }
 
   return (
@@ -230,6 +238,14 @@ export function SiteTextModWidget() {
           )}
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmResetOpen}
+        title="Réinitialiser les textes ?"
+        description="Cette action efface tous les overrides personnalisés en base."
+        confirmLabel="Réinitialiser"
+        onCancel={() => setConfirmResetOpen(false)}
+        onConfirm={applyClearOverrides}
+      />
     </>
   )
 }

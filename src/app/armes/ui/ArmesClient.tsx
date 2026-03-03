@@ -9,6 +9,7 @@ import { DangerButton, IconButton, PrimaryButton, SecondaryButton, SearchInput, 
 import { toast } from 'sonner'
 import { ArrowLeft, ArrowUpRight, Handshake, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 export function ArmesClient() {
   const [items, setItems] = useState<DbWeapon[]>([])
@@ -21,6 +22,8 @@ export function ArmesClient() {
   const [editStock, setEditStock] = useState('0')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<DbWeapon | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   async function refresh() {
     setLoading(true)
@@ -82,14 +85,18 @@ export function ArmesClient() {
     }
   }
 
-  async function removeItem(item: DbWeapon) {
-    if (!window.confirm(`Supprimer définitivement "${item.name || 'cette arme'}" ?`)) return
+  async function removeItem() {
+    if (!pendingDelete) return
     try {
-      await deleteWeapon(item.id)
+      setDeleting(true)
+      await deleteWeapon(pendingDelete.id)
       await refresh()
       toast.success('Arme supprimée')
+      setPendingDelete(null)
     } catch (e: any) {
       toast.error(e?.message || 'Impossible de supprimer')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -255,7 +262,7 @@ export function ArmesClient() {
                           <Pencil className="h-4 w-4" />
                           Modifier
                         </Button>
-                        <DangerButton type="button" onClick={() => removeItem(w)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
+                        <DangerButton type="button" onClick={() => setPendingDelete(w)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
                       </div>
                     </td>
                   </tr>
@@ -265,6 +272,14 @@ export function ArmesClient() {
           </table>
         </div>
       </div>
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Supprimer cet objet ?"
+        description="Cette action est définitive. L’objet et ses transactions associées seront supprimés."
+        loading={deleting}
+        onCancel={() => (!deleting ? setPendingDelete(null) : null)}
+        onConfirm={removeItem}
+      />
     </div>
   )
 }
