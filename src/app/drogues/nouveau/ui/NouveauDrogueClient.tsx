@@ -3,7 +3,7 @@
 import { Panel } from '@/components/ui/Panel'
 import { PageHeader } from '@/components/PageHeader'
 import Link from 'next/link'
-import { ImageDropzone } from '@/components/objets/ImageDropzone'
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { useMemo, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'

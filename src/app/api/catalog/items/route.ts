@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { requireGroupSession } from '@/lib/server/tenantServerSession'
 
 export async function GET(request: Request) {

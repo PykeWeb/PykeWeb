@@ -17,7 +17,7 @@ export function Topbar() {
     <div className="flex items-center justify-end">
       <div className="flex items-center gap-3">
         {isAdmin ? (
-          <Link href="/admin/groupes">
+          <Link href="/admin/dashboard">
             <SecondaryButton>Admin groupes</SecondaryButton>
           </Link>
         ) : null}

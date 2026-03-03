@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { DangerButton, IconButton, PrimaryButton, SecondaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
 import { toast } from 'sonner'
 import { ArrowLeft, ArrowUpRight, Handshake, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
-import { ImageDropzone } from '@/components/objets/ImageDropzone'
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 
 export function ArmesClient() {
   const [items, setItems] = useState<DbWeapon[]>([])
@@ -18,6 +18,7 @@ export function ArmesClient() {
   const [editingItem, setEditingItem] = useState<DbWeapon | null>(null)
   const [editName, setEditName] = useState('')
   const [editWeaponId, setEditWeaponId] = useState('')
+  const [editStock, setEditStock] = useState('0')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
 
@@ -47,6 +48,7 @@ export function ArmesClient() {
     setEditingItem(item)
     setEditName(item.name || '')
     setEditWeaponId(item.weapon_id || '')
+    setEditStock(String(Math.max(0, Number(item.stock ?? 0))))
     setEditImageFile(null)
   }
 
@@ -54,6 +56,7 @@ export function ArmesClient() {
     setEditingItem(null)
     setEditName('')
     setEditWeaponId('')
+    setEditStock('0')
     setEditImageFile(null)
   }
 
@@ -66,6 +69,7 @@ export function ArmesClient() {
         id: editingItem.id,
         name: editName.trim() || null,
         weapon_id: editWeaponId.trim() || null,
+        quantity: Math.max(0, Math.floor(Number(editStock || 0) || 0)),
         imageFile: editImageFile,
       })
       await refresh()
@@ -145,7 +149,7 @@ export function ArmesClient() {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
               <div>
                 <label className="text-xs text-white/60">Nom</label>
                 <input
@@ -160,6 +164,15 @@ export function ArmesClient() {
                   value={editWeaponId}
                   onChange={(e) => setEditWeaponId(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/60">Quantité</label>
+                <input
+                  value={editStock}
+                  onChange={(e) => setEditStock(e.target.value)}
+                  inputMode="numeric"
+                  className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none focus:border-white/30"
                 />
               </div>
             </div>
