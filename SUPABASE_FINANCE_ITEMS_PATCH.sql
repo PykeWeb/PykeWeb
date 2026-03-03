@@ -1,7 +1,7 @@
 -- Pyke Stock - Finance + Catalogue global patch
 -- 1) Fix expenses override price compatibility
--- 2) Add finance_trades log table used by FinanceTradeModal
--- 3) Add catalog_global_items view (all item categories in one source)
+-- 2) Add finance_trades log table (legacy compatibility)
+-- 3) Rebuild catalog_global_items view (drop+create to avoid merge/replacement conflicts)
 
 begin;
 
