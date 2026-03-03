@@ -8,7 +8,7 @@ import { currentGroupId } from '@/lib/tenantScope'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
-import { listActivePatchNotes, createSupportTicket, type PatchNote } from '@/lib/communicationApi'
+import { createSupportTicket } from '@/lib/communicationApi'
 import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Crosshair, Wrench, Leaf } from 'lucide-react'
 
 type Tx = {
@@ -74,7 +74,6 @@ export function DashboardClient() {
   const [drugItems, setDrugItems] = useState<DrugItem[]>([])
   const [activityView, setActivityView] = useState<ActivityView>('transactions')
   const [pauseAutoUntil, setPauseAutoUntil] = useState(0)
-  const [patchNotes, setPatchNotes] = useState<PatchNote[]>([])
   const [ticketKind, setTicketKind] = useState<'bug' | 'message'>('bug')
   const [ticketMessage, setTicketMessage] = useState('')
   const [ticketImage, setTicketImage] = useState<File | null>(null)
@@ -143,7 +142,7 @@ export function DashboardClient() {
       setLoading(true)
       try {
         const groupId = currentGroupId()
-        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes, notes] = await Promise.all([
+        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes] = await Promise.all([
           supabase.from('objects').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapons').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).eq('group_id', groupId).is('returned_at', null),
@@ -173,7 +172,6 @@ export function DashboardClient() {
             .eq('group_id', groupId)
             .order('stock', { ascending: false })
             .limit(8),
-          listActivePatchNotes(3),
         ])
 
         if (!alive) return
@@ -185,7 +183,6 @@ export function DashboardClient() {
         setRecentLoans((recentLoansRes.data as Loan[]) ?? [])
         setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
         setDrugItems((drugItemsRes.data as DrugItem[]) ?? [])
-        setPatchNotes(notes)
       } finally {
         if (alive) setLoading(false)
       }
@@ -428,24 +425,6 @@ export function DashboardClient() {
           </div>
         </Panel>
 
-        <div className="lg:mt-auto">
-          <Panel>
-            <h3 className="text-sm font-semibold">Patch notes</h3>
-            <div className="mt-2 space-y-2">
-              {patchNotes.length === 0 ? (
-                <p className="text-xs text-white/60">Aucune note active.</p>
-              ) : (
-                patchNotes.map((n) => (
-                  <div key={n.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                    <p className="text-sm font-semibold">{n.title}</p>
-                    <p className="mt-1 text-xs text-white/70 line-clamp-2">{n.content}</p>
-                    <p className="mt-1 text-[11px] text-white/50">{new Date(n.created_at).toLocaleDateString('fr-FR')}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </Panel>
-        </div>
       </div>
     </div>
       {quickModalOpen ? (
