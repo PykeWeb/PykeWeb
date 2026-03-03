@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { listSupportTicketsAdmin, updateSupportTicketStatus, type SupportTicket } from '@/lib/communicationApi'
 
@@ -10,7 +10,7 @@ export default function AdminSupportPage() {
   const [showResolved, setShowResolved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function refresh(includeResolved = showResolved) {
+  const refresh = useCallback(async (includeResolved = showResolved) => {
     try {
       const [bugRows, msgRows] = await Promise.all([
         listSupportTicketsAdmin('bug', includeResolved),
@@ -22,7 +22,7 @@ export default function AdminSupportPage() {
     } catch (e: any) {
       setError(e?.message || 'Erreur chargement tickets')
     }
-  }
+  }, [showResolved])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -31,11 +31,11 @@ export default function AdminSupportPage() {
       return
     }
     void refresh()
-  }, [])
+  }, [refresh])
 
   useEffect(() => {
     void refresh(showResolved)
-  }, [showResolved])
+  }, [showResolved, refresh])
 
   async function setTicketStatus(id: string, status: SupportTicket['status']) {
     try {

@@ -3,8 +3,8 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Sidebar } from '@/components/Sidebar'
-import { Topbar } from '@/components/Topbar'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { Topbar } from '@/components/layout/Topbar'
 import { getTenantSession } from '@/lib/tenantSession'
 
 export function AppFrame({ children }: { children: ReactNode }) {

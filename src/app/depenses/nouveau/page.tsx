@@ -146,7 +146,7 @@ export default function NouvelleDepensePage() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="text-sm text-white/70">Type d'item</label>
+            <label className="text-sm text-white/70">Type d&apos;item</label>
             <select
               value={itemType}
               onChange={(e) => setItemType(e.target.value as ExpenseItemType)}
@@ -162,7 +162,7 @@ export default function NouvelleDepensePage() {
 
           {itemType === 'custom' ? (
             <div className="md:col-span-2">
-              <label className="text-sm text-white/70">Nom de l'item</label>
+              <label className="text-sm text-white/70">Nom de l&apos;item</label>
               <input
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
