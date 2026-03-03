@@ -10,8 +10,8 @@ import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTab
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { StockTransactionModal } from '@/components/ui/StockTransactionModal'
-import { ReorderableRow } from '@/components/drag/ReorderableRow'
-import { getLayoutOrder, resetLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
+import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
+import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
 import { getTenantSession } from '@/lib/tenantSession'
 
 const TAB_KEYS = ['catalogue', 'plantations', 'calculateur'] as const
@@ -329,7 +329,6 @@ export default function DroguesClient() {
 
           <div className="flex items-center gap-2">
             <Link href="/drogues/nouveau"><PrimaryButton size="lg">Ajouter un item</PrimaryButton></Link>
-            <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','edit','delete']); await resetLayoutOrder('drogues.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton>
           </div>
         </div>
 
@@ -454,7 +453,7 @@ export default function DroguesClient() {
                         <td className="px-4 py-3">{Number(it.price).toFixed(2)} $</td>
                         <td className="px-4 py-3">{it.stock}</td>
                         <td className="px-4 py-3">
-                          <ReorderableRow
+                          <LongPressReorderableRow
                                 order={actionOrder}
                             onOrderChange={async (next) => {
                               setActionOrder(next)

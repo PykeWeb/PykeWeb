@@ -8,8 +8,8 @@ import { listEquipment, adjustEquipmentStock, updateEquipment, deleteEquipment, 
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { StockTransactionModal } from '@/components/ui/StockTransactionModal'
-import { ReorderableRow } from '@/components/drag/ReorderableRow'
-import { getLayoutOrder, resetLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
+import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
+import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
 import { getTenantSession } from '@/lib/tenantSession'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
@@ -130,7 +130,6 @@ export default function EquipementClient() {
 
           <div className="flex items-center gap-2">
             <Link href="/equipement/nouveau"><PrimaryButton size="lg">Ajouter un équipement</PrimaryButton></Link>
-            <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','edit','delete']); await resetLayoutOrder('equipements.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton>
           </div>
         </div>
 
@@ -242,7 +241,7 @@ export default function EquipementClient() {
                     <td className="px-4 py-3">{Number(it.price).toFixed(2)} $</td>
                     <td className="px-4 py-3">{it.stock}</td>
                     <td className="px-4 py-3">
-                      <ReorderableRow
+                      <LongPressReorderableRow
                         order={actionOrder}
                         onOrderChange={async (next) => {
                           setActionOrder(next)

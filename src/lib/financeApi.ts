@@ -20,7 +20,7 @@ export type FinanceEntry = {
 export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   const groupId = currentGroupId()
 
-  const [expensesRes, txRes, weaponMvRes, equipmentMvRes, drugMvRes] = await Promise.all([
+  const [expensesRes, txRes, tradeRes, weaponMvRes, equipmentMvRes, drugMvRes] = await Promise.all([
     supabase
       .from('expenses')
       .select('id,item_source,item_label,member_name,quantity,total,status,created_at')
@@ -30,6 +30,12 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
     supabase
       .from('transactions')
       .select('id,type,counterparty,total,created_at,transaction_items(name_snapshot,quantity)')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false })
+      .limit(500),
+    supabase
+      .from('finance_trades')
+      .select('id,mode,category,item_name,quantity,unit_price,total,created_at')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
@@ -55,6 +61,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
 
   if (expensesRes.error) throw expensesRes.error
   if (txRes.error) throw txRes.error
+  if (tradeRes.error) throw tradeRes.error
 
   const entries: FinanceEntry[] = []
 
@@ -90,6 +97,21 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
     })
   }
 
+  for (const trade of tradeRes.data ?? []) {
+    entries.push({
+      id: trade.id,
+      source: 'finance_trades',
+      movement_type: trade.mode === 'buy' ? 'purchase' : 'sale',
+      category: (trade.category as FinanceCategory) || 'other',
+      item_label: trade.item_name,
+      member_name: null,
+      quantity: Number(trade.quantity ?? 0),
+      amount: Number(trade.total ?? 0),
+      expense_status: null,
+      created_at: trade.created_at,
+    })
+  }
+
   const mapMovement = (rows: any[] | null, category: FinanceCategory, source: string, namePath: string) => {
     for (const row of rows ?? []) {
       const holder = row[namePath]
@@ -114,4 +136,29 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   if (!drugMvRes.error) mapMovement(drugMvRes.data as any[], 'drugs', 'drug_stock_movements', 'drug_items')
 
   return entries.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+}
+
+export async function createFinanceTradeLog(args: {
+  mode: 'buy' | 'sell'
+  category: Exclude<FinanceCategory, 'other'>
+  item_id: string
+  item_name: string
+  item_type?: string | null
+  quantity: number
+  unit_price: number
+}) {
+  const quantity = Math.max(1, Math.floor(args.quantity))
+  const unitPrice = Math.max(0, Number(args.unit_price || 0))
+  const { error } = await supabase.from('finance_trades').insert({
+    group_id: currentGroupId(),
+    mode: args.mode,
+    category: args.category,
+    item_id: args.item_id,
+    item_name: args.item_name,
+    item_type: args.item_type || null,
+    quantity,
+    unit_price: unitPrice,
+    total: quantity * unitPrice,
+  })
+  if (error) throw error
 }
