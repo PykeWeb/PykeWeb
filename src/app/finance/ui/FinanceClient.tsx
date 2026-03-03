@@ -3,25 +3,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Receipt, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
-import { SearchInput } from '@/components/ui/design-system'
-import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
+import { PrimaryButton, SearchInput } from '@/components/ui/design-system'
+import { GlassSelect } from '@/components/ui/GlassSelect'
+import { createFinanceTradeLog, listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
+import { FinanceTradeModal, type TradeItem } from '@/components/ui/FinanceTradeModal'
+import { createTransaction } from '@/lib/transactionsApi'
+import { adjustWeaponStock } from '@/lib/weaponsApi'
+import { adjustEquipmentStock } from '@/lib/equipmentApi'
+import { adjustDrugStock } from '@/lib/drugsApi'
+import { toast } from 'sonner'
 
 type FilterType = 'all' | FinanceMovementType
 type FilterCategory = 'all' | FinanceCategory
 
-const typeLabels: Record<FinanceMovementType, string> = {
-  expense: 'Dépense',
-  purchase: 'Achat',
-  sale: 'Vente/Sortie',
-}
-
-const categoryLabels: Record<FinanceCategory, string> = {
-  objects: 'Objets',
-  weapons: 'Armes',
-  equipment: 'Équipement',
-  drugs: 'Drogues',
-  other: 'Autre',
-}
+const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', sale: 'Vente/Sortie' }
+const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', other: 'Autre' }
 
 export default function FinanceClient() {
   const [entries, setEntries] = useState<FinanceEntry[]>([])
@@ -30,18 +26,21 @@ export default function FinanceClient() {
   const [q, setQ] = useState('')
   const [type, setType] = useState<FilterType>('all')
   const [category, setCategory] = useState<FilterCategory>('all')
+  const [tradeMode, setTradeMode] = useState<'buy' | 'sell' | null>(null)
+
+  async function refresh() {
+    try {
+      setLoading(true)
+      setEntries(await listFinanceEntries())
+    } catch (e: any) {
+      setError(e?.message || 'Impossible de charger la finance.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    ;(async () => {
-      try {
-        setLoading(true)
-        setEntries(await listFinanceEntries())
-      } catch (e: any) {
-        setError(e?.message || 'Impossible de charger la finance.')
-      } finally {
-        setLoading(false)
-      }
-    })()
+    void refresh()
   }, [])
 
   const filtered = useMemo(() => {
@@ -59,8 +58,40 @@ export default function FinanceClient() {
   const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
 
+  async function submitTrade(args: { item: TradeItem; quantity: number; unitPrice: number }) {
+    const delta = tradeMode === 'buy' ? args.quantity : -args.quantity
+    if (args.item.category === 'objects') {
+      await createTransaction({
+        type: tradeMode === 'buy' ? 'purchase' : 'sale',
+        lines: [{ object: { id: args.item.source_id, name: args.item.name, price: args.unitPrice, stock: args.item.stock, image_url: null }, quantity: args.quantity, unit_price: args.unitPrice }],
+      })
+    } else if (args.item.category === 'weapons') {
+      await adjustWeaponStock({ weaponId: args.item.source_id, delta, note: `Finance ${tradeMode}` })
+    } else if (args.item.category === 'equipment') {
+      await adjustEquipmentStock({ equipmentId: args.item.source_id, delta, note: `Finance ${tradeMode}` })
+    } else {
+      await adjustDrugStock({ itemId: args.item.source_id, delta, note: `Finance ${tradeMode}` })
+    }
+
+    await createFinanceTradeLog({
+      mode: tradeMode || 'buy',
+      category: args.item.category,
+      item_id: args.item.source_id,
+      item_name: args.item.name,
+      item_type: args.item.item_type,
+      quantity: args.quantity,
+      unit_price: args.unitPrice,
+    })
+    await refresh()
+    toast.success('Mouvement enregistré.')
+  }
+
   return (
     <Panel>
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <PrimaryButton onClick={() => setTradeMode('buy')}>Acheter</PrimaryButton>
+        <PrimaryButton onClick={() => setTradeMode('sell')}>Vendre / Sortie</PrimaryButton>
+      </div>
       <div className="grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses en attente</p><p className="mt-1 text-xl font-semibold">{pendingExpenses.toFixed(2)} $</p></div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses remboursées</p><p className="mt-1 text-xl font-semibold">{paidExpenses.toFixed(2)} $</p></div>
@@ -68,21 +99,10 @@ export default function FinanceClient() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes / Sorties</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
         <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Recherche (membre / item)" className="w-[320px]" />
-        <select className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" value={type} onChange={(e) => setType(e.target.value as FilterType)}>
-          <option value="all">Tous les types</option>
-          <option value="expense">Dépense</option>
-          <option value="purchase">Achat</option>
-          <option value="sale">Vente / Sortie</option>
-        </select>
-        <select className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" value={category} onChange={(e) => setCategory(e.target.value as FilterCategory)}>
-          <option value="all">Toutes catégories</option>
-          <option value="objects">Objets</option>
-          <option value="weapons">Armes</option>
-          <option value="equipment">Équipement</option>
-          <option value="drugs">Drogues</option>
-        </select>
+        <GlassSelect value={type} onChange={(v) => setType(v as FilterType)} options={[{ value: 'all', label: 'Tous les types' }, { value: 'expense', label: 'Dépense' }, { value: 'purchase', label: 'Achat' }, { value: 'sale', label: 'Vente / Sortie' }]} />
+        <GlassSelect value={category} onChange={(v) => setCategory(v as FilterCategory)} options={[{ value: 'all', label: 'Toutes catégories' }, { value: 'objects', label: 'Objets' }, { value: 'weapons', label: 'Armes' }, { value: 'equipment', label: 'Équipement' }, { value: 'drugs', label: 'Drogues' }]} />
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
@@ -91,28 +111,23 @@ export default function FinanceClient() {
           <tbody className="divide-y divide-white/10">
             {loading ? <tr><td colSpan={6} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr> : null}
             {!loading && filtered.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-white/60">Aucun mouvement.</td></tr> : null}
-            {!loading
-              ? filtered.map((entry) => (
-                  <tr key={`${entry.source}:${entry.id}`} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs">
-                        {entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
-                        {typeLabels[entry.movement_type]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
-                    <td className="px-4 py-3"><div className="font-semibold">{entry.item_label}</div>{entry.member_name ? <div className="text-xs text-white/60">{entry.member_name}</div> : null}</td>
-                    <td className="px-4 py-3">{entry.quantity}</td>
-                    <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>
-                    <td className="px-4 py-3 text-white/70">{new Date(entry.created_at).toLocaleString()}</td>
-                  </tr>
-                ))
-              : null}
+            {!loading ? filtered.map((entry) => (
+              <tr key={`${entry.source}:${entry.id}`} className="hover:bg-white/[0.02]">
+                <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs">{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
+                <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
+                <td className="px-4 py-3"><div className="font-semibold">{entry.item_label}</div>{entry.member_name ? <div className="text-xs text-white/60">{entry.member_name}</div> : null}</td>
+                <td className="px-4 py-3">{entry.quantity}</td>
+                <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>
+                <td className="px-4 py-3 text-white/70">{new Date(entry.created_at).toLocaleString()}</td>
+              </tr>
+            )) : null}
           </tbody>
         </table>
       </div>
       {error ? <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
       <p className="mt-4 text-xs text-white/55"><Wallet className="mr-1 inline h-3 w-3" />Le total global affiché dépend du filtre courant.</p>
+
+      <FinanceTradeModal open={!!tradeMode} mode={tradeMode || 'buy'} onClose={() => setTradeMode(null)} onSubmit={submitTrade} />
     </Panel>
   )
 }

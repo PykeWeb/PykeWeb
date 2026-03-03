@@ -90,7 +90,7 @@ export default function DepensesClient() {
           </Link>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
           <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} className="w-[300px]" placeholder="Rechercher (membre / item)…" />
           <div className="text-sm text-white/60">{filtered.length} dépense(s)</div>
           <div className="ml-auto flex items-center gap-4 text-sm text-white/70">

@@ -100,6 +100,7 @@ export function Sidebar() {
             <NavItem href="/drogues" label={labels.nav_drogues || 'Drogues'} icon={<Leaf className="h-5 w-5" />} active={pathname.startsWith('/drogues')} />
             <NavItem href="/depenses" label={labels.nav_depenses || 'Dépenses'} icon={<Receipt className="h-5 w-5" />} active={pathname.startsWith('/depenses')} />
             <NavItem href="/finance" label={labels.nav_finance || 'Finance'} icon={<Wallet className="h-5 w-5" />} active={pathname.startsWith('/finance')} />
+            <NavItem href="/items" label="Items" icon={<Boxes className="h-5 w-5" />} active={pathname.startsWith('/items')} />
           </>
         )}
       </div>

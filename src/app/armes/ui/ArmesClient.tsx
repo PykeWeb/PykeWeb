@@ -10,8 +10,8 @@ import { ArrowLeft, ArrowUpRight, Handshake, Pencil, ShoppingCart, Trash2 } from
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StockTransactionModal } from '@/components/ui/StockTransactionModal'
-import { ReorderableRow } from '@/components/drag/ReorderableRow'
-import { getLayoutOrder, resetLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
+import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
+import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
 import { getTenantSession } from '@/lib/tenantSession'
 
 export function ArmesClient() {
@@ -131,7 +131,6 @@ export function ArmesClient() {
             </Link>
             <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom ou ID)..." className="w-[320px]" />
             <span className="text-sm text-white/60">{filtered.length} arme(s)</span>
-            <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','lend','edit','delete']); await resetLayoutOrder('armes.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton>
           </div>
         </div>
 
@@ -255,7 +254,7 @@ export function ArmesClient() {
                     <td className="px-4 py-3 text-white/70">{w.weapon_id || '—'}</td>
                     <td className="px-4 py-3 font-semibold">{w.stock}</td>
                     <td className="px-4 py-3">
-                      <ReorderableRow
+                      <LongPressReorderableRow
                         order={actionOrder}
                         onOrderChange={async (next) => {
                           setActionOrder(next)
