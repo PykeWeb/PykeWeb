@@ -8,7 +8,7 @@ import { listDrugItems, adjustDrugStock, updateDrugItem, deleteDrugItem, type Db
 import { ImageDropzone } from '@/components/objets/ImageDropzone'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs } from '@/components/ui/design-system'
 
-const TAB_KEYS = ['catalogue', 'plantations'] as const
+const TAB_KEYS = ['catalogue', 'plantations', 'calculateur'] as const
 type TabKey = (typeof TAB_KEYS)[number]
 
 function kindLabel(k: DrugKind) {
@@ -301,7 +301,7 @@ export default function DroguesClient() {
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SegmentedTabs options={[{ value: 'catalogue', label: 'Catalogue' }, { value: 'plantations', label: 'Plantations' }]} value={tab} onChange={setTab} />
+          <SegmentedTabs options={[{ value: 'catalogue', label: 'Catalogue' }, { value: 'plantations', label: 'Plantations' }, { value: 'calculateur', label: 'Calculateur' }]} value={tab} onChange={setTab} />
 
           <div className="flex items-center gap-2">
             <Link href="/drogues/nouveau"><PrimaryButton size="lg">Ajouter un item</PrimaryButton></Link>
@@ -480,7 +480,7 @@ export default function DroguesClient() {
               </table>
             </div>
           </>
-        ) : (
+        ) : tab === 'plantations' ? (
           <>
             <div className="mt-4">
               <DraggablePlantations
@@ -493,8 +493,9 @@ export default function DroguesClient() {
               />
             </div>
           </>
-        )}
+        ) : null}
 
+        {tab === 'calculateur' ? (
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="flex items-center gap-2">
             <Calculator className="h-4 w-4 text-white/80" />
@@ -555,6 +556,7 @@ export default function DroguesClient() {
             ) : null}
           </div>
         </div>
+        ) : null}
 
         {error ? (
           <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">

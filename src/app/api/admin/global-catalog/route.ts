@@ -28,6 +28,7 @@ export async function POST(request: Request) {
       item_type: body.item_type ?? null,
       name: String(body.name || '').trim(),
       price: Number(body.price || 0),
+      default_quantity: Math.max(0, Number(body.default_quantity ?? 0)),
       description: body.description ?? null,
       image_url: body.image_url ?? null,
       weapon_id: body.weapon_id ?? null,

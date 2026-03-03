@@ -30,7 +30,7 @@ export async function listEquipment(): Promise<DbEquipment[]> {
   if (error) throw error
   const locals = (data ?? []) as DbEquipment[]
   const names = new Set(locals.map((w) => (w.name || '').toLowerCase()))
-  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: g.id, name: g.name, price: Number(g.price ?? 0), description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbEquipment[]
+  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: `global:${g.global_item_id ?? g.id}`, name: g.name, price: Number(g.price ?? 0), description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbEquipment[]
   return [...locals, ...globals.filter((g) => !names.has((g.name || '').toLowerCase()))]
 }
 

@@ -40,7 +40,7 @@ export async function listWeapons(): Promise<DbWeapon[]> {
   if (error) throw error
   const locals = (data ?? []) as DbWeapon[]
   const names = new Set(locals.map((w) => (w.name || '').toLowerCase()))
-  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: g.id, weapon_id: g.weapon_id, name: g.name, description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbWeapon[]
+  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: `global:${g.global_item_id ?? g.id}`, weapon_id: g.weapon_id, name: g.name, description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbWeapon[]
   return [...locals, ...globals.filter((g) => !names.has((g.name || '').toLowerCase()))]
 }
 

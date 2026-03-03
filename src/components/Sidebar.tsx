@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt } from 'lucide-react'
+import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt, Boxes } from 'lucide-react'
 import { BRAND } from '@/lib/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
@@ -84,7 +84,10 @@ export function Sidebar() {
 
       <div className="flex flex-col gap-3">
         {isAdmin ? (
-          <NavItem href="/admin/groupes" label="Admin groupes" icon={<LayoutGrid className="h-5 w-5" />} active={pathname.startsWith('/admin/groupes')} />
+          <>
+            <NavItem href="/admin/groupes" label="Admin groupes" icon={<LayoutGrid className="h-5 w-5" />} active={pathname.startsWith('/admin/groupes')} />
+            <NavItem href="/admin/catalogue-global" label="Objets" icon={<Boxes className="h-5 w-5" />} active={pathname.startsWith('/admin/catalogue-global')} />
+          </>
         ) : (
           <>
             <NavItem href="/" label={labels.nav_dashboard || 'Dashboard'} icon={<LayoutGrid className="h-5 w-5" />} active={pathname === '/'} />

@@ -33,7 +33,7 @@ export async function listDrugItems(): Promise<DbDrugItem[]> {
   if (error) throw error
   const locals = (data ?? []) as DbDrugItem[]
   const names = new Set(locals.map((w) => (w.name || '').toLowerCase()))
-  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: g.id, type: (g.item_type || 'other') as DrugKind, name: g.name, price: Number(g.price ?? 0), description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbDrugItem[]
+  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: `global:${g.global_item_id ?? g.id}`, type: (g.item_type || 'other') as DrugKind, name: g.name, price: Number(g.price ?? 0), description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbDrugItem[]
   return [...locals, ...globals.filter((g) => !names.has((g.name || '').toLowerCase()))]
 }
 

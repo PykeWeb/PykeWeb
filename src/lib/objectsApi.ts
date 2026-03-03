@@ -34,7 +34,7 @@ export async function listObjects(): Promise<DbObject[]> {
   if (error) throw error
   const localRows = (locals ?? []) as DbObject[]
   const globalRows = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({
-    id: g.id,
+    id: `global:${g.global_item_id ?? g.id}`,
     name: g.name,
     price: Number(g.price ?? 0),
     description: g.description,
