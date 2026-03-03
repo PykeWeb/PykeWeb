@@ -26,8 +26,9 @@
 
 ## Admin 
 1. Executer le code en modifiant le MDP pour le compte admin
-2. -- 1) Vérifier les comptes admin potentiels
-3. Bien modifier le mdp : 'TonNouveauMdpFort!2026'
+2. Bien modifier le mdp : 'TonNouveauMdpFort!2026'
+3. 
+-- 1) Vérifier les comptes admin potentiels
 select id, name, badge, login, active, paid_until
 from public.tenant_groups
 where lower(login) = 'admin' or upper(coalesce(badge, '')) = 'ADMIN';
