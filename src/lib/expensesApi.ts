@@ -12,6 +12,7 @@ export type DbExpense = {
   item_id?: string | null
   item_label: string
   unit_price: number
+  unit_price_override?: number | null
   quantity: number
   total: number
   description?: string | null
@@ -35,7 +36,7 @@ function getExt(file: File) {
 export async function listExpenses(): Promise<DbExpense[]> {
   const { data, error } = await supabase
     .from('expenses')
-    .select('id,member_name,item_source,item_id,item_label,unit_price,quantity,total,description,proof_image_url,status,created_at,paid_at')
+    .select('id,member_name,item_source,item_id,item_label,unit_price,unit_price_override,quantity,total,description,proof_image_url,status,created_at,paid_at')
     .eq('group_id', currentGroupId())
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -48,11 +49,15 @@ export async function createExpense(args: {
   item_id?: string | null
   item_label: string
   unit_price: number
+  default_unit_price?: number | null
   quantity: number
   description?: string
   proofFile?: File | null
 }): Promise<DbExpense> {
-  const total = Number(args.unit_price) * Number(args.quantity || 0)
+  const normalizedUnitPrice = Number(args.unit_price || 0)
+  const defaultUnitPrice = Number(args.default_unit_price ?? normalizedUnitPrice)
+  const hasOverride = Math.abs(normalizedUnitPrice - defaultUnitPrice) > 0.0001
+  const total = normalizedUnitPrice * Number(args.quantity || 0)
 
   const { data: inserted, error: insertError } = await supabase
     .from('expenses')
@@ -62,13 +67,14 @@ export async function createExpense(args: {
       item_source: args.item_source,
       item_id: args.item_id || null,
       item_label: args.item_label,
-      unit_price: args.unit_price,
+      unit_price: normalizedUnitPrice,
+      unit_price_override: hasOverride ? normalizedUnitPrice : null,
       quantity: args.quantity,
       total,
       description: args.description || null,
       status: 'pending',
     })
-    .select('id,member_name,item_source,item_id,item_label,unit_price,quantity,total,description,proof_image_url,status,created_at,paid_at')
+    .select('id,member_name,item_source,item_id,item_label,unit_price,unit_price_override,quantity,total,description,proof_image_url,status,created_at,paid_at')
     .single()
 
   if (insertError) throw insertError
@@ -92,7 +98,7 @@ export async function createExpense(args: {
       .update({ proof_image_url })
       .eq('id', inserted.id)
       .eq('group_id', currentGroupId())
-      .select('id,member_name,item_source,item_id,item_label,unit_price,quantity,total,description,proof_image_url,status,created_at,paid_at')
+      .select('id,member_name,item_source,item_id,item_label,unit_price,unit_price_override,quantity,total,description,proof_image_url,status,created_at,paid_at')
       .single()
     if (updateError) throw updateError
     return updated as any
@@ -107,5 +113,10 @@ export async function setExpenseStatus(args: { expenseId: string; status: Expens
   if (args.status === 'pending') patch.paid_at = null
 
   const { error } = await supabase.from('expenses').update(patch).eq('id', args.expenseId).eq('group_id', currentGroupId())
+  if (error) throw error
+}
+
+export async function deleteExpense(expenseId: string) {
+  const { error } = await supabase.from('expenses').delete().eq('id', expenseId).eq('group_id', currentGroupId())
   if (error) throw error
 }

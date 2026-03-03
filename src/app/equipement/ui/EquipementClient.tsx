@@ -28,7 +28,6 @@ export default function EquipementClient() {
   const [editStock, setEditStock] = useState('0')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
-  const [layoutEdit, setLayoutEdit] = useState(false)
   const [actionOrder, setActionOrder] = useState(['purchase', 'sale', 'edit', 'delete'])
   const [txModal, setTxModal] = useState<{ item: DbEquipment; kind: 'purchase' | 'sale' } | null>(null)
   const session = getTenantSession()
@@ -131,8 +130,7 @@ export default function EquipementClient() {
 
           <div className="flex items-center gap-2">
             <Link href="/equipement/nouveau"><PrimaryButton size="lg">Ajouter un équipement</PrimaryButton></Link>
-            <SecondaryButton onClick={() => setLayoutEdit((v) => !v)}>{layoutEdit ? 'Terminer la disposition' : 'Modifier la disposition'}</SecondaryButton>
-            {layoutEdit ? <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','edit','delete']); await resetLayoutOrder('equipements.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton> : null}
+            <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','edit','delete']); await resetLayoutOrder('equipements.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton>
           </div>
         </div>
 
@@ -245,7 +243,6 @@ export default function EquipementClient() {
                     <td className="px-4 py-3">{it.stock}</td>
                     <td className="px-4 py-3">
                       <ReorderableRow
-                        editable={layoutEdit}
                         order={actionOrder}
                         onOrderChange={async (next) => {
                           setActionOrder(next)

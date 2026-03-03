@@ -27,7 +27,6 @@ export function ArmesClient() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<DbWeapon | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [layoutEdit, setLayoutEdit] = useState(false)
   const [actionOrder, setActionOrder] = useState(['purchase', 'sale', 'lend', 'edit', 'delete'])
   const [txModal, setTxModal] = useState<{ item: DbWeapon; kind: 'purchase' | 'sale' } | null>(null)
   const session = getTenantSession()
@@ -132,8 +131,7 @@ export function ArmesClient() {
             </Link>
             <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom ou ID)..." className="w-[320px]" />
             <span className="text-sm text-white/60">{filtered.length} arme(s)</span>
-            <SecondaryButton onClick={() => setLayoutEdit((v) => !v)}>{layoutEdit ? 'Terminer la disposition' : 'Modifier la disposition'}</SecondaryButton>
-            {layoutEdit ? <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','lend','edit','delete']); await resetLayoutOrder('armes.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton> : null}
+            <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','lend','edit','delete']); await resetLayoutOrder('armes.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton>
           </div>
         </div>
 
@@ -258,7 +256,6 @@ export function ArmesClient() {
                     <td className="px-4 py-3 font-semibold">{w.stock}</td>
                     <td className="px-4 py-3">
                       <ReorderableRow
-                        editable={layoutEdit}
                         order={actionOrder}
                         onOrderChange={async (next) => {
                           setActionOrder(next)
