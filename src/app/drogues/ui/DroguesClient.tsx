@@ -142,6 +142,7 @@ export default function DroguesClient() {
   const [editName, setEditName] = useState('')
   const [editType, setEditType] = useState<DrugKind>('other')
   const [editPrice, setEditPrice] = useState('')
+  const [editStock, setEditStock] = useState('0')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
   const [calcMode, setCalcMode] = useState<CalcMode>('coke')
@@ -201,6 +202,7 @@ export default function DroguesClient() {
     setEditName(item.name || '')
     setEditType(item.type)
     setEditPrice(String(item.price ?? 0))
+    setEditStock(String(Math.max(0, Number(item.stock ?? 0))))
     setEditImageFile(null)
     setError(null)
   }
@@ -210,6 +212,7 @@ export default function DroguesClient() {
     setEditName('')
     setEditType('other')
     setEditPrice('')
+    setEditStock('0')
     setEditImageFile(null)
   }
 
@@ -232,6 +235,7 @@ export default function DroguesClient() {
         type: editType,
         name: editName.trim(),
         price: Number(editPrice),
+        quantity: Math.max(0, Math.floor(Number(editStock || 0) || 0)),
         imageFile: editImageFile,
       })
       await refresh()
@@ -320,7 +324,7 @@ export default function DroguesClient() {
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div>
                     <label className="text-xs text-white/60">Nom</label>
                     <input
@@ -350,6 +354,15 @@ export default function DroguesClient() {
                       onChange={(e) => setEditPrice(e.target.value)}
                       inputMode="decimal"
                       className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/60">Quantité</label>
+                    <input
+                      value={editStock}
+                      onChange={(e) => setEditStock(e.target.value)}
+                      inputMode="numeric"
+                      className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none focus:border-white/30"
                     />
                   </div>
                 </div>

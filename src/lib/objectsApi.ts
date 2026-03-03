@@ -106,13 +106,14 @@ export async function createObject(args: {
   return inserted as DbObject
 }
 
-export async function updateObject(args: { id: string; name: string; price: number; imageFile?: File | null }) {
+export async function updateObject(args: { id: string; name: string; price: number; quantity?: number; imageFile?: File | null }) {
+  const quantity = Math.max(0, Math.floor(Number(args.quantity ?? 0) || 0))
   if (args.id.startsWith('global:')) {
     const globalId = args.id.replace('global:', '')
     const res = await fetch('/api/catalog/overrides', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ global_item_id: globalId, override_name: args.name, override_price: args.price, is_hidden: false }),
+      body: JSON.stringify({ global_item_id: globalId, override_name: args.name, override_price: args.price, override_quantity: quantity, is_hidden: false }),
     })
     if (!res.ok) throw new Error(await res.text())
     return
@@ -120,7 +121,7 @@ export async function updateObject(args: { id: string; name: string; price: numb
 
   const { data: updatedBase, error: baseErr } = await supabase
     .from('objects')
-    .update({ name: args.name, price: args.price })
+    .update({ name: args.name, price: args.price, stock: quantity })
     .eq('id', args.id)
     .eq('group_id', currentGroupId())
     .select('id,name,price,description,image_url,stock,created_at')

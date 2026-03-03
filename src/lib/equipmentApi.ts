@@ -133,13 +133,15 @@ export async function updateEquipment(args: {
   id: string
   name: string
   price: number
+  quantity?: number
   description?: string | null
   imageFile?: File | null
 }) {
+  const quantity = Math.max(0, Math.floor(Number(args.quantity ?? 0) || 0))
   if (args.id.startsWith('global:')) {
     const res = await fetch('/api/catalog/overrides', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ global_item_id: args.id.replace('global:', ''), override_name: args.name, override_price: args.price, is_hidden: false }),
+      body: JSON.stringify({ global_item_id: args.id.replace('global:', ''), override_name: args.name, override_price: args.price, override_quantity: quantity, is_hidden: false }),
     })
     if (!res.ok) throw new Error(await res.text())
     return
@@ -150,6 +152,7 @@ export async function updateEquipment(args: {
     .update({
       name: args.name,
       price: args.price,
+      stock: quantity,
       description: args.description || null,
     })
     .eq('id', args.id)

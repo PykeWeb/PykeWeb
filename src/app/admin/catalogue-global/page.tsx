@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { supabase } from '@/lib/supabaseClient'
+import { ImageDropzone } from '@/components/objets/ImageDropzone'
 
 type Category = 'object' | 'weapon' | 'equipment' | 'drug'
 
@@ -66,7 +67,7 @@ export default function AdminCatalogueGlobalPage() {
           category,
           name: name.trim(),
           price: Number(price || 0),
-          default_quantity: Math.max(0, Number(quantity || 0)),
+          default_quantity: Math.max(0, Math.floor(Number(quantity || 0) || 0)),
           weapon_id: category === 'weapon' ? weaponId.trim() || null : null,
           item_type: category === 'drug' ? drugType : null,
           image_url,
@@ -97,46 +98,53 @@ export default function AdminCatalogueGlobalPage() {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <h1 className="text-2xl font-semibold">Catalogue global</h1>
+        <h1 className="text-2xl font-semibold">Objets (catalogue global)</h1>
         <p className="mt-1 text-sm text-white/70">Création centralisée (Objets / Armes / Équipement / Drogues) avec override local par groupe.</p>
 
-        <div className="mt-4 grid gap-2 md:grid-cols-2">
-          <select value={category} onChange={(e) => setCategory(e.target.value as Category)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
-            <option value="object">Objets</option>
-            <option value="weapon">Armes</option>
-            <option value="equipment">Équipement</option>
-            <option value="drug">Drogues</option>
-          </select>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
-          <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Prix" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
-          <input value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantité (0 autorisé)" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
-          {category === 'weapon' ? <input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="Weapon ID / hash" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" /> : null}
-          {category === 'drug' ? (
-            <select value={drugType} onChange={(e) => setDrugType(e.target.value)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
-              <option value="drug">Coke/Meth/Weed</option>
-              <option value="seed">Graine</option>
-              <option value="planting">Plantation</option>
-              <option value="pouch">Pochon</option>
-              <option value="other">Autre</option>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="text-xs text-white/60">Catégorie</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value as Category)} className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm">
+              <option value="object">Objets</option>
+              <option value="weapon">Armes</option>
+              <option value="equipment">Équipement</option>
+              <option value="drug">Drogues</option>
             </select>
+          </div>
+          <div>
+            <label className="text-xs text-white/60">Nom</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+          </div>
+          <div>
+            <label className="text-xs text-white/60">Prix ($)</label>
+            <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Prix ($)" className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+          </div>
+          <div>
+            <label className="text-xs text-white/60">Quantité</label>
+            <input value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantité" className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+          </div>
+          {category === 'weapon' ? (
+            <div>
+              <label className="text-xs text-white/60">Weapon ID / hash</label>
+              <input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="Weapon ID / hash" className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+            </div>
           ) : null}
-          <input
-            type="file"
-            accept="image/png,image/jpeg"
-            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
-          />
-          <textarea
-            placeholder="Colle une image ici (Ctrl+V)"
-            onPaste={(e) => {
-              const file = Array.from(e.clipboardData.items).map((x) => x.getAsFile()).find((f): f is File => !!f && f.type.startsWith('image/'))
-              if (file) setImageFile(file)
-            }}
-            className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs"
-          />
+          {category === 'drug' ? (
+            <div>
+              <label className="text-xs text-white/60">Type</label>
+              <select value={drugType} onChange={(e) => setDrugType(e.target.value)} className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm">
+                <option value="drug">Coke/Meth/Weed</option>
+                <option value="seed">Graine</option>
+                <option value="planting">Plantation</option>
+                <option value="pouch">Pochon</option>
+                <option value="other">Autre</option>
+              </select>
+            </div>
+          ) : null}
+          <ImageDropzone label="Image (PNG/JPEG)" onChange={setImageFile} />
         </div>
 
-        <button disabled={busy} onClick={() => void addItem()} className="mt-3 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold">
+        <button disabled={busy} onClick={() => void addItem()} className="mt-3 h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14]">
           {busy ? 'Ajout...' : 'Ajouter'}
         </button>
         {error ? <p className="mt-2 text-sm text-rose-300">{error}</p> : null}
@@ -146,12 +154,17 @@ export default function AdminCatalogueGlobalPage() {
         <h2 className="text-lg font-semibold">Items {category}</h2>
         <div className="mt-3 space-y-2">
           {filtered.map((it) => (
-            <div key={it.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">
+            <div key={it.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/5">{it.image_url ? (<> {/* eslint-disable-next-line @next/next/no-img-element */}<img src={it.image_url} alt={it.name} className="h-full w-full object-cover" /></>) : null}</div>
+                <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                  {it.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
+                  ) : null}
+                </div>
                 <p>{it.name} <span className="text-white/60">{Number(it.price || 0).toFixed(2)}$ • qté {it.default_quantity}</span></p>
               </div>
-              <button onClick={() => void removeItem(it.id)} className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200">Supprimer</button>
+              <button onClick={() => void removeItem(it.id)} className="h-10 rounded-2xl border border-rose-400/40 bg-rose-500/10 px-3 text-sm text-rose-200 hover:bg-rose-500/20">Supprimer</button>
             </div>
           ))}
         </div>
