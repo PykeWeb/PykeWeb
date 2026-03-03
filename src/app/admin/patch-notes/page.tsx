@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { createPatchNote, deletePatchNote, listPatchNotesAdmin, updatePatchNote, type PatchNote } from '@/lib/communicationApi'
+import { PatchNoteModal } from '@/components/ui/PatchNoteModal'
 
 function formatDate(value: string) {
   try {
@@ -10,36 +11,6 @@ function formatDate(value: string) {
   } catch {
     return value
   }
-}
-
-function PatchNoteModal({ note, onClose }: { note: PatchNote | null; onClose: () => void }) {
-  if (!note) return null
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 p-3 backdrop-blur-sm sm:p-6" onClick={onClose}>
-      <div
-        className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f1625]/95 shadow-glow"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-6">
-          <div>
-            <h2 className="text-xl font-semibold">{note.title}</h2>
-            <p className="mt-1 text-xs text-white/60">{formatDate(note.created_at)}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="h-10 rounded-2xl border border-white/15 bg-white/[0.08] px-4 text-sm hover:bg-white/[0.14]"
-          >
-            Fermer
-          </button>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-          <p className="text-sm leading-6 text-white/80 whitespace-pre-line">{note.content}</p>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 function PatchNoteCard({
@@ -60,9 +31,7 @@ function PatchNoteCard({
     const el = previewRef.current
     if (!el) return
 
-    const checkOverflow = () => {
-      setIsOverflowing(el.scrollHeight > el.clientHeight + 1)
-    }
+    const checkOverflow = () => setIsOverflowing(el.scrollHeight > el.clientHeight + 1)
 
     checkOverflow()
     window.addEventListener('resize', checkOverflow)
@@ -72,10 +41,11 @@ function PatchNoteCard({
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <button onClick={() => onOpen(note)} className="min-w-0 text-left">
           <p className="text-sm font-semibold">{note.title}</p>
           <p className="mt-1 text-xs text-white/60">{formatDate(note.created_at)}</p>
-        </div>
+        </button>
+
         <div className="flex shrink-0 gap-2">
           <button
             onClick={() => onToggleActive(note)}
@@ -92,18 +62,20 @@ function PatchNoteCard({
         </div>
       </div>
 
-      <p
-        ref={previewRef}
-        className="mt-2 text-xs leading-5 text-white/70 whitespace-pre-line"
-        style={{
-          display: '-webkit-box',
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
-      >
-        {note.content}
-      </p>
+      <button onClick={() => onOpen(note)} className="mt-2 block w-full text-left">
+        <p
+          ref={previewRef}
+          className="text-xs leading-5 text-white/70 whitespace-pre-wrap"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {note.content}
+        </p>
+      </button>
 
       {isOverflowing ? (
         <button
@@ -174,7 +146,7 @@ export default function AdminPatchNotesPage() {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Contenu"
-            className="min-h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm md:h-10 md:py-2"
+            className="min-h-[120px] resize-y overflow-y-auto whitespace-pre-wrap rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-3 text-sm"
           />
           <button
             onClick={() => void publish()}
