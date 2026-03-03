@@ -9,6 +9,7 @@ import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type Finan
 import { createFinanceTransaction } from '@/lib/itemsApi'
 import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { toast } from 'sonner'
+import { copy } from '@/lib/copy'
 
 type FilterType = 'all' | FinanceMovementType
 type FilterCategory = 'all' | FinanceCategory
@@ -29,8 +30,8 @@ export default function FinanceClient() {
     try {
       setLoading(true)
       setEntries(await listFinanceEntries())
-    } catch (e: any) {
-      setError(e?.message || 'Impossible de charger la finance.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : copy.finance.errors.loadFailed)
     } finally {
       setLoading(false)
     }
@@ -58,8 +59,8 @@ export default function FinanceClient() {
   return (
     <Panel>
       <div className="mb-4 flex items-center justify-end gap-2">
-        <PrimaryButton onClick={() => setTradeMode('buy')}>Achat</PrimaryButton>
-        <PrimaryButton onClick={() => setTradeMode('sell')}>Vente / Sortie</PrimaryButton>
+        <PrimaryButton onClick={() => setTradeMode('buy')}>{copy.finance.actions.buy}</PrimaryButton>
+        <PrimaryButton onClick={() => setTradeMode('sell')}>{copy.finance.actions.sell}</PrimaryButton>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -111,7 +112,7 @@ export default function FinanceClient() {
             notes: payload.notes,
             payment_mode: payload.payment_mode,
           })
-          toast.success('Transaction enregistrée.')
+          toast.success(copy.finance.toastSaved)
           await refresh()
         }}
       />

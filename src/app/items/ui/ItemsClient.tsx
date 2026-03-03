@@ -6,14 +6,19 @@ import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SearchInput } from '@/components/ui/design-system'
 import { createCatalogItem, listCatalogItems } from '@/lib/itemsApi'
-import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { ItemForm } from '@/components/ui/ItemForm'
+import { copy } from '@/lib/copy'
+
+type CategoryFilter = 'all' | ItemCategory
+
+type TypeFilter = 'all' | ItemType
 
 export default function ItemsClient() {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<'all' | ItemCategory>('all')
-  const [type, setType] = useState('all')
+  const [category, setCategory] = useState<CategoryFilter>('all')
+  const [type, setType] = useState<TypeFilter>('all')
   const [openCreate, setOpenCreate] = useState(false)
 
   async function refresh() {
@@ -26,7 +31,8 @@ export default function ItemsClient() {
 
   const typeOptions = useMemo(() => {
     const pool = items.filter((x) => (category === 'all' ? true : x.category === category))
-    return [{ value: 'all', label: 'Tous les types' }, ...Array.from(new Set(pool.map((x) => x.item_type))).map((x) => ({ value: x, label: x }))]
+    const dynamicTypes = Array.from(new Set(pool.map((x) => x.item_type))).map((value) => ({ value, label: value }))
+    return [{ value: 'all', label: copy.common.allTypes }, ...dynamicTypes]
   }, [items, category])
 
   const filtered = useMemo(() => {
@@ -45,11 +51,18 @@ export default function ItemsClient() {
         <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[320px]" />
         <GlassSelect
           value={category}
-          onChange={(v) => setCategory(v as any)}
-          options={[{ value: 'all', label: 'Toutes catégories' }, { value: 'objects', label: 'Objets' }, { value: 'weapons', label: 'Armes' }, { value: 'drugs', label: 'Drogues' }, { value: 'equipment', label: 'Équipements' }, { value: 'custom', label: 'Custom' }]}
+          onChange={(v) => setCategory(v as CategoryFilter)}
+          options={[
+            { value: 'all', label: copy.common.allCategories },
+            { value: 'objects', label: 'Objets' },
+            { value: 'weapons', label: 'Armes' },
+            { value: 'drugs', label: 'Drogues' },
+            { value: 'equipment', label: 'Équipements' },
+            { value: 'custom', label: 'Custom' },
+          ]}
         />
-        <GlassSelect value={type} onChange={setType} options={typeOptions} />
-        <PrimaryButton onClick={() => setOpenCreate(true)}>Créer un item</PrimaryButton>
+        <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
+        <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">

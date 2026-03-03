@@ -7,8 +7,10 @@ import { Textarea } from '@/components/ui/Textarea'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
-import type { CatalogItem, ItemCategory, ItemRarity, ItemType } from '@/lib/types/itemsFinance'
-import { makeUniqueInternalId } from '@/lib/itemsApi'
+import { makeUniqueInternalId, type CreateCatalogItemInput } from '@/lib/itemsApi'
+import type { ItemCategory, ItemRarity, ItemType } from '@/lib/types/itemsFinance'
+import { toNonNegative, toPositiveInt } from '@/lib/numberUtils'
+import { copy } from '@/lib/copy'
 
 const categoryOptions: { value: ItemCategory; label: string }[] = [
   { value: 'objects', label: 'Objets' },
@@ -35,7 +37,7 @@ const rarityOptions: { value: string; label: string }[] = [
   { value: 'legendary', label: 'Légendaire' },
 ]
 
-export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (payload: any) => Promise<void> }) {
+export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (payload: CreateCatalogItemInput) => Promise<void> }) {
   const [name, setName] = useState('')
   const [category, setCategory] = useState<ItemCategory>('objects')
   const [itemType, setItemType] = useState<ItemType>('input')
@@ -58,10 +60,17 @@ export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const canSave = useMemo(() => name.trim().length > 0 && itemType && !saving, [name, itemType, saving])
+  const canSave = useMemo(() => name.trim().length > 0 && itemType !== undefined && !saving, [name, itemType, saving])
 
   async function handleSubmit() {
-    if (!canSave) return
+    if (!name.trim()) {
+      setError(copy.itemForm.errors.nameRequired)
+      return
+    }
+    if (!itemType) {
+      setError(copy.itemForm.errors.typeRequired)
+      return
+    }
     try {
       setSaving(true)
       setError(null)
@@ -73,22 +82,22 @@ export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (
         internal_id: uniqueInternalId,
         description: description.trim() || null,
         imageFile,
-        buy_price: Math.max(0, Number(buyPrice || 0)),
-        sell_price: Math.max(0, Number(sellPrice || 0)),
-        internal_value: Math.max(0, Number(internalValue || 0)),
+        buy_price: toNonNegative(buyPrice),
+        sell_price: toNonNegative(sellPrice),
+        internal_value: toNonNegative(internalValue),
         show_in_finance: showInFinance,
         is_active: isActive,
-        stock: Math.max(0, Math.floor(Number(stock || 0))),
-        low_stock_threshold: Math.max(0, Math.floor(Number(lowStockThreshold || 0))),
+        stock: toNonNegative(Math.floor(Number(stock || 0))),
+        low_stock_threshold: toNonNegative(Math.floor(Number(lowStockThreshold || 0))),
         stackable,
-        max_stack: Math.max(1, Math.floor(Number(maxStack || 1))),
-        weight: weight ? Math.max(0, Number(weight)) : null,
+        max_stack: toPositiveInt(maxStack),
+        weight: weight ? toNonNegative(weight) : null,
         fivem_item_id: fivemItemId.trim() || null,
         hash: hash.trim() || null,
         rarity,
       })
-    } catch (e: any) {
-      setError(e?.message || 'Impossible de créer l’item.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : copy.itemForm.errors.createFailed)
     } finally {
       setSaving(false)
     }
@@ -97,26 +106,26 @@ export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (
   return (
     <div className="space-y-4">
       <Panel>
-        <h3 className="text-lg font-semibold">Infos</h3>
+        <h3 className="text-lg font-semibold">{copy.itemForm.sections.infos}</h3>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs text-white/60">Nom *</label>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.name}</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l’item" />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-white/60">Catégorie *</label>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.category}</label>
             <GlassSelect value={category} onChange={(v) => setCategory(v as ItemCategory)} options={categoryOptions} />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-white/60">Type *</label>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.type}</label>
             <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={typeOptions} />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-white/60">ID interne (unique)</label>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.internalId}</label>
             <Input value={internalId} onChange={(e) => setInternalId(e.target.value)} placeholder="auto-généré depuis le nom" />
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs text-white/60">Description</label>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.description}</label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[90px]" />
           </div>
           <ImageDropzone label="Image (upload / coller / glisser)" onChange={setImageFile} />
@@ -124,40 +133,40 @@ export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (
       </Panel>
 
       <Panel>
-        <h3 className="text-lg font-semibold">Économie</h3>
+        <h3 className="text-lg font-semibold">{copy.itemForm.sections.economy}</h3>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div><label className="mb-1 block text-xs text-white/60">Prix achat</label><Input value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} inputMode="decimal" /></div>
-          <div><label className="mb-1 block text-xs text-white/60">Prix vente</label><Input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} inputMode="decimal" /></div>
-          <div><label className="mb-1 block text-xs text-white/60">Valeur interne</label><Input value={internalValue} onChange={(e) => setInternalValue(e.target.value)} inputMode="decimal" /></div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showInFinance} onChange={(e) => setShowInFinance(e.target.checked)} />Afficher dans Finance</label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />Actif</label>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.buyPrice}</label><Input value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} inputMode="decimal" /></div>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.sellPrice}</label><Input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} inputMode="decimal" /></div>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.internalValue}</label><Input value={internalValue} onChange={(e) => setInternalValue(e.target.value)} inputMode="decimal" /></div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showInFinance} onChange={(e) => setShowInFinance(e.target.checked)} />{copy.itemForm.toggles.showInFinance}</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />{copy.itemForm.toggles.active}</label>
         </div>
       </Panel>
 
       <Panel>
-        <h3 className="text-lg font-semibold">Stock</h3>
+        <h3 className="text-lg font-semibold">{copy.itemForm.sections.stock}</h3>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div><label className="mb-1 block text-xs text-white/60">Stock initial</label><Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" /></div>
-          <div><label className="mb-1 block text-xs text-white/60">Seuil stock bas</label><Input value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} inputMode="numeric" /></div>
-          <div><label className="mb-1 block text-xs text-white/60">Poids</label><Input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="decimal" /></div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={stackable} onChange={(e) => setStackable(e.target.checked)} />Empilable</label>
-          <div><label className="mb-1 block text-xs text-white/60">Max stack</label><Input value={maxStack} onChange={(e) => setMaxStack(e.target.value)} inputMode="numeric" disabled={!stackable} /></div>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.stockInitial}</label><Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" /></div>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.stockLow}</label><Input value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} inputMode="numeric" /></div>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.weight}</label><Input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="decimal" /></div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={stackable} onChange={(e) => setStackable(e.target.checked)} />{copy.itemForm.toggles.stackable}</label>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.maxStack}</label><Input value={maxStack} onChange={(e) => setMaxStack(e.target.value)} inputMode="numeric" disabled={!stackable} /></div>
         </div>
       </Panel>
 
       <Panel>
-        <h3 className="text-lg font-semibold">Avancé (RP / FiveM)</h3>
+        <h3 className="text-lg font-semibold">{copy.itemForm.sections.advanced}</h3>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div><label className="mb-1 block text-xs text-white/60">fivem_item_id</label><Input value={fivemItemId} onChange={(e) => setFivemItemId(e.target.value)} /></div>
-          <div><label className="mb-1 block text-xs text-white/60">hash</label><Input value={hash} onChange={(e) => setHash(e.target.value)} /></div>
-          <div><label className="mb-1 block text-xs text-white/60">Rareté</label><GlassSelect value={rarity || ''} onChange={(v) => setRarity((v || null) as ItemRarity)} options={rarityOptions} /></div>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.fivemItemId}</label><Input value={fivemItemId} onChange={(e) => setFivemItemId(e.target.value)} /></div>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.hash}</label><Input value={hash} onChange={(e) => setHash(e.target.value)} /></div>
+          <div><label className="mb-1 block text-xs text-white/60">{copy.itemForm.fields.rarity}</label><GlassSelect value={rarity || ''} onChange={(v) => setRarity((v || null) as ItemRarity)} options={rarityOptions} /></div>
         </div>
       </Panel>
 
       {error ? <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
       <div className="flex justify-end gap-2">
-        <SecondaryButton onClick={onCancel}>Annuler</SecondaryButton>
-        <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : 'Enregistrer'}</PrimaryButton>
+        <SecondaryButton onClick={onCancel}>{copy.common.cancel}</SecondaryButton>
+        <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : copy.common.save}</PrimaryButton>
       </div>
     </div>
   )

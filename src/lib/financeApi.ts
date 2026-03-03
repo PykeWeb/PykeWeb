@@ -19,6 +19,9 @@ export type FinanceEntry = {
   created_at: string
 }
 
+type TxJoinItem = { name_snapshot: string | null; quantity: number | null }
+type FinanceTransactionJoinItem = { name: string | null; category: string | null }
+
 export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   const groupId = currentGroupId()
 
@@ -66,8 +69,9 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   }
 
   for (const tx of txRes.data ?? []) {
-    const itemName = (tx.transaction_items?.[0] as any)?.name_snapshot || 'Transaction'
-    const qty = Number((tx.transaction_items?.[0] as any)?.quantity ?? 0) || 1
+    const firstItem = ((tx.transaction_items as TxJoinItem[] | null)?.[0] ?? null)
+    const itemName = firstItem?.name_snapshot || 'Transaction'
+    const qty = Number(firstItem?.quantity ?? 0) || 1
     entries.push({
       id: tx.id,
       source: 'transactions',
@@ -84,7 +88,9 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   }
 
   for (const row of customTxRes.data ?? []) {
-    const item = Array.isArray((row as any).catalog_items) ? (row as any).catalog_items[0] : (row as any).catalog_items
+    const itemJoin = row.catalog_items as FinanceTransactionJoinItem[] | FinanceTransactionJoinItem | null
+    const item = Array.isArray(itemJoin) ? (itemJoin[0] ?? null) : itemJoin
+
     entries.push({
       id: row.id,
       source: 'finance_transactions',
