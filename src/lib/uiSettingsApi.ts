@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase/client'
 
 export type UiLabels = Record<string, string>
 export type UiLayouts = Record<string, string[]>

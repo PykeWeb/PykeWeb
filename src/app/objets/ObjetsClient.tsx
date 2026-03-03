@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { ArrowDownRight, ArrowUpRight, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 import { listObjects, updateObject, deleteObject } from '@/lib/objectsApi';
-import { ImageDropzone } from '@/components/objets/ImageDropzone';
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone';
 import { currentGroupId } from '@/lib/tenantScope';
 import { PrimaryButton, SecondaryButton, DangerButton, SearchInput, SegmentedTabs } from '@/components/ui/design-system';
 
@@ -56,6 +56,7 @@ export default function ObjetsClient() {
   const [editingObj, setEditingObj] = useState<ObjRow | null>(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
+  const [editStock, setEditStock] = useState('0');
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -107,6 +108,7 @@ export default function ObjetsClient() {
     setEditingObj(o);
     setEditName(o.name ?? '');
     setEditPrice(String(o.price ?? 0));
+    setEditStock(String(Math.max(0, Number(o.stock ?? 0))));
     setEditImageFile(null);
     setEditError(null);
   }
@@ -115,6 +117,7 @@ export default function ObjetsClient() {
     setEditingObj(null);
     setEditName('');
     setEditPrice('');
+    setEditStock('0');
     setEditImageFile(null);
     setEditError(null);
   }
@@ -129,6 +132,7 @@ export default function ObjetsClient() {
       setEditError('Le prix doit être un nombre positif.');
       return;
     }
+    const nextQty = Math.max(0, Math.floor(Number(editStock || 0) || 0));
 
     try {
       setSavingEdit(true);
@@ -137,6 +141,7 @@ export default function ObjetsClient() {
         id: editingObj.id,
         name: editName.trim(),
         price: Number(editPrice),
+        quantity: nextQty,
         imageFile: editImageFile,
       });
 
@@ -220,13 +225,13 @@ export default function ObjetsClient() {
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div>
                     <label className="text-xs text-white/60">Nom</label>
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                      className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none focus:border-white/30"
                     />
                   </div>
                   <div>
@@ -235,7 +240,16 @@ export default function ObjetsClient() {
                       value={editPrice}
                       onChange={(e) => setEditPrice(e.target.value)}
                       inputMode="decimal"
-                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                      className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none focus:border-white/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/60">Quantité</label>
+                    <input
+                      value={editStock}
+                      onChange={(e) => setEditStock(e.target.value)}
+                      inputMode="numeric"
+                      className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none focus:border-white/30"
                     />
                   </div>
                 </div>
@@ -299,14 +313,14 @@ export default function ObjetsClient() {
                           <div className="inline-flex items-center gap-2">
                             <Link
                               href={`/transactions/nouveau?prefill=${encodeURIComponent(o.id)}`}
-                              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]"
                             >
                               <ShoppingCart className="h-4 w-4" />
                               Achat
                             </Link>
                             <Link
                               href={`/transactions/sortie?prefill=${encodeURIComponent(o.id)}`}
-                              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]"
                             >
                               <ArrowUpRight className="h-4 w-4" />
                               Sortie
@@ -314,7 +328,7 @@ export default function ObjetsClient() {
                             <button
                               type="button"
                               onClick={() => startEdit(o)}
-                              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]"
                             >
                               <Pencil className="h-4 w-4" />
                               Modifier
@@ -322,7 +336,7 @@ export default function ObjetsClient() {
                             <button
                               type="button"
                               onClick={() => removeObject(o)}
-                              className="inline-flex items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-1.5 text-sm text-rose-100 hover:bg-rose-500/20"
+                              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-rose-400/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22"
                             >
                               <Trash2 className="h-4 w-4" />
                               Supprimer
@@ -347,7 +361,7 @@ export default function ObjetsClient() {
                   </div>
                   <button
                     onClick={() => setTab('transactions')}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                    className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]"
                   >
                     Voir
                   </button>
@@ -361,10 +375,10 @@ export default function ObjetsClient() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-white/70">Dernières transactions</div>
               <div className="flex items-center gap-2">
-                <Link href="/transactions/nouveau" className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
+                <Link href="/transactions/nouveau" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">
                   Nouvel achat
                 </Link>
-                <Link href="/transactions/sortie" className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
+                <Link href="/transactions/sortie" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">
                   Nouvelle sortie
                 </Link>
               </div>
@@ -381,13 +395,13 @@ export default function ObjetsClient() {
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div>
                     <label className="text-xs text-white/60">Nom</label>
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                      className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none focus:border-white/30"
                     />
                   </div>
                   <div>
@@ -396,7 +410,16 @@ export default function ObjetsClient() {
                       value={editPrice}
                       onChange={(e) => setEditPrice(e.target.value)}
                       inputMode="decimal"
-                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
+                      className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none focus:border-white/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/60">Quantité</label>
+                    <input
+                      value={editStock}
+                      onChange={(e) => setEditStock(e.target.value)}
+                      inputMode="numeric"
+                      className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none focus:border-white/30"
                     />
                   </div>
                 </div>

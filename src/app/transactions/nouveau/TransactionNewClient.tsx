@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import TransactionBuilder from '@/components/transactions/TransactionBuilder'
+import TransactionBuilder from '@/components/modules/transactions/TransactionBuilder'
 import type { TxType } from '@/lib/transactionsApi'
 
 export default function TransactionNewClient({ type }: { type: TxType }) {

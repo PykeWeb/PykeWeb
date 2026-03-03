@@ -3,8 +3,8 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Sidebar } from '@/components/Sidebar'
-import { Topbar } from '@/components/Topbar'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { Topbar } from '@/components/layout/Topbar'
 import { getTenantSession } from '@/lib/tenantSession'
 
 export function AppFrame({ children }: { children: ReactNode }) {
@@ -24,8 +24,13 @@ export function AppFrame({ children }: { children: ReactNode }) {
       return
     }
 
+    if (pathname === '/' && session.isAdmin) {
+      window.location.href = '/admin/dashboard'
+      return
+    }
+
     setAuthChecked(true)
-  }, [isLogin])
+  }, [isLogin, pathname])
 
   if (!authChecked) {
     return <main className="mx-auto min-h-screen w-full max-w-[1480px] px-4 py-6" />

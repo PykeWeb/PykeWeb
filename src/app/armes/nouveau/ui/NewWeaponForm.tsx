@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { Minus, Plus } from 'lucide-react'
-import { ImageDropzone } from '@/components/objets/ImageDropzone'
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 
 export function NewWeaponForm() {
   const router = useRouter()

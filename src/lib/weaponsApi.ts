@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 
 export type DbWeapon = {
@@ -40,7 +40,7 @@ export async function listWeapons(): Promise<DbWeapon[]> {
   if (error) throw error
   const locals = (data ?? []) as DbWeapon[]
   const names = new Set(locals.map((w) => (w.name || '').toLowerCase()))
-  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: g.id, weapon_id: g.weapon_id, name: g.name, description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbWeapon[]
+  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: `global:${g.global_item_id ?? g.id}`, weapon_id: g.weapon_id, name: g.name, description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbWeapon[]
   return [...locals, ...globals.filter((g) => !names.has((g.name || '').toLowerCase()))]
 }
 
@@ -203,13 +203,15 @@ export async function updateWeapon(args: {
   id: string
   weapon_id?: string | null
   name?: string | null
+  quantity?: number
   description?: string | null
   imageFile?: File | null
 }) {
+  const quantity = Math.max(0, Math.floor(Number(args.quantity ?? 0) || 0))
   if (args.id.startsWith('global:')) {
     const res = await fetch('/api/catalog/overrides', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ global_item_id: args.id.replace('global:', ''), override_name: args.name, override_weapon_id: args.weapon_id, is_hidden: false }),
+      body: JSON.stringify({ global_item_id: args.id.replace('global:', ''), override_name: args.name, override_weapon_id: args.weapon_id, override_quantity: quantity, is_hidden: false }),
     })
     if (!res.ok) throw new Error(await res.text())
     return
@@ -220,6 +222,7 @@ export async function updateWeapon(args: {
     .update({
       weapon_id: args.weapon_id || null,
       name: args.name || null,
+      stock: quantity,
       description: args.description || null,
     })
     .eq('id', args.id)

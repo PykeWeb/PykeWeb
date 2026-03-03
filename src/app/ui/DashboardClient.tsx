@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ClipboardEvent } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
-import { StatCard } from '@/components/dashboard/StatCard'
+import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
-import { listActivePatchNotes, createSupportTicket, getCurrentGroupAccessInfo, type PatchNote } from '@/lib/communicationApi'
-import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X } from 'lucide-react'
+import { createSupportTicket } from '@/lib/communicationApi'
+import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Crosshair, Wrench, Leaf } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -28,24 +28,32 @@ type Loan = {
   weapons: { name: string | null; weapon_id: string | null }[] | null
 }
 
-type AccessInfo = { paid_until: string | null; active: boolean }
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string }
 type DrugItem = { id: string; name: string; stock: number; type: string }
 type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
 
-type QuickActionKey = 'purchase' | 'loans' | 'catalogue'
-type CardKey = 'objects' | 'weapons' | 'loans' | 'transactions'
+type QuickActionKey = 'purchase' | 'loans' | 'catalogue' | 'objects' | 'weapons' | 'expenses' | 'drugs' | 'transactions'
+type CardKey = 'objects' | 'weapons' | 'loans' | 'transactions' | 'expenses' | 'drugs' | 'catalogue' | 'equipment'
 
 const QUICK_ACTION_OPTIONS: { key: QuickActionKey; title: string; subtitle: string; href: string; icon: any }[] = [
   { key: 'purchase', title: 'Nouvel achat', subtitle: 'Créer une entrée stock', href: '/transactions/nouveau?type=purchase', icon: ShoppingCart },
   { key: 'loans', title: 'Prêts en cours', subtitle: 'Suivre les prêts actifs', href: '/armes/prets', icon: Handshake },
   { key: 'catalogue', title: 'Catalogue', subtitle: 'Voir tous les objets', href: '/objets', icon: FolderOpen },
+  { key: 'objects', title: 'Objets', subtitle: 'Catalogue objets', href: '/objets', icon: Box },
+  { key: 'weapons', title: 'Armes', subtitle: 'Gestion des armes', href: '/armes', icon: Crosshair },
+  { key: 'transactions', title: 'Transactions', subtitle: 'Historique des transactions', href: '/transactions', icon: Receipt },
+  { key: 'expenses', title: 'Dépenses', subtitle: 'Suivre les dépenses', href: '/depenses', icon: Receipt },
+  { key: 'drugs', title: 'Drogues', subtitle: 'Catalogue drogues', href: '/drogues', icon: Leaf },
 ]
 const CARD_OPTIONS: { key: CardKey; title: string; href: string; icon: any; getValue: (v: any) => string }[] = [
   { key: 'objects', title: 'Objets', href: '/objets', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.objectCount)) },
-  { key: 'weapons', title: 'Armes', href: '/armes', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.weaponCount)) },
+  { key: 'weapons', title: 'Armes', href: '/armes', icon: Crosshair, getValue: (v) => (v.loading ? '—' : String(v.weaponCount)) },
   { key: 'loans', title: 'Prêts en cours', href: '/armes/prets', icon: Handshake, getValue: (v) => (v.loading ? '—' : String(v.activeLoans)) },
-  { key: 'transactions', title: "Transactions aujourd'hui", href: '/transactions', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.txToday)) },
+  { key: 'transactions', title: 'Transactions', href: '/transactions', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.txToday)) },
+  { key: 'expenses', title: 'Dépenses', href: '/depenses', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.expenseCount)) },
+  { key: 'drugs', title: 'Drogues', href: '/drogues', icon: Leaf, getValue: (v) => (v.loading ? '—' : String(v.drugCount)) },
+  { key: 'catalogue', title: 'Catalogue', href: '/objets', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.objectCount + v.weaponCount + v.drugCount)) },
+  { key: 'equipment', title: 'Équipement', href: '/equipement', icon: Wrench, getValue: () => '→' },
 ]
 
 function startOfTodayIso() {
@@ -66,8 +74,6 @@ export function DashboardClient() {
   const [drugItems, setDrugItems] = useState<DrugItem[]>([])
   const [activityView, setActivityView] = useState<ActivityView>('transactions')
   const [pauseAutoUntil, setPauseAutoUntil] = useState(0)
-  const [accessInfo, setAccessInfo] = useState<AccessInfo | null>(null)
-  const [patchNotes, setPatchNotes] = useState<PatchNote[]>([])
   const [ticketKind, setTicketKind] = useState<'bug' | 'message'>('bug')
   const [ticketMessage, setTicketMessage] = useState('')
   const [ticketImage, setTicketImage] = useState<File | null>(null)
@@ -77,6 +83,9 @@ export function DashboardClient() {
   const pressTimerRef = useRef<number | null>(null)
   const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['purchase', 'loans', 'catalogue'])
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['objects', 'weapons', 'loans', 'transactions'])
+  const [quickModalOpen, setQuickModalOpen] = useState(false)
+  const [quickRemoveMode, setQuickRemoveMode] = useState(false)
+  const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
 
   useEffect(() => {
@@ -133,7 +142,7 @@ export function DashboardClient() {
       setLoading(true)
       try {
         const groupId = currentGroupId()
-        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes, access, notes] = await Promise.all([
+        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes] = await Promise.all([
           supabase.from('objects').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapons').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).eq('group_id', groupId).is('returned_at', null),
@@ -163,8 +172,6 @@ export function DashboardClient() {
             .eq('group_id', groupId)
             .order('stock', { ascending: false })
             .limit(8),
-          getCurrentGroupAccessInfo(),
-          listActivePatchNotes(3),
         ])
 
         if (!alive) return
@@ -176,8 +183,6 @@ export function DashboardClient() {
         setRecentLoans((recentLoansRes.data as Loan[]) ?? [])
         setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
         setDrugItems((drugItemsRes.data as DrugItem[]) ?? [])
-        setAccessInfo(access ? { paid_until: access.paid_until, active: access.active } : null)
-        setPatchNotes(notes)
       } finally {
         if (alive) setLoading(false)
       }
@@ -202,24 +207,6 @@ export function DashboardClient() {
     return () => window.clearInterval(timer)
   }, [pauseAutoUntil])
 
-  const expirationLabel = useMemo(() => {
-    if (!accessInfo) return '—'
-    if (!accessInfo.active) return 'Accès expiré'
-    if (!accessInfo.paid_until) return 'Accès illimité'
-    const ts = new Date(accessInfo.paid_until).getTime()
-    if (ts < Date.now()) return 'Accès expiré'
-    return `Valide jusqu’au : ${new Date(accessInfo.paid_until).toLocaleDateString('fr-FR')}`
-  }, [accessInfo])
-
-  const expirationClass = useMemo(() => {
-    if (!accessInfo?.active) return 'text-rose-300'
-    if (!accessInfo?.paid_until) return 'text-emerald-200'
-    const ts = new Date(accessInfo.paid_until).getTime()
-    if (ts < Date.now()) return 'text-rose-300'
-    if (ts - Date.now() < 3 * 24 * 60 * 60 * 1000) return 'text-orange-300'
-    return 'text-white/80'
-  }, [accessInfo])
-
   async function submitTicket() {
     if (!ticketMessage.trim()) {
       setTicketStatus('Message requis.')
@@ -241,41 +228,39 @@ export function DashboardClient() {
   }
 
 
-  function addQuickAction() {
-    const available = QUICK_ACTION_OPTIONS.filter((a) => !quickActions.includes(a.key))
-    if (!available.length) return
-    const picked = window.prompt(`Choisir un raccourci: ${available.map((a) => a.key).join(', ')}`, available[0].key)
-    const selected = available.find((a) => a.key === picked)
-    if (!selected) return
+  function addQuickAction(actionKey: QuickActionKey) {
+    const selected = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey)
+    if (!selected || quickActions.includes(actionKey)) return
     const next = [...quickActions, selected.key]
     setQuickActions(next)
+    setQuickModalOpen(false)
     void persistLayouts(next, dashboardCards)
   }
 
-  function removeQuickAction() {
-    if (!quickActions.length) return
-    const next = quickActions.slice(0, -1)
+  function removeQuickAction(actionKey: QuickActionKey) {
+    const next = quickActions.filter((key) => key !== actionKey)
     setQuickActions(next)
     void persistLayouts(next, dashboardCards)
   }
 
   function onCardPressStart(cardKey: CardKey) {
+    const slot = dashboardCards.findIndex((k) => k === cardKey)
     if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current)
-    pressTimerRef.current = window.setTimeout(() => {
-      const picked = window.prompt(`Changer la carte ${cardKey} vers: ${CARD_OPTIONS.map((c) => c.key).join(', ')}`)
-      if (!picked) return
-      const selected = CARD_OPTIONS.find((c) => c.key === picked)
-      if (!selected) return
-      const next = dashboardCards.map((c) => (c === cardKey ? selected.key : c))
-      setDashboardCards(next)
-      void persistLayouts(quickActions, next)
-    }, 550)
+    pressTimerRef.current = window.setTimeout(() => setCardPickerSlot(slot >= 0 ? slot : 0), 550)
   }
   function onCardPressEnd() {
     if (pressTimerRef.current) {
       window.clearTimeout(pressTimerRef.current)
       pressTimerRef.current = null
     }
+  }
+
+  function applyCardChoice(nextCard: CardKey) {
+    if (cardPickerSlot === null) return
+    const next = dashboardCards.map((value, index) => (index === cardPickerSlot ? nextCard : value))
+    setDashboardCards(next)
+    setCardPickerSlot(null)
+    void persistLayouts(quickActions, next)
   }
 
   function onSupportPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
@@ -299,7 +284,7 @@ export function DashboardClient() {
             const Icon = card.icon
             return (
               <div key={`${card.key}-${idx}`} onMouseDown={() => onCardPressStart(card.key)} onMouseUp={onCardPressEnd} onMouseLeave={onCardPressEnd} onContextMenu={(e) => { e.preventDefault(); onCardPressStart(card.key) }}>
-                <StatCard title={card.title} value={card.getValue({ loading, objectCount, weaponCount, activeLoans, txToday })} icon={<Icon className="h-5 w-5" />} href={card.href} />
+              <StatCard title={card.title} value={card.getValue({ loading, objectCount, weaponCount, activeLoans, txToday, expenseCount: recentExpenses.length, drugCount: drugItems.length })} icon={<Icon className="h-5 w-5" />} href={card.href} />
               </div>
             )
           })}
@@ -400,8 +385,8 @@ export function DashboardClient() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">Quick actions</h3>
             <div className="flex items-center gap-1">
-              <button type="button" onClick={addQuickAction} className="rounded-md border border-white/10 bg-white/5 px-2 text-xs">+</button>
-              <button type="button" onClick={removeQuickAction} className="rounded-md border border-white/10 bg-white/5 px-2 text-xs">−</button>
+              <button type="button" onClick={() => setQuickModalOpen(true)} className="rounded-md border border-white/10 bg-white/5 px-2 text-xs">+</button>
+              <button type="button" onClick={() => setQuickRemoveMode((v) => !v)} className={`rounded-md border px-2 text-xs ${quickRemoveMode ? 'border-rose-300/40 bg-rose-500/20' : 'border-white/10 bg-white/5'}`}>−</button>
             </div>
           </div>
           <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
@@ -411,7 +396,7 @@ export function DashboardClient() {
               if (!action) return null
               const Icon = action.icon
               return (
-                <Link key={`${action.key}-${idx}`} href={action.href} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
+                <Link key={`${action.key}-${idx}`} href={action.href} className="group flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
                   <div className="flex items-center gap-3">
                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><Icon className="h-4 w-4" /></span>
                     <div>
@@ -419,39 +404,72 @@ export function DashboardClient() {
                       <p className="text-xs text-white/60">{action.subtitle}</p>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-white/60" />
+                  <div className="flex items-center gap-2">
+                    {quickRemoveMode ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          removeQuickAction(action.key)
+                        }}
+                        className="rounded-md border border-rose-300/40 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-100"
+                      >
+                        Retirer
+                      </button>
+                    ) : null}
+                    <ChevronRight className="h-4 w-4 text-white/60" />
+                  </div>
                 </Link>
               )
             })}
           </div>
         </Panel>
 
-        <div className="lg:mt-auto">
-          <Panel>
-            <h3 className="text-sm font-semibold">Patch notes</h3>
-            <div className="mt-2 space-y-2">
-              {patchNotes.length === 0 ? (
-                <p className="text-xs text-white/60">Aucune note active.</p>
-              ) : (
-                patchNotes.map((n) => (
-                  <div key={n.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                    <p className="text-sm font-semibold">{n.title}</p>
-                    <p className="mt-1 text-xs text-white/70 line-clamp-2">{n.content}</p>
-                    <p className="mt-1 text-[11px] text-white/50">{new Date(n.created_at).toLocaleDateString('fr-FR')}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </Panel>
-          <div className="mt-4">
-            <Panel>
-              <h3 className="text-sm font-semibold">Accès</h3>
-              <p className={`mt-2 text-sm font-semibold ${expirationClass}`}>{expirationLabel}</p>
-            </Panel>
-          </div>
-        </div>
       </div>
     </div>
+      {quickModalOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-white/20 bg-slate-950/95 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Ajouter un raccourci</h3>
+              <button type="button" onClick={() => setQuickModalOpen(false)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {QUICK_ACTION_OPTIONS.map((opt) => {
+                const Icon = opt.icon
+                const disabled = quickActions.includes(opt.key)
+                return (
+                  <button key={opt.key} type="button" disabled={disabled} onClick={() => addQuickAction(opt.key)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-left disabled:opacity-40">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10"><Icon className="h-4 w-4" /></span>
+                    <div>
+                      <p className="text-sm font-medium">{opt.title}</p>
+                      <p className="text-xs text-white/60">{disabled ? 'Déjà ajouté' : opt.subtitle}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cardPickerSlot !== null ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-white/20 bg-slate-950/95 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Choisir la carte</h3>
+              <button type="button" onClick={() => setCardPickerSlot(null)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {CARD_OPTIONS.map((opt) => (
+                <button key={opt.key} type="button" onClick={() => applyCardChoice(opt.key)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left text-sm hover:bg-white/10">
+                  {opt.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
       <button
         type="button"
         onClick={() => setSupportOpen((value) => !value)}

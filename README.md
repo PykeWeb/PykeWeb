@@ -1,18 +1,53 @@
-# Z2T — Dashboard Stock RP (maquette UI)
+# Pyke Stock
 
-## Installation
-```bash
-npm i
-npm run dev
-```
+## Présentation
+Pyke Stock est une plateforme de gestion de stock RP multi-groupes.
+Application web Next.js avec backend Supabase, pensée pour un usage opérationnel (catalogues, mouvements, administration et suivi).
 
-## Ce que tu as
-- UI moderne dark/glass style
-- Navigation : Dashboard + Objets uniquement
-- Pages :
-  - `/` dashboard
-  - `/objets` liste
-  - `/objets/nouveau` formulaire (UI)
+## Fonctionnalités
+- Objets
+- Armes
+- Équipement
+- Drogues (catalogue, plantations, recettes, production, calculateur)
+- Transactions
+- Admin groupes
+- Patch notes
+- Support
 
-## Next step
-Quand tu veux : on branche Supabase (tables, RLS, auth, seed) et on remplace le MOCK.
+## Stack
+- Next.js (App Router)
+- Supabase
+- Vercel
+
+## Installation locale
+1. `git clone <repo>`
+2. `npm install`
+3. Copier `.env.example` vers `.env.local`
+4. Exécuter `supabase/SUPABASE_SQL_FULL_SETUP.sql` dans Supabase SQL Editor
+5. `npm run dev`
+
+## Base de données
+- Script principal : `supabase/SUPABASE_SQL_FULL_SETUP.sql`
+- Script idempotent (relançable)
+- Contient : tables, index, triggers, fonctions et configuration associée
+
+## Variables d’environnement
+Variables réellement utilisées :
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (serveur uniquement)
+- `NEXT_PUBLIC_GROUP_NAME`
+- `NEXT_PUBLIC_GROUP_BADGE`
+
+## Déploiement
+Guide détaillé : `docs/DEPLOY_VERCEL.md`
+
+## Duplication du projet (checklist)
+- [ ] Créer un nouveau projet Supabase
+- [ ] Exécuter `supabase/SUPABASE_SQL_FULL_SETUP.sql`
+- [ ] Configurer les variables d’environnement dans Vercel
+- [ ] Déployer
+
+## Référence architecture
+- `docs/ARCHITECTURE.md`
+- `docs/CLEANUP_REPORT.md`
