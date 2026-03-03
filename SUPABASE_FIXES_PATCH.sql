@@ -1,4 +1,6 @@
--- Fixes patch: robust catalog_global_items view (works even if some image_url columns are missing)
+-- Fixes patch: rebuild catalog_global_items view safely (supports schema drift)
+-- Important: we DROP then CREATE the view to avoid PostgreSQL column-rename conflicts
+-- when an existing view has a different column layout/order.
 begin;
 
 do $$
@@ -29,8 +31,11 @@ begin
     where table_schema = 'public' and table_name = 'drug_items' and column_name = 'image_url'
   ) into has_drugs_image;
 
+  -- Avoid: ERROR 42P16 cannot change name of view column ...
+  execute 'drop view if exists public.catalog_global_items';
+
   sql := format($fmt$
-    create or replace view public.catalog_global_items as
+    create view public.catalog_global_items as
     select
       o.group_id,
       ('objects:' || o.id::text) as id,
