@@ -16,11 +16,13 @@ create unique index if not exists ui_layouts_scope_page_key_uidx
 
 alter table public.ui_layouts enable row level security;
 
-create policy if not exists ui_layouts_select_policy on public.ui_layouts
+drop policy if exists ui_layouts_select_policy on public.ui_layouts;
+create policy ui_layouts_select_policy on public.ui_layouts
 for select
 using (true);
 
-create policy if not exists ui_layouts_group_upsert_policy on public.ui_layouts
+drop policy if exists ui_layouts_group_upsert_policy on public.ui_layouts;
+create policy ui_layouts_group_upsert_policy on public.ui_layouts
 for all
 using (
   scope_type = 'group'
@@ -29,7 +31,8 @@ with check (
   scope_type = 'group'
 );
 
-create policy if not exists ui_layouts_global_admin_policy on public.ui_layouts
+drop policy if exists ui_layouts_global_admin_policy on public.ui_layouts;
+create policy ui_layouts_global_admin_policy on public.ui_layouts
 for all
 using (
   scope_type = 'global'

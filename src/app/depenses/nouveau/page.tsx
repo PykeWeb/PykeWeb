@@ -294,6 +294,7 @@ export default function NouvelleDepensePage() {
                     item_id: item ? item.id : null,
                     item_label: itemType === 'custom' ? customName.trim() : item?.name || 'Item',
                     unit_price: Number(unitPrice),
+                    default_unit_price: item ? Number(item.price ?? 0) : null,
                     quantity: Number(quantity),
                     description: description.trim() || undefined,
                     proofFile,

@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Clock3 } from 'lucide-react'
+import { CheckCircle2, Clock3, Trash2 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
-import { listExpenses, setExpenseStatus, type DbExpense } from '@/lib/expensesApi'
+import { deleteExpense, listExpenses, setExpenseStatus, type DbExpense } from '@/lib/expensesApi'
 import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { getTenantSession } from '@/lib/tenantSession'
+import { toast } from 'sonner'
 
 function badge(status: string) {
   if (status === 'paid')
@@ -27,6 +30,9 @@ export default function DepensesClient() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<DbExpense | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   async function refresh() {
     setLoading(true)
@@ -40,6 +46,7 @@ export default function DepensesClient() {
   }
 
   useEffect(() => {
+    setIsAdmin(Boolean(getTenantSession()?.isAdmin))
     refresh()
   }, [])
 
@@ -51,6 +58,27 @@ export default function DepensesClient() {
 
   const pendingSum = useMemo(() => filtered.filter((e) => e.status !== 'paid').reduce((s, e) => s + (e.total || 0), 0), [filtered])
   const paidSum = useMemo(() => filtered.filter((e) => e.status === 'paid').reduce((s, e) => s + (e.total || 0), 0), [filtered])
+
+  async function onDeleteExpense() {
+    if (!pendingDelete) return
+    if (!isAdmin) {
+      toast.error('Action réservée aux administrateurs.')
+      return
+    }
+    try {
+      setDeleting(true)
+      await deleteExpense(pendingDelete.id)
+      await refresh()
+      toast.success('Dépense supprimée.')
+      setPendingDelete(null)
+    } catch (e: any) {
+      const message = e?.message || 'Impossible de supprimer la dépense.'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -120,7 +148,7 @@ export default function DepensesClient() {
                     <td className="px-4 py-3">{Number(e.total).toFixed(2)} $</td>
                     <td className="px-4 py-3">{badge(e.status)}</td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
                         <SecondaryButton
                           disabled={busyId === e.id}
                           onClick={async () => {
@@ -138,6 +166,11 @@ export default function DepensesClient() {
                         >
                           {e.status === 'paid' ? 'Remettre en attente' : 'Rembourser'}
                         </SecondaryButton>
+                        {isAdmin ? (
+                          <SecondaryButton type="button" disabled={busyId === e.id} onClick={() => setPendingDelete(e)} icon={<Trash2 className="h-4 w-4" />}>
+                            Supprimer
+                          </SecondaryButton>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -149,6 +182,15 @@ export default function DepensesClient() {
 
         {error ? <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
       </Panel>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Supprimer cette dépense ?"
+        description="Cette action est définitive et retire la ligne de la comptabilité."
+        loading={deleting}
+        onCancel={() => (!deleting ? setPendingDelete(null) : null)}
+        onConfirm={onDeleteExpense}
+      />
     </div>
   )
 }

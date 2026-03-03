@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt, Boxes, LifeBuoy, ScrollText } from 'lucide-react'
+import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt, Boxes, LifeBuoy, ScrollText, Wallet } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
@@ -99,6 +99,7 @@ export function Sidebar() {
             <NavItem href="/equipement" label={labels.nav_equipement || 'Équipement'} icon={<Wrench className="h-5 w-5" />} active={pathname.startsWith('/equipement')} />
             <NavItem href="/drogues" label={labels.nav_drogues || 'Drogues'} icon={<Leaf className="h-5 w-5" />} active={pathname.startsWith('/drogues')} />
             <NavItem href="/depenses" label={labels.nav_depenses || 'Dépenses'} icon={<Receipt className="h-5 w-5" />} active={pathname.startsWith('/depenses')} />
+            <NavItem href="/finance" label={labels.nav_finance || 'Finance'} icon={<Wallet className="h-5 w-5" />} active={pathname.startsWith('/finance')} />
           </>
         )}
       </div>

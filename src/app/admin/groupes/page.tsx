@@ -235,7 +235,6 @@ export default function AdminGroupsPage() {
   const [deletingGroup, setDeletingGroup] = useState(false)
   const [editModal, setEditModal] = useState<GroupEditModal>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
-  const [layoutEdit, setLayoutEdit] = useState(false)
   const [actionOrder, setActionOrder] = useState(['edit', 'password', 'toggle', 'days', 'unlimited', 'delete'])
 
   const now = Date.now()
@@ -360,23 +359,15 @@ export default function AdminGroupsPage() {
               Créer
             </button>
             <button
-              onClick={() => setLayoutEdit((v) => !v)}
+              onClick={async () => {
+                const base = ['edit', 'password', 'toggle', 'days', 'unlimited', 'delete']
+                setActionOrder(base)
+                await resetLayoutOrder('admin_groups.actions', 'global')
+              }}
               className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"
             >
-              {layoutEdit ? 'Terminer la disposition' : 'Modifier la disposition'}
+              Réinitialiser l’ordre
             </button>
-            {layoutEdit ? (
-              <button
-                onClick={async () => {
-                  const base = ['edit', 'password', 'toggle', 'days', 'unlimited', 'delete']
-                  setActionOrder(base)
-                  await resetLayoutOrder('admin_groups.actions', 'global')
-                }}
-                className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"
-              >
-                Réinitialiser l’ordre
-              </button>
-            ) : null}
             <button
               onClick={() => adminGroup && setPasswordModal({ type: 'admin', group: adminGroup })}
               className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14]"
@@ -416,7 +407,6 @@ export default function AdminGroupsPage() {
                     <td className="px-4 py-3">{group.paid_until ? new Date(group.paid_until).toLocaleDateString('fr-FR') : '—'}</td>
                     <td className="min-w-[520px] px-4 py-3">
                       <ReorderableRow
-                        editable={layoutEdit}
                         order={actionOrder}
                         onOrderChange={async (next) => {
                           setActionOrder(next)

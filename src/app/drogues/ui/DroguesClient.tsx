@@ -155,7 +155,6 @@ export default function DroguesClient() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [calcMode, setCalcMode] = useState<CalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
-  const [layoutEdit, setLayoutEdit] = useState(false)
   const [actionOrder, setActionOrder] = useState(['purchase', 'sale', 'edit', 'delete'])
   const [txModal, setTxModal] = useState<{ item: DbDrugItem; kind: 'purchase' | 'sale' } | null>(null)
   const session = getTenantSession()
@@ -330,8 +329,7 @@ export default function DroguesClient() {
 
           <div className="flex items-center gap-2">
             <Link href="/drogues/nouveau"><PrimaryButton size="lg">Ajouter un item</PrimaryButton></Link>
-            <SecondaryButton onClick={() => setLayoutEdit((v) => !v)}>{layoutEdit ? 'Terminer la disposition' : 'Modifier la disposition'}</SecondaryButton>
-            {layoutEdit ? <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','edit','delete']); await resetLayoutOrder('drogues.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton> : null}
+            <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','edit','delete']); await resetLayoutOrder('drogues.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton>
           </div>
         </div>
 
@@ -457,8 +455,7 @@ export default function DroguesClient() {
                         <td className="px-4 py-3">{it.stock}</td>
                         <td className="px-4 py-3">
                           <ReorderableRow
-                            editable={layoutEdit}
-                            order={actionOrder}
+                                order={actionOrder}
                             onOrderChange={async (next) => {
                               setActionOrder(next)
                               await saveLayoutOrder('drogues.actions', next, layoutScope)
