@@ -23,7 +23,6 @@ export function PatchNotesRecapModal({
   onRead: (note: PatchNote) => void
 }) {
   const [query, setQuery] = useState('')
-  const [activeOnly, setActiveOnly] = useState(true)
 
   useEffect(() => {
     if (!open) return
@@ -35,21 +34,16 @@ export function PatchNotesRecapModal({
   }, [open, onClose])
 
   useEffect(() => {
-    if (!open) {
-      setQuery('')
-      setActiveOnly(true)
-    }
+    if (!open) setQuery('')
   }, [open])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return notes
-      .filter((n) => !activeOnly || n.is_active)
-      .filter((n) => {
-        if (!q) return true
-        return n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
-      })
-  }, [notes, query, activeOnly])
+    return notes.filter((n) => {
+      if (!q) return true
+      return n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+    })
+  }, [notes, query])
 
   if (!open) return null
 
@@ -63,22 +57,13 @@ export function PatchNotesRecapModal({
           <h2 className="text-xl font-semibold">Patch notes</h2>
           <p className="mt-1 text-sm text-white/65">Toutes les mises à jour</p>
 
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="mt-3">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher…"
               className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm outline-none"
             />
-            <label className="inline-flex items-center gap-2 text-sm text-white/75">
-              <input
-                type="checkbox"
-                checked={activeOnly}
-                onChange={(e) => setActiveOnly(e.target.checked)}
-                className="h-4 w-4 rounded border-white/20 bg-white/5"
-              />
-              Actifs uniquement
-            </label>
           </div>
         </div>
 
@@ -97,9 +82,6 @@ export function PatchNotesRecapModal({
                     <p className="text-sm font-semibold">{n.title}</p>
                     <p className="mt-1 text-xs text-white/55">{formatDate(n.created_at)}</p>
                   </div>
-                  <span className="shrink-0 rounded-full border border-white/15 bg-white/[0.08] px-2 py-0.5 text-[11px] text-white/80">
-                    {n.is_active ? 'Actif' : 'Inactif'}
-                  </span>
                 </div>
                 <p
                   className="mt-2 text-xs text-white/70 whitespace-pre-wrap"

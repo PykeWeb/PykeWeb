@@ -9,8 +9,6 @@ import { listActivePatchNotes, type PatchNote } from '@/lib/communicationApi'
 import { PatchNoteModal } from '@/components/ui/PatchNoteModal'
 import { PatchNotesRecapModal } from '@/components/ui/PatchNotesRecapModal'
 
-const SUPERADMIN_LOGIN = 'admin'
-const SUPERADMIN_PASSWORD = 'santa1234'
 const APP_VERSION = '1.0.0'
 
 export default function LoginPage() {
@@ -39,23 +37,13 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      if (login === SUPERADMIN_LOGIN && password === SUPERADMIN_PASSWORD) {
-        saveTenantSession({
-          groupId: 'admin',
-          groupName: 'Administration',
-          groupBadge: 'ADMIN',
-          isAdmin: true,
-        })
-        window.location.href = '/admin/groupes'
-        return
-      }
-
       const group = await loginTenant(login, password)
+      const isAdmin = group.login.toLowerCase() === 'admin' || (group.badge || '').toUpperCase() === 'ADMIN'
       saveTenantSession({
-        groupId: group.id,
-        groupName: group.name,
-        groupBadge: group.badge,
-        isAdmin: false,
+        groupId: isAdmin ? 'admin' : group.id,
+        groupName: isAdmin ? 'Administration' : group.name,
+        groupBadge: isAdmin ? 'ADMIN' : group.badge,
+        isAdmin,
       })
       window.location.href = '/'
     } catch (err: any) {
