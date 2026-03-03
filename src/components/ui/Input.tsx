@@ -4,7 +4,7 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   return (
     <input
       className={clsx(
-        'mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90 outline-none placeholder:text-white/30 focus:border-white/20',
+        'h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none placeholder:text-white/40 transition focus:border-white/30 focus:bg-white/[0.1]',
         className
       )}
       {...props}

@@ -6,6 +6,7 @@ import { ArrowUpRight, Calculator, Factory, Pencil, Plus, ShoppingCart, Trash2 }
 import { Panel } from '@/components/ui/Panel'
 import { listDrugItems, adjustDrugStock, updateDrugItem, deleteDrugItem, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
 import { ImageDropzone } from '@/components/objets/ImageDropzone'
+import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs } from '@/components/ui/design-system'
 
 const TAB_KEYS = ['catalogue', 'plantations'] as const
 type TabKey = (typeof TAB_KEYS)[number]
@@ -300,31 +301,10 @@ export default function DroguesClient() {
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setTab('catalogue')}
-              className={
-                'rounded-xl border px-3 py-2 text-sm font-semibold shadow-glow transition ' +
-                (tab === 'catalogue' ? 'border-white/20 bg-white/10' : 'border-white/10 bg-white/5 hover:bg-white/10')
-              }
-            >
-              Catalogue
-            </button>
-            <button
-              onClick={() => setTab('plantations')}
-              className={
-                'rounded-xl border px-3 py-2 text-sm font-semibold shadow-glow transition ' +
-                (tab === 'plantations' ? 'border-white/20 bg-white/10' : 'border-white/10 bg-white/5 hover:bg-white/10')
-              }
-            >
-              Plantations
-            </button>
-          </div>
+          <SegmentedTabs options={[{ value: 'catalogue', label: 'Catalogue' }, { value: 'plantations', label: 'Plantations' }]} value={tab} onChange={setTab} />
 
           <div className="flex items-center gap-2">
-            <Link href="/drogues/nouveau" className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium shadow-glow transition hover:bg-white/10">
-              Ajouter un item
-            </Link>
+            <Link href="/drogues/nouveau"><PrimaryButton size="lg">Ajouter un item</PrimaryButton></Link>
           </div>
         </div>
 
@@ -335,21 +315,8 @@ export default function DroguesClient() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm font-semibold">Modifier l’item : {editingItem.name}</p>
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="button"
-                      disabled={savingEdit}
-                      onClick={saveEdit}
-                      className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
-                    </button>
+                    <SecondaryButton type="button" onClick={cancelEdit}>Annuler</SecondaryButton>
+                    <PrimaryButton type="button" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Enregistrement…' : 'Enregistrer'}</PrimaryButton>
                   </div>
                 </div>
 
@@ -402,17 +369,12 @@ export default function DroguesClient() {
             ) : null}
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-[260px] rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-white/40 focus:border-white/20"
-                placeholder="Rechercher…"
-              />
+              <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} className="w-[300px]" placeholder="Rechercher…" />
 
               <select
                 value={kind}
                 onChange={(e) => setKind(e.target.value as any)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-white/20"
+                className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm outline-none focus:border-white/30"
               >
                 <option value="all">Tous</option>
                 <option value="drug">Drogue</option>
@@ -422,7 +384,7 @@ export default function DroguesClient() {
                 <option value="other">Autre</option>
               </select>
 
-              <div className="text-xs text-white/60">{filtered.length} item(s)</div>
+              <div className="text-sm text-white/60">{filtered.length} item(s)</div>
             </div>
 
             <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
@@ -471,7 +433,7 @@ export default function DroguesClient() {
                         <td className="px-4 py-3">{it.stock}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">
-                            <button
+                            <SecondaryButton
                               disabled={busyId === it.id}
                               onClick={async () => {
                                 setBusyId(it.id)
@@ -485,12 +447,11 @@ export default function DroguesClient() {
                                   setBusyId(null)
                                 }
                               }}
-                              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10"
+                              icon={<ShoppingCart className="h-4 w-4" />}
                             >
-                              <ShoppingCart className="h-4 w-4" />
                               Achat
-                            </button>
-                            <button
+                            </SecondaryButton>
+                            <SecondaryButton
                               disabled={busyId === it.id}
                               onClick={async () => {
                                 setBusyId(it.id)
@@ -504,19 +465,12 @@ export default function DroguesClient() {
                                   setBusyId(null)
                                 }
                               }}
-                              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10"
+                              icon={<ArrowUpRight className="h-4 w-4" />}
                             >
-                              <ArrowUpRight className="h-4 w-4" />
                               Sortie
-                            </button>
-                            <button onClick={() => startEdit(it)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10">
-                              <Pencil className="h-4 w-4" />
-                              Modifier
-                            </button>
-                            <button onClick={() => removeItem(it)} className="inline-flex items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20">
-                              <Trash2 className="h-4 w-4" />
-                              Supprimer
-                            </button>
+                            </SecondaryButton>
+                            <SecondaryButton onClick={() => startEdit(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton>
+                            <DangerButton onClick={() => removeItem(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
                           </div>
                         </td>
                       </tr>

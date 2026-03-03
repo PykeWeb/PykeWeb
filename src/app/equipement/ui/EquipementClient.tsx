@@ -6,6 +6,7 @@ import { ArrowUpRight, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { listEquipment, adjustEquipmentStock, updateEquipment, deleteEquipment, type DbEquipment } from '@/lib/equipmentApi'
 import { ImageDropzone } from '@/components/objets/ImageDropzone'
+import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 
 export default function EquipementClient() {
   const [items, setItems] = useState<DbEquipment[]>([])
@@ -102,16 +103,10 @@ export default function EquipementClient() {
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold">Catalogue</button>
-            </div>
-          </div>
+          <TabPill active>Catalogue</TabPill>
 
           <div className="flex items-center gap-2">
-            <Link href="/equipement/nouveau" className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium shadow-glow transition hover:bg-white/10">
-              Ajouter un équipement
-            </Link>
+            <Link href="/equipement/nouveau"><PrimaryButton size="lg">Ajouter un équipement</PrimaryButton></Link>
           </div>
         </div>
 
@@ -120,21 +115,10 @@ export default function EquipementClient() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold">Modifier l’équipement : {editingItem.name}</p>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  disabled={savingEdit}
-                  onClick={saveEdit}
-                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
-                >
+                <SecondaryButton type="button" onClick={cancelEdit}>Annuler</SecondaryButton>
+                <PrimaryButton type="button" disabled={savingEdit} onClick={saveEdit}>
                   {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
+                </PrimaryButton>
               </div>
             </div>
 
@@ -173,13 +157,13 @@ export default function EquipementClient() {
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <input
+          <SearchInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-[260px] rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-white/40 focus:border-white/20"
+            className="w-[300px]"
             placeholder="Rechercher…"
           />
-          <div className="text-xs text-white/60">{total} équipement(s)</div>
+          <div className="text-sm text-white/60">{total} équipement(s)</div>
         </div>
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
@@ -226,7 +210,7 @@ export default function EquipementClient() {
                     <td className="px-4 py-3">{it.stock}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
-                        <button
+                        <SecondaryButton
                           disabled={busyId === it.id}
                           onClick={async () => {
                             setBusyId(it.id)
@@ -240,12 +224,11 @@ export default function EquipementClient() {
                               setBusyId(null)
                             }
                           }}
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10"
+                          icon={<ShoppingCart className="h-4 w-4" />}
                         >
-                          <ShoppingCart className="h-4 w-4" />
                           Achat
-                        </button>
-                        <button
+                        </SecondaryButton>
+                        <SecondaryButton
                           disabled={busyId === it.id}
                           onClick={async () => {
                             setBusyId(it.id)
@@ -259,19 +242,12 @@ export default function EquipementClient() {
                               setBusyId(null)
                             }
                           }}
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10"
+                          icon={<ArrowUpRight className="h-4 w-4" />}
                         >
-                          <ArrowUpRight className="h-4 w-4" />
                           Sortie
-                        </button>
-                        <button onClick={() => startEdit(it)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium shadow-glow transition hover:bg-white/10">
-                          <Pencil className="h-4 w-4" />
-                          Modifier
-                        </button>
-                        <button onClick={() => removeItem(it)} className="inline-flex items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20">
-                          <Trash2 className="h-4 w-4" />
-                          Supprimer
-                        </button>
+                        </SecondaryButton>
+                        <SecondaryButton onClick={() => startEdit(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton>
+                        <DangerButton onClick={() => removeItem(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
                       </div>
                     </td>
                   </tr>

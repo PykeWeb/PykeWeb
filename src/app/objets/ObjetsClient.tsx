@@ -8,6 +8,7 @@ import { ArrowDownRight, ArrowUpRight, Pencil, ShoppingCart, Trash2 } from 'luci
 import { listObjects, updateObject, deleteObject } from '@/lib/objectsApi';
 import { ImageDropzone } from '@/components/objets/ImageDropzone';
 import { currentGroupId } from '@/lib/tenantScope';
+import { PrimaryButton, SecondaryButton, DangerButton, SearchInput, SegmentedTabs } from '@/components/ui/design-system';
 
 type ObjRow = {
   id: string;
@@ -177,43 +178,33 @@ export default function ObjetsClient() {
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Link href="/" className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
-              ← Retour
+            <Link href="/">
+              <SecondaryButton>← Retour</SecondaryButton>
             </Link>
-            <button
-              onClick={() => setTab('catalogue')}
-              className={`rounded-xl px-3 py-1.5 text-sm border border-white/10 ${tab === 'catalogue' ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10'}`}
-            >
-              Catalogue
-            </button>
-            <button
-              onClick={() => setTab('transactions')}
-              className={`rounded-xl px-3 py-1.5 text-sm border border-white/10 ${tab === 'transactions' ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10'}`}
-            >
-              Transactions
-            </button>
-            <Link
-              href="/objets/nouveau"
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-            >
-              Ajouter un objet
-            </Link>
+            <SegmentedTabs
+              options={[{ value: 'catalogue', label: 'Catalogue' }, { value: 'transactions', label: 'Transactions' }]}
+              value={tab}
+              onChange={setTab}
+            />
           </div>
+          <Link href="/objets/nouveau">
+            <PrimaryButton size="lg">Ajouter un objet</PrimaryButton>
+          </Link>
         </div>
 
         {tab === 'catalogue' ? (
           <div className="mt-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <input
+                <SearchInput
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Rechercher (nom)..."
-                  className="h-10 w-72 max-w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm outline-none placeholder:text-white/40 focus:bg-white/10"
+                  className="w-[320px]"
                 />
                 <div className="text-sm text-white/60">{filtered.length} objet(s)</div>
               </div>
-              <div className="text-xs text-white/50">
+              <div className="text-sm text-white/50">
                 Astuce : utilise <b>Achat</b> pour entrer du stock et <b>Sortie</b> pour retirer.
               </div>
             </div>
@@ -224,21 +215,8 @@ export default function ObjetsClient() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm font-semibold">Modifier l’objet : {editingObj.name ?? 'Sans nom'}</p>
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="button"
-                      disabled={savingEdit}
-                      onClick={saveEdit}
-                      className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
-                    </button>
+                    <SecondaryButton type="button" onClick={cancelEdit}>Annuler</SecondaryButton>
+                    <PrimaryButton type="button" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Enregistrement…' : 'Enregistrer'}</PrimaryButton>
                   </div>
                 </div>
 
@@ -398,21 +376,8 @@ export default function ObjetsClient() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm font-semibold">Modifier l’objet : {editingObj.name ?? 'Sans nom'}</p>
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="button"
-                      disabled={savingEdit}
-                      onClick={saveEdit}
-                      className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
-                    </button>
+                    <SecondaryButton type="button" onClick={cancelEdit}>Annuler</SecondaryButton>
+                    <PrimaryButton type="button" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Enregistrement…' : 'Enregistrer'}</PrimaryButton>
                   </div>
                 </div>
 

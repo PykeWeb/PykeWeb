@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { listWeapons, adjustWeaponStock, updateWeapon, deleteWeapon, type DbWeapon } from '@/lib/weaponsApi'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { DangerButton, IconButton, PrimaryButton, SecondaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
 import { toast } from 'sonner'
 import { ArrowLeft, ArrowUpRight, Handshake, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
 import { ImageDropzone } from '@/components/objets/ImageDropzone'
@@ -103,35 +104,31 @@ export function ArmesClient() {
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Retour
+            <Link href="/">
+              <SecondaryButton icon={<ArrowLeft className="h-4 w-4" />}>Retour</SecondaryButton>
             </Link>
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom ou ID)..." className="w-[280px]" />
-            <span className="text-xs text-white/60">{filtered.length} arme(s)</span>
+            <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom ou ID)..." className="w-[320px]" />
+            <span className="text-sm text-white/60">{filtered.length} arme(s)</span>
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <Link href="/armes/nouveau" className="block">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]">
-              <p className="text-sm font-semibold">Ajouter une arme</p>
-              <p className="mt-1 text-xs text-white/60">Catalogue armes</p>
+              <p className="text-lg font-semibold">Ajouter une arme</p>
+              <p className="mt-1 text-sm text-white/60">Catalogue armes</p>
             </div>
           </Link>
           <Link href="/armes/prets" className="block">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]">
-              <p className="text-sm font-semibold">Prêts en cours</p>
-              <p className="mt-1 text-xs text-white/60">Voir / gérer les prêts</p>
+              <p className="text-lg font-semibold">Prêts en cours</p>
+              <p className="mt-1 text-sm text-white/60">Voir / gérer les prêts</p>
             </div>
           </Link>
           <Link href="/armes/prets/nouveau" className="block">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]">
-              <p className="text-sm font-semibold">Créer un prêt</p>
-              <p className="mt-1 text-xs text-white/60">Nouveau prêt d’arme</p>
+              <p className="text-lg font-semibold">Créer un prêt</p>
+              <p className="mt-1 text-sm text-white/60">Nouveau prêt d’arme</p>
             </div>
           </Link>
         </div>
@@ -141,21 +138,10 @@ export function ArmesClient() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold">Modifier l’arme : {editingItem.name || 'Sans nom'}</p>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  disabled={savingEdit}
-                  onClick={saveEdit}
-                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
-                >
+                <SecondaryButton type="button" onClick={cancelEdit}>Annuler</SecondaryButton>
+                <PrimaryButton type="button" disabled={savingEdit} onClick={saveEdit}>
                   {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
+                </PrimaryButton>
               </div>
             </div>
 
@@ -256,14 +242,7 @@ export function ArmesClient() {
                           <Pencil className="h-4 w-4" />
                           Modifier
                         </Button>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(w)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Supprimer
-                        </button>
+                        <DangerButton type="button" onClick={() => removeItem(w)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
                       </div>
                     </td>
                   </tr>
