@@ -11,6 +11,9 @@ import {
 import { getTenantSession } from '@/lib/tenantSession'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { GlassSelect } from '@/components/ui/GlassSelect'
+import { ReorderableRow } from '@/components/drag/ReorderableRow'
+import { getLayoutOrder, resetLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
 
 type PasswordModal =
   | { type: 'group'; group: TenantGroup }
@@ -85,9 +88,7 @@ function CreateGroupModal({ open, onClose, onCreate, submitting }: CreateGroupMo
 
         <div className="mt-4 grid gap-2">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du groupe" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm" />
-          <select value={badge} onChange={(e) => setBadge(e.target.value)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm">
-            <option value="PF">PF</option><option value="Gang">Gang</option><option value="Organisation">Organisation</option><option value="Famille">Famille</option><option value="Indépendant">Indépendant</option>
-          </select>
+          <GlassSelect value={badge} onChange={setBadge} options={[{value:'PF',label:'PF'},{value:'Gang',label:'Gang'},{value:'Organisation',label:'Organisation'},{value:'Famille',label:'Famille'},{value:'Indépendant',label:'Indépendant'}]} />
           <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Identifiant" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm" />
           <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
             <input
@@ -146,9 +147,7 @@ function GroupEditIdentityModal({ group, onClose, onSaved }: { group: GroupEditM
         <h2 className="text-xl font-semibold">Modifier groupe</h2>
         <div className="mt-4 grid gap-2">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom groupe" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm" />
-          <select value={badge} onChange={(e) => setBadge(e.target.value)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm">
-            <option value="PF">PF</option><option value="Gang">Gang</option><option value="Organisation">Organisation</option><option value="Famille">Famille</option><option value="Indépendant">Indépendant</option>
-          </select>
+          <GlassSelect value={badge} onChange={setBadge} options={[{value:'PF',label:'PF'},{value:'Gang',label:'Gang'},{value:'Organisation',label:'Organisation'},{value:'Famille',label:'Famille'},{value:'Indépendant',label:'Indépendant'}]} />
           <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Identifiant" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm" />
         </div>
         {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
@@ -236,6 +235,8 @@ export default function AdminGroupsPage() {
   const [deletingGroup, setDeletingGroup] = useState(false)
   const [editModal, setEditModal] = useState<GroupEditModal>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [layoutEdit, setLayoutEdit] = useState(false)
+  const [actionOrder, setActionOrder] = useState(['edit', 'password', 'toggle', 'days', 'unlimited', 'delete'])
 
   const now = Date.now()
   const activeCount = groups.filter((g) => g.active).length
@@ -263,6 +264,10 @@ export default function AdminGroupsPage() {
       return
     }
     void refresh()
+    void (async () => {
+      const saved = await getLayoutOrder('admin_groups.actions')
+      if (saved.length) setActionOrder(saved)
+    })()
   }, [])
 
   async function addGroup(payload: { name: string; badge: string; login: string; password: string }) {
@@ -355,6 +360,24 @@ export default function AdminGroupsPage() {
               Créer
             </button>
             <button
+              onClick={() => setLayoutEdit((v) => !v)}
+              className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"
+            >
+              {layoutEdit ? 'Terminer la disposition' : 'Modifier la disposition'}
+            </button>
+            {layoutEdit ? (
+              <button
+                onClick={async () => {
+                  const base = ['edit', 'password', 'toggle', 'days', 'unlimited', 'delete']
+                  setActionOrder(base)
+                  await resetLayoutOrder('admin_groups.actions', 'global')
+                }}
+                className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"
+              >
+                Réinitialiser l’ordre
+              </button>
+            ) : null}
+            <button
               onClick={() => adminGroup && setPasswordModal({ type: 'admin', group: adminGroup })}
               className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14]"
               disabled={!adminGroup}
@@ -392,14 +415,23 @@ export default function AdminGroupsPage() {
                     <td className="px-4 py-3">{group.active ? 'Oui' : 'Non'}</td>
                     <td className="px-4 py-3">{group.paid_until ? new Date(group.paid_until).toLocaleDateString('fr-FR') : '—'}</td>
                     <td className="min-w-[520px] px-4 py-3">
-                      <div className="flex flex-wrap justify-end gap-3 whitespace-nowrap">
-                        <button onClick={() => setEditModal(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Modifier</button>
-                        <button onClick={() => setPasswordModal({ type: 'group', group })} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Mdp</button>
-                        <button onClick={() => void toggleActive(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">{group.active ? 'Désactiver' : 'Activer'}</button>
-                        <button onClick={() => void addCustomDays(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">+ jours</button>
-                        <button onClick={() => void setUnlimited(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Illimité</button>
-                        <button onClick={() => setPendingDeleteGroup(group)} className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22">Supprimer</button>
-                      </div>
+                      <ReorderableRow
+                        editable={layoutEdit}
+                        order={actionOrder}
+                        onOrderChange={async (next) => {
+                          setActionOrder(next)
+                          await saveLayoutOrder('admin_groups.actions', next, 'global')
+                        }}
+                        className="flex flex-wrap justify-end gap-3 whitespace-nowrap"
+                        items={[
+                          { id: 'edit', element: <button onClick={() => setEditModal(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Modifier</button> },
+                          { id: 'password', element: <button onClick={() => setPasswordModal({ type: 'group', group })} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Mdp</button> },
+                          { id: 'toggle', element: <button onClick={() => void toggleActive(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">{group.active ? 'Désactiver' : 'Activer'}</button> },
+                          { id: 'days', element: <button onClick={() => void addCustomDays(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">+ jours</button> },
+                          { id: 'unlimited', element: <button onClick={() => void setUnlimited(group)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Illimité</button> },
+                          { id: 'delete', element: <button onClick={() => setPendingDeleteGroup(group)} className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22">Supprimer</button> },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}

@@ -8,6 +8,11 @@ import { listDrugItems, adjustDrugStock, updateDrugItem, deleteDrugItem, type Db
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs } from '@/components/ui/design-system'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { GlassSelect } from '@/components/ui/GlassSelect'
+import { StockTransactionModal } from '@/components/ui/StockTransactionModal'
+import { ReorderableRow } from '@/components/drag/ReorderableRow'
+import { getLayoutOrder, resetLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
+import { getTenantSession } from '@/lib/tenantSession'
 
 const TAB_KEYS = ['catalogue', 'plantations', 'calculateur'] as const
 type TabKey = (typeof TAB_KEYS)[number]
@@ -150,6 +155,11 @@ export default function DroguesClient() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [calcMode, setCalcMode] = useState<CalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
+  const [layoutEdit, setLayoutEdit] = useState(false)
+  const [actionOrder, setActionOrder] = useState(['purchase', 'sale', 'edit', 'delete'])
+  const [txModal, setTxModal] = useState<{ item: DbDrugItem; kind: 'purchase' | 'sale' } | null>(null)
+  const session = getTenantSession()
+  const layoutScope = session?.isAdmin ? 'global' : 'group'
 
   async function refresh() {
     setLoading(true)
@@ -164,6 +174,10 @@ export default function DroguesClient() {
 
   useEffect(() => {
     refresh()
+    void (async () => {
+      const saved = await getLayoutOrder('drogues.actions')
+      if (saved.length) setActionOrder(saved)
+    })()
   }, [])
 
   const filtered = useMemo(() => {
@@ -316,6 +330,8 @@ export default function DroguesClient() {
 
           <div className="flex items-center gap-2">
             <Link href="/drogues/nouveau"><PrimaryButton size="lg">Ajouter un item</PrimaryButton></Link>
+            <SecondaryButton onClick={() => setLayoutEdit((v) => !v)}>{layoutEdit ? 'Terminer la disposition' : 'Modifier la disposition'}</SecondaryButton>
+            {layoutEdit ? <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','edit','delete']); await resetLayoutOrder('drogues.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton> : null}
           </div>
         </div>
 
@@ -342,17 +358,12 @@ export default function DroguesClient() {
                   </div>
                   <div>
                     <label className="text-xs text-white/60">Type</label>
-                    <select
+                    <GlassSelect
+                      className="mt-1"
                       value={editType}
-                      onChange={(e) => setEditType(e.target.value as DrugKind)}
-                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
-                    >
-                      <option value="drug">Drogue</option>
-                      <option value="seed">Graine</option>
-                      <option value="planting">Plantation</option>
-                      <option value="pouch">Pochon</option>
-                      <option value="other">Autre</option>
-                    </select>
+                      onChange={(v) => setEditType(v as DrugKind)}
+                      options={[{ value: 'drug', label: 'Drogue' }, { value: 'seed', label: 'Graine' }, { value: 'planting', label: 'Plantation' }, { value: 'pouch', label: 'Pochon' }, { value: 'other', label: 'Autre' }]}
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-white/60">Prix</label>
@@ -391,18 +402,11 @@ export default function DroguesClient() {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} className="w-[300px]" placeholder="Rechercher…" />
 
-              <select
+              <GlassSelect
                 value={kind}
-                onChange={(e) => setKind(e.target.value as any)}
-                className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm outline-none focus:border-white/30"
-              >
-                <option value="all">Tous</option>
-                <option value="drug">Drogue</option>
-                <option value="seed">Graine</option>
-                <option value="planting">Plantation</option>
-                <option value="pouch">Pochons / vente</option>
-                <option value="other">Autre</option>
-              </select>
+                onChange={(v) => setKind(v as any)}
+                options={[{ value: 'all', label: 'Tous' }, { value: 'drug', label: 'Drogue' }, { value: 'seed', label: 'Graine' }, { value: 'planting', label: 'Plantation' }, { value: 'pouch', label: 'Pochons / vente' }, { value: 'other', label: 'Autre' }]}
+              />
 
               <div className="text-sm text-white/60">{filtered.length} item(s)</div>
             </div>
@@ -452,46 +456,21 @@ export default function DroguesClient() {
                         <td className="px-4 py-3">{Number(it.price).toFixed(2)} $</td>
                         <td className="px-4 py-3">{it.stock}</td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <SecondaryButton
-                              disabled={busyId === it.id}
-                              onClick={async () => {
-                                setBusyId(it.id)
-                                setError(null)
-                                try {
-                                  await adjustDrugStock({ itemId: it.id, delta: 1, note: 'Entrée' })
-                                  await refresh()
-                                } catch (e: any) {
-                                  setError(e?.message || 'Erreur')
-                                } finally {
-                                  setBusyId(null)
-                                }
-                              }}
-                              icon={<ShoppingCart className="h-4 w-4" />}
-                            >
-                              Achat
-                            </SecondaryButton>
-                            <SecondaryButton
-                              disabled={busyId === it.id}
-                              onClick={async () => {
-                                setBusyId(it.id)
-                                setError(null)
-                                try {
-                                  await adjustDrugStock({ itemId: it.id, delta: -1, note: 'Sortie' })
-                                  await refresh()
-                                } catch (e: any) {
-                                  setError(e?.message || 'Erreur')
-                                } finally {
-                                  setBusyId(null)
-                                }
-                              }}
-                              icon={<ArrowUpRight className="h-4 w-4" />}
-                            >
-                              Sortie
-                            </SecondaryButton>
-                            <SecondaryButton onClick={() => startEdit(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton>
-                            <DangerButton onClick={() => setPendingDelete(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
-                          </div>
+                          <ReorderableRow
+                            editable={layoutEdit}
+                            order={actionOrder}
+                            onOrderChange={async (next) => {
+                              setActionOrder(next)
+                              await saveLayoutOrder('drogues.actions', next, layoutScope)
+                            }}
+                            className="flex items-center justify-end gap-2"
+                            items={[
+                              { id: 'purchase', element: <SecondaryButton disabled={busyId === it.id} onClick={() => setTxModal({ item: it, kind: 'purchase' })} icon={<ShoppingCart className="h-4 w-4" />}>Achat</SecondaryButton> },
+                              { id: 'sale', element: <SecondaryButton disabled={busyId === it.id} onClick={() => setTxModal({ item: it, kind: 'sale' })} icon={<ArrowUpRight className="h-4 w-4" />}>Sortie</SecondaryButton> },
+                              { id: 'edit', element: <SecondaryButton onClick={() => startEdit(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton> },
+                              { id: 'delete', element: <DangerButton onClick={() => setPendingDelete(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton> },
+                            ]}
+                          />
                         </td>
                       </tr>
                     ))
@@ -525,14 +504,12 @@ export default function DroguesClient() {
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
               <label className="text-xs text-white/60">Type</label>
-              <select
+              <GlassSelect
+                className="mt-1"
                 value={calcMode}
-                onChange={(e) => setCalcMode(e.target.value as CalcMode)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/20"
-              >
-                <option value="coke">Coke</option>
-                <option value="meth">Meth</option>
-              </select>
+                onChange={(v) => setCalcMode(v as CalcMode)}
+                options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]}
+              />
             </div>
 
             <div>
@@ -583,6 +560,29 @@ export default function DroguesClient() {
           </div>
         ) : null}
       </Panel>
+      <StockTransactionModal
+        open={!!txModal}
+        kind={txModal?.kind || 'purchase'}
+        title={txModal?.item.name || 'Item'}
+        stock={txModal?.item.stock || 0}
+        unitPrice={txModal?.item.price || 0}
+        loading={busyId !== null}
+        onClose={() => setTxModal(null)}
+        onSubmit={async (quantity) => {
+          if (!txModal) return
+          setBusyId(txModal.item.id)
+          setError(null)
+          try {
+            await adjustDrugStock({ itemId: txModal.item.id, delta: txModal.kind === 'purchase' ? quantity : -quantity, note: txModal.kind === 'purchase' ? 'Entrée' : 'Sortie' })
+            await refresh()
+          } catch (e: any) {
+            setError(e?.message || 'Erreur')
+          } finally {
+            setBusyId(null)
+            setTxModal(null)
+          }
+        }}
+      />
       <ConfirmDialog
         open={!!pendingDelete}
         title="Supprimer cet objet ?"

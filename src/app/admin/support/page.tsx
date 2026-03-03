@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { listSupportTicketsAdmin, updateSupportTicketStatus, type SupportTicket } from '@/lib/communicationApi'
 import { copyToClipboard } from '@/lib/utils/password'
+import { GlassSelect } from '@/components/ui/GlassSelect'
 
 type StatusFilter = 'all' | SupportTicket['status']
 type SortOrder = 'newest' | 'oldest'
@@ -62,11 +63,7 @@ function TicketDetailModal({
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <select value={status} onChange={(e) => setStatus(e.target.value as SupportTicket['status'])} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm">
-            <option value="open">Ouvert</option>
-            <option value="in_progress">En cours</option>
-            <option value="resolved">Résolu</option>
-          </select>
+          <GlassSelect value={status} onChange={(v) => setStatus(v as SupportTicket['status'])} options={[{ value: 'open', label: 'Ouvert' }, { value: 'in_progress', label: 'En cours' }, { value: 'resolved', label: 'Résolu' }]} />
           <button onClick={() => void copyToClipboard(ticket.message)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Copier</button>
           <button onClick={onClose} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Fermer</button>
           <button onClick={() => void save()} disabled={saving} className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-3 text-sm font-semibold hover:bg-white/[0.14] disabled:opacity-60">{saving ? 'Sauvegarde…' : 'Enregistrer'}</button>
@@ -193,16 +190,8 @@ export default function AdminSupportPage() {
 
         <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto_auto]">
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher…" className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm">
-            <option value="all">Tout</option>
-            <option value="open">Ouvert</option>
-            <option value="in_progress">En cours</option>
-            <option value="resolved">Résolu</option>
-          </select>
-          <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as SortOrder)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm">
-            <option value="newest">Plus récent</option>
-            <option value="oldest">Plus ancien</option>
-          </select>
+          <GlassSelect value={statusFilter} onChange={(v) => setStatusFilter(v as StatusFilter)} options={[{ value: 'all', label: 'Tout' }, { value: 'open', label: 'Ouvert' }, { value: 'in_progress', label: 'En cours' }, { value: 'resolved', label: 'Résolu' }]} />
+          <GlassSelect value={sortOrder} onChange={(v) => setSortOrder(v as SortOrder)} options={[{ value: 'newest', label: 'Plus récent' }, { value: 'oldest', label: 'Plus ancien' }]} />
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">

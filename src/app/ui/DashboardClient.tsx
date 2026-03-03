@@ -118,11 +118,18 @@ export function DashboardClient() {
 
   useEffect(() => {
     ;(async () => {
-      const res = await fetch('/api/ui-layouts', { cache: 'no-store' })
-      if (!res.ok) return
-      const data = await res.json()
-      if (Array.isArray(data.dashboard_quick_actions) && data.dashboard_quick_actions.length) setQuickActions(data.dashboard_quick_actions)
-      if (Array.isArray(data.dashboard_cards) && data.dashboard_cards.length) setDashboardCards(data.dashboard_cards)
+      const [quickRes, cardsRes] = await Promise.all([
+        fetch('/api/ui-layouts?page_key=dashboard.quick_actions', { cache: 'no-store' }),
+        fetch('/api/ui-layouts?page_key=dashboard.cards', { cache: 'no-store' }),
+      ])
+      if (quickRes.ok) {
+        const data = await quickRes.json()
+        if (Array.isArray(data.order) && data.order.length) setQuickActions(data.order)
+      }
+      if (cardsRes.ok) {
+        const data = await cardsRes.json()
+        if (Array.isArray(data.order) && data.order.length) setDashboardCards(data.order)
+      }
     })()
   }, [])
 
@@ -130,7 +137,12 @@ export function DashboardClient() {
     await fetch('/api/ui-layouts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dashboard_quick_actions: nextQuick, dashboard_cards: nextCards }),
+      body: JSON.stringify({ page_key: 'dashboard.quick_actions', order: nextQuick, scope_type: 'group' }),
+    })
+    await fetch('/api/ui-layouts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ page_key: 'dashboard.cards', order: nextCards, scope_type: 'group' }),
     })
   }
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { createWeaponLoan, listWeapons, type DbWeapon } from '@/lib/weaponsApi'
+import { GlassSelect } from '@/components/ui/GlassSelect'
 
 export function NewWeaponLoanForm() {
   const router = useRouter()
@@ -75,17 +76,12 @@ export function NewWeaponLoanForm() {
         <div className="space-y-4">
           <div>
             <label className="text-xs text-white/60">Arme</label>
-            <select
-              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90 outline-none"
+            <GlassSelect
+              className="mt-1"
               value={weaponId}
-              onChange={(e) => setWeaponId(e.target.value)}
-            >
-              {weapons.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {(w.name || 'Sans nom') + (w.weapon_id ? ` • ${w.weapon_id}` : '')} • stock: {w.stock}
-                </option>
-              ))}
-            </select>
+              onChange={setWeaponId}
+              options={weapons.map((w) => ({ value: w.id, label: `${(w.name || 'Sans nom') + (w.weapon_id ? ` • ${w.weapon_id}` : '')} • stock: ${w.stock}` }))}
+            />
             {selected ? <p className="mt-1 text-xs text-white/50">Stock dispo: {selected.stock}</p> : null}
           </div>
 

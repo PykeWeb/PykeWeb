@@ -4,12 +4,15 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { listWeapons, adjustWeaponStock, updateWeapon, deleteWeapon, type DbWeapon } from '@/lib/weaponsApi'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { DangerButton, IconButton, PrimaryButton, SecondaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
+import { DangerButton, PrimaryButton, SecondaryButton, SearchInput } from '@/components/ui/design-system'
 import { toast } from 'sonner'
 import { ArrowLeft, ArrowUpRight, Handshake, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { StockTransactionModal } from '@/components/ui/StockTransactionModal'
+import { ReorderableRow } from '@/components/drag/ReorderableRow'
+import { getLayoutOrder, resetLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
+import { getTenantSession } from '@/lib/tenantSession'
 
 export function ArmesClient() {
   const [items, setItems] = useState<DbWeapon[]>([])
@@ -24,6 +27,11 @@ export function ArmesClient() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<DbWeapon | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [layoutEdit, setLayoutEdit] = useState(false)
+  const [actionOrder, setActionOrder] = useState(['purchase', 'sale', 'lend', 'edit', 'delete'])
+  const [txModal, setTxModal] = useState<{ item: DbWeapon; kind: 'purchase' | 'sale' } | null>(null)
+  const session = getTenantSession()
+  const layoutScope = session?.isAdmin ? 'global' : 'group'
 
   async function refresh() {
     setLoading(true)
@@ -39,6 +47,10 @@ export function ArmesClient() {
 
   useEffect(() => {
     refresh()
+    void (async () => {
+      const saved = await getLayoutOrder('armes.actions')
+      if (saved.length) setActionOrder(saved)
+    })()
   }, [])
 
   const filtered = useMemo(() => {
@@ -104,7 +116,7 @@ export function ArmesClient() {
     try {
       await adjustWeaponStock({ weaponId: id, delta })
       await refresh()
-      toast.success(delta > 0 ? 'Stock +1' : 'Stock -1')
+      toast.success(delta > 0 ? `Achat enregistré (+${delta})` : `Sortie enregistrée (${delta})`)
     } catch (e: any) {
       toast.error(e?.message || 'Erreur stock')
     }
@@ -120,6 +132,8 @@ export function ArmesClient() {
             </Link>
             <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom ou ID)..." className="w-[320px]" />
             <span className="text-sm text-white/60">{filtered.length} arme(s)</span>
+            <SecondaryButton onClick={() => setLayoutEdit((v) => !v)}>{layoutEdit ? 'Terminer la disposition' : 'Modifier la disposition'}</SecondaryButton>
+            {layoutEdit ? <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','lend','edit','delete']); await resetLayoutOrder('armes.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton> : null}
           </div>
         </div>
 
@@ -243,27 +257,22 @@ export function ArmesClient() {
                     <td className="px-4 py-3 text-white/70">{w.weapon_id || '—'}</td>
                     <td className="px-4 py-3 font-semibold">{w.stock}</td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" onClick={() => bump(w.id, +1)}>
-                          <ShoppingCart className="h-4 w-4" />
-                          Achat
-                        </Button>
-                        <Button variant="ghost" onClick={() => bump(w.id, -1)} disabled={w.stock <= 0}>
-                          <ArrowUpRight className="h-4 w-4" />
-                          Sortie
-                        </Button>
-                        <Link href={`/armes/prets/nouveau?weapon=${w.id}`}>
-                          <Button variant="secondary">
-                            <Handshake className="h-4 w-4" />
-                            Prêter
-                          </Button>
-                        </Link>
-                        <Button variant="secondary" onClick={() => startEdit(w)}>
-                          <Pencil className="h-4 w-4" />
-                          Modifier
-                        </Button>
-                        <DangerButton type="button" onClick={() => setPendingDelete(w)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
-                      </div>
+                      <ReorderableRow
+                        editable={layoutEdit}
+                        order={actionOrder}
+                        onOrderChange={async (next) => {
+                          setActionOrder(next)
+                          await saveLayoutOrder('armes.actions', next, layoutScope)
+                        }}
+                        className="flex justify-end gap-2"
+                        items={[
+                          { id: 'purchase', element: <Button variant="ghost" onClick={() => setTxModal({ item: w, kind: 'purchase' })}><ShoppingCart className="h-4 w-4" />Achat</Button> },
+                          { id: 'sale', element: <Button variant="ghost" onClick={() => setTxModal({ item: w, kind: 'sale' })} disabled={w.stock <= 0}><ArrowUpRight className="h-4 w-4" />Sortie</Button> },
+                          { id: 'lend', element: <Link href={`/armes/prets/nouveau?weapon=${w.id}`}><Button variant="secondary"><Handshake className="h-4 w-4" />Prêter</Button></Link> },
+                          { id: 'edit', element: <Button variant="secondary" onClick={() => startEdit(w)}><Pencil className="h-4 w-4" />Modifier</Button> },
+                          { id: 'delete', element: <DangerButton type="button" onClick={() => setPendingDelete(w)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton> },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))
@@ -272,6 +281,19 @@ export function ArmesClient() {
           </table>
         </div>
       </div>
+      <StockTransactionModal
+        open={!!txModal}
+        kind={txModal?.kind || 'purchase'}
+        title={txModal?.item.name || 'Arme'}
+        stock={txModal?.item.stock || 0}
+        loading={false}
+        onClose={() => setTxModal(null)}
+        onSubmit={async (quantity) => {
+          if (!txModal) return
+          await bump(txModal.item.id, txModal.kind === 'purchase' ? quantity : -quantity)
+          setTxModal(null)
+        }}
+      />
       <ConfirmDialog
         open={!!pendingDelete}
         title="Supprimer cet objet ?"
