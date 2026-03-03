@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { ArrowDownRight, ArrowUpRight, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 import { listObjects, updateObject, deleteObject } from '@/lib/objectsApi';
-import { ImageDropzone } from '@/components/objets/ImageDropzone';
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone';
 import { currentGroupId } from '@/lib/tenantScope';
 import { PrimaryButton, SecondaryButton, DangerButton, SearchInput, SegmentedTabs } from '@/components/ui/design-system';
 

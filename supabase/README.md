@@ -1,19 +1,24 @@
 # Supabase setup
 
-## Exécution rapide
-1. Ouvre **Supabase SQL Editor**.
-2. Copie/colle puis exécute `supabase/SUPABASE_SQL_FULL_SETUP.sql`.
-3. Vérifie que les buckets Storage existent:
-   - `object-images`
-   - `weapon-images`
-   - `equipment-images`
-   - `drug-images`
-   - `expense-proofs`
-   - `global-item-images`
+## Duplication complète
+1. Créer un nouveau projet Supabase.
+2. Ouvrir **SQL Editor**.
+3. Exécuter `supabase/SUPABASE_SQL_FULL_SETUP.sql`.
+4. Configurer les variables Vercel.
+5. Déployer.
 
-Le script est **idempotent**: il peut être relancé sans casser l’existant.
+## Vérification post-setup
+- Vérifier les tables clés (ex: `tenant_groups`, `objects`, `weapons`, `equipment`, `drug_items`, `transactions`, `patch_notes`, `support_tickets`).
+- Vérifier les buckets storage:
+  - `object-images`
+  - `weapon-images`
+  - `equipment-images`
+  - `drug-images`
+  - `expense-proofs`
+  - `global-item-images`
+- Faire un smoke test applicatif (`/login`, lecture patch notes, page admin).
 
-## Ordre recommandé
-Si tu pars de zéro: exécute uniquement `SUPABASE_SQL_FULL_SETUP.sql`.
-
-Les anciens scripts de migration restent utiles historiquement, mais ce fichier est la référence de duplication.
+## Notes importantes
+- Le script `SUPABASE_SQL_FULL_SETUP.sql` est **idempotent** (relançable).
+- Le script **recrée la structure** (schéma), pas les données existantes métier (hors insertions de base prévues par le script).
+- Les migrations sous `supabase/migrations/` sont conservées pour l’historique de production.

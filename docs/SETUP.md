@@ -1,4 +1,4 @@
-# Pyke Stock — Setup
+# Pyke Stock — Setup local
 
 ## Prérequis
 - Node.js 18+
@@ -11,16 +11,18 @@ npm install
 ```
 
 ## Setup Supabase
-1. Crée un projet Supabase.
-2. Dans **SQL Editor**, exécute:
-   - `supabase/SUPABASE_SQL_FULL_SETUP.sql`
-3. Vérifie que les buckets Storage existent (créés par le script).
+1. Créer un projet Supabase.
+2. Ouvrir SQL Editor.
+3. Exécuter `supabase/SUPABASE_SQL_FULL_SETUP.sql`.
+4. Vérifier les buckets storage créés.
 
 ## Variables d’environnement
-Copie `.env.example` vers `.env.local` et renseigne:
+Copier `.env.example` vers `.env.local` puis renseigner:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_GROUP_NAME` (optionnel branding)
+- `NEXT_PUBLIC_GROUP_BADGE` (optionnel branding)
 
 ## Lancer en local
 ```bash
@@ -34,18 +36,10 @@ npm run lint
 npm run build
 ```
 
-## Déploiement Vercel
-1. Importer le repo dans Vercel.
-2. Définir les variables d’environnement (mêmes clés que `.env.local`).
-3. Déployer.
+## Déploiement
+Voir `docs/DEPLOY_VERCEL.md`.
 
-## Dupliquer le projet (checklist)
-- [ ] Nouveau projet Supabase créé
-- [ ] SQL full setup exécuté
-- [ ] Variables `.env.local`/Vercel renseignées
-- [ ] `npm install` + `npm run build` OK
-
-## Troubleshooting
-- **Missing NEXT_PUBLIC_SUPABASE_URL / ANON_KEY**: vérifier `.env.local`.
-- **Erreur accès API admin**: vérifier `SUPABASE_SERVICE_ROLE_KEY`.
-- **Images upload KO**: vérifier buckets/policies Storage.
+## Troubleshooting rapide
+- Missing Supabase URL/Anon key: vérifier `.env.local`.
+- Erreur admin API: vérifier `SUPABASE_SERVICE_ROLE_KEY`.
+- Upload images KO: vérifier buckets/policies dans Supabase.

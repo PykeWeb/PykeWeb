@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
-import { supabase } from '@/lib/supabaseClient'
-import { ImageDropzone } from '@/components/objets/ImageDropzone'
+import { supabase } from '@/lib/supabase/client'
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 
 type Category = 'object' | 'weapon' | 'equipment' | 'drug'
 

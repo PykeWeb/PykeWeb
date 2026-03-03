@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { DangerButton, IconButton, PrimaryButton, SecondaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
 import { toast } from 'sonner'
 import { ArrowLeft, ArrowUpRight, Handshake, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
-import { ImageDropzone } from '@/components/objets/ImageDropzone'
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 
 export function ArmesClient() {
   const [items, setItems] = useState<DbWeapon[]>([])

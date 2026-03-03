@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, Calculator, Factory, Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { listDrugItems, adjustDrugStock, updateDrugItem, deleteDrugItem, type DbDrugItem, type DrugKind } from '@/lib/drugsApi'
-import { ImageDropzone } from '@/components/objets/ImageDropzone'
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs } from '@/components/ui/design-system'
 
 const TAB_KEYS = ['catalogue', 'plantations', 'calculateur'] as const

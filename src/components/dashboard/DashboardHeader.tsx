@@ -1,4 +1,4 @@
-import { BRAND } from '@/lib/brand'
+import { BRAND } from '@/lib/constants/brand'
 
 export function DashboardHeader() {
   return (
