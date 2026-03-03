@@ -38,9 +38,9 @@ export function PatchNoteModal({
   if (!note) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 p-3 backdrop-blur-sm sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3 backdrop-blur-sm sm:p-6" onClick={onClose}>
       <div
-        className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f1625]/95 shadow-glow"
+        className="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f1625]/95 shadow-glow max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-6">

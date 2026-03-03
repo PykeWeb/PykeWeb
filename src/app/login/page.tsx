@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { loginTenant } from '@/lib/tenantAuthApi'
@@ -146,12 +147,12 @@ export default function LoginPage() {
                   ))
                 )}
               </div>
-              <button
-                onClick={() => latestNotes[0] && setSelectedNote(latestNotes[0])}
+              <Link
+                href="/patch-notes"
                 className="mt-4 inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-medium text-white/85 transition hover:bg-white/[0.12]"
               >
                 Voir tout →
-              </button>
+              </Link>
             </aside>
           </div>
         </div>

@@ -13,14 +13,107 @@ function formatDate(value: string) {
   }
 }
 
+function PatchNoteEditModal({
+  note,
+  onClose,
+  onSaved,
+}: {
+  note: PatchNote | null
+  onClose: () => void
+  onSaved: () => Promise<void>
+}) {
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const contentRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    setTitle(note?.title ?? '')
+    setContent(note?.content ?? '')
+    setError(null)
+  }, [note])
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    el.style.height = '0px'
+    el.style.height = `${Math.max(el.scrollHeight, 180)}px`
+  }, [content, note])
+
+  useEffect(() => {
+    if (!note) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [note, onClose])
+
+  if (!note) return null
+
+  async function save() {
+    if (!note) return
+    if (!title.trim() || !content.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await updatePatchNote(note.id, { title: title.trim(), content: content.trim() })
+      await onSaved()
+      onClose()
+    } catch (e: any) {
+      setError(e?.message || 'Impossible de sauvegarder')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3 backdrop-blur-sm sm:p-6" onClick={onClose}>
+      <div
+        className="flex w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-[#0f1625]/95 p-5 shadow-glow"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-semibold">Éditer patch note</h2>
+        <p className="mt-1 text-xs text-white/60">{formatDate(note.created_at)}</p>
+
+        <div className="mt-4 space-y-3">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Titre"
+            className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm"
+          />
+          <textarea
+            ref={contentRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Contenu"
+            className="min-h-[180px] w-full resize-y overflow-y-auto whitespace-pre-wrap rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-3 text-sm"
+          />
+        </div>
+
+        {error ? <p className="mt-3 rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onClose} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">Annuler</button>
+          <button onClick={() => void save()} disabled={saving} className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14] disabled:opacity-60">{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PatchNoteCard({
   note,
   onOpen,
+  onEdit,
   onToggleActive,
   onDelete,
 }: {
   note: PatchNote
   onOpen: (note: PatchNote) => void
+  onEdit: (note: PatchNote) => void
   onToggleActive: (note: PatchNote) => void
   onDelete: (note: PatchNote) => void
 }) {
@@ -47,18 +140,9 @@ function PatchNoteCard({
         </button>
 
         <div className="flex shrink-0 gap-2">
-          <button
-            onClick={() => onToggleActive(note)}
-            className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]"
-          >
-            {note.is_active ? 'Désactiver' : 'Activer'}
-          </button>
-          <button
-            onClick={() => onDelete(note)}
-            className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22"
-          >
-            Supprimer
-          </button>
+          <button onClick={() => onEdit(note)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Éditer</button>
+          <button onClick={() => onToggleActive(note)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">{note.is_active ? 'Désactiver' : 'Activer'}</button>
+          <button onClick={() => onDelete(note)} className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-3 text-sm text-rose-100 hover:bg-rose-500/22">Supprimer</button>
         </div>
       </div>
 
@@ -95,6 +179,15 @@ export default function AdminPatchNotesPage() {
   const [content, setContent] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<PatchNote | null>(null)
+  const [editing, setEditing] = useState<PatchNote | null>(null)
+  const contentRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    el.style.height = '0px'
+    el.style.height = `${Math.max(el.scrollHeight, 120)}px`
+  }, [content])
 
   async function refresh() {
     try {
@@ -143,6 +236,7 @@ export default function AdminPatchNotesPage() {
             className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm"
           />
           <textarea
+            ref={contentRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Contenu"
@@ -162,6 +256,7 @@ export default function AdminPatchNotesPage() {
               key={p.id}
               note={p}
               onOpen={setSelected}
+              onEdit={setEditing}
               onToggleActive={(note) => void updatePatchNote(note.id, { is_active: !note.is_active }).then(refresh)}
               onDelete={(note) => void deletePatchNote(note.id).then(refresh)}
             />
@@ -172,6 +267,7 @@ export default function AdminPatchNotesPage() {
       </div>
 
       <PatchNoteModal note={selected} onClose={() => setSelected(null)} />
+      <PatchNoteEditModal note={editing} onClose={() => setEditing(null)} onSaved={refresh} />
     </div>
   )
 }
