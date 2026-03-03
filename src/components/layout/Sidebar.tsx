@@ -11,8 +11,12 @@ import type { ReactNode } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
 import clsx from 'clsx'
+import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
+import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
 
 type AccessInfo = { paid_until: string | null; active: boolean } | null
+
+type NavLink = { id: string; href: string; label: string; icon: ReactNode; active: boolean }
 
 const NavItem = ({ href, label, icon, active }: { href: string; label: string; icon: ReactNode; active: boolean }) => {
   return (
@@ -36,6 +40,7 @@ export function Sidebar() {
   const [groupBadge, setGroupBadge] = useState('GROUPE')
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
+  const [navOrder, setNavOrder] = useState(['dashboard', 'objects', 'weapons', 'equipment', 'drugs', 'expenses', 'finance', 'items'])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -47,6 +52,10 @@ export function Sidebar() {
   useEffect(() => {
     if (isAdmin) return
     getCurrentGroupAccessInfo().then((data) => setAccessInfo(data ? { paid_until: data.paid_until, active: data.active } : null)).catch(() => setAccessInfo(null))
+    void (async () => {
+      const saved = await getLayoutOrder('sidebar.nav')
+      if (saved.length) setNavOrder(saved)
+    })()
   }, [isAdmin])
 
   const accessLabel = useMemo(() => {
@@ -57,6 +66,17 @@ export function Sidebar() {
     if (ts < Date.now()) return 'Expiré'
     return `Valide jusqu’au ${new Date(accessInfo.paid_until).toLocaleDateString('fr-FR')}`
   }, [accessInfo])
+
+  const userNavLinks: NavLink[] = [
+    { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
+    { id: 'objects', href: '/objets', label: labels.nav_objets || 'Objets', icon: <Package className="h-5 w-5" />, active: pathname.startsWith('/objets') },
+    { id: 'weapons', href: '/armes', label: labels.nav_armes || 'Armes', icon: <Crosshair className="h-5 w-5" />, active: pathname.startsWith('/armes') },
+    { id: 'equipment', href: '/equipement', label: labels.nav_equipement || 'Équipement', icon: <Wrench className="h-5 w-5" />, active: pathname.startsWith('/equipement') },
+    { id: 'drugs', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Leaf className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
+    { id: 'expenses', href: '/depenses', label: labels.nav_depenses || 'Dépenses', icon: <Receipt className="h-5 w-5" />, active: pathname.startsWith('/depenses') },
+    { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
+    { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
+  ]
 
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex">
@@ -92,16 +112,18 @@ export function Sidebar() {
             <NavItem href="/admin/patch-notes" label="Patch notes" icon={<ScrollText className="h-5 w-5" />} active={pathname.startsWith('/admin/patch-notes')} />
           </>
         ) : (
-          <>
-            <NavItem href="/" label={labels.nav_dashboard || 'Dashboard'} icon={<LayoutGrid className="h-5 w-5" />} active={pathname === '/'} />
-            <NavItem href="/objets" label={labels.nav_objets || 'Objets'} icon={<Package className="h-5 w-5" />} active={pathname.startsWith('/objets')} />
-            <NavItem href="/armes" label={labels.nav_armes || 'Armes'} icon={<Crosshair className="h-5 w-5" />} active={pathname.startsWith('/armes')} />
-            <NavItem href="/equipement" label={labels.nav_equipement || 'Équipement'} icon={<Wrench className="h-5 w-5" />} active={pathname.startsWith('/equipement')} />
-            <NavItem href="/drogues" label={labels.nav_drogues || 'Drogues'} icon={<Leaf className="h-5 w-5" />} active={pathname.startsWith('/drogues')} />
-            <NavItem href="/depenses" label={labels.nav_depenses || 'Dépenses'} icon={<Receipt className="h-5 w-5" />} active={pathname.startsWith('/depenses')} />
-            <NavItem href="/finance" label={labels.nav_finance || 'Finance'} icon={<Wallet className="h-5 w-5" />} active={pathname.startsWith('/finance')} />
-            <NavItem href="/items" label="Items" icon={<Boxes className="h-5 w-5" />} active={pathname.startsWith('/items')} />
-          </>
+          <LongPressReorderableRow
+            className="flex flex-col gap-3"
+            order={navOrder}
+            onOrderChange={async (next) => {
+              setNavOrder(next)
+              await saveLayoutOrder('sidebar.nav', next, 'group')
+            }}
+            items={userNavLinks.map((link) => ({
+              id: link.id,
+              element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
+            }))}
+          />
         )}
       </div>
     </aside>

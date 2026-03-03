@@ -1,6 +1,5 @@
 'use client'
 
-import { GripVertical } from 'lucide-react'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 
 type Item = { id: string; element: ReactNode }
@@ -64,9 +63,7 @@ export function ReorderableRow({
     if (!press || !pressTimerRef.current) return
     const dx = Math.abs(press.x - x)
     const dy = Math.abs(press.y - y)
-    if (dx > 10 || dy > 10) {
-      stopPress()
-    }
+    if (dx > 10 || dy > 10) stopPress()
   }
 
   return (
@@ -117,15 +114,13 @@ export function ReorderableRow({
               setArmedId(null)
             }}
             className={[
-              'rounded-xl transition',
+              'rounded-xl transition select-none',
+              isArmed ? 'ring-1 ring-cyan-200/50 bg-cyan-300/5' : '',
               isDragging ? 'opacity-55' : 'opacity-100',
               overId === id && dragging && dragging !== id ? 'bg-white/10 ring-1 ring-white/20' : '',
             ].join(' ')}
           >
-            <div className={['flex items-center gap-1', isArmed ? 'animate-pulse' : ''].join(' ')}>
-              <GripVertical className={['h-4 w-4 transition', isArmed ? 'text-cyan-200' : 'text-white/40'].join(' ')} />
-              {item.element}
-            </div>
+            {item.element}
           </div>
         )
       })}

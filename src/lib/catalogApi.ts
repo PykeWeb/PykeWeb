@@ -8,15 +8,17 @@ export type GlobalCatalogItem = {
   source_id: string
   category: CatalogCategory
   item_type: string | null
+  weapon_id: string | null
   name: string
   price: number
   stock: number
+  image_url: string | null
 }
 
 export async function listGlobalCatalogItems(): Promise<GlobalCatalogItem[]> {
   const { data, error } = await supabase
     .from('catalog_global_items')
-    .select('id,source_id,category,item_type,name,price,stock')
+    .select('id,source_id,category,item_type,weapon_id,name,price,stock,image_url')
     .eq('group_id', currentGroupId())
     .order('category', { ascending: true })
     .order('name', { ascending: true })
@@ -27,9 +29,11 @@ export async function listGlobalCatalogItems(): Promise<GlobalCatalogItem[]> {
     source_id: row.source_id,
     category: row.category,
     item_type: row.item_type,
+    weapon_id: row.weapon_id,
     name: row.name,
     price: Number(row.price ?? 0),
     stock: Number(row.stock ?? 0),
+    image_url: row.image_url ?? null,
   }))
 }
 
@@ -63,7 +67,7 @@ export async function createCatalogItem(args: {
   const { error } = await supabase.from('drug_items').insert({
     group_id,
     name: args.name,
-    type: args.item_type || 'other',
+    type: args.item_type || 'drug',
     price: args.price,
     stock: 0,
   })

@@ -1,12 +1,11 @@
-import { AppFrame } from '@/components/layout/AppFrame'
 import { PageHeader } from '@/components/PageHeader'
 import ItemsClient from './ui/ItemsClient'
 
 export default function ItemsPage() {
   return (
-    <AppFrame>
-      <PageHeader title="Catalogue global d’items" subtitle="Vue globale + création rapide." />
+    <div className="space-y-4">
+      <PageHeader title="Catalogue global d’items" subtitle="Objets, armes, équipement et drogues." />
       <ItemsClient />
-    </AppFrame>
+    </div>
   )
 }

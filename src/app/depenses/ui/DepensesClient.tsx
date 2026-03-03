@@ -7,7 +7,6 @@ import { Panel } from '@/components/ui/Panel'
 import { deleteExpense, listExpenses, setExpenseStatus, type DbExpense } from '@/lib/expensesApi'
 import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { getTenantSession } from '@/lib/tenantSession'
 import { toast } from 'sonner'
 
 function badge(status: string) {
@@ -30,7 +29,6 @@ export default function DepensesClient() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<DbExpense | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -46,7 +44,6 @@ export default function DepensesClient() {
   }
 
   useEffect(() => {
-    setIsAdmin(Boolean(getTenantSession()?.isAdmin))
     refresh()
   }, [])
 
@@ -61,10 +58,6 @@ export default function DepensesClient() {
 
   async function onDeleteExpense() {
     if (!pendingDelete) return
-    if (!isAdmin) {
-      toast.error('Action réservée aux administrateurs.')
-      return
-    }
     try {
       setDeleting(true)
       await deleteExpense(pendingDelete.id)
@@ -166,11 +159,9 @@ export default function DepensesClient() {
                         >
                           {e.status === 'paid' ? 'Remettre en attente' : 'Rembourser'}
                         </SecondaryButton>
-                        {isAdmin ? (
-                          <SecondaryButton type="button" disabled={busyId === e.id} onClick={() => setPendingDelete(e)} icon={<Trash2 className="h-4 w-4" />}>
-                            Supprimer
-                          </SecondaryButton>
-                        ) : null}
+                        <SecondaryButton type="button" disabled={busyId === e.id} onClick={() => setPendingDelete(e)} icon={<Trash2 className="h-4 w-4" />}>
+                          Supprimer
+                        </SecondaryButton>
                       </div>
                     </td>
                   </tr>
