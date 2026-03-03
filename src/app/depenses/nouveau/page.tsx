@@ -11,6 +11,7 @@ import { listObjects, type DbObject } from '@/lib/objectsApi'
 import { listWeapons, type DbWeapon } from '@/lib/weaponsApi'
 import { listEquipment, type DbEquipment } from '@/lib/equipmentApi'
 import { listDrugItems, type DbDrugItem } from '@/lib/drugsApi'
+import { GlassSelect } from '@/components/ui/GlassSelect'
 
 type PickItem =
   | { type: 'objects'; id: string; name: string; price: number; image_url?: string | null }
@@ -147,17 +148,18 @@ export default function NouvelleDepensePage() {
 
           <div className="md:col-span-2">
             <label className="text-sm text-white/70">Type d&apos;item</label>
-            <select
+            <GlassSelect
+              className="mt-2"
               value={itemType}
-              onChange={(e) => setItemType(e.target.value as ExpenseItemType)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-white/20"
-            >
-              <option value="objects">Objets</option>
-              <option value="weapons">Armes (prix = 0 par défaut)</option>
-              <option value="equipment">Équipement</option>
-              <option value="drugs">Drogues</option>
-              <option value="custom">Custom (autre item)</option>
-            </select>
+              onChange={(v) => setItemType(v as ExpenseItemType)}
+              options={[
+                { value: 'objects', label: 'Objets' },
+                { value: 'weapons', label: 'Armes (prix = 0 par défaut)' },
+                { value: 'equipment', label: 'Équipement' },
+                { value: 'drugs', label: 'Drogues' },
+                { value: 'custom', label: 'Custom (autre item)' },
+              ]}
+            />
           </div>
 
           {itemType === 'custom' ? (
@@ -173,19 +175,14 @@ export default function NouvelleDepensePage() {
           ) : (
             <div className="md:col-span-2">
               <label className="text-sm text-white/70">Item</label>
-              <select
+              <GlassSelect
+                className="mt-2"
                 value={pickedId}
-                onChange={(e) => setPickedId(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-white/20"
+                onChange={setPickedId}
                 disabled={loadingItems}
-              >
-                <option value="">{loadingItems ? 'Chargement…' : 'Choisir un item'}</option>
-                {items.map((it) => (
-                  <option key={it.id} value={it.id}>
-                    {it.name}
-                  </option>
-                ))}
-              </select>
+                placeholder={loadingItems ? 'Chargement…' : 'Choisir un item'}
+                options={items.map((it) => ({ value: it.id, label: it.name }))}
+              />
 
               {pickedItem?.image_url ? (
                 <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">

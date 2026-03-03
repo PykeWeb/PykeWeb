@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { supabase } from '@/lib/supabase/client'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
+import { GlassSelect } from '@/components/ui/GlassSelect'
 
 type Category = 'object' | 'weapon' | 'equipment' | 'drug'
 
@@ -104,12 +105,7 @@ export default function AdminCatalogueGlobalPage() {
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div>
             <label className="text-xs text-white/60">Catégorie</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value as Category)} className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm">
-              <option value="object">Objets</option>
-              <option value="weapon">Armes</option>
-              <option value="equipment">Équipement</option>
-              <option value="drug">Drogues</option>
-            </select>
+            <GlassSelect className="mt-1" value={category} onChange={(v) => setCategory(v as Category)} options={[{ value: 'object', label: 'Objets' }, { value: 'weapon', label: 'Armes' }, { value: 'equipment', label: 'Équipement' }, { value: 'drug', label: 'Drogues' }]} />
           </div>
           <div>
             <label className="text-xs text-white/60">Nom</label>
@@ -132,13 +128,7 @@ export default function AdminCatalogueGlobalPage() {
           {category === 'drug' ? (
             <div>
               <label className="text-xs text-white/60">Type</label>
-              <select value={drugType} onChange={(e) => setDrugType(e.target.value)} className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm">
-                <option value="drug">Coke/Meth/Weed</option>
-                <option value="seed">Graine</option>
-                <option value="planting">Plantation</option>
-                <option value="pouch">Pochon</option>
-                <option value="other">Autre</option>
-              </select>
+              <GlassSelect className="mt-1" value={drugType} onChange={setDrugType} options={[{ value: 'drug', label: 'Coke/Meth/Weed' }, { value: 'seed', label: 'Graine' }, { value: 'planting', label: 'Plantation' }, { value: 'pouch', label: 'Pochon' }, { value: 'other', label: 'Autre' }]} />
             </div>
           ) : null}
           <ImageDropzone label="Image (PNG/JPEG)" onChange={setImageFile} />

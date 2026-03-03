@@ -7,6 +7,10 @@ import { Panel } from '@/components/ui/Panel'
 import { listEquipment, adjustEquipmentStock, updateEquipment, deleteEquipment, type DbEquipment } from '@/lib/equipmentApi'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
+import { StockTransactionModal } from '@/components/ui/StockTransactionModal'
+import { ReorderableRow } from '@/components/drag/ReorderableRow'
+import { getLayoutOrder, resetLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
+import { getTenantSession } from '@/lib/tenantSession'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 export default function EquipementClient() {
@@ -24,6 +28,11 @@ export default function EquipementClient() {
   const [editStock, setEditStock] = useState('0')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [layoutEdit, setLayoutEdit] = useState(false)
+  const [actionOrder, setActionOrder] = useState(['purchase', 'sale', 'edit', 'delete'])
+  const [txModal, setTxModal] = useState<{ item: DbEquipment; kind: 'purchase' | 'sale' } | null>(null)
+  const session = getTenantSession()
+  const layoutScope = session?.isAdmin ? 'global' : 'group'
 
   async function refresh() {
     setLoading(true)
@@ -38,6 +47,10 @@ export default function EquipementClient() {
 
   useEffect(() => {
     refresh()
+    void (async () => {
+      const saved = await getLayoutOrder('equipements.actions')
+      if (saved.length) setActionOrder(saved)
+    })()
   }, [])
 
   const filtered = useMemo(() => {
@@ -118,6 +131,8 @@ export default function EquipementClient() {
 
           <div className="flex items-center gap-2">
             <Link href="/equipement/nouveau"><PrimaryButton size="lg">Ajouter un équipement</PrimaryButton></Link>
+            <SecondaryButton onClick={() => setLayoutEdit((v) => !v)}>{layoutEdit ? 'Terminer la disposition' : 'Modifier la disposition'}</SecondaryButton>
+            {layoutEdit ? <SecondaryButton onClick={async () => { setActionOrder(['purchase','sale','edit','delete']); await resetLayoutOrder('equipements.actions', layoutScope) }}>Réinitialiser l’ordre</SecondaryButton> : null}
           </div>
         </div>
 
@@ -229,46 +244,21 @@ export default function EquipementClient() {
                     <td className="px-4 py-3">{Number(it.price).toFixed(2)} $</td>
                     <td className="px-4 py-3">{it.stock}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <SecondaryButton
-                          disabled={busyId === it.id}
-                          onClick={async () => {
-                            setBusyId(it.id)
-                            setError(null)
-                            try {
-                              await adjustEquipmentStock({ equipmentId: it.id, delta: 1, note: 'Achat' })
-                              await refresh()
-                            } catch (e: any) {
-                              setError(e?.message || 'Erreur')
-                            } finally {
-                              setBusyId(null)
-                            }
-                          }}
-                          icon={<ShoppingCart className="h-4 w-4" />}
-                        >
-                          Achat
-                        </SecondaryButton>
-                        <SecondaryButton
-                          disabled={busyId === it.id}
-                          onClick={async () => {
-                            setBusyId(it.id)
-                            setError(null)
-                            try {
-                              await adjustEquipmentStock({ equipmentId: it.id, delta: -1, note: 'Sortie' })
-                              await refresh()
-                            } catch (e: any) {
-                              setError(e?.message || 'Erreur')
-                            } finally {
-                              setBusyId(null)
-                            }
-                          }}
-                          icon={<ArrowUpRight className="h-4 w-4" />}
-                        >
-                          Sortie
-                        </SecondaryButton>
-                        <SecondaryButton onClick={() => startEdit(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton>
-                        <DangerButton onClick={() => setPendingDelete(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
-                      </div>
+                      <ReorderableRow
+                        editable={layoutEdit}
+                        order={actionOrder}
+                        onOrderChange={async (next) => {
+                          setActionOrder(next)
+                          await saveLayoutOrder('equipements.actions', next, layoutScope)
+                        }}
+                        className="flex items-center justify-end gap-2"
+                        items={[
+                          { id: 'purchase', element: <SecondaryButton disabled={busyId === it.id} onClick={() => setTxModal({ item: it, kind: 'purchase' })} icon={<ShoppingCart className="h-4 w-4" />}>Achat</SecondaryButton> },
+                          { id: 'sale', element: <SecondaryButton disabled={busyId === it.id} onClick={() => setTxModal({ item: it, kind: 'sale' })} icon={<ArrowUpRight className="h-4 w-4" />}>Sortie</SecondaryButton> },
+                          { id: 'edit', element: <SecondaryButton onClick={() => startEdit(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton> },
+                          { id: 'delete', element: <DangerButton onClick={() => setPendingDelete(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton> },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))
@@ -283,6 +273,26 @@ export default function EquipementClient() {
           </div>
         ) : null}
       </Panel>
+      <StockTransactionModal
+        open={!!txModal}
+        kind={txModal?.kind || 'purchase'}
+        title={txModal?.item.name || 'Équipement'}
+        stock={txModal?.item.stock || 0}
+        unitPrice={txModal?.item.price || 0}
+        loading={busyId !== null}
+        onClose={() => setTxModal(null)}
+        onSubmit={async (quantity) => {
+          if (!txModal) return
+          setBusyId(txModal.item.id)
+          try {
+            await adjustEquipmentStock({ equipmentId: txModal.item.id, delta: txModal.kind === 'purchase' ? quantity : -quantity, note: txModal.kind === 'purchase' ? 'Achat' : 'Sortie' })
+            await refresh()
+          } finally {
+            setBusyId(null)
+            setTxModal(null)
+          }
+        }}
+      />
       <ConfirmDialog
         open={!!pendingDelete}
         title="Supprimer cet objet ?"

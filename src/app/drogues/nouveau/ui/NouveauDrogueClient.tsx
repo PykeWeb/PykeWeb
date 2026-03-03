@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createDrugItem, type DrugKind } from '@/lib/drugsApi'
+import { GlassSelect } from '@/components/ui/GlassSelect'
 
 const KIND_LABEL: Record<DrugKind, string> = {
   drug: 'Drogue (pochons / items)',
@@ -54,17 +55,12 @@ export default function NouveauDrogueClient() {
         <form className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <label className="text-sm text-white/70">Type</label>
-            <select
+            <GlassSelect
+              className="mt-2"
               value={type}
-              onChange={(e) => setType(e.target.value as DrugKind)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-white/20"
-            >
-              {Object.keys(KIND_LABEL).map((k) => (
-                <option key={k} value={k}>
-                  {KIND_LABEL[k as DrugKind]}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setType(v as DrugKind)}
+              options={Object.keys(KIND_LABEL).map((k) => ({ value: k, label: KIND_LABEL[k as DrugKind] }))}
+            />
           </div>
 
           <div className="md:col-span-2">
