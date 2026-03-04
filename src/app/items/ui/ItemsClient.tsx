@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Calculator, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -91,10 +92,10 @@ export default function ItemsClient() {
     <Panel>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[200px]" />
-        <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
         <SecondaryButton onClick={() => setOpenManager(true)}>Gérer items</SecondaryButton>
         <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
+        <Link href="/drogues/plantations"><SecondaryButton>Plantations</SecondaryButton></Link>
         <SecondaryButton onClick={() => setShowCalculator((prev) => !prev)}>{showCalculator ? "Masquer calculateur" : "Ouvrir calculateur"}</SecondaryButton>
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
       </div>

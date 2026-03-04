@@ -39,6 +39,8 @@ function mergeUnique(values: string[]) {
   return Array.from(new Set(values))
 }
 
+const HIDDEN_CATEGORIES_KEY = 'sidebar.hiddenCategories'
+
 export function Sidebar() {
   const pathname = usePathname()
   const { labels } = useUiSettings()
@@ -88,29 +90,21 @@ export function Sidebar() {
   }, [isAdmin, adminTargetGroupId])
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const parse = (raw: string | null) => {
-      if (!raw) return [] as string[]
-      try {
-        const parsed = JSON.parse(raw) as string[]
-        return Array.isArray(parsed) ? parsed : []
-      } catch {
-        return []
+    void (async () => {
+      if (!isAdmin) {
+        const [globalHidden, groupHidden] = await Promise.all([
+          getLayoutOrder(HIDDEN_CATEGORIES_KEY, 'global'),
+          getLayoutOrder(HIDDEN_CATEGORIES_KEY, 'group'),
+        ])
+        setHiddenCategoryNav(mergeUnique([...globalHidden, ...groupHidden]))
+        return
       }
-    }
 
-    if (!isAdmin) {
-      const globalHidden = parse(window.localStorage.getItem('pyke.hiddenCategoryNav.global'))
-      const scoped = parse(groupId ? window.localStorage.getItem(`pyke.hiddenCategoryNav.group.${groupId}`) : window.localStorage.getItem('pyke.hiddenCategoryNav'))
-      setHiddenCategoryNav(mergeUnique([...globalHidden, ...scoped]))
-      return
-    }
-
-    const key = categoryVisibilityScope === 'global'
-      ? 'pyke.hiddenCategoryNav.global'
-      : (adminTargetGroupId ? `pyke.hiddenCategoryNav.group.${adminTargetGroupId}` : null)
-    setHiddenCategoryNav(parse(key ? window.localStorage.getItem(key) : null))
+      const scopeType = categoryVisibilityScope
+      const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
+      const hidden = await getLayoutOrder(HIDDEN_CATEGORIES_KEY, scopeType, scopeId)
+      setHiddenCategoryNav(hidden)
+    })().catch(() => setHiddenCategoryNav([]))
   }, [isAdmin, groupId, categoryVisibilityScope, adminTargetGroupId])
 
   const accessLabel = useMemo(() => {
@@ -149,12 +143,9 @@ export function Sidebar() {
 
   function updateHidden(next: string[]) {
     setHiddenCategoryNav(next)
-    if (typeof window === 'undefined') return
-    const key = categoryVisibilityScope === 'global'
-      ? 'pyke.hiddenCategoryNav.global'
-      : (adminTargetGroupId ? `pyke.hiddenCategoryNav.group.${adminTargetGroupId}` : null)
-    if (!key) return
-    window.localStorage.setItem(key, JSON.stringify(next))
+    const scopeType = categoryVisibilityScope
+    const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
+    void saveLayoutOrder(HIDDEN_CATEGORIES_KEY, next, scopeType, scopeId)
   }
 
   return (
