@@ -34,8 +34,13 @@ export function GlassSelect({
       const custom = event as CustomEvent<{ id: string }>
       if (custom.detail?.id !== instanceId) setOpen(false)
     }
+    const onCloseAll = () => setOpen(false)
     window.addEventListener('glass-select-open', onOpen as EventListener)
-    return () => window.removeEventListener('glass-select-open', onOpen as EventListener)
+    window.addEventListener('glass-select-close-all', onCloseAll)
+    return () => {
+      window.removeEventListener('glass-select-open', onOpen as EventListener)
+      window.removeEventListener('glass-select-close-all', onCloseAll)
+    }
   }, [instanceId])
 
   useEffect(() => {
@@ -60,11 +65,13 @@ export function GlassSelect({
         type="button"
         disabled={disabled}
         onClick={() => {
-          setOpen((prev) => {
-            const next = !prev
-            if (next) window.dispatchEvent(new CustomEvent('glass-select-open', { detail: { id: instanceId } }))
-            return next
-          })
+          if (open) {
+            setOpen(false)
+            return
+          }
+          window.dispatchEvent(new CustomEvent('glass-select-close-all'))
+          window.dispatchEvent(new CustomEvent('glass-select-open', { detail: { id: instanceId } }))
+          setOpen(true)
         }}
         className="flex h-10 w-full items-center justify-between rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-left text-sm text-white/90 transition hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-60"
       >

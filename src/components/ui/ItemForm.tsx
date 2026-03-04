@@ -27,6 +27,7 @@ export function ItemForm({
   const [name, setName] = useState(initialItem?.name ?? '')
   const [category, setCategory] = useState<ItemCategory>(initialItem?.category ?? 'objects')
   const [itemType, setItemType] = useState<ItemType>(normalizeItemType(initialItem?.item_type ?? null, initialItem?.category ?? 'objects'))
+  const [weaponId, setWeaponId] = useState(initialItem?.fivem_item_id ?? '')
   const [description, setDescription] = useState(initialItem?.description ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [buyPrice, setBuyPrice] = useState(String(initialItem?.buy_price ?? 0))
@@ -69,6 +70,7 @@ export function ItemForm({
         stackable: initialItem?.stackable ?? true,
         max_stack: initialItem?.max_stack ?? 100,
         weight: initialItem?.weight ?? null,
+        fivem_item_id: category === 'weapons' ? weaponId.trim() || null : null,
       })
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
@@ -113,6 +115,13 @@ export function ItemForm({
           <label className="mb-1 block text-xs text-white/60">Type</label>
           <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={typeOptions} />
         </div>
+
+        {category === 'weapons' ? (
+          <div>
+            <label className="mb-1 block text-xs text-white/60">ID (arme)</label>
+            <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
+          </div>
+        ) : null}
 
         <ImageDropzone label="Image (copier/coller ou PNG/JPEG)" onChange={setImageFile} />
 
