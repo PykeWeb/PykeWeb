@@ -1,6 +1,25 @@
 export type ItemCategory = 'objects' | 'weapons' | 'drugs' | 'equipment' | 'custom'
 
-export type ItemType = 'input' | 'output' | 'consumable' | 'equipment' | 'production' | 'other'
+export type ItemType =
+  | 'accessory'
+  | 'tool'
+  | 'consumable'
+  | 'material'
+  | 'weapon'
+  | 'ammo'
+  | 'weapon_accessory'
+  | 'equipment'
+  | 'outfit'
+  | 'protection'
+  | 'seed'
+  | 'pouch'
+  | 'product'
+  | 'recipe'
+  | 'drug_material'
+  | 'other'
+  | 'input'
+  | 'output'
+  | 'production' // legacy
 
 export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary' | null
 

@@ -13,8 +13,10 @@ import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
 import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
 import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
+import { GlassSelect } from '@/components/ui/GlassSelect'
 
 type AccessInfo = { paid_until: string | null; active: boolean } | null
+type GroupSummary = { id: string; name: string }
 
 type NavLink = { id: string; href: string; label: string; icon: ReactNode; active: boolean }
 
@@ -33,19 +35,32 @@ const NavItem = ({ href, label, icon, active }: { href: string; label: string; i
   )
 }
 
+function mergeUnique(values: string[]) {
+  return Array.from(new Set(values))
+}
+
+const HIDDEN_CATEGORIES_KEY = 'sidebar.hiddenCategories'
+
 export function Sidebar() {
   const pathname = usePathname()
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
   const [groupBadge, setGroupBadge] = useState('GROUPE')
+  const [groupId, setGroupId] = useState<string>('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'objects', 'weapons', 'equipment', 'drugs', 'expenses', 'finance', 'items'])
+  const [hiddenCategoryNav, setHiddenCategoryNav] = useState<string[]>([])
+
+  const [categoryVisibilityScope, setCategoryVisibilityScope] = useState<'global' | 'group'>('global')
+  const [adminGroups, setAdminGroups] = useState<GroupSummary[]>([])
+  const [adminTargetGroupId, setAdminTargetGroupId] = useState('')
 
   useEffect(() => {
     const session = getTenantSession()
     setGroupName(session?.groupName || 'Groupe')
     setGroupBadge(session?.groupBadge || 'GROUPE')
+    setGroupId(session?.groupId || '')
     setIsAdmin(Boolean(session?.isAdmin))
   }, [])
 
@@ -57,6 +72,40 @@ export function Sidebar() {
       if (saved.length) setNavOrder(saved)
     })()
   }, [isAdmin])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    void (async () => {
+      try {
+        const res = await fetch('/api/admin/groups', { cache: 'no-store' })
+        if (!res.ok) return
+        const rows = (await res.json()) as Array<{ id: string; name: string }>
+        const clean = rows.map((row) => ({ id: row.id, name: row.name }))
+        setAdminGroups(clean)
+        if (!adminTargetGroupId && clean[0]?.id) setAdminTargetGroupId(clean[0].id)
+      } catch {
+        setAdminGroups([])
+      }
+    })()
+  }, [isAdmin, adminTargetGroupId])
+
+  useEffect(() => {
+    void (async () => {
+      if (!isAdmin) {
+        const [globalHidden, groupHidden] = await Promise.all([
+          getLayoutOrder(HIDDEN_CATEGORIES_KEY, 'global'),
+          getLayoutOrder(HIDDEN_CATEGORIES_KEY, 'group'),
+        ])
+        setHiddenCategoryNav(mergeUnique([...globalHidden, ...groupHidden]))
+        return
+      }
+
+      const scopeType = categoryVisibilityScope
+      const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
+      const hidden = await getLayoutOrder(HIDDEN_CATEGORIES_KEY, scopeType, scopeId)
+      setHiddenCategoryNav(hidden)
+    })().catch(() => setHiddenCategoryNav([]))
+  }, [isAdmin, groupId, categoryVisibilityScope, adminTargetGroupId])
 
   const accessLabel = useMemo(() => {
     if (!accessInfo) return '—'
@@ -77,6 +126,27 @@ export function Sidebar() {
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
   ]
+
+  const visibleUserNavLinks = userNavLinks.filter((link) => {
+    const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs'
+    if (!isCategory) return true
+    if (link.active) return true
+    return !hiddenCategoryNav.includes(link.id)
+  })
+
+  const categoryToggles = [
+    { id: 'objects', label: labels.nav_objets || 'Objets' },
+    { id: 'weapons', label: labels.nav_armes || 'Armes' },
+    { id: 'equipment', label: labels.nav_equipement || 'Équipement' },
+    { id: 'drugs', label: labels.nav_drogues || 'Drogues' },
+  ]
+
+  function updateHidden(next: string[]) {
+    setHiddenCategoryNav(next)
+    const scopeType = categoryVisibilityScope
+    const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
+    void saveLayoutOrder(HIDDEN_CATEGORIES_KEY, next, scopeType, scopeId)
+  }
 
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex">
@@ -119,12 +189,56 @@ export function Sidebar() {
               setNavOrder(next)
               await saveLayoutOrder('sidebar.nav', next, 'group')
             }}
-            items={userNavLinks.map((link) => ({
+            items={visibleUserNavLinks.map((link) => ({
               id: link.id,
               element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
             }))}
           />
         )}
+
+        {isAdmin ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/70">
+            <p className="mb-2 font-semibold text-white/85">Afficher les catégories</p>
+            <div className="mb-2 grid gap-2">
+              <label className="inline-flex items-center gap-2">
+                <input type="radio" checked={categoryVisibilityScope === 'global'} onChange={() => setCategoryVisibilityScope('global')} />
+                Tous les groupes
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="radio" checked={categoryVisibilityScope === 'group'} onChange={() => setCategoryVisibilityScope('group')} />
+                Groupe spécifique
+              </label>
+              {categoryVisibilityScope === 'group' ? (
+                <GlassSelect
+                  value={adminTargetGroupId}
+                  onChange={setAdminTargetGroupId}
+                  options={adminGroups.map((g) => ({ value: g.id, label: g.name }))}
+                />
+              ) : null}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {categoryToggles.map((row) => {
+                const checked = !hiddenCategoryNav.includes(row.id)
+                return (
+                  <label key={row.id} className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? hiddenCategoryNav.filter((id) => id !== row.id)
+                          : [...hiddenCategoryNav, row.id]
+                        updateHidden(mergeUnique(next))
+                      }}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5"
+                    />
+                    {row.label}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
       </div>
     </aside>
   )

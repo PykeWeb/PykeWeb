@@ -26,13 +26,15 @@ function getExt(file: File) {
 
 export async function listObjects(): Promise<DbObject[]> {
   const groupId = currentGroupId()
-  const [{ data: locals, error }, globalRes] = await Promise.all([
+  const [{ data: locals, error }, globalRes, hiddenRes] = await Promise.all([
     supabase.from('objects').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId).order('created_at', { ascending: false }),
     fetch('/api/catalog/items?category=objects', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+    supabase.from('catalog_items').select('name').eq('group_id', currentGroupId()).eq('category', 'objects').eq('is_active', false),
   ])
 
   if (error) throw error
   const localRows = (locals ?? []) as DbObject[]
+  const hiddenNames = new Set(((hiddenRes.data ?? []) as { name: string }[]).map((h) => (h.name || '').toLowerCase()))
   const globalRows = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({
     id: `global:${g.global_item_id ?? g.id}`,
     name: g.name,
@@ -46,8 +48,9 @@ export async function listObjects(): Promise<DbObject[]> {
   })) as DbObject[]
 
   const byName = new Set(localRows.map((o) => (o.name || '').toLowerCase()))
+  const visibleLocals = localRows.filter((o) => !hiddenNames.has((o.name || '').toLowerCase()))
   const dedupedGlobals = globalRows.filter((g) => !byName.has((g.name || '').toLowerCase()))
-  return [...localRows, ...dedupedGlobals]
+  return [...visibleLocals, ...dedupedGlobals.filter((g) => !hiddenNames.has((g.name || '').toLowerCase()))]
 }
 
 export async function createObject(args: {
@@ -164,6 +167,42 @@ export async function deleteObject(objectId: string) {
     if (!res.ok) throw new Error(await res.text())
     return
   }
-  const { error } = await supabase.from('objects').delete().eq('id', objectId).eq('group_id', currentGroupId())
-  if (error) throw error
+  const groupId = currentGroupId()
+  const { data: row } = await supabase.from('objects').select('id,name').eq('id', objectId).eq('group_id', groupId).maybeSingle<{ id: string; name: string }>()
+  const { error } = await supabase.from('objects').delete().eq('id', objectId).eq('group_id', groupId)
+  if (!error) return
+
+  if (error.code === '23503' && row?.name) {
+    const internal_id = `legacy-objects-${row.id}`
+    const { data: existing } = await supabase
+      .from('catalog_items')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('internal_id', internal_id)
+      .maybeSingle<{ id: string }>()
+
+    if (existing?.id) {
+      await supabase.from('catalog_items').update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', existing.id).eq('group_id', groupId)
+    } else {
+      await supabase.from('catalog_items').insert({
+        group_id: groupId,
+        internal_id,
+        name: row.name,
+        category: 'objects',
+        item_type: 'other',
+        buy_price: 0,
+        sell_price: 0,
+        internal_value: 0,
+        show_in_finance: false,
+        is_active: false,
+        stock: 0,
+        low_stock_threshold: 0,
+        stackable: true,
+        max_stack: 100,
+      })
+    }
+    return
+  }
+
+  throw error
 }

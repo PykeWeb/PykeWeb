@@ -328,6 +328,7 @@ export default function DroguesClient() {
           <SegmentedTabs options={[{ value: 'catalogue', label: 'Catalogue' }, { value: 'plantations', label: 'Plantations' }, { value: 'calculateur', label: 'Calculateur' }]} value={tab} onChange={setTab} />
 
           <div className="flex items-center gap-2">
+            <Link href="/drogues/plantations"><SecondaryButton size="lg">Plantations</SecondaryButton></Link>
             <Link href="/drogues/nouveau"><PrimaryButton size="lg">Ajouter un item</PrimaryButton></Link>
           </div>
         </div>

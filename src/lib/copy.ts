@@ -11,7 +11,6 @@ export const copy = {
       infos: 'Infos',
       economy: 'Économie',
       stock: 'Stock',
-      advanced: 'Avancé (RP / FiveM)',
     },
     fields: {
       name: 'Nom *',
@@ -26,9 +25,6 @@ export const copy = {
       stockLow: 'Seuil stock bas',
       weight: 'Poids',
       maxStack: 'Max stack',
-      fivemItemId: 'fivem_item_id',
-      hash: 'hash',
-      rarity: 'Rareté',
     },
     toggles: {
       showInFinance: 'Afficher dans Finance',
