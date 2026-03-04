@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Image as ImageIcon } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Image as ImageIcon, Search } from 'lucide-react'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
@@ -43,6 +43,7 @@ export function FinanceItemTradeModal({
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
   const [itemId, setItemId] = useState('')
+  const [itemSearch, setItemSearch] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [unitPrice, setUnitPrice] = useState('0')
   const [counterparty, setCounterparty] = useState('')
@@ -72,10 +73,16 @@ export function FinanceItemTradeModal({
     return [{ value: 'all', label: copy.common.allTypes }, ...categoryTypeOptions[category]]
   }, [category, items])
 
-  const filtered = useMemo(
-    () => items.filter((it) => (category === 'all' ? true : it.category === category)).filter((it) => (type === 'all' ? true : it.item_type === type)),
-    [items, category, type]
-  )
+  const filtered = useMemo(() => {
+    const search = itemSearch.trim().toLowerCase()
+    return items
+      .filter((it) => (category === 'all' ? true : it.category === category))
+      .filter((it) => (type === 'all' ? true : it.item_type === type))
+      .filter((it) => {
+        if (!search) return true
+        return `${it.name} ${it.internal_id}`.toLowerCase().includes(search)
+      })
+  }, [items, category, type, itemSearch])
 
   useEffect(() => {
     if (!filtered.find((x) => x.id === itemId)) setItemId(filtered[0]?.id || '')
@@ -129,6 +136,7 @@ export function FinanceItemTradeModal({
           actionsPlacement="top-right"
         >
           <div className="grid gap-3 md:grid-cols-2">
+            <div className="md:col-span-2 text-xs font-semibold uppercase tracking-wide text-white/50">Informations</div>
             <div>
               <label className="mb-1 block text-xs text-white/60">Mode</label>
               {enableModeSelect ? (
@@ -155,9 +163,43 @@ export function FinanceItemTradeModal({
               <label className="mb-1 block text-xs text-white/60">{copy.finance.trade.typeOptional}</label>
               <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
-              <GlassSelect value={itemId} onChange={setItemId} options={filtered.map((it) => ({ value: it.id, label: it.name }))} />
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-2">
+                <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <Search className="h-4 w-4 text-white/50" />
+                  <input
+                    value={itemSearch}
+                    onChange={(event) => setItemSearch(event.target.value)}
+                    placeholder="Rechercher un item"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
+                  />
+                </div>
+                <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                  {filtered.map((it) => (
+                    <button
+                      key={it.id}
+                      type="button"
+                      onClick={() => setItemId(it.id)}
+                      className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition ${itemId === it.id ? 'border-cyan-300/40 bg-cyan-500/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]'}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-white">{it.name}</p>
+                        <p className="truncate text-xs text-white/60">{getTypeLabel(it.item_type, it.category)} · Stock: {it.stock}</p>
+                      </div>
+                      <div className="ml-3 h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                        {it.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                  {filtered.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item pour ces filtres.</p> : null}
+                </div>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/75 md:col-span-2">
@@ -180,6 +222,7 @@ export function FinanceItemTradeModal({
               </div>
             </div>
 
+            <div className="md:col-span-2 text-xs font-semibold uppercase tracking-wide text-white/50">Prix & stock</div>
             <div>
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.quantity}</label>
               <div className="max-w-[260px]"><QuantityStepper value={quantity} onChange={setQuantity} min={1} max={tradeMode === 'sell' ? Math.max(1, selected?.stock ?? 0) : undefined} /></div>
@@ -192,6 +235,7 @@ export function FinanceItemTradeModal({
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
               <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
             </div>
+            <div className="md:col-span-2 text-xs font-semibold uppercase tracking-wide text-white/50">Notes</div>
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.notes}</label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[96px]" />

@@ -94,7 +94,7 @@ export function ItemForm({
           <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : submitLabel || copy.common.save}</PrimaryButton>
         </>
       }
-      actionsPlacement={actionsPlacement || (initialItem ? 'bottom-right' : 'top-right')}
+      actionsPlacement={actionsPlacement || 'top-right'}
     >
       <div className="grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">

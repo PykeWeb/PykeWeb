@@ -11,7 +11,7 @@ import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, Settings2, ChevronUp, ChevronDown } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -119,6 +119,7 @@ export function DashboardClient() {
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
+  const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
 
   useEffect(() => {
@@ -278,8 +279,8 @@ export function DashboardClient() {
       setTicketMessage('')
       setTicketImage(null)
       setTicketStatus(ticketKind === 'bug' ? 'Bug envoyé.' : 'Message envoyé.')
-    } catch (e: any) {
-      setTicketStatus(e?.message || 'Envoi impossible')
+    } catch (e: unknown) {
+      setTicketStatus(e instanceof Error ? e.message : 'Envoi impossible')
     }
   }
 
@@ -324,6 +325,31 @@ export function DashboardClient() {
     void persistLayouts(quickActions, next)
   }
 
+
+  function removeDashboardCard(index: number) {
+    if (dashboardCards.length <= 1) return
+    const next = dashboardCards.filter((_, idx) => idx !== index)
+    setDashboardCards(next)
+    void persistLayouts(quickActions, next)
+  }
+
+  function moveDashboardCard(index: number, direction: 'up' | 'down') {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= dashboardCards.length) return
+    const next = [...dashboardCards]
+    const [entry] = next.splice(index, 1)
+    next.splice(targetIndex, 0, entry)
+    setDashboardCards(next)
+    void persistLayouts(quickActions, next)
+  }
+
+  function addDashboardCard(cardKey: CardKey) {
+    if (dashboardCards.includes(cardKey)) return
+    const next = [...dashboardCards, cardKey]
+    setDashboardCards(next)
+    void persistLayouts(quickActions, next)
+  }
+
   function onSupportPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
     const files = Array.from(e.clipboardData.items)
       .filter((i) => i.type.startsWith('image/'))
@@ -339,6 +365,13 @@ export function DashboardClient() {
     <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-white/75">Bulles Dashboard</h3>
+          <button type="button" onClick={() => setCardManagerOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs hover:bg-white/10">
+            <Settings2 className="h-3.5 w-3.5" />
+            Gérer les bulles
+          </button>
+        </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           {dashboardCards.map((cardKey, idx) => {
             const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
@@ -505,6 +538,55 @@ export function DashboardClient() {
                     <div>
                       <p className="text-sm font-medium">{opt.title}</p>
                       <p className="text-xs text-white/60">{disabled ? 'Déjà ajouté' : opt.subtitle}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+
+      {cardManagerOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setCardManagerOpen(false)}>
+          <div className="w-full max-w-3xl rounded-2xl border border-white/20 bg-slate-950/95 p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Gestion des bulles</h3>
+              <button type="button" onClick={() => setCardManagerOpen(false)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="space-y-2">
+              {dashboardCards.map((cardKey, index) => {
+                const card = CARD_OPTIONS.find((option) => option.key === cardKey)
+                if (!card) return null
+                const Icon = card.icon
+                return (
+                  <div key={`${card.key}-${index}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/10"><Icon className="h-4 w-4" /></span>
+                      <div>
+                        <p className="text-sm font-medium">{card.title}</p>
+                        <p className="text-xs text-white/60">{card.href}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => moveDashboardCard(index, 'up')} disabled={index === 0} className="rounded-md border border-white/10 bg-white/5 p-1 disabled:opacity-40"><ChevronUp className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => moveDashboardCard(index, 'down')} disabled={index === dashboardCards.length - 1} className="rounded-md border border-white/10 bg-white/5 p-1 disabled:opacity-40"><ChevronDown className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => removeDashboardCard(index)} disabled={dashboardCards.length <= 1} className="rounded-md border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-xs text-rose-100 disabled:opacity-40">Supprimer</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {CARD_OPTIONS.filter((option) => !dashboardCards.includes(option.key)).map((option) => {
+                const Icon = option.icon
+                return (
+                  <button key={option.key} type="button" onClick={() => addDashboardCard(option.key)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/10"><Icon className="h-4 w-4" /></span>
+                    <div>
+                      <p className="text-sm font-medium">Ajouter: {option.title}</p>
+                      <p className="text-xs text-white/60">{option.href}</p>
                     </div>
                   </button>
                 )

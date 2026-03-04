@@ -152,13 +152,13 @@ export default function ItemsClient() {
                   key={card.key}
                   type="button"
                   onClick={() => { setCategory(card.key as CategoryFilter); setType('all') }}
-                  className={`rounded-2xl border px-3 py-2.5 text-left transition ${category === card.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'}`}
+                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${category === card.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'}`}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <p className="text-xs text-white/70">{card.label}</p>
                     <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                   </div>
-                  <p className="mt-1 text-2xl font-semibold leading-none">{card.value}</p>
+                  <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
                 </button>
               )
             })}
