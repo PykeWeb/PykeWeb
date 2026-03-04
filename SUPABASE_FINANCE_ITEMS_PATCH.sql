@@ -1,7 +1,7 @@
 -- Pyke Stock - Finance + Catalogue global patch
 -- 1) Fix expenses override price compatibility
--- 2) Add finance_trades log table (legacy compatibility)
--- 3) Rebuild catalog_global_items view (drop+create to avoid merge/replacement conflicts)
+-- 2) Add finance_trades log table (legacy compatibility; kept to avoid breaking older flows)
+-- 3) Rebuild catalog_global_items view (drop+create canonical strategy; avoids 42P16 on replace)
 
 begin;
 

@@ -1,5 +1,5 @@
 -- Fixes patch: rebuild catalog_global_items view safely (supports schema drift)
--- Important: we DROP then CREATE the view to avoid PostgreSQL column-rename conflicts
+-- Important: canonical conflict-safe strategy is DROP then CREATE to avoid PostgreSQL column-rename conflicts
 -- when an existing view has a different column layout/order.
 begin;
 
