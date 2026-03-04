@@ -9,6 +9,7 @@ import { createCatalogItem, listCatalogItems } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
+import { itemCategoryOptions } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
@@ -51,14 +52,7 @@ export default function ItemsClient() {
         <GlassSelect
           value={category}
           onChange={(v) => setCategory(v as CategoryFilter)}
-          options={[
-            { value: 'all', label: copy.common.allCategories },
-            { value: 'objects', label: 'Objets' },
-            { value: 'weapons', label: 'Armes' },
-            { value: 'drugs', label: 'Drogues' },
-            { value: 'equipment', label: 'Équipements' },
-            { value: 'custom', label: 'Custom' },
-          ]}
+          options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]}
         />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>

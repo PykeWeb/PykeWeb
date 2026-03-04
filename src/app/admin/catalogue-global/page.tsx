@@ -5,12 +5,15 @@ import { getTenantSession } from '@/lib/tenantSession'
 import { supabase } from '@/lib/supabase/client'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { GlassSelect } from '@/components/ui/GlassSelect'
-
-type Category = 'object' | 'weapon' | 'equipment' | 'drug'
+import { Input } from '@/components/ui/Input'
+import { Panel } from '@/components/ui/Panel'
+import { DangerButton, PrimaryButton, SearchInput } from '@/components/ui/design-system'
+import { itemCategoryOptions, normalizeCatalogCategory } from '@/lib/catalogConfig'
+import type { ItemCategory } from '@/lib/types/itemsFinance'
 
 type GlobalItem = {
   id: string
-  category: Category
+  category: ItemCategory
   item_type: string | null
   name: string
   price: number
@@ -19,9 +22,19 @@ type GlobalItem = {
   weapon_id: string | null
 }
 
+const drugTypeOptions = [
+  { value: 'drug', label: 'Produit' },
+  { value: 'seed', label: 'Graine' },
+  { value: 'planting', label: 'Plantation' },
+  { value: 'pouch', label: 'Pochon' },
+  { value: 'other', label: 'Autre' },
+]
+
 export default function AdminCatalogueGlobalPage() {
   const [items, setItems] = useState<GlobalItem[]>([])
-  const [category, setCategory] = useState<Category>('object')
+  const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all')
+  const [query, setQuery] = useState('')
+  const [createCategory, setCreateCategory] = useState<ItemCategory>('objects')
   const [name, setName] = useState('')
   const [price, setPrice] = useState('0')
   const [quantity, setQuantity] = useState('0')
@@ -34,7 +47,10 @@ export default function AdminCatalogueGlobalPage() {
   async function refresh() {
     const res = await fetch('/api/admin/global-catalog', { cache: 'no-store' })
     const data = await res.json()
-    setItems(Array.isArray(data) ? data : [])
+    const normalized = (Array.isArray(data) ? data : [])
+      .map((row) => ({ ...row, category: normalizeCatalogCategory(String(row.category)) }))
+      .filter((row): row is GlobalItem => Boolean(row.category))
+    setItems(normalized)
   }
 
   useEffect(() => {
@@ -56,7 +72,10 @@ export default function AdminCatalogueGlobalPage() {
   }
 
   async function addItem() {
-    if (!name.trim()) return
+    if (!name.trim()) {
+      setError('Le nom est obligatoire.')
+      return
+    }
     try {
       setBusy(true)
       setError(null)
@@ -65,12 +84,12 @@ export default function AdminCatalogueGlobalPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          category,
+          category: createCategory,
           name: name.trim(),
-          price: Number(price || 0),
+          price: Math.max(0, Number(price || 0) || 0),
           default_quantity: Math.max(0, Math.floor(Number(quantity || 0) || 0)),
-          weapon_id: category === 'weapon' ? weaponId.trim() || null : null,
-          item_type: category === 'drug' ? drugType : null,
+          weapon_id: createCategory === 'weapons' ? weaponId.trim() || null : null,
+          item_type: createCategory === 'drugs' ? drugType : null,
           image_url,
         }),
       })
@@ -81,8 +100,8 @@ export default function AdminCatalogueGlobalPage() {
       setWeaponId('')
       setImageFile(null)
       await refresh()
-    } catch (e: any) {
-      setError(e?.message || 'Erreur création')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur création')
     } finally {
       setBusy(false)
     }
@@ -94,55 +113,71 @@ export default function AdminCatalogueGlobalPage() {
     await refresh()
   }
 
-  const filtered = useMemo(() => items.filter((it) => it.category === category), [items, category])
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return items.filter((it) => {
+      if (filterCategory !== 'all' && it.category !== filterCategory) return false
+      if (!q) return true
+      return `${it.name} ${it.item_type ?? ''} ${it.weapon_id ?? ''}`.toLowerCase().includes(q)
+    })
+  }, [items, query, filterCategory])
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
+      <Panel>
         <h1 className="text-2xl font-semibold">Objets (catalogue global)</h1>
-        <p className="mt-1 text-sm text-white/70">Création centralisée (Objets / Armes / Équipement / Drogues) avec override local par groupe.</p>
+        <p className="mt-1 text-sm text-white/70">Catalogue partagé entre modules, avec override local par groupe.</p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div>
-            <label className="text-xs text-white/60">Catégorie</label>
-            <GlassSelect className="mt-1" value={category} onChange={(v) => setCategory(v as Category)} options={[{ value: 'object', label: 'Objets' }, { value: 'weapon', label: 'Armes' }, { value: 'equipment', label: 'Équipement' }, { value: 'drug', label: 'Drogues' }]} />
+            <label className="mb-1 block text-xs text-white/60">Catégorie</label>
+            <GlassSelect value={createCategory} onChange={(v) => setCreateCategory(v as ItemCategory)} options={itemCategoryOptions} />
           </div>
           <div>
-            <label className="text-xs text-white/60">Nom</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+            <label className="mb-1 block text-xs text-white/60">Nom</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'item" />
           </div>
           <div>
-            <label className="text-xs text-white/60">Prix ($)</label>
-            <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Prix ($)" className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+            <label className="mb-1 block text-xs text-white/60">Prix ($)</label>
+            <Input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
           </div>
           <div>
-            <label className="text-xs text-white/60">Quantité</label>
-            <input value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantité" className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+            <label className="mb-1 block text-xs text-white/60">Stock par défaut</label>
+            <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="numeric" />
           </div>
-          {category === 'weapon' ? (
+          {createCategory === 'weapons' ? (
             <div>
-              <label className="text-xs text-white/60">Weapon ID / hash</label>
-              <input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="Weapon ID / hash" className="mt-1 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+              <label className="mb-1 block text-xs text-white/60">Weapon ID / hash</label>
+              <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
             </div>
           ) : null}
-          {category === 'drug' ? (
+          {createCategory === 'drugs' ? (
             <div>
-              <label className="text-xs text-white/60">Type</label>
-              <GlassSelect className="mt-1" value={drugType} onChange={setDrugType} options={[{ value: 'drug', label: 'Coke/Meth/Weed' }, { value: 'seed', label: 'Graine' }, { value: 'planting', label: 'Plantation' }, { value: 'pouch', label: 'Pochon' }, { value: 'other', label: 'Autre' }]} />
+              <label className="mb-1 block text-xs text-white/60">Type drogue</label>
+              <GlassSelect value={drugType} onChange={setDrugType} options={drugTypeOptions} />
             </div>
           ) : null}
-          <ImageDropzone label="Image (PNG/JPEG)" onChange={setImageFile} />
+          <ImageDropzone label="Image (upload / coller / glisser)" onChange={setImageFile} />
         </div>
 
-        <button disabled={busy} onClick={() => void addItem()} className="mt-3 h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14]">
-          {busy ? 'Ajout...' : 'Ajouter'}
-        </button>
+        <div className="mt-4 flex justify-end">
+          <PrimaryButton disabled={busy} onClick={() => void addItem()}>{busy ? 'Ajout…' : 'Ajouter au catalogue'}</PrimaryButton>
+        </div>
         {error ? <p className="mt-2 text-sm text-rose-300">{error}</p> : null}
-      </div>
+      </Panel>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <h2 className="text-lg font-semibold">Items {category}</h2>
-        <div className="mt-3 space-y-2">
+      <Panel>
+        <div className="flex flex-wrap items-center gap-3">
+          <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher un item" className="w-[320px]" />
+          <GlassSelect
+            value={filterCategory}
+            onChange={(v) => setFilterCategory(v as 'all' | ItemCategory)}
+            options={[{ value: 'all', label: 'Toutes catégories' }, ...itemCategoryOptions]}
+          />
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {filtered.length === 0 ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/70">Aucun item à afficher pour ces filtres.</div> : null}
           {filtered.map((it) => (
             <div key={it.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm">
               <div className="flex items-center gap-3">
@@ -152,13 +187,15 @@ export default function AdminCatalogueGlobalPage() {
                     <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
                   ) : null}
                 </div>
-                <p>{it.name} <span className="text-white/60">{Number(it.price || 0).toFixed(2)}$ • qté {it.default_quantity}</span></p>
+                <p>
+                  {it.name} <span className="text-white/60">{Number(it.price || 0).toFixed(2)}$ • stock {Math.max(0, Number(it.default_quantity || 0))}</span>
+                </p>
               </div>
-              <button onClick={() => void removeItem(it.id)} className="h-10 rounded-2xl border border-rose-400/40 bg-rose-500/10 px-3 text-sm text-rose-200 hover:bg-rose-500/20">Supprimer</button>
+              <DangerButton onClick={() => void removeItem(it.id)}>Supprimer</DangerButton>
             </div>
           ))}
         </div>
-      </div>
+      </Panel>
     </div>
   )
 }
