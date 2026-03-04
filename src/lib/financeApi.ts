@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 
 export type FinanceMovementType = 'expense' | 'purchase' | 'sale'
-export type FinanceCategory = 'objects' | 'weapons' | 'equipment' | 'drugs' | 'other'
+export type FinanceCategory = 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom' | 'other'
 
 export type FinanceEntry = {
   id: string
@@ -14,54 +14,41 @@ export type FinanceEntry = {
   quantity: number
   amount: number | null
   expense_status?: 'pending' | 'paid' | null
+  payment_mode?: string | null
+  notes?: string | null
   created_at: string
 }
+
+type TxJoinItem = { name_snapshot: string | null; quantity: number | null }
+type FinanceTransactionJoinItem = { name: string | null; category: string | null }
 
 export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   const groupId = currentGroupId()
 
-  const [expensesRes, txRes, tradeRes, weaponMvRes, equipmentMvRes, drugMvRes] = await Promise.all([
+  const [expensesRes, txRes, customTxRes] = await Promise.all([
     supabase
       .from('expenses')
-      .select('id,item_source,item_label,member_name,quantity,total,status,created_at')
+      .select('id,item_source,item_label,member_name,quantity,total,status,description,created_at')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
     supabase
       .from('transactions')
-      .select('id,type,counterparty,total,created_at,transaction_items(name_snapshot,quantity)')
+      .select('id,type,counterparty,total,notes,created_at,transaction_items(name_snapshot,quantity)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
     supabase
-      .from('finance_trades')
-      .select('id,mode,category,item_name,quantity,unit_price,total,created_at')
+      .from('finance_transactions')
+      .select('id,mode,quantity,unit_price,total,counterparty,payment_mode,notes,created_at,catalog_items(name,category)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
-    supabase
-      .from('weapon_stock_movements')
-      .select('id,delta,note,created_at,weapons(name)')
-      .eq('group_id', groupId)
-      .order('created_at', { ascending: false })
-      .limit(300),
-    supabase
-      .from('equipment_stock_movements')
-      .select('id,delta,note,created_at,equipment(name)')
-      .eq('group_id', groupId)
-      .order('created_at', { ascending: false })
-      .limit(300),
-    supabase
-      .from('drug_stock_movements')
-      .select('id,delta,note,created_at,drug_items(name)')
-      .eq('group_id', groupId)
-      .order('created_at', { ascending: false })
-      .limit(300),
   ])
 
   if (expensesRes.error) throw expensesRes.error
   if (txRes.error) throw txRes.error
-  if (tradeRes.error) throw tradeRes.error
+  if (customTxRes.error) throw customTxRes.error
 
   const entries: FinanceEntry[] = []
 
@@ -76,13 +63,15 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       quantity: Number(e.quantity ?? 0),
       amount: Number(e.total ?? 0),
       expense_status: (e.status as 'pending' | 'paid') || 'pending',
+      notes: e.description || null,
       created_at: e.created_at,
     })
   }
 
   for (const tx of txRes.data ?? []) {
-    const itemName = (tx.transaction_items?.[0] as any)?.name_snapshot || 'Transaction'
-    const qty = Number((tx.transaction_items?.[0] as any)?.quantity ?? 0) || 1
+    const firstItem = ((tx.transaction_items as TxJoinItem[] | null)?.[0] ?? null)
+    const itemName = firstItem?.name_snapshot || 'Transaction'
+    const qty = Number(firstItem?.quantity ?? 0) || 1
     entries.push({
       id: tx.id,
       source: 'transactions',
@@ -93,47 +82,30 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       quantity: qty,
       amount: tx.total == null ? null : Number(tx.total),
       expense_status: null,
+      notes: tx.notes,
       created_at: tx.created_at,
     })
   }
 
-  for (const trade of tradeRes.data ?? []) {
+  for (const row of customTxRes.data ?? []) {
+    const itemJoin = row.catalog_items as FinanceTransactionJoinItem[] | FinanceTransactionJoinItem | null
+    const item = Array.isArray(itemJoin) ? (itemJoin[0] ?? null) : itemJoin
+
     entries.push({
-      id: trade.id,
-      source: 'finance_trades',
-      movement_type: trade.mode === 'buy' ? 'purchase' : 'sale',
-      category: (trade.category as FinanceCategory) || 'other',
-      item_label: trade.item_name,
-      member_name: null,
-      quantity: Number(trade.quantity ?? 0),
-      amount: Number(trade.total ?? 0),
+      id: row.id,
+      source: 'finance_transactions',
+      movement_type: row.mode === 'buy' ? 'purchase' : 'sale',
+      category: (item?.category as FinanceCategory) || 'other',
+      item_label: item?.name || 'Item',
+      member_name: row.counterparty,
+      quantity: Number(row.quantity ?? 0),
+      amount: Number(row.total ?? 0),
       expense_status: null,
-      created_at: trade.created_at,
+      payment_mode: row.payment_mode,
+      notes: row.notes,
+      created_at: row.created_at,
     })
   }
-
-  const mapMovement = (rows: any[] | null, category: FinanceCategory, source: string, namePath: string) => {
-    for (const row of rows ?? []) {
-      const holder = row[namePath]
-      const name = Array.isArray(holder) ? holder[0]?.name : holder?.name
-      entries.push({
-        id: row.id,
-        source,
-        movement_type: Number(row.delta ?? 0) >= 0 ? 'purchase' : 'sale',
-        category,
-        item_label: name || row.note || 'Mouvement stock',
-        member_name: null,
-        quantity: Math.abs(Number(row.delta ?? 0)),
-        amount: null,
-        expense_status: null,
-        created_at: row.created_at,
-      })
-    }
-  }
-
-  if (!weaponMvRes.error) mapMovement(weaponMvRes.data as any[], 'weapons', 'weapon_stock_movements', 'weapons')
-  if (!equipmentMvRes.error) mapMovement(equipmentMvRes.data as any[], 'equipment', 'equipment_stock_movements', 'equipment')
-  if (!drugMvRes.error) mapMovement(drugMvRes.data as any[], 'drugs', 'drug_stock_movements', 'drug_items')
 
   return entries.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
 }

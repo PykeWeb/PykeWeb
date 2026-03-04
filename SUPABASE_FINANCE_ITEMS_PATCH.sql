@@ -1,7 +1,7 @@
 -- Pyke Stock - Finance + Catalogue global patch
 -- 1) Fix expenses override price compatibility
--- 2) Add finance_trades log table used by FinanceTradeModal
--- 3) Add catalog_global_items view (all item categories in one source)
+-- 2) Add finance_trades log table (legacy compatibility; kept to avoid breaking older flows)
+-- 3) Rebuild catalog_global_items view (drop+create canonical strategy; avoids 42P16 on replace)
 
 begin;
 
@@ -35,7 +35,9 @@ create table if not exists public.finance_trades (
 
 create index if not exists finance_trades_group_created_idx on public.finance_trades(group_id, created_at desc);
 
-create or replace view public.catalog_global_items as
+drop view if exists public.catalog_global_items;
+
+create view public.catalog_global_items as
 select
   o.group_id,
   ('objects:' || o.id::text) as id,
@@ -54,7 +56,7 @@ select
   w.id as source_id,
   'weapons'::text as category,
   null::text as item_type,
-  coalesce(w.name, w.weapon_id, 'Arme') as name,
+  coalesce(w.name, w.weapon_id::text, 'Arme') as name,
   0::numeric as price,
   coalesce(w.stock, 0)::integer as stock,
   w.created_at

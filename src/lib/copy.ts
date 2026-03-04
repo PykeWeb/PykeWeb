@@ -1,0 +1,68 @@
+export const copy = {
+  common: {
+    cancel: 'Annuler',
+    save: 'Enregistrer',
+    createItem: 'Créer un item',
+    allCategories: 'Toutes catégories',
+    allTypes: 'Tous les types',
+  },
+  itemForm: {
+    sections: {
+      infos: 'Infos',
+      economy: 'Économie',
+      stock: 'Stock',
+      advanced: 'Avancé (RP / FiveM)',
+    },
+    fields: {
+      name: 'Nom *',
+      category: 'Catégorie *',
+      type: 'Type *',
+      internalId: 'ID interne (unique)',
+      description: 'Description',
+      buyPrice: 'Prix achat',
+      sellPrice: 'Prix vente',
+      internalValue: 'Valeur interne',
+      stockInitial: 'Stock initial',
+      stockLow: 'Seuil stock bas',
+      weight: 'Poids',
+      maxStack: 'Max stack',
+      fivemItemId: 'fivem_item_id',
+      hash: 'hash',
+      rarity: 'Rareté',
+    },
+    toggles: {
+      showInFinance: 'Afficher dans Finance',
+      active: 'Actif',
+      stackable: 'Empilable',
+    },
+    errors: {
+      createFailed: 'Impossible de créer l’item.',
+      nameRequired: 'Le nom est obligatoire.',
+      typeRequired: 'Le type est obligatoire.',
+    },
+  },
+  finance: {
+    actions: {
+      buy: 'Achat',
+      sell: 'Vente / Sortie',
+      validate: 'Valider',
+    },
+    labels: {
+      counterparty: 'Interlocuteur',
+      notes: 'Notes',
+      paymentMode: 'Mode de paiement',
+      quantity: 'Quantité',
+      unitPrice: 'Prix unitaire (override)',
+      total: 'Total',
+      item: 'Item *',
+      category: 'Catégorie',
+    },
+    errors: {
+      loadItemsFailed: 'Impossible de charger les items.',
+      saveFailed: 'Impossible d’enregistrer la transaction.',
+      stockInsufficient: 'Stock insuffisant pour cette vente/sortie.',
+      loadFailed: 'Impossible de charger la finance.',
+    },
+    toastSaved: 'Transaction enregistrée.',
+  },
+} as const
