@@ -25,11 +25,10 @@ export default function ItemsClient() {
   const [openTrade, setOpenTrade] = useState(false)
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null)
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
-  const [showDeleted, setShowDeleted] = useState(false)
 
   const refresh = useCallback(async () => {
-    setItems(await listCatalogItemsUnified(showDeleted))
-  }, [showDeleted])
+    setItems(await listCatalogItemsUnified())
+  }, [])
 
   useEffect(() => {
     void refresh()
@@ -57,10 +56,6 @@ export default function ItemsClient() {
         <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[320px]" />
         <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
-        <label className="inline-flex items-center gap-2 text-sm text-white/75">
-          <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} className="h-4 w-4 rounded border-white/25 bg-white/10" />
-          Afficher supprimés
-        </label>
         <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
       </div>
@@ -165,7 +160,7 @@ export default function ItemsClient() {
                   setItems((rows) => rows.filter((x) => x.id !== deletingItem.id))
                   try {
                     const result = await deleteCatalogItem(deletingItem.id)
-                    toast.success(result.mode === 'soft_deleted' ? 'Item désactivé.' : 'Item supprimé.')
+                    toast.success(result.mode === 'deleted' ? 'Item supprimé.' : 'Item supprimé.')
                     setDeletingItem(null)
                   } catch (error: unknown) {
                     setItems(previous)

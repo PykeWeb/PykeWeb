@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronDown } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 
 type Option = { value: string; label: string }
@@ -23,8 +23,20 @@ export function GlassSelect({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
+  const instanceId = useId()
 
   const selected = useMemo(() => options.find((o) => o.value === value), [options, value])
+
+
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const custom = event as CustomEvent<{ id: string }>
+      if (custom.detail?.id !== instanceId) setOpen(false)
+    }
+    window.addEventListener('glass-select-open', onOpen as EventListener)
+    return () => window.removeEventListener('glass-select-open', onOpen as EventListener)
+  }, [instanceId])
 
   useEffect(() => {
     const onDown = (event: MouseEvent) => {
@@ -47,7 +59,13 @@ export function GlassSelect({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((prev) => {
+            const next = !prev
+            if (next) window.dispatchEvent(new CustomEvent('glass-select-open', { detail: { id: instanceId } }))
+            return next
+          })
+        }}
         className="flex h-10 w-full items-center justify-between rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-left text-sm text-white/90 transition hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className={selected ? 'text-white/90' : 'text-white/45'}>{selected?.label || placeholder}</span>

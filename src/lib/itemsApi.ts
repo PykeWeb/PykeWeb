@@ -438,15 +438,14 @@ export async function deleteCatalogItem(itemId: string) {
   const resolved = await ensureCatalogItemId(itemId)
   const { data, error } = await supabase
     .from('catalog_items')
-    .update({ is_active: false, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .delete()
     .eq('group_id', currentGroupId())
     .eq('id', resolved)
-    .eq('is_active', true)
     .select('id')
 
   if (error) throw error
-  if (!data || data.length === 0) throw new Error('Impossible de supprimer: item introuvable ou déjà désactivé.')
-  return { mode: 'soft_deleted' as const }
+  if (!data || data.length === 0) throw new Error('Impossible de supprimer: item introuvable.')
+  return { mode: 'deleted' as const }
 }
 
 
