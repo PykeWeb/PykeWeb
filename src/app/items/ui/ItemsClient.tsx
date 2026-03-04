@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Image as ImageIcon } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
-import { PrimaryButton, SearchInput } from '@/components/ui/design-system'
-import { createCatalogItem, listCatalogItemsUnified } from '@/lib/itemsApi'
+import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
+import { createCatalogItem, createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
+import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
+import { toast } from 'sonner'
 import { itemCategoryOptions } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
@@ -20,6 +22,7 @@ export default function ItemsClient() {
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
   const [openCreate, setOpenCreate] = useState(false)
+  const [openTrade, setOpenTrade] = useState(false)
 
   async function refresh() {
     setItems(await listCatalogItemsUnified())
@@ -55,6 +58,7 @@ export default function ItemsClient() {
           options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]}
         />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
+        <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
       </div>
 
@@ -115,6 +119,27 @@ export default function ItemsClient() {
           </div>
         </div>
       ) : null}
+
+      <FinanceItemTradeModal
+        open={openTrade}
+        mode="buy"
+        enableModeSelect
+        onClose={() => setOpenTrade(false)}
+        onSubmit={async (payload) => {
+          await createFinanceTransaction({
+            item_id: payload.item.id,
+            mode: payload.mode,
+            quantity: payload.quantity,
+            unit_price: payload.unitPrice,
+            counterparty: payload.counterparty,
+            notes: payload.notes,
+            payment_mode: payload.payment_mode,
+          })
+          toast.success(copy.finance.toastSaved)
+          await refresh()
+        }}
+      />
+
     </Panel>
   )
 }

@@ -107,7 +107,7 @@ export default function FinanceClient() {
         onSubmit={async (payload) => {
           await createFinanceTransaction({
             item_id: payload.item.id,
-            mode: tradeMode || 'buy',
+            mode: payload.mode,
             quantity: payload.quantity,
             unit_price: payload.unitPrice,
             counterparty: payload.counterparty,
