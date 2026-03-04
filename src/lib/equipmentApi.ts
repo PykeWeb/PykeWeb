@@ -23,15 +23,18 @@ function getExt(file: File) {
 }
 
 export async function listEquipment(): Promise<DbEquipment[]> {
-  const [{ data, error }, globalRes] = await Promise.all([
+  const [{ data, error }, globalRes, hiddenRes] = await Promise.all([
     supabase.from('equipment').select('id,name,price,description,image_url,stock,created_at').eq('group_id', currentGroupId()).order('created_at', { ascending: false }),
     fetch('/api/catalog/items?category=equipment', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+    supabase.from('catalog_items').select('name').eq('group_id', currentGroupId()).eq('category', 'equipment').eq('is_active', false),
   ])
   if (error) throw error
   const locals = (data ?? []) as DbEquipment[]
+  const hiddenNames = new Set(((hiddenRes.data ?? []) as { name: string }[]).map((h) => (h.name || '').toLowerCase()))
   const names = new Set(locals.map((w) => (w.name || '').toLowerCase()))
+  const visibleLocals = locals.filter((w) => !hiddenNames.has((w.name || '').toLowerCase()))
   const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: `global:${g.global_item_id ?? g.id}`, name: g.name, price: Number(g.price ?? 0), description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbEquipment[]
-  return [...locals, ...globals.filter((g) => !names.has((g.name || '').toLowerCase()))]
+  return [...visibleLocals, ...globals.filter((g) => !names.has((g.name || '').toLowerCase()) && !hiddenNames.has((g.name || '').toLowerCase()))]
 }
 
 export async function createEquipment(args: {
