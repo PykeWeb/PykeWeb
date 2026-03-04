@@ -62,13 +62,14 @@ alter table if exists public.catalog_items enable row level security;
 alter table if exists public.transactions enable row level security;
 alter table if exists public.transaction_items enable row level security;
 alter table if exists public.expenses enable row level security;
+alter table if exists public.finance_transactions enable row level security;
 
 -- Drop old conflicting policies when present
 DO $$
 DECLARE
   _tbl text;
 BEGIN
-  FOREACH _tbl IN ARRAY ARRAY['catalog_items','transactions','transaction_items','expenses']
+  FOREACH _tbl IN ARRAY ARRAY['catalog_items','transactions','transaction_items','expenses','finance_transactions']
   LOOP
     EXECUTE format('drop policy if exists "anon_read" on public.%I', _tbl);
     EXECUTE format('drop policy if exists "anon_insert" on public.%I', _tbl);
@@ -96,6 +97,11 @@ create policy "anon_read" on public.expenses for select to anon using (true);
 create policy "anon_insert" on public.expenses for insert to anon with check (true);
 create policy "anon_update" on public.expenses for update to anon using (true) with check (true);
 create policy "anon_delete" on public.expenses for delete to anon using (true);
+
+create policy "anon_read" on public.finance_transactions for select to anon using (true);
+create policy "anon_insert" on public.finance_transactions for insert to anon with check (true);
+create policy "anon_update" on public.finance_transactions for update to anon using (true) with check (true);
+create policy "anon_delete" on public.finance_transactions for delete to anon using (true);
 
 -- 3) Storage policies for item images (public bucket)
 insert into storage.buckets (id, name, public)

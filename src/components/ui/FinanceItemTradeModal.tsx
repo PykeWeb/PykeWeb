@@ -17,6 +17,14 @@ import { categoryTypeOptions, getTypeLabel, itemCategoryOptions } from '@/lib/ca
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
 
+function toErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'object' && error && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+    return (error as { message: string }).message
+  }
+  return fallback
+}
+
 export function FinanceItemTradeModal({
   open,
   mode,
@@ -111,7 +119,7 @@ export function FinanceItemTradeModal({
                     await onSubmit({ item: selected, mode: tradeMode, quantity: computedQuantity, unitPrice: computedUnitPrice, counterparty, notes, payment_mode: paymentMode })
                     onClose()
                   } catch (e: unknown) {
-                    setError(e instanceof Error ? e.message : copy.finance.errors.saveFailed)
+                    setError(toErrorMessage(e, copy.finance.errors.saveFailed))
                   } finally {
                     setSaving(false)
                   }
