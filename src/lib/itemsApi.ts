@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 import { toNonNegative, toPositiveInt, calcTotal } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
+import { getSuggestedInternalId } from '@/lib/itemId'
 import type { CatalogItem, FinancePaymentMode, FinanceTransaction, ItemCategory, ItemRarity, ItemType } from '@/lib/types/itemsFinance'
 
 const BUCKET = 'object-images'
@@ -47,15 +48,6 @@ function getExt(file: File) {
   return 'png'
 }
 
-function slugify(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-}
-
 function mapCatalogItem(row: CatalogItemRow): CatalogItem {
   return {
     ...row,
@@ -76,7 +68,7 @@ export async function listCatalogItems(): Promise<CatalogItem[]> {
 }
 
 export async function makeUniqueInternalId(name: string, current?: string) {
-  const base = slugify(name) || 'item'
+  const base = getSuggestedInternalId(name)
   let candidate = current?.trim() || base
   let i = 1
   // eslint-disable-next-line no-constant-condition

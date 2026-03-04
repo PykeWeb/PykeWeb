@@ -28,7 +28,7 @@ function getExt(file: File) {
 export async function listDrugItems(): Promise<DbDrugItem[]> {
   const [{ data, error }, globalRes] = await Promise.all([
     supabase.from('drug_items').select('id,type,name,price,description,image_url,stock,created_at').eq('group_id', currentGroupId()).order('created_at', { ascending: false }),
-    fetch('/api/catalog/items?category=drug', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+    fetch('/api/catalog/items?category=drugs', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
   ])
   if (error) throw error
   const locals = (data ?? []) as DbDrugItem[]
@@ -114,7 +114,7 @@ async function ensureLocalDrugItem(itemId: string) {
   if (!itemId.startsWith('global:')) return itemId
 
   const globalItemId = itemId.replace('global:', '')
-  const globalItems = await fetch('/api/catalog/items?category=drug', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : []))
+  const globalItems = await fetch('/api/catalog/items?category=drugs', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : []))
   const globalItem = Array.isArray(globalItems)
     ? globalItems.find((it: any) => (it.global_item_id ?? it.id) === globalItemId)
     : null

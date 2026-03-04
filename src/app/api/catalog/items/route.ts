@@ -1,13 +1,37 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { requireGroupSession } from '@/lib/server/tenantServerSession'
+import { normalizeCatalogCategory } from '@/lib/catalogConfig'
+
+type GlobalCatalogRow = {
+  id: string
+  category: string
+  name: string
+  price: number | null
+  description: string | null
+  image_url: string | null
+  item_type: string | null
+  weapon_id: string | null
+  created_at: string
+}
+
+type CatalogOverrideRow = {
+  global_item_id: string
+  is_hidden: boolean | null
+  override_name: string | null
+  override_price: number | null
+  override_description: string | null
+  override_image_url: string | null
+  override_item_type: string | null
+  override_weapon_id: string | null
+}
 
 export async function GET(request: Request) {
   try {
     const session = await requireGroupSession()
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get('category')
-    if (!category) return NextResponse.json({ error: 'category requis' }, { status: 400 })
+    const category = normalizeCatalogCategory(searchParams.get('category'))
+    if (!category) return NextResponse.json({ error: 'category invalide' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
     const [{ data: globals, error: gErr }, { data: overrides, error: oErr }] = await Promise.all([
@@ -17,9 +41,10 @@ export async function GET(request: Request) {
     if (gErr) return NextResponse.json({ error: gErr.message }, { status: 500 })
     if (oErr) return NextResponse.json({ error: oErr.message }, { status: 500 })
 
-    const overrideMap = new Map((overrides ?? []).map((o: any) => [o.global_item_id, o]))
+    const overrideMap = new Map((overrides ?? []).map((o) => [(o as CatalogOverrideRow).global_item_id, o as CatalogOverrideRow]))
     const merged = (globals ?? [])
-      .map((g: any) => {
+      .map((row) => {
+        const g = row as GlobalCatalogRow
         const ov = overrideMap.get(g.id)
         if (ov?.is_hidden) return null
         return {
@@ -38,8 +63,13 @@ export async function GET(request: Request) {
       })
       .filter(Boolean)
 
+    if (process.env.NODE_ENV !== 'production' && merged.length === 0) {
+      console.info(`[catalog/items] no rows for category=${category} group=${session.groupId}`)
+    }
+
     return NextResponse.json(merged)
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Non autorisé' }, { status: 401 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Non autorisé'
+    return NextResponse.json({ error: message }, { status: 401 })
   }
 }
