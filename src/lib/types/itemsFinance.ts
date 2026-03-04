@@ -1,6 +1,6 @@
 export type ItemCategory = 'objects' | 'weapons' | 'drugs' | 'equipment' | 'custom'
 
-export type ItemType = 'input' | 'output' | 'consumable' | 'equipment' | 'production' | 'other'
+export type ItemType = 'input' | 'output' | 'consumable' | 'weapon' | 'equipment' | 'production' | 'other'
 
 export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary' | null
 

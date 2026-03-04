@@ -61,8 +61,7 @@ export default function FinanceClient() {
   return (
     <Panel>
       <div className="mb-4 flex items-center justify-end gap-2">
-        <PrimaryButton onClick={() => setTradeMode('buy')}>{copy.finance.actions.buy}</PrimaryButton>
-        <PrimaryButton onClick={() => setTradeMode('sell')}>{copy.finance.actions.sell}</PrimaryButton>
+        <PrimaryButton onClick={() => setTradeMode('buy')}>Achat / Vente</PrimaryButton>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -103,6 +102,7 @@ export default function FinanceClient() {
       <FinanceItemTradeModal
         open={!!tradeMode}
         mode={tradeMode || 'buy'}
+        enableModeSelect
         onClose={() => setTradeMode(null)}
         onSubmit={async (payload) => {
           await createFinanceTransaction({

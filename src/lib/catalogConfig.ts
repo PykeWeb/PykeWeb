@@ -4,13 +4,14 @@ export const itemCategoryOptions: { value: ItemCategory; label: string }[] = [
   { value: 'objects', label: 'Objets' },
   { value: 'weapons', label: 'Armes' },
   { value: 'drugs', label: 'Drogues' },
-  { value: 'equipment', label: 'Équipement' },
+  { value: 'equipment', label: 'Équipements' },
   { value: 'custom', label: 'Autres' },
 ]
 
 export const itemTypeOptions: { value: ItemType; label: string }[] = [
   { value: 'input', label: 'Objets' },
-  { value: 'equipment', label: 'Armes / Équipements' },
+  { value: 'weapon', label: 'Armes' },
+  { value: 'equipment', label: 'Équipement' },
   { value: 'other', label: 'Autres' },
   { value: 'output', label: 'Pochons' },
   { value: 'production', label: 'Graines' },

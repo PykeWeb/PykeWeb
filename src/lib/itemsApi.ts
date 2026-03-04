@@ -200,7 +200,7 @@ export async function listCatalogItemsUnified(): Promise<CatalogItem[]> {
       id: r.id,
       name: fallbackName,
       category: 'weapons',
-      item_type: 'equipment',
+      item_type: 'weapon',
       description: r.description,
       image_url: r.image_url,
       stock: r.stock,
@@ -259,36 +259,136 @@ export async function makeUniqueInternalId(name: string, current?: string) {
   }
 }
 
+async function insertLegacyItem(args: CreateCatalogItemInput): Promise<CatalogItem> {
+  const groupId = currentGroupId()
+  const safeName = args.name.trim()
+
+  if (args.category === 'objects') {
+    const { data, error } = await supabase
+      .from('objects')
+      .insert({ group_id: groupId, name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null })
+      .select('id,name,price,description,image_url,stock,created_at')
+      .single<LegacyObjectRow>()
+    if (error) throw error
+    return mapLegacyItem({
+      id: data.id,
+      name: data.name,
+      category: 'objects',
+      item_type: args.item_type,
+      description: data.description,
+      image_url: data.image_url,
+      stock: data.stock,
+      buy_price: data.price,
+      sell_price: toNonNegative(args.sell_price),
+      created_at: data.created_at,
+    })
+  }
+
+  if (args.category === 'weapons') {
+    const { data, error } = await supabase
+      .from('weapons')
+      .insert({ group_id: groupId, name: safeName, weapon_id: args.fivem_item_id || null, stock: toNonNegative(args.stock), description: args.description || null })
+      .select('id,name,weapon_id,description,image_url,stock,created_at')
+      .single<LegacyWeaponRow>()
+    if (error) throw error
+    return mapLegacyItem({
+      id: data.id,
+      name: data.name || data.weapon_id || safeName,
+      category: 'weapons',
+      item_type: 'weapon',
+      description: data.description,
+      image_url: data.image_url,
+      stock: data.stock,
+      buy_price: toNonNegative(args.buy_price),
+      sell_price: toNonNegative(args.sell_price),
+      created_at: data.created_at,
+    })
+  }
+
+  if (args.category === 'equipment') {
+    const { data, error } = await supabase
+      .from('equipment')
+      .insert({ group_id: groupId, name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null })
+      .select('id,name,price,description,image_url,stock,created_at')
+      .single<LegacyEquipmentRow>()
+    if (error) throw error
+    return mapLegacyItem({
+      id: data.id,
+      name: data.name,
+      category: 'equipment',
+      item_type: 'equipment',
+      description: data.description,
+      image_url: data.image_url,
+      stock: data.stock,
+      buy_price: data.price,
+      sell_price: toNonNegative(args.sell_price),
+      created_at: data.created_at,
+    })
+  }
+
+  if (args.category === 'drugs') {
+    const { data, error } = await supabase
+      .from('drug_items')
+      .insert({ group_id: groupId, type: args.item_type === 'output' ? 'pouch' : args.item_type === 'production' ? 'seed' : 'drug', name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null })
+      .select('id,type,name,price,description,image_url,stock,created_at')
+      .single<LegacyDrugRow>()
+    if (error) throw error
+    return mapLegacyItem({
+      id: data.id,
+      name: data.name,
+      category: 'drugs',
+      item_type: normalizeLegacyDrugType(data.type),
+      description: data.description,
+      image_url: data.image_url,
+      stock: data.stock,
+      buy_price: data.price,
+      sell_price: toNonNegative(args.sell_price),
+      created_at: data.created_at,
+    })
+  }
+
+  throw new Error('Catégorie non supportée pour fallback legacy.')
+}
+
+export type UpdateCatalogItemInput = CreateCatalogItemInput & { id: string }
+
 export async function createCatalogItem(args: CreateCatalogItemInput) {
   const group_id = currentGroupId()
   const internal_id = await makeUniqueInternalId(args.name, args.internal_id)
 
-  const { data: inserted, error: insErr } = await supabase
-    .from('catalog_items')
-    .insert({
-      group_id,
-      internal_id,
-      name: args.name,
-      category: args.category,
-      item_type: args.item_type,
-      description: args.description || null,
-      buy_price: toNonNegative(args.buy_price),
-      sell_price: toNonNegative(args.sell_price),
-      internal_value: toNonNegative(args.internal_value),
-      show_in_finance: args.show_in_finance,
-      is_active: args.is_active,
-      stock: toNonNegative(args.stock),
-      low_stock_threshold: toNonNegative(args.low_stock_threshold),
-      stackable: args.stackable,
-      max_stack: toPositiveInt(args.max_stack),
-      weight: args.weight == null ? null : toNonNegative(args.weight),
-      fivem_item_id: args.fivem_item_id || null,
-      hash: args.hash || null,
-      rarity: args.rarity || null,
-    })
-    .select('*')
-    .single<CatalogItemRow>()
-  if (insErr) throw insErr
+  const payload = {
+    group_id,
+    internal_id,
+    name: args.name,
+    category: args.category,
+    item_type: args.item_type,
+    description: args.description || null,
+    buy_price: toNonNegative(args.buy_price),
+    sell_price: toNonNegative(args.sell_price),
+    internal_value: toNonNegative(args.internal_value),
+    show_in_finance: args.show_in_finance,
+    is_active: args.is_active,
+    stock: toNonNegative(args.stock),
+    low_stock_threshold: toNonNegative(args.low_stock_threshold),
+    stackable: args.stackable,
+    max_stack: toPositiveInt(args.max_stack),
+    weight: args.weight == null ? null : toNonNegative(args.weight),
+    fivem_item_id: args.fivem_item_id || null,
+    hash: args.hash || null,
+    rarity: args.rarity || null,
+  }
+
+  const { data: inserted, error: insErr } = await supabase.from('catalog_items').insert(payload).select('*').single<CatalogItemRow>()
+
+  if (insErr) {
+    console.error('[items:create] catalog_items insert failed, fallback legacy', insErr)
+    try {
+      return await insertLegacyItem(args)
+    } catch (legacyError) {
+      console.error('[items:create] legacy fallback failed', legacyError)
+      throw insErr
+    }
+  }
 
   if (args.imageFile && inserted?.id) {
     const ext = getExt(args.imageFile)
@@ -302,6 +402,32 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
   }
 
   return mapCatalogItem(inserted)
+}
+
+export async function updateCatalogItem(args: UpdateCatalogItemInput) {
+  const resolved = await ensureCatalogItemId(args.id)
+  const { error } = await supabase
+    .from('catalog_items')
+    .update({
+      name: args.name,
+      category: args.category,
+      item_type: args.item_type,
+      description: args.description || null,
+      buy_price: toNonNegative(args.buy_price),
+      sell_price: toNonNegative(args.sell_price),
+      stock: toNonNegative(args.stock),
+      fivem_item_id: args.fivem_item_id || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('group_id', currentGroupId())
+    .eq('id', resolved)
+  if (error) throw error
+}
+
+export async function deleteCatalogItem(itemId: string) {
+  const resolved = await ensureCatalogItemId(itemId)
+  const { error } = await supabase.from('catalog_items').delete().eq('group_id', currentGroupId()).eq('id', resolved)
+  if (error) throw error
 }
 
 
@@ -359,7 +485,7 @@ async function ensureCatalogItemId(itemId: string): Promise<string> {
       image_url: data.image_url,
       stock: data.stock,
       price: 0,
-      item_type: 'equipment',
+      item_type: 'weapon',
     }
   } else if (category === 'equipment') {
     const { data, error } = await supabase

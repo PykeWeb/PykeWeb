@@ -1,16 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Image as ImageIcon } from 'lucide-react'
+import { Image as ImageIcon, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
-import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
-import { createCatalogItem, createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
+import { DangerButton, PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
+import { createCatalogItem, createFinanceTransaction, deleteCatalogItem, listCatalogItemsUnified, updateCatalogItem } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
 import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
-import { toast } from 'sonner'
 import { itemCategoryOptions } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
@@ -23,6 +23,8 @@ export default function ItemsClient() {
   const [type, setType] = useState<TypeFilter>('all')
   const [openCreate, setOpenCreate] = useState(false)
   const [openTrade, setOpenTrade] = useState(false)
+  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null)
+  const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
 
   async function refresh() {
     setItems(await listCatalogItemsUnified())
@@ -52,11 +54,7 @@ export default function ItemsClient() {
     <Panel>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[320px]" />
-        <GlassSelect
-          value={category}
-          onChange={(v) => setCategory(v as CategoryFilter)}
-          options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]}
-        />
+        <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
         <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
@@ -73,7 +71,7 @@ export default function ItemsClient() {
               <th className="px-4 py-3 text-left">Type</th>
               <th className="px-4 py-3 text-left">Stock</th>
               <th className="px-4 py-3 text-left">Achat / Vente</th>
-              <th className="px-4 py-3 text-left">ID interne</th>
+              <th className="px-4 py-3 text-left">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/10">
@@ -85,9 +83,7 @@ export default function ItemsClient() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
                     ) : (
-                      <div className="grid h-full w-full place-items-center text-white/40">
-                        <ImageIcon className="h-4 w-4" />
-                      </div>
+                      <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
                     )}
                   </div>
                 </td>
@@ -95,10 +91,13 @@ export default function ItemsClient() {
                 <td className="px-4 py-3">{it.category}</td>
                 <td className="px-4 py-3">{it.item_type}</td>
                 <td className="px-4 py-3">{it.stock}</td>
+                <td className="px-4 py-3">{it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $</td>
                 <td className="px-4 py-3">
-                  {it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $
+                  <div className="flex gap-2">
+                    <SecondaryButton onClick={() => setEditingItem(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton>
+                    <DangerButton onClick={() => setDeletingItem(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
+                  </div>
                 </td>
-                <td className="px-4 py-3 text-white/70">{it.internal_id}</td>
               </tr>
             ))}
           </tbody>
@@ -111,12 +110,68 @@ export default function ItemsClient() {
             <ItemForm
               onCancel={() => setOpenCreate(false)}
               onSave={async (payload) => {
-                await createCatalogItem(payload)
-                await refresh()
-                setOpenCreate(false)
+                try {
+                  await createCatalogItem(payload)
+                  toast.success('Item créé.')
+                  await refresh()
+                  setOpenCreate(false)
+                } catch (error: unknown) {
+                  console.error('[items:create]', error)
+                  toast.error(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
+                }
               }}
             />
           </div>
+        </div>
+      ) : null}
+
+      {editingItem ? (
+        <div className="fixed inset-0 z-[120] overflow-y-auto bg-black/70 p-4 backdrop-blur-sm">
+          <div className="mx-auto w-full max-w-5xl">
+            <ItemForm
+              initialItem={editingItem}
+              submitLabel="Enregistrer les modifications"
+              onCancel={() => setEditingItem(null)}
+              onSave={async (payload) => {
+                try {
+                  await updateCatalogItem({ ...payload, id: editingItem.id })
+                  toast.success('Item modifié.')
+                  await refresh()
+                  setEditingItem(null)
+                } catch (error: unknown) {
+                  toast.error(error instanceof Error ? error.message : 'Impossible de modifier l’item.')
+                }
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {deletingItem ? (
+        <div className="fixed inset-0 z-[130] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
+          <Panel className="w-full max-w-lg">
+            <h3 className="text-lg font-semibold">Confirmer la suppression</h3>
+            <p className="mt-2 text-sm text-white/70">Supprimer l’item « {deletingItem.name} » ?</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <SecondaryButton onClick={() => setDeletingItem(null)}>{copy.common.cancel}</SecondaryButton>
+              <DangerButton
+                onClick={async () => {
+                  const previous = [...items]
+                  setItems((rows) => rows.filter((x) => x.id !== deletingItem.id))
+                  try {
+                    await deleteCatalogItem(deletingItem.id)
+                    toast.success('Item supprimé.')
+                    setDeletingItem(null)
+                  } catch (error: unknown) {
+                    setItems(previous)
+                    toast.error(error instanceof Error ? error.message : 'Suppression impossible.')
+                  }
+                }}
+              >
+                Supprimer
+              </DangerButton>
+            </div>
+          </Panel>
         </div>
       ) : null}
 
@@ -139,7 +194,6 @@ export default function ItemsClient() {
           await refresh()
         }}
       />
-
     </Panel>
   )
 }

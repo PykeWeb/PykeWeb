@@ -8,21 +8,31 @@ import { GlassSelect } from '@/components/ui/GlassSelect'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { makeUniqueInternalId, type CreateCatalogItemInput } from '@/lib/itemsApi'
-import type { ItemCategory, ItemType } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { toNonNegative } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
 import { itemCategoryOptions, itemTypeOptions } from '@/lib/catalogConfig'
 
-export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (payload: CreateCatalogItemInput) => Promise<void> }) {
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState<ItemCategory>('objects')
-  const [itemType, setItemType] = useState<ItemType>('input')
-  const [weaponId, setWeaponId] = useState('')
-  const [description, setDescription] = useState('')
+export function ItemForm({
+  onCancel,
+  onSave,
+  initialItem,
+  submitLabel,
+}: {
+  onCancel: () => void
+  onSave: (payload: CreateCatalogItemInput) => Promise<void>
+  initialItem?: CatalogItem
+  submitLabel?: string
+}) {
+  const [name, setName] = useState(initialItem?.name ?? '')
+  const [category, setCategory] = useState<ItemCategory>(initialItem?.category ?? 'objects')
+  const [itemType, setItemType] = useState<ItemType>(initialItem?.item_type ?? 'input')
+  const [weaponId, setWeaponId] = useState(initialItem?.fivem_item_id ?? '')
+  const [description, setDescription] = useState(initialItem?.description ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [buyPrice, setBuyPrice] = useState('0')
-  const [sellPrice, setSellPrice] = useState('0')
-  const [stock, setStock] = useState('0')
+  const [buyPrice, setBuyPrice] = useState(String(initialItem?.buy_price ?? 0))
+  const [sellPrice, setSellPrice] = useState(String(initialItem?.sell_price ?? 0))
+  const [stock, setStock] = useState(String(initialItem?.stock ?? 0))
 
   const [errors, setErrors] = useState<{ name?: string }>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -40,7 +50,7 @@ export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (
       setSaving(true)
       setErrors({})
       setFormError(null)
-      const uniqueInternalId = await makeUniqueInternalId(name)
+      const uniqueInternalId = await makeUniqueInternalId(name, initialItem?.internal_id)
 
       await onSave({
         name: name.trim(),
@@ -51,17 +61,17 @@ export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (
         imageFile,
         buy_price: toNonNegative(buyPrice),
         sell_price: toNonNegative(sellPrice),
-        internal_value: 0,
-        show_in_finance: true,
-        is_active: true,
+        internal_value: initialItem?.internal_value ?? 0,
+        show_in_finance: initialItem?.show_in_finance ?? true,
+        is_active: initialItem?.is_active ?? true,
         stock: toNonNegative(Math.floor(Number(stock || 0))),
-        low_stock_threshold: 0,
-        stackable: true,
-        max_stack: 100,
-        weight: null,
+        low_stock_threshold: initialItem?.low_stock_threshold ?? 0,
+        stackable: initialItem?.stackable ?? true,
+        max_stack: initialItem?.max_stack ?? 100,
+        weight: initialItem?.weight ?? null,
         fivem_item_id: category === 'weapons' ? weaponId.trim() || null : null,
-        hash: null,
-        rarity: null,
+        hash: initialItem?.hash ?? null,
+        rarity: initialItem?.rarity ?? null,
       })
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
@@ -73,7 +83,7 @@ export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (
   return (
     <div className="space-y-4">
       <Panel>
-        <h3 className="text-lg font-semibold">Création d&apos;item</h3>
+        <h3 className="text-lg font-semibold">{initialItem ? 'Modifier un item' : 'Création d\'item'}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs text-white/60">Nom</label>
@@ -125,7 +135,7 @@ export function ItemForm({ onCancel, onSave }: { onCancel: () => void; onSave: (
       {formError ? <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{formError}</div> : null}
       <div className="flex justify-end gap-2">
         <SecondaryButton onClick={onCancel}>{copy.common.cancel}</SecondaryButton>
-        <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : copy.common.save}</PrimaryButton>
+        <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : submitLabel || copy.common.save}</PrimaryButton>
       </div>
     </div>
   )
