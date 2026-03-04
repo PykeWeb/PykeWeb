@@ -710,7 +710,7 @@ export async function createFinanceTransaction(args: {
   unit_price: number
   counterparty?: string
   notes?: string
-  payment_mode: FinancePaymentMode
+  payment_mode?: FinancePaymentMode
 }) {
   const qty = toPositiveInt(args.quantity)
   const unit = toNonNegative(args.unit_price)
@@ -743,7 +743,7 @@ export async function createFinanceTransaction(args: {
       total: calcTotal(qty, unit),
       counterparty: args.counterparty || null,
       notes: args.notes || null,
-      payment_mode: args.payment_mode,
+      payment_mode: args.payment_mode || 'cash',
     })
     .select('*')
     .single<FinanceTransaction>()

@@ -41,6 +41,7 @@ export function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'objects', 'weapons', 'equipment', 'drugs', 'expenses', 'finance', 'items'])
+  const [hiddenCategoryNav, setHiddenCategoryNav] = useState<string[]>([])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -56,6 +57,18 @@ export function Sidebar() {
       const saved = await getLayoutOrder('sidebar.nav')
       if (saved.length) setNavOrder(saved)
     })()
+  }, [isAdmin])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || isAdmin) return
+    const raw = window.localStorage.getItem('pyke.hiddenCategoryNav')
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw) as string[]
+      if (Array.isArray(parsed)) setHiddenCategoryNav(parsed)
+    } catch {
+      // ignore
+    }
   }, [isAdmin])
 
   const accessLabel = useMemo(() => {
@@ -76,6 +89,20 @@ export function Sidebar() {
     { id: 'expenses', href: '/depenses', label: labels.nav_depenses || 'Dépenses', icon: <Receipt className="h-5 w-5" />, active: pathname.startsWith('/depenses') },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
+  ]
+
+  const visibleUserNavLinks = userNavLinks.filter((link) => {
+    const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs'
+    if (!isCategory) return true
+    if (link.active) return true
+    return !hiddenCategoryNav.includes(link.id)
+  })
+
+  const categoryToggles = [
+    { id: 'objects', label: labels.nav_objets || 'Objets' },
+    { id: 'weapons', label: labels.nav_armes || 'Armes' },
+    { id: 'equipment', label: labels.nav_equipement || 'Équipement' },
+    { id: 'drugs', label: labels.nav_drogues || 'Drogues' },
   ]
 
   return (
@@ -112,18 +139,46 @@ export function Sidebar() {
             <NavItem href="/admin/patch-notes" label="Patch notes" icon={<ScrollText className="h-5 w-5" />} active={pathname.startsWith('/admin/patch-notes')} />
           </>
         ) : (
-          <LongPressReorderableRow
-            className="flex flex-col gap-3"
-            order={navOrder}
-            onOrderChange={async (next) => {
-              setNavOrder(next)
-              await saveLayoutOrder('sidebar.nav', next, 'group')
-            }}
-            items={userNavLinks.map((link) => ({
-              id: link.id,
-              element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
-            }))}
-          />
+          <>
+            <LongPressReorderableRow
+              className="flex flex-col gap-3"
+              order={navOrder}
+              onOrderChange={async (next) => {
+                setNavOrder(next)
+                await saveLayoutOrder('sidebar.nav', next, 'group')
+              }}
+              items={visibleUserNavLinks.map((link) => ({
+                id: link.id,
+                element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
+              }))}
+            />
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/70">
+              <p className="mb-2 font-semibold text-white/85">Afficher les catégories</p>
+              <div className="grid grid-cols-2 gap-2">
+                {categoryToggles.map((row) => {
+                  const checked = !hiddenCategoryNav.includes(row.id)
+                  return (
+                    <label key={row.id} className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? hiddenCategoryNav.filter((id) => id !== row.id)
+                            : [...hiddenCategoryNav, row.id]
+                          setHiddenCategoryNav(next)
+                          if (typeof window !== 'undefined') window.localStorage.setItem('pyke.hiddenCategoryNav', JSON.stringify(next))
+                        }}
+                        className="h-4 w-4 rounded border-white/20 bg-white/5"
+                      />
+                      {row.label}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </aside>

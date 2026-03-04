@@ -188,7 +188,6 @@ export default function ItemsClient() {
             unit_price: payload.unitPrice,
             counterparty: payload.counterparty,
             notes: payload.notes,
-            payment_mode: payload.payment_mode,
           })
           toast.success(copy.finance.toastSaved)
           await refresh()

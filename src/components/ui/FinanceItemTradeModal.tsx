@@ -9,7 +9,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
-import type { CatalogItem, FinancePaymentMode, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
 import { categoryTypeOptions, getTypeLabel, itemCategoryOptions } from '@/lib/catalogConfig'
@@ -35,20 +35,18 @@ export function FinanceItemTradeModal({
   open: boolean
   mode: 'buy' | 'sell'
   onClose: () => void
-  onSubmit: (payload: { item: CatalogItem; mode: 'buy' | 'sell'; quantity: number; unitPrice: number; counterparty: string; notes: string; payment_mode: FinancePaymentMode }) => Promise<void>
+  onSubmit: (payload: { item: CatalogItem; mode: 'buy' | 'sell'; quantity: number; unitPrice: number; counterparty: string; notes: string }) => Promise<void>
   enableModeSelect?: boolean
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
-  const [step, setStep] = useState(1)
   const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [unitPrice, setUnitPrice] = useState('0')
   const [counterparty, setCounterparty] = useState('')
   const [notes, setNotes] = useState('')
-  const [paymentMode, setPaymentMode] = useState<FinancePaymentMode>('cash')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -89,7 +87,6 @@ export function FinanceItemTradeModal({
     if (!selected) return
     setUnitPrice(String(tradeMode === 'buy' ? selected.buy_price : selected.sell_price))
     setQuantity(1)
-    setStep(1)
   }, [selected, tradeMode])
 
   const computedQuantityRaw = toPositiveInt(quantity)
@@ -116,7 +113,7 @@ export function FinanceItemTradeModal({
                   try {
                     setSaving(true)
                     setError(null)
-                    await onSubmit({ item: selected, mode: tradeMode, quantity: computedQuantity, unitPrice: computedUnitPrice, counterparty, notes, payment_mode: paymentMode })
+                    await onSubmit({ item: selected, mode: tradeMode, quantity: computedQuantity, unitPrice: computedUnitPrice, counterparty, notes })
                     onClose()
                   } catch (e: unknown) {
                     setError(toErrorMessage(e, copy.finance.errors.saveFailed))
@@ -170,22 +167,7 @@ export function FinanceItemTradeModal({
 
             <div>
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.quantity}</label>
-              <QuantityStepper value={quantity} onChange={setQuantity} min={1} max={tradeMode === 'sell' ? Math.max(1, selected?.stock ?? 0) : undefined} />
-              <div className="mt-2 flex flex-wrap gap-2">
-                {[1, 5, 10].map((nextStep) => (
-                  <button key={nextStep} type="button" onClick={() => setStep(nextStep)} className={`h-8 rounded-xl border px-3 text-xs ${step === nextStep ? 'border-white/30 bg-white/15' : 'border-white/12 bg-white/[0.06]'}`}>
-                    Step {nextStep}
-                  </button>
-                ))}
-                {[5, 10, 25, 50].map((preset) => (
-                  <button key={preset} type="button" onClick={() => setQuantity(Math.max(1, preset))} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">
-                    {preset}
-                  </button>
-                ))}
-                <button type="button" onClick={() => setQuantity((prev) => Math.max(1, prev + step))} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">
-                  +{step}
-                </button>
-              </div>
+              <div className="max-w-[260px]"><QuantityStepper value={quantity} onChange={setQuantity} min={1} max={tradeMode === 'sell' ? Math.max(1, selected?.stock ?? 0) : undefined} /></div>
             </div>
             <div>
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.unitPrice}</label>
@@ -195,13 +177,9 @@ export function FinanceItemTradeModal({
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
               <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
             </div>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.paymentMode}</label>
-              <GlassSelect value={paymentMode} onChange={(v) => setPaymentMode(v as FinancePaymentMode)} options={[{ value: 'cash', label: 'Cash' }, { value: 'bank', label: 'Bank' }, { value: 'item', label: 'Item' }, { value: 'other', label: 'Autre' }]} />
-            </div>
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.notes}</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[90px]" />
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[70px]" />
             </div>
           </div>
 

@@ -56,6 +56,22 @@ export default function FinanceClient() {
   const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
 
+  const counterpartyStats = useMemo(() => {
+    const map = new Map<string, { total: number; count: number }>()
+    for (const entry of filtered) {
+      const name = (entry.member_name || '').trim()
+      if (!name) continue
+      const current = map.get(name) || { total: 0, count: 0 }
+      current.count += 1
+      current.total += Number(entry.amount || 0)
+      map.set(name, current)
+    }
+    return Array.from(map.entries())
+      .map(([name, value]) => ({ name, ...value }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5)
+  }, [filtered])
+
 
 
   return (
@@ -87,7 +103,7 @@ export default function FinanceClient() {
               <tr key={`${entry.source}:${entry.id}`} className="hover:bg-white/[0.02]">
                 <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs">{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
                 <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
-                <td className="px-4 py-3"><div className="font-semibold">{entry.item_label}</div>{entry.member_name ? <div className="text-xs text-white/60">{entry.member_name}</div> : null}{entry.payment_mode ? <div className="text-xs text-cyan-200/80">{entry.payment_mode}</div> : null}{entry.notes ? <div className="text-xs text-white/50 line-clamp-1">{entry.notes}</div> : null}</td>
+                <td className="px-4 py-3"><div className="font-semibold">{entry.item_label}</div>{entry.member_name ? <div className="text-xs text-white/60">Interlocuteur: {entry.member_name}</div> : null}{entry.notes ? <div className="text-xs text-white/50 line-clamp-1">{entry.notes}</div> : null}</td>
                 <td className="px-4 py-3">{entry.quantity}</td>
                 <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>
                 <td className="px-4 py-3 text-white/70">{new Date(entry.created_at).toLocaleString()}</td>
@@ -95,6 +111,24 @@ export default function FinanceClient() {
             )) : null}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <h3 className="text-sm font-semibold">Stats interlocuteurs</h3>
+        {counterpartyStats.length === 0 ? <p className="mt-2 text-xs text-white/60">Aucune transaction avec interlocuteur pour le filtre actuel.</p> : null}
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {counterpartyStats.map((row) => (
+            <button
+              key={row.name}
+              type="button"
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left hover:bg-white/[0.08]"
+              onClick={() => setQ(row.name)}
+            >
+              <div className="text-sm font-semibold">{row.name}</div>
+              <div className="text-xs text-white/65">{row.count} transaction(s) · {row.total.toFixed(2)} $</div>
+            </button>
+          ))}
+        </div>
       </div>
       {error ? <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
       <p className="mt-4 text-xs text-white/55"><Wallet className="mr-1 inline h-3 w-3" />Le total global affiché dépend du filtre courant.</p>
@@ -112,7 +146,6 @@ export default function FinanceClient() {
             unit_price: payload.unitPrice,
             counterparty: payload.counterparty,
             notes: payload.notes,
-            payment_mode: payload.payment_mode,
           })
           toast.success(copy.finance.toastSaved)
           await refresh()
