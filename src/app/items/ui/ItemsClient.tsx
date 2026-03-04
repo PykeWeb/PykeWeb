@@ -5,7 +5,7 @@ import { Image as ImageIcon } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SearchInput } from '@/components/ui/design-system'
-import { createCatalogItem, listCatalogItems } from '@/lib/itemsApi'
+import { createCatalogItem, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
@@ -22,7 +22,7 @@ export default function ItemsClient() {
   const [openCreate, setOpenCreate] = useState(false)
 
   async function refresh() {
-    setItems(await listCatalogItems())
+    setItems(await listCatalogItemsUnified())
   }
 
   useEffect(() => {
@@ -59,6 +59,7 @@ export default function ItemsClient() {
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+        {filtered.length === 0 ? <div className="p-6 text-center text-sm text-white/60">Aucun item trouvé pour ces filtres.</div> : null}
         <table className="w-full text-sm">
           <thead className="bg-white/[0.03] text-white/70">
             <tr>

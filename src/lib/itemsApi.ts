@@ -67,6 +67,185 @@ export async function listCatalogItems(): Promise<CatalogItem[]> {
   return (data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
 }
 
+
+
+type LegacyObjectRow = {
+  id: string
+  name: string
+  price: number | null
+  description: string | null
+  image_url: string | null
+  stock: number | null
+  created_at: string
+}
+
+type LegacyWeaponRow = {
+  id: string
+  name: string | null
+  weapon_id: string | null
+  description: string | null
+  image_url: string | null
+  stock: number | null
+  created_at: string
+}
+
+type LegacyEquipmentRow = {
+  id: string
+  name: string
+  price: number | null
+  description: string | null
+  image_url: string | null
+  stock: number | null
+  created_at: string
+}
+
+type LegacyDrugRow = {
+  id: string
+  type: string | null
+  name: string
+  price: number | null
+  description: string | null
+  image_url: string | null
+  stock: number | null
+  created_at: string
+}
+
+function normalizeLegacyDrugType(raw: string | null): ItemType {
+  if (raw === 'seed' || raw === 'planting') return 'production'
+  if (raw === 'pouch') return 'output'
+  if (raw === 'drug') return 'consumable'
+  return 'other'
+}
+
+function mapLegacyItem(args: {
+  id: string
+  name: string
+  category: ItemCategory
+  item_type: ItemType
+  description: string | null
+  image_url: string | null
+  stock: number | null
+  buy_price: number | null
+  sell_price: number | null
+  created_at: string
+}): CatalogItem {
+  const internalId = getSuggestedInternalId(args.name)
+  const price = toNonNegative(args.buy_price)
+  return {
+    id: `legacy:${args.category}:${args.id}`,
+    group_id: currentGroupId(),
+    internal_id: internalId,
+    name: args.name,
+    category: args.category,
+    item_type: args.item_type,
+    description: args.description,
+    image_url: args.image_url,
+    buy_price: price,
+    sell_price: toNonNegative(args.sell_price ?? price),
+    internal_value: 0,
+    show_in_finance: true,
+    is_active: true,
+    stock: toNonNegative(args.stock),
+    low_stock_threshold: 0,
+    stackable: true,
+    max_stack: 100,
+    weight: null,
+    fivem_item_id: null,
+    hash: null,
+    rarity: null,
+    created_at: args.created_at,
+    updated_at: args.created_at,
+  }
+}
+
+export async function listCatalogItemsUnified(): Promise<CatalogItem[]> {
+  const groupId = currentGroupId()
+  const [catalogRes, objectsRes, weaponsRes, equipmentRes, drugsRes] = await Promise.all([
+    supabase.from('catalog_items').select('*').eq('group_id', groupId).order('created_at', { ascending: false }),
+    supabase.from('objects').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
+    supabase.from('weapons').select('id,name,weapon_id,description,image_url,stock,created_at').eq('group_id', groupId),
+    supabase.from('equipment').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
+    supabase.from('drug_items').select('id,type,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
+  ])
+
+  if (catalogRes.error) throw catalogRes.error
+  if (objectsRes.error) throw objectsRes.error
+  if (weaponsRes.error) throw weaponsRes.error
+  if (equipmentRes.error) throw equipmentRes.error
+  if (drugsRes.error) throw drugsRes.error
+
+  const catalogItems = (catalogRes.data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
+  const byName = new Set(catalogItems.map((x) => x.name.trim().toLowerCase()))
+
+  const legacyObjects = (objectsRes.data ?? []).map((row) => {
+    const r = row as LegacyObjectRow
+    return mapLegacyItem({
+      id: r.id,
+      name: r.name,
+      category: 'objects',
+      item_type: 'input',
+      description: r.description,
+      image_url: r.image_url,
+      stock: r.stock,
+      buy_price: r.price,
+      sell_price: r.price,
+      created_at: r.created_at,
+    })
+  })
+
+  const legacyWeapons = (weaponsRes.data ?? []).map((row) => {
+    const r = row as LegacyWeaponRow
+    const fallbackName = r.name?.trim() || r.weapon_id?.trim() || 'Arme'
+    return mapLegacyItem({
+      id: r.id,
+      name: fallbackName,
+      category: 'weapons',
+      item_type: 'equipment',
+      description: r.description,
+      image_url: r.image_url,
+      stock: r.stock,
+      buy_price: 0,
+      sell_price: 0,
+      created_at: r.created_at,
+    })
+  })
+
+  const legacyEquipment = (equipmentRes.data ?? []).map((row) => {
+    const r = row as LegacyEquipmentRow
+    return mapLegacyItem({
+      id: r.id,
+      name: r.name,
+      category: 'equipment',
+      item_type: 'equipment',
+      description: r.description,
+      image_url: r.image_url,
+      stock: r.stock,
+      buy_price: r.price,
+      sell_price: r.price,
+      created_at: r.created_at,
+    })
+  })
+
+  const legacyDrugs = (drugsRes.data ?? []).map((row) => {
+    const r = row as LegacyDrugRow
+    return mapLegacyItem({
+      id: r.id,
+      name: r.name,
+      category: 'drugs',
+      item_type: normalizeLegacyDrugType(r.type),
+      description: r.description,
+      image_url: r.image_url,
+      stock: r.stock,
+      buy_price: r.price,
+      sell_price: r.price,
+      created_at: r.created_at,
+    })
+  })
+
+  const mergedLegacy = [...legacyObjects, ...legacyWeapons, ...legacyEquipment, ...legacyDrugs].filter((item) => !byName.has(item.name.trim().toLowerCase()))
+
+  return [...catalogItems, ...mergedLegacy].sort((a, b) => b.created_at.localeCompare(a.created_at))
+}
 export async function makeUniqueInternalId(name: string, current?: string) {
   const base = getSuggestedInternalId(name)
   let candidate = current?.trim() || base
