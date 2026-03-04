@@ -10,7 +10,7 @@ import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
-import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Crosshair, Wrench, Leaf, Wallet, PlusCircle } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -33,8 +33,8 @@ type Expense = { id: string; item_label: string; total: number; quantity: number
 type DrugItem = { id: string; name: string; stock: number; type: string }
 type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
 
-type QuickActionKey = 'purchase' | 'sale' | 'newExpense' | 'itemTrade' | 'itemCreate' | 'newObject' | 'newWeapon' | 'newDrug' | 'newEquipment' | 'loans'
-type CardKey = 'objects' | 'weapons' | 'loans' | 'transactions' | 'expenses' | 'drugs' | 'catalogue' | 'equipment'
+type QuickActionKey = 'newExpense' | 'purchase' | 'sale' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
+type CardKey = 'itemsStock' | 'itemsCatalogue' | 'financeTransactions' | 'financeExpenses'
 
 type DashboardMetrics = {
   loading: boolean
@@ -55,21 +55,14 @@ const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'sale', title: 'Nouvelle vente/sortie', subtitle: 'Sortir un item du stock', href: '/transactions/nouveau?type=sale', icon: ArrowUpRight },
   { key: 'itemCreate', title: 'Créer un item', subtitle: 'Ouvrir le formulaire item', href: '/items?action=create', icon: PlusCircle },
   { key: 'itemTrade', title: 'Achat/Vente items', subtitle: 'Ouvrir l’outil Items', href: '/items?action=trade', icon: Receipt },
-  { key: 'newObject', title: 'Nouvel objet', subtitle: 'Créer une entrée objet', href: '/objets/nouveau', icon: Box },
-  { key: 'newWeapon', title: 'Nouvelle arme', subtitle: 'Créer une entrée arme', href: '/armes/nouveau', icon: Crosshair },
-  { key: 'newEquipment', title: 'Nouvel équipement', subtitle: 'Créer un équipement', href: '/equipement/nouveau', icon: Wrench },
-  { key: 'newDrug', title: 'Nouveau produit', subtitle: 'Créer un item drogue', href: '/drogues/nouveau', icon: Leaf },
-  { key: 'loans', title: 'Prêts en cours', subtitle: 'Suivre les prêts actifs', href: '/armes/prets', icon: Handshake },
+  { key: 'finance', title: 'Espace Finance', subtitle: 'Voir toutes les opérations', href: '/finance', icon: Wallet },
+  { key: 'items', title: 'Espace Items', subtitle: 'Voir le catalogue items', href: '/items', icon: Box },
 ]
 const CARD_OPTIONS: CardOption[] = [
-  { key: 'objects', title: 'Objets', href: '/objets', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.objectCount)) },
-  { key: 'weapons', title: 'Armes', href: '/armes', icon: Crosshair, getValue: (v) => (v.loading ? '—' : String(v.weaponCount)) },
-  { key: 'loans', title: 'Prêts en cours', href: '/armes/prets', icon: Handshake, getValue: (v) => (v.loading ? '—' : String(v.activeLoans)) },
-  { key: 'transactions', title: 'Transactions', href: '/transactions', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.txToday)) },
-  { key: 'expenses', title: 'Dépenses', href: '/depenses', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.expenseCount)) },
-  { key: 'drugs', title: 'Drogues', href: '/drogues', icon: Leaf, getValue: (v) => (v.loading ? '—' : String(v.drugCount)) },
-  { key: 'catalogue', title: 'Catalogue', href: '/objets', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.objectCount + v.weaponCount + v.drugCount)) },
-  { key: 'equipment', title: 'Équipement', href: '/equipement', icon: Wrench, getValue: () => '→' },
+  { key: 'itemsStock', title: 'Items en stock', href: '/items', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.objectCount + v.weaponCount + v.drugCount)) },
+  { key: 'itemsCatalogue', title: 'Catalogue items', href: '/items', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.objectCount + v.weaponCount + v.drugCount)) },
+  { key: 'financeTransactions', title: 'Transactions du jour', href: '/finance', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.txToday)) },
+  { key: 'financeExpenses', title: 'Dépenses', href: '/finance', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.expenseCount)) },
 ]
 
 function startOfTodayIso() {
@@ -98,7 +91,7 @@ export function DashboardClient() {
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const pressTimerRef = useRef<number | null>(null)
   const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'purchase', 'sale', 'itemCreate', 'itemTrade'])
-  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['objects', 'weapons', 'loans', 'transactions'])
+  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['itemsStock', 'itemsCatalogue', 'financeTransactions', 'financeExpenses'])
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)

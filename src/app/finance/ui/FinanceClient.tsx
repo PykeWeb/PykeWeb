@@ -190,9 +190,7 @@ export default function FinanceClient() {
                   <td className="px-4 py-3">{entry.quantity}</td>
                   <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>
                   <td className="px-4 py-3 text-white/70">{new Date(entry.created_at).toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    {canManageExpense ? null : <div className="text-right text-xs text-white/40">—</div>}
-                  </td>
+                  <td className="px-4 py-3"></td>
                 </tr>
               )
             }) : null}
