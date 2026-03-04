@@ -23,6 +23,53 @@ export default function ItemsClient() {
 
   async function refresh() {
     setItems(await listCatalogItems())
+import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
+import { createCatalogItem, listGlobalCatalogItems, type CatalogCategory, type GlobalCatalogItem } from '@/lib/catalogApi'
+
+type CategoryFilter = 'all' | CatalogCategory
+
+const categoryOptions = [
+  { value: 'all', label: 'Toutes catégories' },
+  { value: 'objects', label: 'Objets' },
+  { value: 'weapons', label: 'Armes' },
+  { value: 'equipment', label: 'Équipement' },
+  { value: 'drugs', label: 'Drogues' },
+]
+
+const drugTypeLabels: Record<string, string> = {
+  drug: 'Produit',
+  seed: 'Graine',
+  planting: 'Plantation',
+  pouch: 'Pochon / vente',
+}
+
+function categoryLabel(category: CatalogCategory) {
+  if (category === 'objects') return 'Objets'
+  if (category === 'weapons') return 'Armes'
+  if (category === 'equipment') return 'Équipement'
+  return 'Drogues'
+}
+
+function itemTypeLabel(item: GlobalCatalogItem) {
+  if (item.category === 'weapons') return item.weapon_id ? `ID ${item.weapon_id}` : '—'
+  if (item.category !== 'drugs') return '—'
+  return item.item_type ? drugTypeLabels[item.item_type] || item.item_type : 'Produit'
+}
+
+export default function ItemsClient() {
+  const [items, setItems] = useState<GlobalCatalogItem[]>([])
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState<CategoryFilter>('all')
+  const [type, setType] = useState('all')
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [price, setPrice] = useState('0')
+  const [createCategory, setCreateCategory] = useState<CatalogCategory>('objects')
+  const [createType, setCreateType] = useState('drug')
+  const [weaponId, setWeaponId] = useState('')
+
+  async function refresh() {
+    setItems(await listGlobalCatalogItems())
   }
 
   useEffect(() => {

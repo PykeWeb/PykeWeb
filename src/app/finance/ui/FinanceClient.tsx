@@ -56,6 +56,34 @@ export default function FinanceClient() {
   const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
 
+  async function submitTrade(args: { item: TradeItem; quantity: number; unitPrice: number }) {
+    const delta = tradeMode === 'buy' ? args.quantity : -args.quantity
+    if (args.item.category === 'objects') {
+      await createTransaction({
+        type: tradeMode === 'buy' ? 'purchase' : 'sale',
+        lines: [{ object: { id: args.item.source_id, name: args.item.name, price: args.unitPrice, stock: args.item.stock, image_url: null }, quantity: args.quantity, unit_price: args.unitPrice }],
+      })
+    } else if (args.item.category === 'weapons') {
+      await adjustWeaponStock({ weaponId: args.item.source_id, delta, note: `Finance ${tradeMode}` })
+    } else if (args.item.category === 'equipment') {
+      await adjustEquipmentStock({ equipmentId: args.item.source_id, delta, note: `Finance ${tradeMode}` })
+    } else {
+      await adjustDrugStock({ itemId: args.item.source_id, delta, note: `Finance ${tradeMode}` })
+    }
+
+    await createFinanceTradeLog({
+      mode: tradeMode || 'buy',
+      category: args.item.category,
+      item_id: args.item.source_id,
+      item_name: args.item.name,
+      item_type: args.item.item_type,
+      quantity: args.quantity,
+      unit_price: args.unitPrice,
+    })
+    await refresh()
+    toast.success('Mouvement enregistré.')
+  }
+
   return (
     <Panel>
       <div className="mb-4 flex items-center justify-end gap-2">
@@ -116,6 +144,7 @@ export default function FinanceClient() {
           await refresh()
         }}
       />
+      <FinanceTradeModal open={!!tradeMode} mode={tradeMode || 'buy'} onClose={() => setTradeMode(null)} onSubmit={submitTrade} />
     </Panel>
   )
 }
