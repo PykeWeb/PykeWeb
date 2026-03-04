@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Image as ImageIcon, Minus, Plus } from 'lucide-react'
+import { Image as ImageIcon } from 'lucide-react'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, FinancePaymentMode, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
@@ -81,114 +83,98 @@ export function FinanceItemTradeModal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[130] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-3xl rounded-3xl border border-white/15 bg-slate-950/95 p-5" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-xl font-semibold">Achat / Vente</h3>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {enableModeSelect ? (
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Mode</label>
-              <GlassSelect
-                value={tradeMode}
-                onChange={(v) => setTradeMode(v as 'buy' | 'sell')}
-                options={[{ value: 'buy', label: 'Achat' }, { value: 'sell', label: 'Vente' }]}
-              />
-            </div>
-          ) : null}
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.category}</label>
-            <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: 'Toutes' }, ...itemCategoryOptions]} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Type (optionnel)</label>
-            <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={[{ value: 'all', label: 'Tous les types' }, ...itemTypeOptions]} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
-            <GlassSelect value={itemId} onChange={setItemId} options={filtered.map((it) => ({ value: it.id, label: it.name }))} />
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/75 md:col-span-2">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
-                {selected?.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={selected.image_url} alt={selected.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
-                )}
-              </div>
+    <div className="fixed inset-0 z-[130] overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="mx-auto mt-8 w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
+        <CenteredFormLayout
+          title="Achat / Vente"
+          subtitle="Formulaire unifié"
+          actions={
+            <>
+              <SecondaryButton onClick={onClose}>{copy.common.cancel}</SecondaryButton>
+              <PrimaryButton
+                disabled={saving || !selected || (tradeMode === 'sell' && computedQuantity > (selected.stock || 0))}
+                onClick={async () => {
+                  if (!selected) return
+                  try {
+                    setSaving(true)
+                    setError(null)
+                    await onSubmit({ item: selected, mode: tradeMode, quantity: computedQuantity, unitPrice: computedUnitPrice, counterparty, notes, payment_mode: paymentMode })
+                    onClose()
+                  } catch (e: unknown) {
+                    setError(e instanceof Error ? e.message : copy.finance.errors.saveFailed)
+                  } finally {
+                    setSaving(false)
+                  }
+                }}
+              >
+                {copy.finance.actions.validate}
+              </PrimaryButton>
+            </>
+          }
+          actionsPlacement="bottom-right"
+        >
+          <div className="grid gap-3 md:grid-cols-2">
+            {enableModeSelect ? (
               <div>
-                <div className="font-semibold text-white">{selected?.name || '—'}</div>
-                <div>Type: <span className="text-white">{selected?.item_type || '—'}</span> · Stock actuel: <span className="text-white">{selected?.stock ?? 0}</span></div>
+                <label className="mb-1 block text-xs text-white/60">Mode</label>
+                <GlassSelect value={tradeMode} onChange={(v) => setTradeMode(v as 'buy' | 'sell')} options={[{ value: 'buy', label: 'Achat' }, { value: 'sell', label: 'Vente' }]} />
+              </div>
+            ) : null}
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.category}</label>
+              <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: 'Toutes' }, ...itemCategoryOptions]} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/60">Type (optionnel)</label>
+              <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={[{ value: 'all', label: 'Tous les types' }, ...itemTypeOptions]} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
+              <GlassSelect value={itemId} onChange={setItemId} options={filtered.map((it) => ({ value: it.id, label: it.name }))} />
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/75 md:col-span-2">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
+                  {selected?.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={selected.image_url} alt={selected.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                  )}
+                </div>
+                <div>
+                  <div className="font-semibold text-white">{selected?.name || '—'}</div>
+                  <div>Type: <span className="text-white">{selected?.item_type || '—'}</span> · Stock actuel: <span className="text-white">{selected?.stock ?? 0}</span></div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.quantity}</label>
-            <div className="flex items-center gap-2">
-              <SecondaryButton type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} icon={<Minus className="h-4 w-4" />} />
-              <Input
-                value={String(quantity)}
-                onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value || 1))))}
-                className="w-24"
-                inputMode="numeric"
-              />
-              <SecondaryButton
-                type="button"
-                onClick={() => setQuantity((q) => {
-                  const next = q + 1
-                  if (tradeMode === 'sell') return Math.min(next, Math.max(1, selected?.stock ?? 0))
-                  return next
-                })}
-                icon={<Plus className="h-4 w-4" />}
-              />
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.quantity}</label>
+              <QuantityStepper value={quantity} onChange={setQuantity} min={1} max={tradeMode === 'sell' ? Math.max(1, selected?.stock ?? 0) : undefined} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.unitPrice}</label>
+              <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} inputMode="decimal" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
+              <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.paymentMode}</label>
+              <GlassSelect value={paymentMode} onChange={(v) => setPaymentMode(v as FinancePaymentMode)} options={[{ value: 'cash', label: 'Cash' }, { value: 'bank', label: 'Bank' }, { value: 'item', label: 'Item' }, { value: 'other', label: 'Autre' }]} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.notes}</label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[90px]" />
             </div>
           </div>
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.unitPrice}</label>
-            <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} inputMode="decimal" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
-            <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.paymentMode}</label>
-            <GlassSelect value={paymentMode} onChange={(v) => setPaymentMode(v as FinancePaymentMode)} options={[{ value: 'cash', label: 'Cash' }, { value: 'bank', label: 'Bank' }, { value: 'item', label: 'Item' }, { value: 'other', label: 'Autre' }]} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.notes}</label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[90px]" />
-          </div>
-        </div>
 
-        <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
-        {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-
-        <div className="mt-4 flex justify-end gap-2">
-          <SecondaryButton onClick={onClose}>{copy.common.cancel}</SecondaryButton>
-          <PrimaryButton
-            disabled={saving || !selected || (tradeMode === 'sell' && computedQuantity > (selected.stock || 0))}
-            onClick={async () => {
-              if (!selected) return
-              try {
-                setSaving(true)
-                setError(null)
-                await onSubmit({ item: selected, mode: tradeMode, quantity: computedQuantity, unitPrice: computedUnitPrice, counterparty, notes, payment_mode: paymentMode })
-                onClose()
-              } catch (e: unknown) {
-                setError(e instanceof Error ? e.message : copy.finance.errors.saveFailed)
-              } finally {
-                setSaving(false)
-              }
-            }}
-          >
-            {copy.finance.actions.validate}
-          </PrimaryButton>
-        </div>
+          <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
+          {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+        </CenteredFormLayout>
       </div>
     </div>
   )

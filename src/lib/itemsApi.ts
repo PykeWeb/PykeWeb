@@ -406,7 +406,7 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
 
 export async function updateCatalogItem(args: UpdateCatalogItemInput) {
   const resolved = await ensureCatalogItemId(args.id)
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('catalog_items')
     .update({
       name: args.name,
@@ -421,13 +421,28 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
     })
     .eq('group_id', currentGroupId())
     .eq('id', resolved)
+    .select('id')
+
   if (error) throw error
+  if (!data || data.length === 0) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
 }
 
 export async function deleteCatalogItem(itemId: string) {
   const resolved = await ensureCatalogItemId(itemId)
   const { error } = await supabase.from('catalog_items').delete().eq('group_id', currentGroupId()).eq('id', resolved)
-  if (error) throw error
+  if (!error) return { mode: 'deleted' as const }
+
+  if (error.code === '23503') {
+    const { error: softErr } = await supabase
+      .from('catalog_items')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('group_id', currentGroupId())
+      .eq('id', resolved)
+    if (softErr) throw softErr
+    return { mode: 'soft_deleted' as const }
+  }
+
+  throw error
 }
 
 

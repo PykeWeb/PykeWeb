@@ -1,12 +1,13 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Panel } from '@/components/ui/Panel'
+import { ChevronDown } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { makeUniqueInternalId, type CreateCatalogItemInput } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { toNonNegative } from '@/lib/numberUtils'
@@ -33,6 +34,8 @@ export function ItemForm({
   const [buyPrice, setBuyPrice] = useState(String(initialItem?.buy_price ?? 0))
   const [sellPrice, setSellPrice] = useState(String(initialItem?.sell_price ?? 0))
   const [stock, setStock] = useState(String(initialItem?.stock ?? 0))
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [hash, setHash] = useState(initialItem?.hash ?? '')
 
   const [errors, setErrors] = useState<{ name?: string }>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -70,7 +73,7 @@ export function ItemForm({
         max_stack: initialItem?.max_stack ?? 100,
         weight: initialItem?.weight ?? null,
         fivem_item_id: category === 'weapons' ? weaponId.trim() || null : null,
-        hash: initialItem?.hash ?? null,
+        hash: showAdvanced ? hash.trim() || null : initialItem?.hash ?? null,
         rarity: initialItem?.rarity ?? null,
       })
     } catch (error: unknown) {
@@ -81,62 +84,84 @@ export function ItemForm({
   }
 
   return (
-    <div className="space-y-4">
-      <Panel>
-        <h3 className="text-lg font-semibold">{initialItem ? 'Modifier un item' : 'Création d\'item'}</h3>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Nom</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'item" />
-            {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
-          </div>
+    <CenteredFormLayout
+      title={initialItem ? 'Modifier l’item' : 'Créer un item'}
+      subtitle="Formulaire unifié"
+      actions={
+        <>
+          <SecondaryButton onClick={onCancel}>{copy.common.cancel}</SecondaryButton>
+          <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : submitLabel || copy.common.save}</PrimaryButton>
+        </>
+      }
+      actionsPlacement="bottom-right"
+    >
+      <div className="grid gap-3 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs text-white/60">Nom</label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'item" />
+          {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
+        </div>
 
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Catégorie</label>
-            <GlassSelect value={category} onChange={(v) => setCategory(v as ItemCategory)} options={itemCategoryOptions} />
-          </div>
+        <div>
+          <label className="mb-1 block text-xs text-white/60">Catégorie</label>
+          <GlassSelect value={category} onChange={(v) => setCategory(v as ItemCategory)} options={itemCategoryOptions} />
+        </div>
 
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Type</label>
-            <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={itemTypeOptions} />
-          </div>
+        <div>
+          <label className="mb-1 block text-xs text-white/60">Type</label>
+          <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={itemTypeOptions} />
+        </div>
 
-          {category === 'weapons' ? (
-            <div>
-              <label className="mb-1 block text-xs text-white/60">ID arme</label>
-              <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
+        {category === 'weapons' ? (
+          <div>
+            <label className="mb-1 block text-xs text-white/60">ID arme</label>
+            <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
+          </div>
+        ) : null}
+
+        <ImageDropzone label="Image (copier/coller ou PNG/JPEG)" onChange={setImageFile} />
+
+        <div>
+          <label className="mb-1 block text-xs text-white/60">Prix achat</label>
+          <Input value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} inputMode="decimal" />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs text-white/60">Prix vente</label>
+          <Input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} inputMode="decimal" />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs text-white/60">Stock initial</label>
+          <Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-xs text-white/60">Description</label>
+          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[90px]" />
+        </div>
+
+        <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+          <button type="button" className="flex w-full items-center justify-between" onClick={() => setShowAdvanced((v) => !v)}>
+            <span className="text-sm font-semibold">Avancé (RP/FiveM)</span>
+            <ChevronDown className={`h-4 w-4 transition ${showAdvanced ? 'rotate-180' : ''}`} />
+          </button>
+          {showAdvanced ? (
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-white/60">fivem_item_id</label>
+                <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/60">hash</label>
+                <Input value={hash} onChange={(e) => setHash(e.target.value)} />
+              </div>
             </div>
           ) : null}
-
-          <ImageDropzone label="Image (copier/coller ou PNG/JPEG)" onChange={setImageFile} />
-
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Prix achat</label>
-            <Input value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} inputMode="decimal" />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Prix vente</label>
-            <Input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} inputMode="decimal" />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Stock initial</label>
-            <Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-xs text-white/60">Description</label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[90px]" />
-          </div>
         </div>
-      </Panel>
-
-      {formError ? <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{formError}</div> : null}
-      <div className="flex justify-end gap-2">
-        <SecondaryButton onClick={onCancel}>{copy.common.cancel}</SecondaryButton>
-        <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : submitLabel || copy.common.save}</PrimaryButton>
       </div>
-    </div>
+
+      {formError ? <div className="mt-3 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{formError}</div> : null}
+    </CenteredFormLayout>
   )
 }

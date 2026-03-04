@@ -139,7 +139,7 @@ export default function ItemsClient() {
                   await refresh()
                   setEditingItem(null)
                 } catch (error: unknown) {
-                  toast.error(error instanceof Error ? error.message : 'Impossible de modifier l’item.')
+                  toast.error(error instanceof Error ? error.message : "Impossible de modifier l'item. Vérifie tes droits ou la politique RLS.")
                 }
               }}
             />
@@ -159,8 +159,8 @@ export default function ItemsClient() {
                   const previous = [...items]
                   setItems((rows) => rows.filter((x) => x.id !== deletingItem.id))
                   try {
-                    await deleteCatalogItem(deletingItem.id)
-                    toast.success('Item supprimé.')
+                    const result = await deleteCatalogItem(deletingItem.id)
+                    toast.success(result.mode === 'soft_deleted' ? 'Item désactivé (déjà utilisé dans des transactions).' : 'Item supprimé.')
                     setDeletingItem(null)
                   } catch (error: unknown) {
                     setItems(previous)
