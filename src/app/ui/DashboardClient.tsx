@@ -10,6 +10,7 @@ import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
+import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle } from 'lucide-react'
 
 type Tx = {
@@ -34,16 +35,12 @@ type DrugItem = { id: string; name: string; stock: number; type: string }
 type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
 
 type QuickActionKey = 'newExpense' | 'purchase' | 'sale' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
-type CardKey = 'itemsStock' | 'itemsCatalogue' | 'financeTransactions' | 'financeExpenses'
+type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
 type DashboardMetrics = {
   loading: boolean
-  objectCount: number
-  weaponCount: number
-  activeLoans: number
-  txToday: number
-  expenseCount: number
-  drugCount: number
+  categoryCounts: Record<FinanceCategory, number>
+  movementCounts: Record<FinanceMovementType, number>
 }
 
 type QuickActionOption = { key: QuickActionKey; title: string; subtitle: string; href: string; icon: LucideIcon }
@@ -59,10 +56,15 @@ const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'items', title: 'Espace Items', subtitle: 'Voir le catalogue items', href: '/items', icon: Box },
 ]
 const CARD_OPTIONS: CardOption[] = [
-  { key: 'itemsStock', title: 'Items en stock', href: '/items', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.objectCount + v.weaponCount + v.drugCount)) },
-  { key: 'itemsCatalogue', title: 'Catalogue items', href: '/items', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.objectCount + v.weaponCount + v.drugCount)) },
-  { key: 'financeTransactions', title: 'Transactions du jour', href: '/finance', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.txToday)) },
-  { key: 'financeExpenses', title: 'Dépenses', href: '/finance', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.expenseCount)) },
+  { key: 'catObjects', title: 'Objets', href: '/finance?category=objects', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.objects)) },
+  { key: 'catWeapons', title: 'Armes', href: '/finance?category=weapons', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
+  { key: 'catEquipment', title: 'Équipement', href: '/finance?category=equipment', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
+  { key: 'catDrugs', title: 'Drogues', href: '/finance?category=drugs', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
+  { key: 'catOther', title: 'Autres', href: '/finance?category=other', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
+  { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
+  { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
+  { key: 'mvSale', title: 'Ventes', href: '/finance?type=sale', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
+  { key: 'calculator', title: 'Calculateur', href: '/items?view=tools', icon: Receipt, getValue: () => '→' },
 ]
 
 function startOfTodayIso() {
@@ -81,6 +83,20 @@ export function DashboardClient() {
   const [recentLoans, setRecentLoans] = useState<Loan[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
   const [drugItems, setDrugItems] = useState<DrugItem[]>([])
+
+  const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>({
+    objects: 0,
+    weapons: 0,
+    equipment: 0,
+    drugs: 0,
+    custom: 0,
+    other: 0,
+  })
+  const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>({
+    expense: 0,
+    purchase: 0,
+    sale: 0,
+  })
   const [activityView, setActivityView] = useState<ActivityView>('transactions')
   const [pauseAutoUntil, setPauseAutoUntil] = useState(0)
   const [ticketKind, setTicketKind] = useState<'bug' | 'message'>('bug')
@@ -91,7 +107,7 @@ export function DashboardClient() {
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const pressTimerRef = useRef<number | null>(null)
   const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'purchase', 'sale', 'itemCreate', 'itemTrade'])
-  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['itemsStock', 'itemsCatalogue', 'financeTransactions', 'financeExpenses'])
+  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['catObjects', 'catWeapons', 'mvExpense', 'calculator'])
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
@@ -169,7 +185,7 @@ export function DashboardClient() {
       setLoading(true)
       try {
         const groupId = currentGroupId()
-        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes] = await Promise.all([
+        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes, financeEntries] = await Promise.all([
           supabase.from('objects').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapons').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).eq('group_id', groupId).is('returned_at', null),
@@ -199,9 +215,17 @@ export function DashboardClient() {
             .eq('group_id', groupId)
             .order('stock', { ascending: false })
             .limit(8),
+          listFinanceEntries(),
         ])
 
         if (!alive) return
+
+        const categoryCounts: Record<FinanceCategory, number> = { objects: 0, weapons: 0, equipment: 0, drugs: 0, custom: 0, other: 0 }
+        const movementCounts: Record<FinanceMovementType, number> = { expense: 0, purchase: 0, sale: 0 }
+        for (const entry of financeEntries) {
+          categoryCounts[entry.category] += 1
+          movementCounts[entry.movement_type] += 1
+        }
         setObjectCount(objRes.count ?? 0)
         setWeaponCount(weapRes.count ?? 0)
         setActiveLoans(loansRes.count ?? 0)
@@ -210,6 +234,8 @@ export function DashboardClient() {
         setRecentLoans((recentLoansRes.data as Loan[]) ?? [])
         setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
         setDrugItems((drugItemsRes.data as DrugItem[]) ?? [])
+        setFinanceCategoryCounts(categoryCounts)
+        setFinanceMovementCounts(movementCounts)
       } finally {
         if (alive) setLoading(false)
       }
@@ -311,7 +337,7 @@ export function DashboardClient() {
             const Icon = card.icon
             return (
               <div key={`${card.key}-${idx}`} onMouseDown={() => onCardPressStart(card.key)} onMouseUp={onCardPressEnd} onMouseLeave={onCardPressEnd} onContextMenu={(e) => { e.preventDefault(); onCardPressStart(card.key) }}>
-              <StatCard title={card.title} value={card.getValue({ loading, objectCount, weaponCount, activeLoans, txToday, expenseCount: recentExpenses.length, drugCount: drugItems.length })} icon={<Icon className="h-5 w-5" />} href={card.href} />
+              <StatCard title={card.title} value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })} icon={<Icon className="h-5 w-5" />} href={card.href} />
               </div>
             )
           })}

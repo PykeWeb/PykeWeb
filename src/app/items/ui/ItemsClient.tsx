@@ -117,8 +117,11 @@ export default function ItemsClient() {
 
   useEffect(() => {
     const action = searchParams.get('action')
+    const viewParam = searchParams.get('view')
     if (action === 'create') setOpenCreate(true)
     if (action === 'trade') setOpenTrade(true)
+    if (viewParam === 'tools') setView('tools')
+    if (viewParam === 'catalog') setView('catalog')
   }, [searchParams])
 
   useEffect(() => {

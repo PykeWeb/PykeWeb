@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Pencil, Receipt, Trash2, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
@@ -75,6 +76,7 @@ export default function FinanceClient() {
   const [expenseActionEntry, setExpenseActionEntry] = useState<ExpenseActionEntry | null>(null)
   const [editingQuantity, setEditingQuantity] = useState('1')
   const [editingUnitPrice, setEditingUnitPrice] = useState('0')
+  const searchParams = useSearchParams()
 
   async function refresh() {
     try {
@@ -90,6 +92,18 @@ export default function FinanceClient() {
   useEffect(() => {
     void refresh()
   }, [])
+
+
+  useEffect(() => {
+    const categoryParam = searchParams.get('category')
+    const typeParam = searchParams.get('type')
+    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) {
+      setCategory(categoryParam as FilterCategory)
+    }
+    if (typeParam && ['expense', 'purchase', 'sale'].includes(typeParam)) {
+      setType(typeParam as FilterType)
+    }
+  }, [searchParams])
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase()
