@@ -123,7 +123,7 @@ export default function ItemsClient() {
     if (action === 'trade') setOpenTrade(true)
     if (viewParam === 'tools') setView('tools')
     if (viewParam === 'catalog') setView('catalog')
-    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) setCategory(categoryParam as CategoryFilter)
+    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(categoryParam)) setCategory(categoryParam as CategoryFilter)
   }, [searchParams])
 
   useEffect(() => {
@@ -169,6 +169,7 @@ export default function ItemsClient() {
         <>
           <div className="mt-4 grid gap-3 md:grid-cols-5">
             {[
+              { key: 'all', label: 'Tous', value: items.length },
               { key: 'objects', label: 'Objets', value: categoryCounts.objects },
               { key: 'weapons', label: 'Armes', value: categoryCounts.weapons },
               { key: 'equipment', label: 'Équipement', value: categoryCounts.equipment },
@@ -188,15 +189,12 @@ export default function ItemsClient() {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[240px]" />
-            <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
-            {category !== 'all' ? <div className="rounded-full border border-cyan-300/40 bg-cyan-500/12 px-3 py-1 text-xs">Filtré: {getCategoryLabel(category)}</div> : null}
+            <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[280px]" />
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <TabPill active={category === 'all'} onClick={() => setCategory('all')}>Tous</TabPill>
-            {itemCategoryOptions.map((opt) => (
-              <TabPill key={opt.value} active={category === opt.value} onClick={() => setCategory(opt.value as CategoryFilter)}>
+            {typeOptions.map((opt) => (
+              <TabPill key={opt.value} active={type === opt.value} onClick={() => setType(opt.value as TypeFilter)}>
                 {opt.label}
               </TabPill>
             ))}

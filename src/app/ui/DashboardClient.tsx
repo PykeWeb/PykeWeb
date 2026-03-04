@@ -60,7 +60,7 @@ const CARD_OPTIONS: CardOption[] = [
   { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
   { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
   { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
-  { key: 'catOther', title: 'Autres', href: '/items?category=other', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
+  { key: 'catOther', title: 'Autres', href: '/items?category=custom', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
   { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
   { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
   { key: 'mvSale', title: 'Ventes', href: '/finance?type=sale', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },

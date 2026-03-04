@@ -18,11 +18,13 @@ export function ItemForm({
   onSave,
   initialItem,
   submitLabel,
+  actionsPlacement,
 }: {
   onCancel: () => void
   onSave: (payload: CreateCatalogItemInput) => Promise<void>
   initialItem?: CatalogItem
   submitLabel?: string
+  actionsPlacement?: 'top-right' | 'bottom-right'
 }) {
   const [name, setName] = useState(initialItem?.name ?? '')
   const [category, setCategory] = useState<ItemCategory>(initialItem?.category ?? 'objects')
@@ -92,7 +94,7 @@ export function ItemForm({
           <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : submitLabel || copy.common.save}</PrimaryButton>
         </>
       }
-      actionsPlacement="bottom-right"
+      actionsPlacement={actionsPlacement || (initialItem ? 'bottom-right' : 'top-right')}
     >
       <div className="grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
