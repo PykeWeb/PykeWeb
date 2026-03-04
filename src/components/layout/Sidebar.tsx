@@ -132,7 +132,7 @@ export function Sidebar() {
   ]
 
   const visibleUserNavLinks = userNavLinks.filter((link) => {
-    const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs'
+    const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs' || link.id === 'expenses'
     if (!isCategory) return true
     return !hiddenCategoryNav.includes(link.id)
   })
@@ -142,6 +142,7 @@ export function Sidebar() {
     { id: 'weapons', label: labels.nav_armes || 'Armes' },
     { id: 'equipment', label: labels.nav_equipement || 'Équipement' },
     { id: 'drugs', label: labels.nav_drogues || 'Drogues' },
+    { id: 'expenses', label: labels.nav_depenses || 'Dépenses' },
   ]
 
   function updateHidden(next: string[]) {
