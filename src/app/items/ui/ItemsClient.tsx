@@ -33,6 +33,7 @@ export default function ItemsClient() {
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
+  const [showCalculator, setShowCalculator] = useState(false)
 
   const refresh = useCallback(async () => {
     setItems(await listCatalogItemsUnified())
@@ -89,15 +90,36 @@ export default function ItemsClient() {
   return (
     <Panel>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[320px]" />
+        <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[240px]" />
         <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
         <SecondaryButton onClick={() => setOpenManager(true)}>Gérer items</SecondaryButton>
         <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
+        <SecondaryButton onClick={() => setShowCalculator((prev) => !prev)}>{showCalculator ? "Masquer calculateur" : "Ouvrir calculateur"}</SecondaryButton>
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setCategory('all')}
+          className={`rounded-xl border px-3 py-1.5 text-sm transition ${category === 'all' ? 'border-cyan-300/40 bg-cyan-500/15 text-cyan-100' : 'border-white/15 bg-white/5 text-white/75 hover:bg-white/10'}`}
+        >
+          Tous
+        </button>
+        {itemCategoryOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setCategory(opt.value as CategoryFilter)}
+            className={`rounded-xl border px-3 py-1.5 text-sm transition ${category === opt.value ? 'border-cyan-300/40 bg-cyan-500/15 text-cyan-100' : 'border-white/15 bg-white/5 text-white/75 hover:bg-white/10'}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
         {filtered.length === 0 ? <div className="p-6 text-center text-sm text-white/60">Aucun item trouvé pour ces filtres.</div> : null}
         <table className="w-full text-sm">
           <thead className="bg-white/[0.03] text-white/70">
@@ -134,6 +156,7 @@ export default function ItemsClient() {
         </table>
       </div>
 
+      {showCalculator ? (
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
         <div className="mb-3 flex items-center gap-2">
           <Calculator className="h-4 w-4" />
@@ -168,6 +191,7 @@ export default function ItemsClient() {
         </div>
         {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
       </div>
+      ) : null}
 
       {openCreate ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
