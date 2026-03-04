@@ -56,16 +56,18 @@ const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'items', title: 'Espace Items', subtitle: 'Voir le catalogue items', href: '/items', icon: Box },
 ]
 const CARD_OPTIONS: CardOption[] = [
-  { key: 'catObjects', title: 'Objets', href: '/finance?category=objects', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.objects)) },
-  { key: 'catWeapons', title: 'Armes', href: '/finance?category=weapons', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
-  { key: 'catEquipment', title: 'Équipement', href: '/finance?category=equipment', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
-  { key: 'catDrugs', title: 'Drogues', href: '/finance?category=drugs', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
-  { key: 'catOther', title: 'Autres', href: '/finance?category=other', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
+  { key: 'catObjects', title: 'Objets', href: '/items?category=objects', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.objects)) },
+  { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
+  { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
+  { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
+  { key: 'catOther', title: 'Autres', href: '/items?category=other', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
   { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
   { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
   { key: 'mvSale', title: 'Ventes', href: '/finance?type=sale', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
   { key: 'calculator', title: 'Calculateur', href: '/items?view=tools', icon: Receipt, getValue: () => '→' },
 ]
+
+const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs', 'catOther', 'mvExpense', 'mvPurchase', 'mvSale', 'calculator']
 
 function startOfTodayIso() {
   const d = new Date()
@@ -107,7 +109,7 @@ export function DashboardClient() {
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const pressTimerRef = useRef<number | null>(null)
   const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'purchase', 'sale', 'itemCreate', 'itemTrade'])
-  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['catObjects', 'catWeapons', 'mvExpense', 'calculator'])
+  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
@@ -158,7 +160,7 @@ export function DashboardClient() {
         const data = await cardsRes.json()
         if (Array.isArray(data.order) && data.order.length) {
           const next = data.order.filter((key: unknown): key is CardKey => CARD_OPTIONS.some((option) => option.key === key))
-          if (next.length) setDashboardCards(next)
+          setDashboardCards(next.length ? next : DEFAULT_DASHBOARD_CARDS)
         }
       }
     })()

@@ -118,10 +118,12 @@ export default function ItemsClient() {
   useEffect(() => {
     const action = searchParams.get('action')
     const viewParam = searchParams.get('view')
+    const categoryParam = searchParams.get('category')
     if (action === 'create') setOpenCreate(true)
     if (action === 'trade') setOpenTrade(true)
     if (viewParam === 'tools') setView('tools')
     if (viewParam === 'catalog') setView('catalog')
+    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) setCategory(categoryParam as CategoryFilter)
   }, [searchParams])
 
   useEffect(() => {
@@ -135,6 +137,15 @@ export default function ItemsClient() {
 
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
+  const categoryCounts = useMemo(() => {
+    return {
+      objects: items.filter((it) => it.category === 'objects').length,
+      weapons: items.filter((it) => it.category === 'weapons').length,
+      equipment: items.filter((it) => it.category === 'equipment').length,
+      drugs: items.filter((it) => it.category === 'drugs').length,
+      other: items.filter((it) => it.category === 'custom').length,
+    }
+  }, [items])
 
   return (
     <Panel>
@@ -156,9 +167,30 @@ export default function ItemsClient() {
 
       {view === 'catalog' ? (
         <>
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
+            {[
+              { key: 'objects', label: 'Objets', value: categoryCounts.objects },
+              { key: 'weapons', label: 'Armes', value: categoryCounts.weapons },
+              { key: 'equipment', label: 'Équipement', value: categoryCounts.equipment },
+              { key: 'drugs', label: 'Drogues', value: categoryCounts.drugs },
+              { key: 'custom', label: 'Autres', value: categoryCounts.other },
+            ].map((card) => (
+              <button
+                key={card.key}
+                type="button"
+                onClick={() => setCategory(card.key as CategoryFilter)}
+                className={`rounded-2xl border p-4 text-left transition ${category === card.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'}`}
+              >
+                <p className="text-sm text-white/70">{card.label}</p>
+                <p className="mt-2 text-3xl font-semibold">{card.value}</p>
+              </button>
+            ))}
+          </div>
+
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
             <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[240px]" />
             <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
+            {category !== 'all' ? <div className="rounded-full border border-cyan-300/40 bg-cyan-500/12 px-3 py-1 text-xs">Filtré: {getCategoryLabel(category)}</div> : null}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -273,23 +305,21 @@ export default function ItemsClient() {
       )}
 
       {openCreate ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="mx-auto w-full max-w-5xl">
-            <ItemForm
-              onCancel={() => setOpenCreate(false)}
-              onSave={async (payload) => {
-                try {
-                  await createCatalogItem(payload)
-                  toast.success('Item créé.')
-                  await refresh()
-                  setOpenCreate(false)
-                } catch (error: unknown) {
-                  console.error('[items:create]', error)
-                  toast.error(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
-                }
-              }}
-            />
-          </div>
+        <div className="mt-6">
+          <ItemForm
+            onCancel={() => setOpenCreate(false)}
+            onSave={async (payload) => {
+              try {
+                await createCatalogItem(payload)
+                toast.success('Item créé.')
+                await refresh()
+                setOpenCreate(false)
+              } catch (error: unknown) {
+                console.error('[items:create]', error)
+                toast.error(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
+              }
+            }}
+          />
         </div>
       ) : null}
 
