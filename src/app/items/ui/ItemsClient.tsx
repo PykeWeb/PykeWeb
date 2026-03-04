@@ -90,7 +90,7 @@ export default function ItemsClient() {
   return (
     <Panel>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[240px]" />
+        <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[200px]" />
         <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
         <SecondaryButton onClick={() => setOpenManager(true)}>Gérer items</SecondaryButton>

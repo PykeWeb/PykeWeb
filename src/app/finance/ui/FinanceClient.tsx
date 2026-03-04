@@ -79,7 +79,7 @@ export default function FinanceClient() {
   return (
     <Panel>
       <div className="mb-4 flex items-center justify-end gap-2">
-        <Link href="/depenses/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
+        <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
         <PrimaryButton onClick={() => setTradeMode('buy')}>Achat / Vente</PrimaryButton>
       </div>
 
