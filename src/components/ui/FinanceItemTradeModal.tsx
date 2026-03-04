@@ -99,7 +99,7 @@ export function FinanceItemTradeModal({
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="mx-auto w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
+      <div className="mx-auto w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
         <CenteredFormLayout
           title={copy.finance.trade.title}
           subtitle={copy.finance.trade.subtitle}
@@ -126,7 +126,7 @@ export function FinanceItemTradeModal({
               </PrimaryButton>
             </>
           }
-          actionsPlacement="bottom-right"
+          actionsPlacement="top-right"
         >
           <div className="grid gap-3 md:grid-cols-2">
             <div>

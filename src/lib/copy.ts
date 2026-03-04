@@ -53,7 +53,7 @@ export const copy = {
   finance: {
 
     trade: {
-      title: 'Achat / Vente',
+      title: 'Achat / Vente (Items)',
       subtitle: 'Formulaire unifié',
       modeBuy: 'Achat',
       modeSell: 'Vente / Sortie',

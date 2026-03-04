@@ -69,6 +69,12 @@ const CARD_OPTIONS: CardOption[] = [
 
 const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs', 'catOther', 'mvExpense', 'mvPurchase', 'mvSale', 'calculator']
 
+function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
+  const safeOrder = (order ?? []).filter((key, index, list) => CARD_OPTIONS.some((option) => option.key === key) && list.indexOf(key) === index)
+  const missing = DEFAULT_DASHBOARD_CARDS.filter((key) => !safeOrder.includes(key))
+  return [...safeOrder, ...missing]
+}
+
 function startOfTodayIso() {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
@@ -160,7 +166,7 @@ export function DashboardClient() {
         const data = await cardsRes.json()
         if (Array.isArray(data.order) && data.order.length) {
           const next = data.order.filter((key: unknown): key is CardKey => CARD_OPTIONS.some((option) => option.key === key))
-          setDashboardCards(next.length ? next : DEFAULT_DASHBOARD_CARDS)
+          setDashboardCards(mergeCardOrder(next))
         }
       }
     })()
