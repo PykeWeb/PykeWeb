@@ -357,6 +357,79 @@ async function insertLegacyItem(args: CreateCatalogItemInput): Promise<CatalogIt
   throw new Error('Catégorie non supportée pour fallback legacy.')
 }
 
+function parseLegacyInternalId(internalId: string | undefined | null): { category: ItemCategory; sourceId: string } | null {
+  if (!internalId) return null
+  const match = internalId.match(/^legacy-(objects|weapons|equipment|drugs)-(.+)$/)
+  if (!match) return null
+  return { category: match[1] as ItemCategory, sourceId: match[2] }
+}
+
+async function upsertLegacyMirror(args: { category: ItemCategory; name: string; description?: string | null; buy_price: number; stock: number; item_type: ItemType; lookupName?: string }) {
+  const groupId = currentGroupId()
+  const safeName = args.name.trim()
+  const lookupName = args.lookupName?.trim() || safeName
+
+  if (args.category === 'objects') {
+    const { data: existing } = await supabase.from('objects').select('id').eq('group_id', groupId).eq('name', lookupName).maybeSingle<{ id: string }>()
+    if (existing?.id) {
+      await supabase.from('objects').update({ name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null }).eq('group_id', groupId).eq('id', existing.id)
+      return
+    }
+    await supabase.from('objects').insert({ group_id: groupId, name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null })
+    return
+  }
+
+  if (args.category === 'equipment') {
+    const { data: existing } = await supabase.from('equipment').select('id').eq('group_id', groupId).eq('name', lookupName).maybeSingle<{ id: string }>()
+    if (existing?.id) {
+      await supabase.from('equipment').update({ name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null }).eq('group_id', groupId).eq('id', existing.id)
+      return
+    }
+    await supabase.from('equipment').insert({ group_id: groupId, name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null })
+    return
+  }
+
+  if (args.category === 'weapons') {
+    const { data: existing } = await supabase.from('weapons').select('id').eq('group_id', groupId).eq('name', lookupName).maybeSingle<{ id: string }>()
+    if (existing?.id) {
+      await supabase.from('weapons').update({ name: safeName, stock: toNonNegative(args.stock), description: args.description || null }).eq('group_id', groupId).eq('id', existing.id)
+      return
+    }
+    await supabase.from('weapons').insert({ group_id: groupId, name: safeName, stock: toNonNegative(args.stock), description: args.description || null })
+    return
+  }
+
+  if (args.category === 'drugs') {
+    const drugType = args.item_type === 'pouch' ? 'pouch' : args.item_type === 'seed' ? 'seed' : 'drug'
+    const { data: existing } = await supabase.from('drug_items').select('id').eq('group_id', groupId).eq('name', lookupName).maybeSingle<{ id: string }>()
+    if (existing?.id) {
+      await supabase.from('drug_items').update({ name: safeName, type: drugType, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null }).eq('group_id', groupId).eq('id', existing.id)
+      return
+    }
+    await supabase.from('drug_items').insert({ group_id: groupId, name: safeName, type: drugType, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null })
+  }
+}
+
+async function deleteLegacyMirror(args: { category: ItemCategory; name: string; internal_id?: string | null }) {
+  const groupId = currentGroupId()
+  const legacy = parseLegacyInternalId(args.internal_id)
+  if (legacy?.category === args.category) {
+    const table = legacy.category === 'drugs' ? 'drug_items' : legacy.category
+    await supabase.from(table).delete().eq('group_id', groupId).eq('id', legacy.sourceId)
+    return
+  }
+
+  if (args.category === 'objects') {
+    await supabase.from('objects').delete().eq('group_id', groupId).eq('name', args.name)
+  } else if (args.category === 'equipment') {
+    await supabase.from('equipment').delete().eq('group_id', groupId).eq('name', args.name)
+  } else if (args.category === 'weapons') {
+    await supabase.from('weapons').delete().eq('group_id', groupId).eq('name', args.name)
+  } else if (args.category === 'drugs') {
+    await supabase.from('drug_items').delete().eq('group_id', groupId).eq('name', args.name)
+  }
+}
+
 export type UpdateCatalogItemInput = CreateCatalogItemInput & { id: string }
 
 export async function createCatalogItem(args: CreateCatalogItemInput) {
@@ -408,11 +481,27 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
     inserted.image_url = publicData.publicUrl
   }
 
+  await upsertLegacyMirror({
+    category: args.category,
+    name: args.name,
+    description: args.description,
+    buy_price: args.buy_price,
+    stock: args.stock,
+    item_type: args.item_type,
+  })
+
   return mapCatalogItem(inserted)
 }
 
 export async function updateCatalogItem(args: UpdateCatalogItemInput) {
   const resolved = await ensureCatalogItemId(args.id)
+  const { data: current } = await supabase
+    .from('catalog_items')
+    .select('name,internal_id,category')
+    .eq('group_id', currentGroupId())
+    .eq('id', resolved)
+    .maybeSingle<{ name: string; internal_id: string | null; category: ItemCategory }>()
+
   const { data, error } = await supabase
     .from('catalog_items')
     .update({
@@ -432,10 +521,27 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
 
   if (error) throw error
   if (!data || data.length === 0) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
+
+  await upsertLegacyMirror({
+    category: args.category,
+    name: args.name,
+    description: args.description,
+    buy_price: args.buy_price,
+    stock: args.stock,
+    item_type: args.item_type,
+    lookupName: current?.name,
+  })
 }
 
 export async function deleteCatalogItem(itemId: string) {
   const resolved = await ensureCatalogItemId(itemId)
+  const { data: current } = await supabase
+    .from('catalog_items')
+    .select('name,category,internal_id')
+    .eq('group_id', currentGroupId())
+    .eq('id', resolved)
+    .maybeSingle<{ name: string; category: ItemCategory; internal_id: string | null }>()
+
   const { data, error } = await supabase
     .from('catalog_items')
     .delete()
@@ -445,6 +551,15 @@ export async function deleteCatalogItem(itemId: string) {
 
   if (error) throw error
   if (!data || data.length === 0) throw new Error('Impossible de supprimer: item introuvable.')
+
+  if (current) {
+    await deleteLegacyMirror({
+      category: current.category,
+      name: current.name,
+      internal_id: current.internal_id,
+    })
+  }
+
   return { mode: 'deleted' as const }
 }
 
