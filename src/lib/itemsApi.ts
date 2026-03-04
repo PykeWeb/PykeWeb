@@ -4,6 +4,7 @@ import { toNonNegative, toPositiveInt, calcTotal } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
 import { getSuggestedInternalId } from '@/lib/itemId'
 import type { CatalogItem, FinancePaymentMode, FinanceTransaction, ItemCategory, ItemRarity, ItemType } from '@/lib/types/itemsFinance'
+import { normalizeItemType } from '@/lib/catalogConfig'
 
 const BUCKET = 'object-images'
 
@@ -61,8 +62,10 @@ function mapCatalogItem(row: CatalogItemRow): CatalogItem {
   }
 }
 
-export async function listCatalogItems(): Promise<CatalogItem[]> {
-  const { data, error } = await supabase.from('catalog_items').select('*').eq('group_id', currentGroupId()).order('created_at', { ascending: false })
+export async function listCatalogItems(includeInactive = false): Promise<CatalogItem[]> {
+  let query = supabase.from('catalog_items').select('*').eq('group_id', currentGroupId())
+  if (!includeInactive) query = query.eq('is_active', true)
+  const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
 }
@@ -111,11 +114,12 @@ type LegacyDrugRow = {
 }
 
 function normalizeLegacyDrugType(raw: string | null): ItemType {
-  if (raw === 'seed' || raw === 'planting') return 'production'
-  if (raw === 'pouch') return 'output'
-  if (raw === 'drug') return 'consumable'
-  return 'other'
+  if (raw === 'seed' || raw === 'planting') return 'seed'
+  if (raw === 'pouch') return 'pouch'
+  if (raw === 'drug') return 'product'
+  return 'drug_material'
 }
+
 
 function mapLegacyItem(args: {
   id: string
@@ -137,7 +141,7 @@ function mapLegacyItem(args: {
     internal_id: internalId,
     name: args.name,
     category: args.category,
-    item_type: args.item_type,
+    item_type: normalizeItemType(args.item_type, args.category),
     description: args.description,
     image_url: args.image_url,
     buy_price: price,
@@ -158,10 +162,13 @@ function mapLegacyItem(args: {
   }
 }
 
-export async function listCatalogItemsUnified(): Promise<CatalogItem[]> {
+export async function listCatalogItemsUnified(includeInactive = false): Promise<CatalogItem[]> {
   const groupId = currentGroupId()
+  const catalogQuery = supabase.from('catalog_items').select('*').eq('group_id', groupId)
+  if (!includeInactive) catalogQuery.eq('is_active', true)
+
   const [catalogRes, objectsRes, weaponsRes, equipmentRes, drugsRes] = await Promise.all([
-    supabase.from('catalog_items').select('*').eq('group_id', groupId).order('created_at', { ascending: false }),
+    catalogQuery.order('created_at', { ascending: false }),
     supabase.from('objects').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
     supabase.from('weapons').select('id,name,weapon_id,description,image_url,stock,created_at').eq('group_id', groupId),
     supabase.from('equipment').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
@@ -183,7 +190,7 @@ export async function listCatalogItemsUnified(): Promise<CatalogItem[]> {
       id: r.id,
       name: r.name,
       category: 'objects',
-      item_type: 'input',
+      item_type: 'consumable',
       description: r.description,
       image_url: r.image_url,
       stock: r.stock,
@@ -274,7 +281,7 @@ async function insertLegacyItem(args: CreateCatalogItemInput): Promise<CatalogIt
       id: data.id,
       name: data.name,
       category: 'objects',
-      item_type: args.item_type,
+      item_type: normalizeItemType(args.item_type, args.category),
       description: data.description,
       image_url: data.image_url,
       stock: data.stock,
@@ -329,7 +336,7 @@ async function insertLegacyItem(args: CreateCatalogItemInput): Promise<CatalogIt
   if (args.category === 'drugs') {
     const { data, error } = await supabase
       .from('drug_items')
-      .insert({ group_id: groupId, type: args.item_type === 'output' ? 'pouch' : args.item_type === 'production' ? 'seed' : 'drug', name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null })
+      .insert({ group_id: groupId, type: args.item_type === 'pouch' ? 'pouch' : args.item_type === 'seed' ? 'seed' : 'drug', name: safeName, price: toNonNegative(args.buy_price), stock: toNonNegative(args.stock), description: args.description || null })
       .select('id,type,name,price,description,image_url,stock,created_at')
       .single<LegacyDrugRow>()
     if (error) throw error
@@ -361,7 +368,7 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
     internal_id,
     name: args.name,
     category: args.category,
-    item_type: args.item_type,
+    item_type: normalizeItemType(args.item_type, args.category),
     description: args.description || null,
     buy_price: toNonNegative(args.buy_price),
     sell_price: toNonNegative(args.sell_price),
@@ -411,7 +418,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
     .update({
       name: args.name,
       category: args.category,
-      item_type: args.item_type,
+      item_type: normalizeItemType(args.item_type, args.category),
       description: args.description || null,
       buy_price: toNonNegative(args.buy_price),
       sell_price: toNonNegative(args.sell_price),
@@ -429,20 +436,17 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
 
 export async function deleteCatalogItem(itemId: string) {
   const resolved = await ensureCatalogItemId(itemId)
-  const { error } = await supabase.from('catalog_items').delete().eq('group_id', currentGroupId()).eq('id', resolved)
-  if (!error) return { mode: 'deleted' as const }
+  const { data, error } = await supabase
+    .from('catalog_items')
+    .update({ is_active: false, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('group_id', currentGroupId())
+    .eq('id', resolved)
+    .eq('is_active', true)
+    .select('id')
 
-  if (error.code === '23503') {
-    const { error: softErr } = await supabase
-      .from('catalog_items')
-      .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq('group_id', currentGroupId())
-      .eq('id', resolved)
-    if (softErr) throw softErr
-    return { mode: 'soft_deleted' as const }
-  }
-
-  throw error
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Impossible de supprimer: item introuvable ou déjà désactivé.')
+  return { mode: 'soft_deleted' as const }
 }
 
 
@@ -485,7 +489,7 @@ async function ensureCatalogItemId(itemId: string): Promise<string> {
       .eq('id', sourceId)
       .single<{ name: string; description: string | null; image_url: string | null; stock: number | null; price: number | null }>()
     if (error) throw error
-    source = { ...data, item_type: 'input' }
+    source = { ...data, item_type: 'consumable' }
   } else if (category === 'weapons') {
     const { data, error } = await supabase
       .from('weapons')

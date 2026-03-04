@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Image as ImageIcon, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
@@ -11,7 +11,7 @@ import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinan
 import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
 import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
-import { itemCategoryOptions } from '@/lib/catalogConfig'
+import { getCategoryLabel, getTypeLabel, itemCategoryOptions } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
@@ -25,14 +25,15 @@ export default function ItemsClient() {
   const [openTrade, setOpenTrade] = useState(false)
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null)
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
+  const [showDeleted, setShowDeleted] = useState(false)
 
-  async function refresh() {
-    setItems(await listCatalogItemsUnified())
-  }
+  const refresh = useCallback(async () => {
+    setItems(await listCatalogItemsUnified(showDeleted))
+  }, [showDeleted])
 
   useEffect(() => {
     void refresh()
-  }, [])
+  }, [refresh])
 
   const typeOptions = useMemo(() => {
     const pool = items.filter((x) => (category === 'all' ? true : x.category === category))
@@ -56,6 +57,10 @@ export default function ItemsClient() {
         <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[320px]" />
         <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
+        <label className="inline-flex items-center gap-2 text-sm text-white/75">
+          <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} className="h-4 w-4 rounded border-white/25 bg-white/10" />
+          Afficher supprimés
+        </label>
         <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
       </div>
@@ -88,8 +93,8 @@ export default function ItemsClient() {
                   </div>
                 </td>
                 <td className="px-4 py-3 font-semibold">{it.name}</td>
-                <td className="px-4 py-3">{it.category}</td>
-                <td className="px-4 py-3">{it.item_type}</td>
+                <td className="px-4 py-3">{getCategoryLabel(it.category)}</td>
+                <td className="px-4 py-3">{getTypeLabel(it.item_type, it.category)}</td>
                 <td className="px-4 py-3">{it.stock}</td>
                 <td className="px-4 py-3">{it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $</td>
                 <td className="px-4 py-3">
@@ -105,7 +110,7 @@ export default function ItemsClient() {
       </div>
 
       {openCreate ? (
-        <div className="fixed inset-0 z-[120] overflow-y-auto bg-black/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="mx-auto w-full max-w-5xl">
             <ItemForm
               onCancel={() => setOpenCreate(false)}
@@ -126,7 +131,7 @@ export default function ItemsClient() {
       ) : null}
 
       {editingItem ? (
-        <div className="fixed inset-0 z-[120] overflow-y-auto bg-black/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="mx-auto w-full max-w-5xl">
             <ItemForm
               initialItem={editingItem}
@@ -160,7 +165,7 @@ export default function ItemsClient() {
                   setItems((rows) => rows.filter((x) => x.id !== deletingItem.id))
                   try {
                     const result = await deleteCatalogItem(deletingItem.id)
-                    toast.success(result.mode === 'soft_deleted' ? 'Item désactivé (déjà utilisé dans des transactions).' : 'Item supprimé.')
+                    toast.success(result.mode === 'soft_deleted' ? 'Item désactivé.' : 'Item supprimé.')
                     setDeletingItem(null)
                   } catch (error: unknown) {
                     setItems(previous)

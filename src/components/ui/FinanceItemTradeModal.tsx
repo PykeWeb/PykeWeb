@@ -12,7 +12,7 @@ import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, FinancePaymentMode, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
-import { itemCategoryOptions, itemTypeOptions } from '@/lib/catalogConfig'
+import { categoryTypeOptions, getTypeLabel, itemCategoryOptions } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
@@ -34,6 +34,7 @@ export function FinanceItemTradeModal({
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
+  const [step, setStep] = useState(1)
   const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [unitPrice, setUnitPrice] = useState('0')
@@ -57,6 +58,14 @@ export function FinanceItemTradeModal({
     })().catch((e: unknown) => setError(e instanceof Error ? e.message : copy.finance.errors.loadItemsFailed))
   }, [open])
 
+  const typeOptions = useMemo(() => {
+    if (category === 'all') {
+      const values = Array.from(new Set(items.map((it) => it.item_type)))
+      return [{ value: 'all', label: 'Tous les types' }, ...values.map((value) => ({ value, label: getTypeLabel(value) }))]
+    }
+    return [{ value: 'all', label: 'Tous les types' }, ...categoryTypeOptions[category]]
+  }, [category, items])
+
   const filtered = useMemo(
     () => items.filter((it) => (category === 'all' ? true : it.category === category)).filter((it) => (type === 'all' ? true : it.item_type === type)),
     [items, category, type]
@@ -72,6 +81,7 @@ export function FinanceItemTradeModal({
     if (!selected) return
     setUnitPrice(String(tradeMode === 'buy' ? selected.buy_price : selected.sell_price))
     setQuantity(1)
+    setStep(1)
   }, [selected, tradeMode])
 
   const computedQuantityRaw = toPositiveInt(quantity)
@@ -83,8 +93,8 @@ export function FinanceItemTradeModal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[130] overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="mx-auto mt-8 w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="mx-auto w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
         <CenteredFormLayout
           title="Achat / Vente"
           subtitle="Formulaire unifié"
@@ -126,7 +136,7 @@ export function FinanceItemTradeModal({
             </div>
             <div>
               <label className="mb-1 block text-xs text-white/60">Type (optionnel)</label>
-              <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={[{ value: 'all', label: 'Tous les types' }, ...itemTypeOptions]} />
+              <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
             </div>
             <div>
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
@@ -145,7 +155,7 @@ export function FinanceItemTradeModal({
                 </div>
                 <div>
                   <div className="font-semibold text-white">{selected?.name || '—'}</div>
-                  <div>Type: <span className="text-white">{selected?.item_type || '—'}</span> · Stock actuel: <span className="text-white">{selected?.stock ?? 0}</span></div>
+                  <div>Type: <span className="text-white">{selected ? getTypeLabel(selected.item_type, selected.category) : '—'}</span> · Stock actuel: <span className="text-white">{selected?.stock ?? 0}</span></div>
                 </div>
               </div>
             </div>
@@ -153,6 +163,21 @@ export function FinanceItemTradeModal({
             <div>
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.quantity}</label>
               <QuantityStepper value={quantity} onChange={setQuantity} min={1} max={tradeMode === 'sell' ? Math.max(1, selected?.stock ?? 0) : undefined} />
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[1, 5, 10].map((nextStep) => (
+                  <button key={nextStep} type="button" onClick={() => setStep(nextStep)} className={`h-8 rounded-xl border px-3 text-xs ${step === nextStep ? 'border-white/30 bg-white/15' : 'border-white/12 bg-white/[0.06]'}`}>
+                    Step {nextStep}
+                  </button>
+                ))}
+                {[5, 10, 25, 50].map((preset) => (
+                  <button key={preset} type="button" onClick={() => setQuantity(Math.max(1, preset))} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">
+                    {preset}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setQuantity((prev) => Math.max(1, prev + step))} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">
+                  +{step}
+                </button>
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.unitPrice}</label>

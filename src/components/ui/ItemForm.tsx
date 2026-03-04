@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { GlassSelect } from '@/components/ui/GlassSelect'
@@ -12,7 +11,7 @@ import { makeUniqueInternalId, type CreateCatalogItemInput } from '@/lib/itemsAp
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { toNonNegative } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
-import { itemCategoryOptions, itemTypeOptions } from '@/lib/catalogConfig'
+import { categoryTypeOptions, itemCategoryOptions, normalizeItemType } from '@/lib/catalogConfig'
 
 export function ItemForm({
   onCancel,
@@ -27,20 +26,18 @@ export function ItemForm({
 }) {
   const [name, setName] = useState(initialItem?.name ?? '')
   const [category, setCategory] = useState<ItemCategory>(initialItem?.category ?? 'objects')
-  const [itemType, setItemType] = useState<ItemType>(initialItem?.item_type ?? 'input')
-  const [weaponId, setWeaponId] = useState(initialItem?.fivem_item_id ?? '')
+  const [itemType, setItemType] = useState<ItemType>(normalizeItemType(initialItem?.item_type ?? null, initialItem?.category ?? 'objects'))
   const [description, setDescription] = useState(initialItem?.description ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [buyPrice, setBuyPrice] = useState(String(initialItem?.buy_price ?? 0))
   const [sellPrice, setSellPrice] = useState(String(initialItem?.sell_price ?? 0))
   const [stock, setStock] = useState(String(initialItem?.stock ?? 0))
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [hash, setHash] = useState(initialItem?.hash ?? '')
 
   const [errors, setErrors] = useState<{ name?: string }>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  const typeOptions = useMemo(() => categoryTypeOptions[category], [category])
   const canSave = useMemo(() => name.trim().length > 0 && !saving, [name, saving])
 
   async function handleSubmit() {
@@ -58,7 +55,7 @@ export function ItemForm({
       await onSave({
         name: name.trim(),
         category,
-        item_type: itemType,
+        item_type: normalizeItemType(itemType, category),
         internal_id: uniqueInternalId,
         description: description.trim() || null,
         imageFile,
@@ -72,9 +69,6 @@ export function ItemForm({
         stackable: initialItem?.stackable ?? true,
         max_stack: initialItem?.max_stack ?? 100,
         weight: initialItem?.weight ?? null,
-        fivem_item_id: category === 'weapons' ? weaponId.trim() || null : null,
-        hash: showAdvanced ? hash.trim() || null : initialItem?.hash ?? null,
-        rarity: initialItem?.rarity ?? null,
       })
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
@@ -104,20 +98,21 @@ export function ItemForm({
 
         <div>
           <label className="mb-1 block text-xs text-white/60">Catégorie</label>
-          <GlassSelect value={category} onChange={(v) => setCategory(v as ItemCategory)} options={itemCategoryOptions} />
+          <GlassSelect
+            value={category}
+            onChange={(v) => {
+              const nextCategory = v as ItemCategory
+              setCategory(nextCategory)
+              setItemType(categoryTypeOptions[nextCategory][0].value)
+            }}
+            options={itemCategoryOptions}
+          />
         </div>
 
         <div>
           <label className="mb-1 block text-xs text-white/60">Type</label>
-          <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={itemTypeOptions} />
+          <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={typeOptions} />
         </div>
-
-        {category === 'weapons' ? (
-          <div>
-            <label className="mb-1 block text-xs text-white/60">ID arme</label>
-            <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
-          </div>
-        ) : null}
 
         <ImageDropzone label="Image (copier/coller ou PNG/JPEG)" onChange={setImageFile} />
 
@@ -139,25 +134,6 @@ export function ItemForm({
         <div className="md:col-span-2">
           <label className="mb-1 block text-xs text-white/60">Description</label>
           <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[90px]" />
-        </div>
-
-        <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-          <button type="button" className="flex w-full items-center justify-between" onClick={() => setShowAdvanced((v) => !v)}>
-            <span className="text-sm font-semibold">Avancé (RP/FiveM)</span>
-            <ChevronDown className={`h-4 w-4 transition ${showAdvanced ? 'rotate-180' : ''}`} />
-          </button>
-          {showAdvanced ? (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-white/60">fivem_item_id</label>
-                <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-white/60">hash</label>
-                <Input value={hash} onChange={(e) => setHash(e.target.value)} />
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
 
