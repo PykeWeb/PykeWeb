@@ -10,7 +10,7 @@ import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
-import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Crosshair, Wrench, Leaf, Wallet } from 'lucide-react'
+import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Crosshair, Wrench, Leaf, Wallet, PlusCircle } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -33,7 +33,7 @@ type Expense = { id: string; item_label: string; total: number; quantity: number
 type DrugItem = { id: string; name: string; stock: number; type: string }
 type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
 
-type QuickActionKey = 'purchase' | 'sale' | 'newExpense' | 'loans' | 'catalogue' | 'objects' | 'weapons' | 'expenses' | 'drugs' | 'transactions' | 'newWeapon' | 'newDrug' | 'newEquipment'
+type QuickActionKey = 'purchase' | 'sale' | 'newExpense' | 'itemTrade' | 'itemCreate' | 'newObject' | 'newWeapon' | 'newDrug' | 'newEquipment' | 'loans'
 type CardKey = 'objects' | 'weapons' | 'loans' | 'transactions' | 'expenses' | 'drugs' | 'catalogue' | 'equipment'
 
 type DashboardMetrics = {
@@ -50,19 +50,16 @@ type QuickActionOption = { key: QuickActionKey; title: string; subtitle: string;
 type CardOption = { key: CardKey; title: string; href: string; icon: LucideIcon; getValue: (metrics: DashboardMetrics) => string }
 
 const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
+  { key: 'newExpense', title: 'Nouvelle dépense', subtitle: 'Créer une dépense Finance', href: '/finance/depense/nouveau', icon: Wallet },
   { key: 'purchase', title: 'Nouvel achat', subtitle: 'Créer une entrée stock', href: '/transactions/nouveau?type=purchase', icon: ShoppingCart },
-  { key: 'sale', title: 'Nouvelle sortie', subtitle: 'Créer une vente/sortie', href: '/transactions/nouveau?type=sale', icon: ArrowUpRight },
-  { key: 'newExpense', title: 'Nouvelle dépense', subtitle: 'Ajouter une dépense à rembourser', href: '/finance/depense/nouveau', icon: Wallet },
-  { key: 'loans', title: 'Prêts en cours', subtitle: 'Suivre les prêts actifs', href: '/armes/prets', icon: Handshake },
-  { key: 'catalogue', title: 'Catalogue', subtitle: 'Voir tous les objets', href: '/objets', icon: FolderOpen },
-  { key: 'objects', title: 'Objets', subtitle: 'Catalogue objets', href: '/objets', icon: Box },
-  { key: 'weapons', title: 'Armes', subtitle: 'Gestion des armes', href: '/armes', icon: Crosshair },
-  { key: 'transactions', title: 'Transactions', subtitle: 'Historique des transactions', href: '/transactions', icon: Receipt },
-  { key: 'expenses', title: 'Dépenses', subtitle: 'Suivre les dépenses', href: '/depenses', icon: Receipt },
-  { key: 'drugs', title: 'Drogues', subtitle: 'Catalogue drogues', href: '/drogues', icon: Leaf },
+  { key: 'sale', title: 'Nouvelle vente/sortie', subtitle: 'Sortir un item du stock', href: '/transactions/nouveau?type=sale', icon: ArrowUpRight },
+  { key: 'itemCreate', title: 'Créer un item', subtitle: 'Ouvrir le formulaire item', href: '/items?action=create', icon: PlusCircle },
+  { key: 'itemTrade', title: 'Achat/Vente items', subtitle: 'Ouvrir l’outil Items', href: '/items?action=trade', icon: Receipt },
+  { key: 'newObject', title: 'Nouvel objet', subtitle: 'Créer une entrée objet', href: '/objets/nouveau', icon: Box },
   { key: 'newWeapon', title: 'Nouvelle arme', subtitle: 'Créer une entrée arme', href: '/armes/nouveau', icon: Crosshair },
-  { key: 'newDrug', title: 'Nouveau produit', subtitle: 'Créer un item drogue', href: '/drogues/nouveau', icon: Leaf },
   { key: 'newEquipment', title: 'Nouvel équipement', subtitle: 'Créer un équipement', href: '/equipement/nouveau', icon: Wrench },
+  { key: 'newDrug', title: 'Nouveau produit', subtitle: 'Créer un item drogue', href: '/drogues/nouveau', icon: Leaf },
+  { key: 'loans', title: 'Prêts en cours', subtitle: 'Suivre les prêts actifs', href: '/armes/prets', icon: Handshake },
 ]
 const CARD_OPTIONS: CardOption[] = [
   { key: 'objects', title: 'Objets', href: '/objets', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.objectCount)) },
@@ -100,7 +97,7 @@ export function DashboardClient() {
   const [supportOpen, setSupportOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const pressTimerRef = useRef<number | null>(null)
-  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['purchase', 'sale', 'newExpense', 'loans', 'catalogue'])
+  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'purchase', 'sale', 'itemCreate', 'itemTrade'])
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['objects', 'weapons', 'loans', 'transactions'])
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)

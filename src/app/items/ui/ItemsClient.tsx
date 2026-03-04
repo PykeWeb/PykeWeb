@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Calculator, Factory, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
@@ -71,6 +72,7 @@ export default function ItemsClient() {
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
+  const searchParams = useSearchParams()
 
   const refresh = useCallback(async () => {
     setItems(await listCatalogItemsUnified())
@@ -111,6 +113,13 @@ export default function ItemsClient() {
       return `${it.name} ${it.internal_id} ${it.description || ''}`.toLowerCase().includes(q)
     })
   }, [items, managerCategory, managerType, managerQuery])
+
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (action === 'create') setOpenCreate(true)
+    if (action === 'trade') setOpenTrade(true)
+  }, [searchParams])
 
   useEffect(() => {
     if (!openManager) return

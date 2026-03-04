@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Image as ImageIcon } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Image as ImageIcon } from 'lucide-react'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
-import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
@@ -67,9 +67,9 @@ export function FinanceItemTradeModal({
   const typeOptions = useMemo(() => {
     if (category === 'all') {
       const values = Array.from(new Set(items.map((it) => it.item_type)))
-      return [{ value: 'all', label: 'Tous les types' }, ...values.map((value) => ({ value, label: getTypeLabel(value) }))]
+      return [{ value: 'all', label: copy.common.allTypes }, ...values.map((value) => ({ value, label: getTypeLabel(value) }))]
     }
-    return [{ value: 'all', label: 'Tous les types' }, ...categoryTypeOptions[category]]
+    return [{ value: 'all', label: copy.common.allTypes }, ...categoryTypeOptions[category]]
   }, [category, items])
 
   const filtered = useMemo(
@@ -101,8 +101,8 @@ export function FinanceItemTradeModal({
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
       <div className="mx-auto w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
         <CenteredFormLayout
-          title="Achat / Vente"
-          subtitle="Formulaire unifié"
+          title={copy.finance.trade.title}
+          subtitle={copy.finance.trade.subtitle}
           actions={
             <>
               <SecondaryButton onClick={onClose}>{copy.common.cancel}</SecondaryButton>
@@ -122,25 +122,37 @@ export function FinanceItemTradeModal({
                   }
                 }}
               >
-                {copy.finance.actions.validate}
+                {saving ? copy.finance.trade.saveInProgress : copy.finance.actions.validate}
               </PrimaryButton>
             </>
           }
           actionsPlacement="bottom-right"
         >
           <div className="grid gap-3 md:grid-cols-2">
-            {enableModeSelect ? (
-              <div>
-                <label className="mb-1 block text-xs text-white/60">Mode</label>
-                <GlassSelect value={tradeMode} onChange={(v) => setTradeMode(v as 'buy' | 'sell')} options={[{ value: 'buy', label: 'Achat' }, { value: 'sell', label: 'Vente' }]} />
-              </div>
-            ) : null}
             <div>
-              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.category}</label>
-              <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: 'Toutes' }, ...itemCategoryOptions]} />
+              <label className="mb-1 block text-xs text-white/60">Mode</label>
+              {enableModeSelect ? (
+                <div className="flex flex-wrap gap-2">
+                  <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
+                    <ArrowDownRight className="h-4 w-4" />
+                    {copy.finance.trade.modeBuy}
+                  </TabPill>
+                  <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
+                    <ArrowUpRight className="h-4 w-4" />
+                    {copy.finance.trade.modeSell}
+                  </TabPill>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/80">{tradeMode === 'buy' ? copy.finance.trade.modeBuy : copy.finance.trade.modeSell}</div>
+              )}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-white/60">Type (optionnel)</label>
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.category}</label>
+              <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.finance.trade.typeOptional}</label>
               <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
             </div>
             <div>
@@ -149,7 +161,8 @@ export function FinanceItemTradeModal({
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/75 md:col-span-2">
-              <div className="flex items-center gap-3">
+              <p className="text-xs uppercase tracking-wide text-white/55">{copy.finance.trade.selectedItem}</p>
+              <div className="mt-2 flex items-center gap-3">
                 <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
                   {selected?.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -159,8 +172,10 @@ export function FinanceItemTradeModal({
                   )}
                 </div>
                 <div>
-                  <div className="font-semibold text-white">{selected?.name || '—'}</div>
-                  <div>Type: <span className="text-white">{selected ? getTypeLabel(selected.item_type, selected.category) : '—'}</span> · Stock actuel: <span className="text-white">{selected?.stock ?? 0}</span></div>
+                  <div className="font-semibold text-white">{selected?.name || copy.finance.trade.noItem}</div>
+                  <div>
+                    Type: <span className="text-white">{selected ? getTypeLabel(selected.item_type, selected.category) : '—'}</span> · {copy.finance.trade.stockNow}: <span className="text-white">{selected?.stock ?? 0}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -179,7 +194,7 @@ export function FinanceItemTradeModal({
             </div>
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.notes}</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[70px]" />
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[96px]" />
             </div>
           </div>
 

@@ -51,6 +51,7 @@ export function Sidebar() {
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'objects', 'weapons', 'equipment', 'drugs', 'expenses', 'finance', 'items'])
   const [hiddenCategoryNav, setHiddenCategoryNav] = useState<string[]>([])
+  const [hiddenCategoriesReady, setHiddenCategoriesReady] = useState(false)
 
   const [categoryVisibilityScope, setCategoryVisibilityScope] = useState<'global' | 'group'>('global')
   const [adminGroups, setAdminGroups] = useState<GroupSummary[]>([])
@@ -90,6 +91,7 @@ export function Sidebar() {
   }, [isAdmin, adminTargetGroupId])
 
   useEffect(() => {
+    setHiddenCategoriesReady(false)
     void (async () => {
       if (!isAdmin) {
         const [globalHidden, groupHidden] = await Promise.all([
@@ -97,18 +99,21 @@ export function Sidebar() {
           getLayoutOrder(HIDDEN_CATEGORIES_KEY, 'group'),
         ])
         setHiddenCategoryNav(mergeUnique([...globalHidden, ...groupHidden]))
+        setHiddenCategoriesReady(true)
         return
       }
 
       const scopeType = categoryVisibilityScope
       if (scopeType === 'group' && !adminTargetGroupId) {
         setHiddenCategoryNav([])
+        setHiddenCategoriesReady(true)
         return
       }
       const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
       const hidden = await getLayoutOrder(HIDDEN_CATEGORIES_KEY, scopeType, scopeId)
       setHiddenCategoryNav(hidden)
-    })().catch(() => setHiddenCategoryNav([]))
+      setHiddenCategoriesReady(true)
+    })().catch(() => { setHiddenCategoryNav([]); setHiddenCategoriesReady(true) })
   }, [isAdmin, groupId, categoryVisibilityScope, adminTargetGroupId])
 
   const accessLabel = useMemo(() => {
@@ -134,6 +139,7 @@ export function Sidebar() {
   const visibleUserNavLinks = userNavLinks.filter((link) => {
     const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs' || link.id === 'expenses'
     if (!isCategory) return true
+    if (!hiddenCategoriesReady) return false
     return !hiddenCategoryNav.includes(link.id)
   })
 

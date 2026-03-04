@@ -81,8 +81,8 @@ export function ItemForm({
 
   return (
     <CenteredFormLayout
-      title={initialItem ? 'Modifier l’item' : 'Créer un item'}
-      subtitle="Formulaire unifié"
+      title={initialItem ? 'Modifier l’item' : copy.common.createItem}
+      subtitle={copy.itemForm.labels.unifiedSubtitle}
       actions={
         <>
           <SecondaryButton onClick={onCancel}>{copy.common.cancel}</SecondaryButton>
@@ -91,58 +91,62 @@ export function ItemForm({
       }
       actionsPlacement="bottom-right"
     >
-      <div className="grid gap-3 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Nom</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'item" />
-          {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Catégorie</label>
-          <GlassSelect
-            value={category}
-            onChange={(v) => {
-              const nextCategory = v as ItemCategory
-              setCategory(nextCategory)
-              setItemType(categoryTypeOptions[nextCategory][0].value)
-            }}
-            options={itemCategoryOptions}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Type</label>
-          <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={typeOptions} />
-        </div>
-
-        {category === 'weapons' ? (
+      <div className="grid gap-4">
+        <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs text-white/60">ID (arme)</label>
-            <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.name}</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'item" />
+            {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
           </div>
-        ) : null}
 
-        <ImageDropzone label="Image (copier/coller ou PNG/JPEG)" onChange={setImageFile} />
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.category}</label>
+            <GlassSelect
+              value={category}
+              onChange={(v) => {
+                const nextCategory = v as ItemCategory
+                setCategory(nextCategory)
+                setItemType(categoryTypeOptions[nextCategory][0].value)
+              }}
+              options={itemCategoryOptions}
+            />
+          </div>
 
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Prix achat</label>
-          <Input value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} inputMode="decimal" />
-        </div>
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.type}</label>
+            <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={typeOptions} />
+          </div>
 
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Prix vente</label>
-          <Input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} inputMode="decimal" />
-        </div>
+          {category === 'weapons' ? (
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.weaponId}</label>
+              <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
+            </div>
+          ) : null}
 
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Stock initial</label>
-          <Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
-        </div>
+          <div className="md:col-span-2">
+            <ImageDropzone label={copy.itemForm.labels.image} onChange={setImageFile} />
+          </div>
 
-        <div className="md:col-span-2">
-          <label className="mb-1 block text-xs text-white/60">Description</label>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[90px]" />
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.buyPrice}</label>
+            <Input value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} inputMode="decimal" />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.sellPrice}</label>
+            <Input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} inputMode="decimal" />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.initialStock}</label>
+            <Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.description}</label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[110px]" />
+          </div>
         </div>
       </div>
 

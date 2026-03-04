@@ -164,7 +164,7 @@ export default function FinanceClient() {
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
         <table className="w-full text-sm">
-          <thead className="bg-white/[0.03] text-white/70"><tr><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Catégorie</th><th className="px-4 py-3 text-left">Item / Interlocuteur</th><th className="px-4 py-3 text-left">Qté</th><th className="px-4 py-3 text-left">Montant</th><th className="px-4 py-3 text-left">Date</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
+          <thead className="bg-white/[0.03] text-white/70"><tr><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Catégorie</th><th className="px-4 py-3 text-left">Item / Interlocuteur</th><th className="px-4 py-3 text-left">Qté</th><th className="px-4 py-3 text-left">Montant</th><th className="px-4 py-3 text-left">Date</th><th className="px-4 py-3 text-right"></th></tr></thead>
           <tbody className="divide-y divide-white/10">
             {loading ? <tr><td colSpan={7} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr> : null}
             {!loading && filtered.length === 0 ? <tr><td colSpan={7} className="px-4 py-8 text-center text-white/60">Aucun mouvement.</td></tr> : null}
@@ -191,11 +191,7 @@ export default function FinanceClient() {
                   <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>
                   <td className="px-4 py-3 text-white/70">{new Date(entry.created_at).toLocaleString()}</td>
                   <td className="px-4 py-3">
-                    {canManageExpense ? (
-                      <div className="text-right text-xs text-white/65">Cliquer pour gérer</div>
-                    ) : (
-                      <div className="text-right text-xs text-white/40">—</div>
-                    )}
+                    {canManageExpense ? null : <div className="text-right text-xs text-white/40">—</div>}
                   </td>
                 </tr>
               )
