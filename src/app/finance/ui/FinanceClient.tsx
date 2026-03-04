@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Receipt, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
-import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
+import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
 import { createFinanceTransaction } from '@/lib/itemsApi'
@@ -78,11 +78,6 @@ export default function FinanceClient() {
 
   return (
     <Panel>
-      <div className="mb-4 flex items-center justify-end gap-2">
-        <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
-        <PrimaryButton onClick={() => setTradeMode('buy')}>Achat / Vente</PrimaryButton>
-      </div>
-
       <div className="grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses en attente</p><p className="mt-1 text-xl font-semibold">{pendingExpenses.toFixed(2)} $</p></div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses remboursées</p><p className="mt-1 text-xl font-semibold">{paidExpenses.toFixed(2)} $</p></div>
@@ -92,8 +87,16 @@ export default function FinanceClient() {
 
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
         <SearchInput value={q} onChange={(e) => { setQ(e.target.value); setSelectedCounterparty(null) }} placeholder="Recherche (item / interlocuteur / note)" className="w-[360px]" />
-        <GlassSelect value={type} onChange={(v) => setType(v as FilterType)} options={[{ value: 'all', label: 'Tous les types' }, { value: 'expense', label: 'Dépense' }, { value: 'purchase', label: 'Achat' }, { value: 'sale', label: 'Vente / Sortie' }]} />
         <GlassSelect value={category} onChange={(v) => setCategory(v as FilterCategory)} options={[{ value: 'all', label: 'Toutes catégories' }, { value: 'objects', label: 'Objets' }, { value: 'weapons', label: 'Armes' }, { value: 'equipment', label: 'Équipement' }, { value: 'drugs', label: 'Drogues' }, { value: 'custom', label: 'Custom' }]} />
+        <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
+        <PrimaryButton onClick={() => setTradeMode('buy')}>Achat / Vente</PrimaryButton>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
+        <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
+        <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
+        <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">

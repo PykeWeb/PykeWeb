@@ -101,6 +101,10 @@ export function Sidebar() {
       }
 
       const scopeType = categoryVisibilityScope
+      if (scopeType === 'group' && !adminTargetGroupId) {
+        setHiddenCategoryNav([])
+        return
+      }
       const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
       const hidden = await getLayoutOrder(HIDDEN_CATEGORIES_KEY, scopeType, scopeId)
       setHiddenCategoryNav(hidden)
@@ -130,7 +134,6 @@ export function Sidebar() {
   const visibleUserNavLinks = userNavLinks.filter((link) => {
     const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs'
     if (!isCategory) return true
-    if (link.active) return true
     return !hiddenCategoryNav.includes(link.id)
   })
 
@@ -144,6 +147,7 @@ export function Sidebar() {
   function updateHidden(next: string[]) {
     setHiddenCategoryNav(next)
     const scopeType = categoryVisibilityScope
+    if (scopeType === 'group' && !adminTargetGroupId) return
     const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
     void saveLayoutOrder(HIDDEN_CATEGORIES_KEY, next, scopeType, scopeId)
   }
