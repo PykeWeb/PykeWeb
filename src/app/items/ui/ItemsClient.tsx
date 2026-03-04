@@ -142,7 +142,9 @@ export default function ItemsClient() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
                     ) : (
-                      <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                      <div className="grid h-full w-full place-items-center text-white/40">
+                        <ImageIcon className="h-4 w-4" />
+                      </div>
                     )}
                   </div>
                 </td>
