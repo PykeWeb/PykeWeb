@@ -38,15 +38,18 @@ export function Sidebar() {
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
   const [groupBadge, setGroupBadge] = useState('GROUPE')
+  const [groupId, setGroupId] = useState<string>('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'objects', 'weapons', 'equipment', 'drugs', 'expenses', 'finance', 'items'])
   const [hiddenCategoryNav, setHiddenCategoryNav] = useState<string[]>([])
+  const [categoryVisibilityScope, setCategoryVisibilityScope] = useState<'global' | 'group'>('global')
 
   useEffect(() => {
     const session = getTenantSession()
     setGroupName(session?.groupName || 'Groupe')
     setGroupBadge(session?.groupBadge || 'GROUPE')
+    setGroupId(session?.groupId || '')
     setIsAdmin(Boolean(session?.isAdmin))
   }, [])
 
@@ -60,16 +63,34 @@ export function Sidebar() {
   }, [isAdmin])
 
   useEffect(() => {
-    if (typeof window === 'undefined' || isAdmin) return
-    const raw = window.localStorage.getItem('pyke.hiddenCategoryNav')
-    if (!raw) return
-    try {
-      const parsed = JSON.parse(raw) as string[]
-      if (Array.isArray(parsed)) setHiddenCategoryNav(parsed)
-    } catch {
-      // ignore
+    if (typeof window === 'undefined') return
+    const scope = isAdmin ? categoryVisibilityScope : 'group'
+    const groupKey = groupId ? `pyke.hiddenCategoryNav.group.${groupId}` : null
+    const globalRaw = window.localStorage.getItem('pyke.hiddenCategoryNav.global')
+    const scopedRaw = scope === 'global'
+      ? globalRaw
+      : (groupKey ? window.localStorage.getItem(groupKey) : window.localStorage.getItem('pyke.hiddenCategoryNav'))
+
+    const parse = (raw: string | null) => {
+      if (!raw) return [] as string[]
+      try {
+        const parsed = JSON.parse(raw) as string[]
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
     }
-  }, [isAdmin])
+
+    if (isAdmin) {
+      setHiddenCategoryNav(parse(scopedRaw))
+      return
+    }
+
+    const globalHidden = parse(globalRaw)
+    const groupHidden = parse(scopedRaw)
+    const merged = Array.from(new Set([...globalHidden, ...groupHidden]))
+    setHiddenCategoryNav(merged)
+  }, [isAdmin, groupId, categoryVisibilityScope])
 
   const accessLabel = useMemo(() => {
     if (!accessInfo) return '—'
@@ -153,33 +174,60 @@ export function Sidebar() {
               }))}
             />
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/70">
-              <p className="mb-2 font-semibold text-white/85">Afficher les catégories</p>
-              <div className="grid grid-cols-2 gap-2">
-                {categoryToggles.map((row) => {
-                  const checked = !hiddenCategoryNav.includes(row.id)
-                  return (
-                    <label key={row.id} className="inline-flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          const next = e.target.checked
-                            ? hiddenCategoryNav.filter((id) => id !== row.id)
-                            : [...hiddenCategoryNav, row.id]
-                          setHiddenCategoryNav(next)
-                          if (typeof window !== 'undefined') window.localStorage.setItem('pyke.hiddenCategoryNav', JSON.stringify(next))
-                        }}
-                        className="h-4 w-4 rounded border-white/20 bg-white/5"
-                      />
-                      {row.label}
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
+            
           </>
         )}
+
+        {isAdmin ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/70">
+            <p className="mb-2 font-semibold text-white/85">Afficher les catégories</p>
+            <div className="mb-3 flex items-center gap-3">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={categoryVisibilityScope === 'global'}
+                  onChange={() => setCategoryVisibilityScope('global')}
+                />
+                Tous les groupes
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={categoryVisibilityScope === 'group'}
+                  onChange={() => setCategoryVisibilityScope('group')}
+                />
+                Groupe courant
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {categoryToggles.map((row) => {
+                const checked = !hiddenCategoryNav.includes(row.id)
+                return (
+                  <label key={row.id} className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? hiddenCategoryNav.filter((id) => id !== row.id)
+                          : [...hiddenCategoryNav, row.id]
+                        setHiddenCategoryNav(next)
+                        if (typeof window !== 'undefined') {
+                          const key = categoryVisibilityScope === 'global'
+                            ? 'pyke.hiddenCategoryNav.global'
+                            : (groupId ? `pyke.hiddenCategoryNav.group.${groupId}` : 'pyke.hiddenCategoryNav')
+                          window.localStorage.setItem(key, JSON.stringify(next))
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5"
+                    />
+                    {row.label}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
       </div>
     </aside>
   )

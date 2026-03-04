@@ -25,6 +25,7 @@ export default function FinanceClient() {
   const [type, setType] = useState<FilterType>('all')
   const [category, setCategory] = useState<FilterCategory>('all')
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell' | null>(null)
+  const [selectedCounterparty, setSelectedCounterparty] = useState<string | null>(null)
 
   async function refresh() {
     try {
@@ -88,7 +89,7 @@ export default function FinanceClient() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-        <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Recherche (item / interlocuteur / note)" className="w-[360px]" />
+        <SearchInput value={q} onChange={(e) => { setQ(e.target.value); setSelectedCounterparty(null) }} placeholder="Recherche (item / interlocuteur / note)" className="w-[360px]" />
         <GlassSelect value={type} onChange={(v) => setType(v as FilterType)} options={[{ value: 'all', label: 'Tous les types' }, { value: 'expense', label: 'Dépense' }, { value: 'purchase', label: 'Achat' }, { value: 'sale', label: 'Vente / Sortie' }]} />
         <GlassSelect value={category} onChange={(v) => setCategory(v as FilterCategory)} options={[{ value: 'all', label: 'Toutes catégories' }, { value: 'objects', label: 'Objets' }, { value: 'weapons', label: 'Armes' }, { value: 'equipment', label: 'Équipement' }, { value: 'drugs', label: 'Drogues' }, { value: 'custom', label: 'Custom' }]} />
       </div>
@@ -114,7 +115,18 @@ export default function FinanceClient() {
       </div>
 
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <h3 className="text-sm font-semibold">Stats interlocuteurs</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Stats interlocuteurs</h3>
+          {selectedCounterparty ? (
+            <button
+              type="button"
+              onClick={() => { setQ(''); setSelectedCounterparty(null) }}
+              className="rounded-lg border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80 hover:bg-white/10"
+            >
+              Retour à tous
+            </button>
+          ) : null}
+        </div>
         {counterpartyStats.length === 0 ? <p className="mt-2 text-xs text-white/60">Aucune transaction avec interlocuteur pour le filtre actuel.</p> : null}
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {counterpartyStats.map((row) => (
@@ -122,7 +134,10 @@ export default function FinanceClient() {
               key={row.name}
               type="button"
               className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left hover:bg-white/[0.08]"
-              onClick={() => setQ(row.name)}
+              onClick={() => {
+                setQ(row.name)
+                setSelectedCounterparty(row.name)
+              }}
             >
               <div className="text-sm font-semibold">{row.name}</div>
               <div className="text-xs text-white/65">{row.count} transaction(s) · {row.total.toFixed(2)} $</div>

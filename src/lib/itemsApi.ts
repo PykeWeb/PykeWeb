@@ -416,29 +416,46 @@ async function upsertLegacyMirror(args: { category: ItemCategory; name: string; 
   }
 }
 
-async function deleteLegacyMirror(args: { category: ItemCategory; name: string; internal_id?: string | null }): Promise<'deleted' | 'fk_blocked'> {
+async function deleteLegacyMirror(args: { category: ItemCategory; name: string; internal_id?: string | null }): Promise<'deleted' | 'fk_blocked' | 'not_found'> {
   const groupId = currentGroupId()
   const legacy = parseLegacyInternalId(args.internal_id)
 
-  const runDelete = async (table: 'objects' | 'weapons' | 'equipment' | 'drug_items', byId?: string) => {
-    const query = supabase.from(table).delete().eq('group_id', groupId)
-    const { error } = byId ? await query.eq('id', byId) : await query.eq('name', args.name)
-    if (!error) return 'deleted' as const
+  const runDelete = async (
+    table: 'objects' | 'weapons' | 'equipment' | 'drug_items',
+    matcher: { byId?: string; byName?: string; byWeaponId?: string }
+  ) => {
+    const base = supabase.from(table).delete().eq('group_id', groupId)
+    const query = matcher.byId
+      ? base.eq('id', matcher.byId)
+      : matcher.byWeaponId
+        ? base.eq('weapon_id', matcher.byWeaponId)
+        : base.eq('name', matcher.byName || args.name)
+
+    const { data, error } = await query.select('id')
+    if (!error) {
+      if (!data || data.length === 0) return 'not_found' as const
+      return 'deleted' as const
+    }
     if (error.code === '23503') return 'fk_blocked' as const
     throw error
   }
 
   if (legacy?.category === args.category && legacy.category !== 'custom') {
     const table = legacy.category === 'drugs' ? 'drug_items' : legacy.category
-    return runDelete(table, legacy.sourceId)
+    return runDelete(table, { byId: legacy.sourceId, byWeaponId: legacy.category === 'weapons' ? legacy.sourceId : undefined })
   }
 
-  if (args.category === 'objects') return runDelete('objects')
-  if (args.category === 'equipment') return runDelete('equipment')
-  if (args.category === 'weapons') return runDelete('weapons')
-  if (args.category === 'drugs') return runDelete('drug_items')
-  return 'deleted'
+  if (args.category === 'objects') return runDelete('objects', { byName: args.name })
+  if (args.category === 'equipment') return runDelete('equipment', { byName: args.name })
+  if (args.category === 'drugs') return runDelete('drug_items', { byName: args.name })
+  if (args.category === 'weapons') {
+    const byName = await runDelete('weapons', { byName: args.name })
+    if (byName !== 'not_found') return byName
+    return runDelete('weapons', { byWeaponId: args.name })
+  }
+  return 'not_found'
 }
+
 
 
 export type UpdateCatalogItemInput = CreateCatalogItemInput & { id: string }
@@ -549,12 +566,13 @@ export async function deleteCatalogItem(itemId: string) {
   const groupId = currentGroupId()
   const { data: current } = await supabase
     .from('catalog_items')
-    .select('name,category,internal_id')
+    .select('name,category,internal_id,is_active')
     .eq('group_id', groupId)
     .eq('id', resolved)
-    .maybeSingle<{ name: string; category: ItemCategory; internal_id: string | null }>()
+    .maybeSingle<{ name: string; category: ItemCategory; internal_id: string | null; is_active: boolean | null }>()
 
   if (!current) throw new Error('Impossible de supprimer: item introuvable.')
+  if (current.is_active === false) throw new Error('Cet item est déjà supprimé pour ce groupe.')
 
   const legacyResult = await deleteLegacyMirror({
     category: current.category,
@@ -562,26 +580,22 @@ export async function deleteCatalogItem(itemId: string) {
     internal_id: current.internal_id,
   })
 
-  if (legacyResult === 'fk_blocked') {
-    const { error: hideErr } = await supabase
-      .from('catalog_items')
-      .update({ is_active: false, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('group_id', groupId)
-      .eq('id', resolved)
-    if (hideErr) throw hideErr
-    return { mode: 'hidden' as const }
-  }
-
-  const { data, error } = await supabase
+  const { error: hideErr } = await supabase
     .from('catalog_items')
-    .delete()
+    .update({ is_active: false, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('group_id', groupId)
     .eq('id', resolved)
-    .select('id')
+    .eq('is_active', true)
 
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error('Impossible de supprimer: item introuvable.')
-  return { mode: 'deleted' as const }
+  if (hideErr) throw hideErr
+
+  if (legacyResult === 'fk_blocked') {
+    return { mode: 'hidden' as const, detail: 'Item masqué pour ce groupe (historique lié).' }
+  }
+  if (legacyResult === 'not_found') {
+    return { mode: 'hidden' as const, detail: 'Item masqué pour ce groupe.' }
+  }
+  return { mode: 'deleted' as const, detail: 'Item supprimé pour ce groupe.' }
 }
 
 

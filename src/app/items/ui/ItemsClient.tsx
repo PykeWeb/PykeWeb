@@ -160,7 +160,7 @@ export default function ItemsClient() {
                   setItems((rows) => rows.filter((x) => x.id !== deletingItem.id))
                   try {
                     const result = await deleteCatalogItem(deletingItem.id)
-                    toast.success(result.mode === 'hidden' ? 'Item masqué pour ce groupe (déjà utilisé dans des transactions).' : 'Item supprimé.')
+                    toast.success(result.detail || (result.mode === 'hidden' ? 'Item masqué pour ce groupe.' : 'Item supprimé.'))
                     setDeletingItem(null)
                   } catch (error: unknown) {
                     setItems(previous)
