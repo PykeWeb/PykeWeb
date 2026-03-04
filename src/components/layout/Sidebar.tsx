@@ -101,6 +101,10 @@ export function Sidebar() {
       }
 
       const scopeType = categoryVisibilityScope
+      if (scopeType === 'group' && !adminTargetGroupId) {
+        setHiddenCategoryNav([])
+        return
+      }
       const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
       const hidden = await getLayoutOrder(HIDDEN_CATEGORIES_KEY, scopeType, scopeId)
       setHiddenCategoryNav(hidden)
@@ -128,9 +132,8 @@ export function Sidebar() {
   ]
 
   const visibleUserNavLinks = userNavLinks.filter((link) => {
-    const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs'
+    const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs' || link.id === 'expenses'
     if (!isCategory) return true
-    if (link.active) return true
     return !hiddenCategoryNav.includes(link.id)
   })
 
@@ -139,11 +142,13 @@ export function Sidebar() {
     { id: 'weapons', label: labels.nav_armes || 'Armes' },
     { id: 'equipment', label: labels.nav_equipement || 'Équipement' },
     { id: 'drugs', label: labels.nav_drogues || 'Drogues' },
+    { id: 'expenses', label: labels.nav_depenses || 'Dépenses' },
   ]
 
   function updateHidden(next: string[]) {
     setHiddenCategoryNav(next)
     const scopeType = categoryVisibilityScope
+    if (scopeType === 'group' && !adminTargetGroupId) return
     const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
     void saveLayoutOrder(HIDDEN_CATEGORIES_KEY, next, scopeType, scopeId)
   }

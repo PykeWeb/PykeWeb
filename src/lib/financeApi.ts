@@ -14,6 +14,7 @@ export type FinanceEntry = {
   quantity: number
   amount: number | null
   expense_status?: 'pending' | 'paid' | null
+  expense_unit_price?: number | null
   payment_mode?: string | null
   notes?: string | null
   created_at: string
@@ -28,7 +29,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   const [expensesRes, txRes, customTxRes] = await Promise.all([
     supabase
       .from('expenses')
-      .select('id,item_source,item_label,member_name,quantity,total,status,description,created_at')
+      .select('id,item_source,item_label,member_name,quantity,total,unit_price,status,description,created_at')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
@@ -64,6 +65,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       amount: Number(e.total ?? 0),
       expense_status: (e.status as 'pending' | 'paid') || 'pending',
       notes: e.description || null,
+      expense_unit_price: Number(e.unit_price ?? 0),
       created_at: e.created_at,
     })
   }
@@ -84,6 +86,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       expense_status: null,
       notes: tx.notes,
       created_at: tx.created_at,
+      expense_unit_price: null,
     })
   }
 
@@ -104,6 +107,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       payment_mode: row.payment_mode,
       notes: row.notes,
       created_at: row.created_at,
+      expense_unit_price: null,
     })
   }
 

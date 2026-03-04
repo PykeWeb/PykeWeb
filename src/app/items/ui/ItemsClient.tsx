@@ -1,12 +1,11 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Calculator, Image as ImageIcon } from 'lucide-react'
+import { Calculator, Factory, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
-import { DangerButton, PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
+import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs, TabPill } from '@/components/ui/design-system'
 import { createCatalogItem, createFinanceTransaction, deleteCatalogItem, listCatalogItemsUnified, updateCatalogItem } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { ItemForm } from '@/components/ui/ItemForm'
@@ -17,12 +16,50 @@ import { getCategoryLabel, getTypeLabel, itemCategoryOptions } from '@/lib/catal
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
+type ItemsView = 'catalog' | 'tools'
+
+type PlantationRecipe = {
+  key: string
+  title: string
+  subtitle: string
+  requirements: { name: string; qty: number }[]
+  output: string
+}
+
+const plantationRecipes: PlantationRecipe[] = [
+  {
+    key: 'coke-leaf',
+    title: 'Plantation coke (1 pot)',
+    subtitle: '1 pot + 1 graine + 1 engrais + 3 eau = 1 feuille',
+    requirements: [
+      { name: 'Pot', qty: 1 },
+      { name: 'Graine de coke', qty: 1 },
+      { name: 'Engrais', qty: 1 },
+      { name: 'Eau', qty: 3 },
+    ],
+    output: 'Feuille de coke ×1',
+  },
+  {
+    key: 'meth',
+    title: 'Cook meth (1 batch)',
+    subtitle: 'Table + meth + batteries + chimie = 10 à 30 meth brut',
+    requirements: [
+      { name: 'Table', qty: 1 },
+      { name: 'Meth', qty: 1 },
+      { name: 'Batterie', qty: 2 },
+      { name: 'Ammoniaque', qty: 16 },
+      { name: 'Methylamine', qty: 15 },
+    ],
+    output: 'Meth brut (10 à 30)',
+  },
+]
 
 export default function ItemsClient() {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
+  const [view, setView] = useState<ItemsView>('catalog')
   const [openCreate, setOpenCreate] = useState(false)
   const [openTrade, setOpenTrade] = useState(false)
   const [openManager, setOpenManager] = useState(false)
@@ -34,7 +71,6 @@ export default function ItemsClient() {
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
-  const [showCalculator, setShowCalculator] = useState(false)
 
   const refresh = useCallback(async () => {
     setItems(await listCatalogItemsUnified())
@@ -86,115 +122,143 @@ export default function ItemsClient() {
   const selectedManagerItem = useMemo(() => managerFiltered.find((x) => x.id === managerSelectedId) || null, [managerFiltered, managerSelectedId])
 
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
-  const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, calcQuantity, drugItems), [calcMode, calcQuantity, drugItems])
+  const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
 
   return (
     <Panel>
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[200px]" />
-        <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
-        <SecondaryButton onClick={() => setOpenManager(true)}>Gérer items</SecondaryButton>
-        <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
-        <Link href="/drogues/plantations"><SecondaryButton>Plantations</SecondaryButton></Link>
-        <SecondaryButton onClick={() => setShowCalculator((prev) => !prev)}>{showCalculator ? "Masquer calculateur" : "Ouvrir calculateur"}</SecondaryButton>
-        <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SegmentedTabs
+          options={[
+            { value: 'catalog', label: 'Catalogue' },
+            { value: 'tools', label: 'Calculateur & plantations' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <SecondaryButton onClick={() => setOpenManager(true)}>Gérer items</SecondaryButton>
+          <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
+          <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setCategory('all')}
-          className={`rounded-xl border px-3 py-1.5 text-sm transition ${category === 'all' ? 'border-cyan-300/40 bg-cyan-500/15 text-cyan-100' : 'border-white/15 bg-white/5 text-white/75 hover:bg-white/10'}`}
-        >
-          Tous
-        </button>
-        {itemCategoryOptions.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setCategory(opt.value as CategoryFilter)}
-            className={`rounded-xl border px-3 py-1.5 text-sm transition ${category === opt.value ? 'border-cyan-300/40 bg-cyan-500/15 text-cyan-100' : 'border-white/15 bg-white/5 text-white/75 hover:bg-white/10'}`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      {view === 'catalog' ? (
+        <>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[240px]" />
+            <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
+          </div>
 
-      <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
-        {filtered.length === 0 ? <div className="p-6 text-center text-sm text-white/60">Aucun item trouvé pour ces filtres.</div> : null}
-        <table className="w-full text-sm">
-          <thead className="bg-white/[0.03] text-white/70">
-            <tr>
-              <th className="px-4 py-3 text-left">Image</th>
-              <th className="px-4 py-3 text-left">Nom</th>
-              <th className="px-4 py-3 text-left">Catégorie</th>
-              <th className="px-4 py-3 text-left">Type</th>
-              <th className="px-4 py-3 text-left">Stock</th>
-              <th className="px-4 py-3 text-left">Achat / Vente</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/10">
-            {filtered.map((it) => (
-              <tr key={it.id} className="hover:bg-white/[0.02]">
-                <td className="px-4 py-3">
-                  <div className="h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
-                    {it.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-white/40">
-                        <ImageIcon className="h-4 w-4" />
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 font-semibold">{it.name}</td>
-                <td className="px-4 py-3">{getCategoryLabel(it.category)}</td>
-                <td className="px-4 py-3">{getTypeLabel(it.item_type, it.category)}</td>
-                <td className="px-4 py-3">{it.stock}</td>
-                <td className="px-4 py-3">{it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $</td>
-              </tr>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <TabPill active={category === 'all'} onClick={() => setCategory('all')}>Tous</TabPill>
+            {itemCategoryOptions.map((opt) => (
+              <TabPill key={opt.value} active={category === opt.value} onClick={() => setCategory(opt.value as CategoryFilter)}>
+                {opt.label}
+              </TabPill>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
 
-      {showCalculator ? (
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <Calculator className="h-4 w-4" />
-          <h3 className="text-sm font-semibold">Calculateur drogue (Items)</h3>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Mode</label>
-            <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
+          <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
+            {filtered.length === 0 ? <div className="p-6 text-center text-sm text-white/60">Aucun item trouvé pour ces filtres.</div> : null}
+            <table className="w-full text-sm">
+              <thead className="bg-white/[0.03] text-white/70">
+                <tr>
+                  <th className="px-4 py-3 text-left">Image</th>
+                  <th className="px-4 py-3 text-left">Nom</th>
+                  <th className="px-4 py-3 text-left">Catégorie</th>
+                  <th className="px-4 py-3 text-left">Type</th>
+                  <th className="px-4 py-3 text-left">Stock</th>
+                  <th className="px-4 py-3 text-left">Achat / Vente</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {filtered.map((it) => (
+                  <tr key={it.id} className="hover:bg-white/[0.02]">
+                    <td className="px-4 py-3">
+                      <div className="h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
+                        {it.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-white/40">
+                            <ImageIcon className="h-4 w-4" />
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-semibold">{it.name}</td>
+                    <td className="px-4 py-3">{getCategoryLabel(it.category)}</td>
+                    <td className="px-4 py-3">{getTypeLabel(it.item_type, it.category)}</td>
+                    <td className="px-4 py-3">{it.stock}</td>
+                    <td className="px-4 py-3">{it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Quantité</label>
-            <input
-              value={String(calcQuantity)}
-              onChange={(e) => setCalcQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-              className="h-10 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm"
-              inputMode="numeric"
-            />
-          </div>
-          <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-sm">
-            Total connu: <span className="font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</span>
-          </div>
-        </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {drugCalculator.requirements.map((req) => (
-            <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
-              <div className="font-medium">{req.label}</div>
-              <div className="text-white/70">Qté: {req.qty} · PU: {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
-              <div className="text-white/80">Sous-total: {req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</div>
+        </>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Calculator className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">Calculateur drogue (Items)</h3>
             </div>
-          ))}
+            <div className="grid gap-3 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs text-white/60">Mode</label>
+                <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/60">Quantité</label>
+                <input
+                  value={String(calcQuantity)}
+                  onChange={(e) => setCalcQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                  className="h-10 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm"
+                  inputMode="numeric"
+                />
+              </div>
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-sm">
+                Total connu: <span className="font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</span>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {drugCalculator.requirements.map((req) => (
+                <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
+                  <div className="font-medium">{req.label}</div>
+                  <div className="text-white/70">Qté: {req.qty} · PU: {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
+                  <div className="text-white/80">Sous-total: {req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</div>
+                </div>
+              ))}
+            </div>
+            {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Factory className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">Contenu plantations</h3>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {plantationRecipes.map((recipe) => (
+                <div key={recipe.key} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                  <p className="text-sm font-semibold">{recipe.title}</p>
+                  <p className="mt-1 text-xs text-white/65">{recipe.subtitle}</p>
+                  <div className="mt-3 space-y-2 text-xs text-white/75">
+                    {recipe.requirements.map((req) => (
+                      <div key={req.name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                        <span>{req.name}</span>
+                        <span>× {req.qty}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">Output: {recipe.output}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
-      </div>
-      ) : null}
+      )}
 
       {openCreate ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
