@@ -6,7 +6,7 @@ import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
-import { listCatalogItems } from '@/lib/itemsApi'
+import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, FinancePaymentMode, ItemCategory } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
@@ -39,10 +39,9 @@ export function FinanceItemTradeModal({
   useEffect(() => {
     if (!open) return
     ;(async () => {
-      const rows = await listCatalogItems()
-      const visible = rows.filter((x) => x.is_active && x.show_in_finance)
-      setItems(visible)
-      const first = visible[0]
+      const rows = await listCatalogItemsUnified()
+      setItems(rows)
+      const first = rows[0]
       if (first) setItemId(first.id)
     })().catch((e: unknown) => setError(e instanceof Error ? e.message : copy.finance.errors.loadItemsFailed))
   }, [open])
