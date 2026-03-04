@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ClipboardEvent } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
@@ -9,7 +10,7 @@ import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
-import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Crosshair, Wrench, Leaf } from 'lucide-react'
+import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Crosshair, Wrench, Leaf, Wallet } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -32,11 +33,26 @@ type Expense = { id: string; item_label: string; total: number; quantity: number
 type DrugItem = { id: string; name: string; stock: number; type: string }
 type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
 
-type QuickActionKey = 'purchase' | 'loans' | 'catalogue' | 'objects' | 'weapons' | 'expenses' | 'drugs' | 'transactions'
+type QuickActionKey = 'purchase' | 'sale' | 'newExpense' | 'loans' | 'catalogue' | 'objects' | 'weapons' | 'expenses' | 'drugs' | 'transactions' | 'newWeapon' | 'newDrug' | 'newEquipment'
 type CardKey = 'objects' | 'weapons' | 'loans' | 'transactions' | 'expenses' | 'drugs' | 'catalogue' | 'equipment'
 
-const QUICK_ACTION_OPTIONS: { key: QuickActionKey; title: string; subtitle: string; href: string; icon: any }[] = [
+type DashboardMetrics = {
+  loading: boolean
+  objectCount: number
+  weaponCount: number
+  activeLoans: number
+  txToday: number
+  expenseCount: number
+  drugCount: number
+}
+
+type QuickActionOption = { key: QuickActionKey; title: string; subtitle: string; href: string; icon: LucideIcon }
+type CardOption = { key: CardKey; title: string; href: string; icon: LucideIcon; getValue: (metrics: DashboardMetrics) => string }
+
+const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'purchase', title: 'Nouvel achat', subtitle: 'Créer une entrée stock', href: '/transactions/nouveau?type=purchase', icon: ShoppingCart },
+  { key: 'sale', title: 'Nouvelle sortie', subtitle: 'Créer une vente/sortie', href: '/transactions/nouveau?type=sale', icon: ArrowUpRight },
+  { key: 'newExpense', title: 'Nouvelle dépense', subtitle: 'Ajouter une dépense à rembourser', href: '/finance/depense/nouveau', icon: Wallet },
   { key: 'loans', title: 'Prêts en cours', subtitle: 'Suivre les prêts actifs', href: '/armes/prets', icon: Handshake },
   { key: 'catalogue', title: 'Catalogue', subtitle: 'Voir tous les objets', href: '/objets', icon: FolderOpen },
   { key: 'objects', title: 'Objets', subtitle: 'Catalogue objets', href: '/objets', icon: Box },
@@ -44,8 +60,11 @@ const QUICK_ACTION_OPTIONS: { key: QuickActionKey; title: string; subtitle: stri
   { key: 'transactions', title: 'Transactions', subtitle: 'Historique des transactions', href: '/transactions', icon: Receipt },
   { key: 'expenses', title: 'Dépenses', subtitle: 'Suivre les dépenses', href: '/depenses', icon: Receipt },
   { key: 'drugs', title: 'Drogues', subtitle: 'Catalogue drogues', href: '/drogues', icon: Leaf },
+  { key: 'newWeapon', title: 'Nouvelle arme', subtitle: 'Créer une entrée arme', href: '/armes/nouveau', icon: Crosshair },
+  { key: 'newDrug', title: 'Nouveau produit', subtitle: 'Créer un item drogue', href: '/drogues/nouveau', icon: Leaf },
+  { key: 'newEquipment', title: 'Nouvel équipement', subtitle: 'Créer un équipement', href: '/equipement/nouveau', icon: Wrench },
 ]
-const CARD_OPTIONS: { key: CardKey; title: string; href: string; icon: any; getValue: (v: any) => string }[] = [
+const CARD_OPTIONS: CardOption[] = [
   { key: 'objects', title: 'Objets', href: '/objets', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.objectCount)) },
   { key: 'weapons', title: 'Armes', href: '/armes', icon: Crosshair, getValue: (v) => (v.loading ? '—' : String(v.weaponCount)) },
   { key: 'loans', title: 'Prêts en cours', href: '/armes/prets', icon: Handshake, getValue: (v) => (v.loading ? '—' : String(v.activeLoans)) },
@@ -81,7 +100,7 @@ export function DashboardClient() {
   const [supportOpen, setSupportOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const pressTimerRef = useRef<number | null>(null)
-  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['purchase', 'loans', 'catalogue'])
+  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['purchase', 'sale', 'newExpense', 'loans', 'catalogue'])
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['objects', 'weapons', 'loans', 'transactions'])
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
@@ -124,11 +143,17 @@ export function DashboardClient() {
       ])
       if (quickRes.ok) {
         const data = await quickRes.json()
-        if (Array.isArray(data.order) && data.order.length) setQuickActions(data.order)
+        if (Array.isArray(data.order) && data.order.length) {
+          const next = data.order.filter((key: unknown): key is QuickActionKey => QUICK_ACTION_OPTIONS.some((option) => option.key === key))
+          if (next.length) setQuickActions(next)
+        }
       }
       if (cardsRes.ok) {
         const data = await cardsRes.json()
-        if (Array.isArray(data.order) && data.order.length) setDashboardCards(data.order)
+        if (Array.isArray(data.order) && data.order.length) {
+          const next = data.order.filter((key: unknown): key is CardKey => CARD_OPTIONS.some((option) => option.key === key))
+          if (next.length) setDashboardCards(next)
+        }
       }
     })()
   }, [])
