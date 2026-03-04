@@ -28,7 +28,7 @@ export async function listObjects(): Promise<DbObject[]> {
   const groupId = currentGroupId()
   const [{ data: locals, error }, globalRes] = await Promise.all([
     supabase.from('objects').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId).order('created_at', { ascending: false }),
-    fetch('/api/catalog/items?category=object', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+    fetch('/api/catalog/items?category=objects', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
   ])
 
   if (error) throw error

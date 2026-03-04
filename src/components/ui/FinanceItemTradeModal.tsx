@@ -10,6 +10,7 @@ import { listCatalogItems } from '@/lib/itemsApi'
 import type { CatalogItem, FinancePaymentMode, ItemCategory } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
+import { itemCategoryOptions } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 
@@ -71,14 +72,7 @@ export function FinanceItemTradeModal({
             <GlassSelect
               value={category}
               onChange={(v) => setCategory(v as CategoryFilter)}
-              options={[
-                { value: 'all', label: 'Toutes' },
-                { value: 'objects', label: 'Objets' },
-                { value: 'weapons', label: 'Armes' },
-                { value: 'drugs', label: 'Drogues' },
-                { value: 'equipment', label: 'Équipements' },
-                { value: 'custom', label: 'Custom' },
-              ]}
+              options={[{ value: 'all', label: 'Toutes' }, ...itemCategoryOptions]}
             />
           </div>
           <div>

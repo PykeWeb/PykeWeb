@@ -35,7 +35,7 @@ function getExt(file: File) {
 export async function listWeapons(): Promise<DbWeapon[]> {
   const [{ data, error }, globalRes] = await Promise.all([
     supabase.from('weapons').select('id,weapon_id,name,description,image_url,stock,created_at').eq('group_id', currentGroupId()).order('created_at', { ascending: false }),
-    fetch('/api/catalog/items?category=weapon', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+    fetch('/api/catalog/items?category=weapons', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
   ])
   if (error) throw error
   const locals = (data ?? []) as DbWeapon[]

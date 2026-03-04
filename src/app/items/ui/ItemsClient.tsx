@@ -9,9 +9,9 @@ import { createCatalogItem, listCatalogItems } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
+import { itemCategoryOptions } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
-
 type TypeFilter = 'all' | ItemType
 
 export default function ItemsClient() {
@@ -23,53 +23,6 @@ export default function ItemsClient() {
 
   async function refresh() {
     setItems(await listCatalogItems())
-import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
-import { createCatalogItem, listGlobalCatalogItems, type CatalogCategory, type GlobalCatalogItem } from '@/lib/catalogApi'
-
-type CategoryFilter = 'all' | CatalogCategory
-
-const categoryOptions = [
-  { value: 'all', label: 'Toutes catégories' },
-  { value: 'objects', label: 'Objets' },
-  { value: 'weapons', label: 'Armes' },
-  { value: 'equipment', label: 'Équipement' },
-  { value: 'drugs', label: 'Drogues' },
-]
-
-const drugTypeLabels: Record<string, string> = {
-  drug: 'Produit',
-  seed: 'Graine',
-  planting: 'Plantation',
-  pouch: 'Pochon / vente',
-}
-
-function categoryLabel(category: CatalogCategory) {
-  if (category === 'objects') return 'Objets'
-  if (category === 'weapons') return 'Armes'
-  if (category === 'equipment') return 'Équipement'
-  return 'Drogues'
-}
-
-function itemTypeLabel(item: GlobalCatalogItem) {
-  if (item.category === 'weapons') return item.weapon_id ? `ID ${item.weapon_id}` : '—'
-  if (item.category !== 'drugs') return '—'
-  return item.item_type ? drugTypeLabels[item.item_type] || item.item_type : 'Produit'
-}
-
-export default function ItemsClient() {
-  const [items, setItems] = useState<GlobalCatalogItem[]>([])
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<CategoryFilter>('all')
-  const [type, setType] = useState('all')
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [price, setPrice] = useState('0')
-  const [createCategory, setCreateCategory] = useState<CatalogCategory>('objects')
-  const [createType, setCreateType] = useState('drug')
-  const [weaponId, setWeaponId] = useState('')
-
-  async function refresh() {
-    setItems(await listGlobalCatalogItems())
   }
 
   useEffect(() => {
@@ -99,14 +52,7 @@ export default function ItemsClient() {
         <GlassSelect
           value={category}
           onChange={(v) => setCategory(v as CategoryFilter)}
-          options={[
-            { value: 'all', label: copy.common.allCategories },
-            { value: 'objects', label: 'Objets' },
-            { value: 'weapons', label: 'Armes' },
-            { value: 'drugs', label: 'Drogues' },
-            { value: 'equipment', label: 'Équipements' },
-            { value: 'custom', label: 'Custom' },
-          ]}
+          options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]}
         />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
@@ -134,7 +80,9 @@ export default function ItemsClient() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
                     ) : (
-                      <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                      <div className="grid h-full w-full place-items-center text-white/40">
+                        <ImageIcon className="h-4 w-4" />
+                      </div>
                     )}
                   </div>
                 </td>
@@ -142,7 +90,9 @@ export default function ItemsClient() {
                 <td className="px-4 py-3">{it.category}</td>
                 <td className="px-4 py-3">{it.item_type}</td>
                 <td className="px-4 py-3">{it.stock}</td>
-                <td className="px-4 py-3">{it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $</td>
+                <td className="px-4 py-3">
+                  {it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $
+                </td>
                 <td className="px-4 py-3 text-white/70">{it.internal_id}</td>
               </tr>
             ))}
