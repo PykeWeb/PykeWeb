@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Image as ImageIcon, Pencil, Trash2 } from 'lucide-react'
+import { Calculator, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
@@ -11,6 +11,7 @@ import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinan
 import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
 import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
+import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
 import { getCategoryLabel, getTypeLabel, itemCategoryOptions } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
@@ -23,8 +24,15 @@ export default function ItemsClient() {
   const [type, setType] = useState<TypeFilter>('all')
   const [openCreate, setOpenCreate] = useState(false)
   const [openTrade, setOpenTrade] = useState(false)
+  const [openManager, setOpenManager] = useState(false)
+  const [managerQuery, setManagerQuery] = useState('')
+  const [managerCategory, setManagerCategory] = useState<CategoryFilter>('all')
+  const [managerType, setManagerType] = useState<TypeFilter>('all')
+  const [managerSelectedId, setManagerSelectedId] = useState('')
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null)
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
+  const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
+  const [calcQuantity, setCalcQuantity] = useState(1)
 
   const refresh = useCallback(async () => {
     setItems(await listCatalogItemsUnified())
@@ -36,7 +44,7 @@ export default function ItemsClient() {
 
   const typeOptions = useMemo(() => {
     const pool = items.filter((x) => (category === 'all' ? true : x.category === category))
-    const dynamicTypes = Array.from(new Set(pool.map((x) => x.item_type))).map((value) => ({ value, label: value }))
+    const dynamicTypes = Array.from(new Set(pool.map((x) => x.item_type))).map((value) => ({ value, label: getTypeLabel(value) }))
     return [{ value: 'all', label: copy.common.allTypes }, ...dynamicTypes]
   }, [items, category])
 
@@ -50,12 +58,41 @@ export default function ItemsClient() {
     })
   }, [items, category, type, query])
 
+  const managerTypeOptions = useMemo(() => {
+    const pool = items.filter((x) => (managerCategory === 'all' ? true : x.category === managerCategory))
+    const dynamicTypes = Array.from(new Set(pool.map((x) => x.item_type))).map((value) => ({ value, label: getTypeLabel(value) }))
+    return [{ value: 'all', label: copy.common.allTypes }, ...dynamicTypes]
+  }, [items, managerCategory])
+
+  const managerFiltered = useMemo(() => {
+    const q = managerQuery.trim().toLowerCase()
+    return items.filter((it) => {
+      if (managerCategory !== 'all' && it.category !== managerCategory) return false
+      if (managerType !== 'all' && it.item_type !== managerType) return false
+      if (!q) return true
+      return `${it.name} ${it.internal_id} ${it.description || ''}`.toLowerCase().includes(q)
+    })
+  }, [items, managerCategory, managerType, managerQuery])
+
+  useEffect(() => {
+    if (!openManager) return
+    if (!managerFiltered.find((x) => x.id === managerSelectedId)) {
+      setManagerSelectedId(managerFiltered[0]?.id || '')
+    }
+  }, [openManager, managerFiltered, managerSelectedId])
+
+  const selectedManagerItem = useMemo(() => managerFiltered.find((x) => x.id === managerSelectedId) || null, [managerFiltered, managerSelectedId])
+
+  const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
+  const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, calcQuantity, drugItems), [calcMode, calcQuantity, drugItems])
+
   return (
     <Panel>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[320px]" />
         <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
         <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
+        <SecondaryButton onClick={() => setOpenManager(true)}>Gérer items</SecondaryButton>
         <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
         <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
       </div>
@@ -71,7 +108,6 @@ export default function ItemsClient() {
               <th className="px-4 py-3 text-left">Type</th>
               <th className="px-4 py-3 text-left">Stock</th>
               <th className="px-4 py-3 text-left">Achat / Vente</th>
-              <th className="px-4 py-3 text-left">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/10">
@@ -92,16 +128,45 @@ export default function ItemsClient() {
                 <td className="px-4 py-3">{getTypeLabel(it.item_type, it.category)}</td>
                 <td className="px-4 py-3">{it.stock}</td>
                 <td className="px-4 py-3">{it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <SecondaryButton onClick={() => setEditingItem(it)} icon={<Pencil className="h-4 w-4" />}>Modifier</SecondaryButton>
-                    <DangerButton onClick={() => setDeletingItem(it)} icon={<Trash2 className="h-4 w-4" />}>Supprimer</DangerButton>
-                  </div>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Calculator className="h-4 w-4" />
+          <h3 className="text-sm font-semibold">Calculateur drogue (Items)</h3>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs text-white/60">Mode</label>
+            <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-white/60">Quantité</label>
+            <input
+              value={String(calcQuantity)}
+              onChange={(e) => setCalcQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+              className="h-10 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm"
+              inputMode="numeric"
+            />
+          </div>
+          <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-sm">
+            Total connu: <span className="font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</span>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {drugCalculator.requirements.map((req) => (
+            <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
+              <div className="font-medium">{req.label}</div>
+              <div className="text-white/70">Qté: {req.qty} · PU: {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
+              <div className="text-white/80">Sous-total: {req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</div>
+            </div>
+          ))}
+        </div>
+        {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
       </div>
 
       {openCreate ? (
@@ -121,6 +186,36 @@ export default function ItemsClient() {
                 }
               }}
             />
+          </div>
+        </div>
+      ) : null}
+
+      {openManager ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setOpenManager(false)}>
+          <div className="mx-auto w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <Panel>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="text-lg font-semibold">Gestion des items</h3>
+                <SecondaryButton onClick={() => setOpenManager(false)}>Fermer</SecondaryButton>
+              </div>
+              <div className="grid gap-3 md:grid-cols-4">
+                <SearchInput value={managerQuery} onChange={(e) => setManagerQuery(e.target.value)} placeholder="Chercher un item" />
+                <GlassSelect value={managerCategory} onChange={(v) => setManagerCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
+                <GlassSelect value={managerType} onChange={(v) => setManagerType(v as TypeFilter)} options={managerTypeOptions} />
+                <GlassSelect value={managerSelectedId} onChange={setManagerSelectedId} options={managerFiltered.map((it) => ({ value: it.id, label: `${it.name} · ${getCategoryLabel(it.category)}` }))} />
+              </div>
+              {selectedManagerItem ? (
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="text-sm text-white/70">Sélection: <span className="font-semibold text-white">{selectedManagerItem.name}</span></div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <SecondaryButton onClick={() => { setEditingItem(selectedManagerItem); setOpenManager(false) }}>Modifier</SecondaryButton>
+                    <DangerButton onClick={() => { setDeletingItem(selectedManagerItem); setOpenManager(false) }}>Supprimer</DangerButton>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 text-sm text-white/60">Aucun item correspondant.</div>
+              )}
+            </Panel>
           </div>
         </div>
       ) : null}

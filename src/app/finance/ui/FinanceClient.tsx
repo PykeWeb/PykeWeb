@@ -1,9 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Receipt, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
-import { PrimaryButton, SearchInput } from '@/components/ui/design-system'
+import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
 import { createFinanceTransaction } from '@/lib/itemsApi'
@@ -78,6 +79,7 @@ export default function FinanceClient() {
   return (
     <Panel>
       <div className="mb-4 flex items-center justify-end gap-2">
+        <Link href="/depenses/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
         <PrimaryButton onClick={() => setTradeMode('buy')}>Achat / Vente</PrimaryButton>
       </div>
 
