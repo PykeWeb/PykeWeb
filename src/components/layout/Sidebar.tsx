@@ -64,10 +64,11 @@ export function Sidebar() {
   const [groupName, setGroupName] = useState('Groupe')
   const [groupBadge, setGroupBadge] = useState('GROUPE')
   const [groupId, setGroupId] = useState<string>('')
+  const [sessionResolved, setSessionResolved] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'objects', 'weapons', 'equipment', 'drugs', 'expenses', 'finance', 'items'])
-  const [hiddenCategoryNav, setHiddenCategoryNav] = useState<string[]>([])
+  const [hiddenCategoryNav, setHiddenCategoryNav] = useState<string[] | null>(null)
   const [hiddenCategoriesReady, setHiddenCategoriesReady] = useState(false)
 
   const [categoryVisibilityScope, setCategoryVisibilityScope] = useState<'global' | 'group'>('global')
@@ -80,6 +81,7 @@ export function Sidebar() {
     setGroupBadge(session?.groupBadge || 'GROUPE')
     setGroupId(session?.groupId || '')
     setIsAdmin(isAdminTenantSession(session))
+    setSessionResolved(true)
   }, [])
 
   useEffect(() => {
@@ -110,8 +112,14 @@ export function Sidebar() {
   useEffect(() => {
     setHiddenCategoriesReady(false)
 
+    if (!sessionResolved) {
+      setHiddenCategoryNav(null)
+      return
+    }
+
     if (!isAdmin && !groupId) {
       setHiddenCategoryNav([])
+      setHiddenCategoriesReady(true)
       return
     }
 
@@ -129,6 +137,7 @@ export function Sidebar() {
 
         if (groupFetch.status === 401 || groupFetch.status === 403) {
           setHiddenCategoryNav([])
+          setHiddenCategoriesReady(true)
           return
         }
 
@@ -150,7 +159,7 @@ export function Sidebar() {
       setHiddenCategoryNav(hidden)
       setHiddenCategoriesReady(true)
     })().catch(() => { setHiddenCategoryNav([]); setHiddenCategoriesReady(true) })
-  }, [isAdmin, groupId, categoryVisibilityScope, adminTargetGroupId])
+  }, [sessionResolved, isAdmin, groupId, categoryVisibilityScope, adminTargetGroupId])
 
   const accessLabel = useMemo(() => {
     if (!accessInfo) return '—'
@@ -175,7 +184,7 @@ export function Sidebar() {
   const visibleUserNavLinks = userNavLinks.filter((link) => {
     const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs' || link.id === 'expenses'
     if (!isCategory) return true
-    if (!hiddenCategoriesReady) return false
+    if (!sessionResolved || !hiddenCategoriesReady || !hiddenCategoryNav) return false
     return !hiddenCategoryNav.includes(link.id)
   })
 
@@ -265,7 +274,7 @@ export function Sidebar() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               {categoryToggles.map((row) => {
-                const checked = !hiddenCategoryNav.includes(row.id)
+                const checked = !(hiddenCategoryNav ?? []).includes(row.id)
                 return (
                   <label key={row.id} className="inline-flex items-center gap-2">
                     <input
@@ -273,8 +282,8 @@ export function Sidebar() {
                       checked={checked}
                       onChange={(e) => {
                         const next = e.target.checked
-                          ? hiddenCategoryNav.filter((id) => id !== row.id)
-                          : [...hiddenCategoryNav, row.id]
+                          ? (hiddenCategoryNav ?? []).filter((id) => id !== row.id)
+                          : [...(hiddenCategoryNav ?? []), row.id]
                         updateHidden(mergeUnique(next))
                       }}
                       className="h-4 w-4 rounded border-white/20 bg-white/5"

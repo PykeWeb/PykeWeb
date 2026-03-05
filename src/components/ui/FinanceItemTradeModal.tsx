@@ -138,7 +138,7 @@ export function FinanceItemTradeModal({
   const content = (
     <div className="mx-auto w-full max-w-5xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain" onClick={(e) => e.stopPropagation()}>
       <CenteredFormLayout
-        panelClassName="border-white/15 bg-slate-950 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
+        panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
         title={copy.finance.trade.title}
         actions={
           <>
@@ -238,7 +238,7 @@ export function FinanceItemTradeModal({
 
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-2">
+            <div className="rounded-2xl border border-slate-700 bg-slate-900 p-2">
               <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                 <Search className="h-4 w-4 text-white/50" />
                 <input
@@ -283,7 +283,7 @@ export function FinanceItemTradeModal({
             </div>
           </div>
 
-          <div className="md:col-span-2 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="md:col-span-2 space-y-2 rounded-2xl border border-slate-700 bg-slate-900 p-3">
             <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée</p>
             {linesWithItems.length === 0 ? <p className="text-sm text-white/60">Ajoute des items à la liste pour continuer.</p> : null}
             {linesWithItems.map((entry) => (
@@ -344,7 +344,7 @@ export function FinanceItemTradeModal({
   if (inline) return <div className="mt-6">{content}</div>
 
   return (
-    <div className="fixed inset-0 z-[130] grid place-items-center bg-slate-950/85 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[130] grid place-items-center bg-slate-950 p-4" onClick={onClose}>
       {content}
     </div>
   )
