@@ -209,13 +209,19 @@ export function FinanceItemTradeModal({
                     setCategory(option.key as CategoryFilter)
                     setType('all')
                   }}
-                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[96px] ${category === option.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'}`}
+                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[96px] ${
+                    category === option.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs text-white/70">{option.label}</p>
-                    <span className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></span>
+                    <span className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80">
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
                   </div>
-                  <p className="mt-5 text-xl font-semibold leading-none">{option.key === 'all' ? items.length : items.filter((it) => it.category === option.key).length}</p>
+                  <p className="mt-5 text-xl font-semibold leading-none">
+                    {option.key === 'all' ? items.length : items.filter((it) => it.category === option.key).length}
+                  </p>
                 </button>
               )
             })}
@@ -250,15 +256,23 @@ export function FinanceItemTradeModal({
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
                         ) : (
-                          <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>
+                          <div className="grid h-full w-full place-items-center text-white/40">
+                            <ImageIcon className="h-3.5 w-3.5" />
+                          </div>
                         )}
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-white">{it.name}</p>
-                        <p className="truncate text-xs text-white/60">{getTypeLabel(it.item_type, it.category)} · Stock: {it.stock}</p>
+                        <p className="truncate text-xs text-white/60">
+                          {getTypeLabel(it.item_type, it.category)} · Stock: {it.stock}
+                        </p>
                       </div>
                     </div>
-                    <button type="button" onClick={() => addItemToLines(it)} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-1.5 text-cyan-100 hover:bg-cyan-500/20">
+                    <button
+                      type="button"
+                      onClick={() => addItemToLines(it)}
+                      className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-1.5 text-cyan-100 hover:bg-cyan-500/20"
+                    >
                       <Plus className="h-4 w-4" />
                     </button>
                   </div>
@@ -275,29 +289,53 @@ export function FinanceItemTradeModal({
               <div key={entry.item.id} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{entry.item.name}</p>
-                  <p className="text-xs text-white/60">{getTypeLabel(entry.item.item_type, entry.item.category)} · Stock: {entry.item.stock}</p>
+                  <p className="text-xs text-white/60">
+                    {getTypeLabel(entry.item.item_type, entry.item.category)} · Stock: {entry.item.stock}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => updateLine(entry.item.id, { quantity: Math.max(1, entry.line.quantity - 1) })} className="rounded-md border border-white/10 bg-white/5 p-1"><Minus className="h-3.5 w-3.5" /></button>
-                  <div className="w-[160px]"><QuantityStepper value={entry.line.quantity} onChange={(value) => updateLine(entry.item.id, { quantity: value })} min={1} max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined} /></div>
+                  <button
+                    type="button"
+                    onClick={() => updateLine(entry.item.id, { quantity: Math.max(1, entry.line.quantity - 1) })}
+                    className="rounded-md border border-white/10 bg-white/5 p-1"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="w-[160px]">
+                    <QuantityStepper
+                      value={entry.line.quantity}
+                      onChange={(value) => updateLine(entry.item.id, { quantity: value })}
+                      min={1}
+                      max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
+                    />
+                  </div>
                 </div>
-                <Input value={entry.line.unitPrice} onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })} inputMode="decimal" className="md:w-[140px]" />
-                <button type="button" onClick={() => removeLine(entry.item.id)} className="rounded-md border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-xs text-rose-100">Retirer</button>
+                <Input
+                  value={entry.line.unitPrice}
+                  onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                  inputMode="decimal"
+                  className="md:w-[140px]"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeLine(entry.item.id)}
+                  className="rounded-md border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-xs text-rose-100"
+                >
+                  Retirer
+                </button>
               </div>
             ))}
           </div>
         </div>
-        <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
-        {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-      </CenteredFormLayout>
-    </div>
-  )
 
-  if (inline) return <div className="mt-6">{content}</div>
-
+        <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">
+          {copy.finance.labels.total}:{' '}
+          <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span>
         </div>
-        <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
-        {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+
+        {error ? (
+          <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div>
+        ) : null}
       </CenteredFormLayout>
     </div>
   )
