@@ -22,19 +22,10 @@ type Tx = {
   transaction_items?: { name_snapshot: string | null; quantity: number | null }[] | null
 }
 
-type Loan = {
-  id: string
-  borrower_name: string
-  quantity: number
-  loaned_at: string
-  weapons: { name: string | null; weapon_id: string | null }[] | null
-}
-
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string }
-type DrugItem = { id: string; name: string; stock: number; type: string }
-type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
+type ActivityView = 'transactions' | 'expenses'
 
-type QuickActionKey = 'newExpense' | 'purchase' | 'sale' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
+type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
 type DashboardMetrics = {
@@ -48,10 +39,8 @@ type CardOption = { key: CardKey; title: string; href: string; icon: LucideIcon;
 
 const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'newExpense', title: 'Nouvelle dépense', subtitle: 'Créer une dépense Finance', href: '/finance/depense/nouveau', icon: Wallet },
-  { key: 'purchase', title: 'Nouvel achat', subtitle: 'Créer une entrée stock', href: '/transactions/nouveau?type=purchase', icon: ShoppingCart },
-  { key: 'sale', title: 'Nouvelle vente/sortie', subtitle: 'Sortir un item du stock', href: '/transactions/nouveau?type=sale', icon: ArrowUpRight },
-  { key: 'itemCreate', title: 'Créer un item', subtitle: 'Ouvrir le formulaire item', href: '/items?action=create', icon: PlusCircle },
-  { key: 'itemTrade', title: 'Achat/Vente items', subtitle: 'Ouvrir l’outil Items', href: '/items?action=trade', icon: Receipt },
+  { key: 'itemCreate', title: 'Créer un item', subtitle: 'Nouveau dans le catalogue', href: '/items/nouveau', icon: PlusCircle },
+  { key: 'itemTrade', title: 'Achat/Vente items', subtitle: 'Achat et sortie de stock', href: '/items/achat-vente', icon: Receipt },
   { key: 'finance', title: 'Espace Finance', subtitle: 'Voir toutes les opérations', href: '/finance', icon: Wallet },
   { key: 'items', title: 'Espace Items', subtitle: 'Voir le catalogue items', href: '/items', icon: Box },
 ]
@@ -78,22 +67,10 @@ function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
   return [...safeOrder, ...missing].slice(0, DEFAULT_DASHBOARD_CARDS.length)
 }
 
-function startOfTodayIso() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString()
-}
-
 export function DashboardClient() {
   const [loading, setLoading] = useState(true)
-  const [objectCount, setObjectCount] = useState(0)
-  const [weaponCount, setWeaponCount] = useState(0)
-  const [activeLoans, setActiveLoans] = useState(0)
-  const [txToday, setTxToday] = useState(0)
   const [recentTx, setRecentTx] = useState<Tx[]>([])
-  const [recentLoans, setRecentLoans] = useState<Loan[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
-  const [drugItems, setDrugItems] = useState<DrugItem[]>([])
 
   const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>({
     objects: 0,
@@ -118,7 +95,7 @@ export function DashboardClient() {
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const cardLongPressTimerRef = useRef<number | null>(null)
   const longPressTriggeredRef = useRef(false)
-  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'purchase', 'sale', 'itemCreate', 'itemTrade'])
+  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'itemCreate', 'itemTrade', 'finance', 'items'])
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
@@ -201,19 +178,13 @@ export function DashboardClient() {
     })
   }
 
-  const todayIso = useMemo(() => startOfTodayIso(), [])
-
   useEffect(() => {
     let alive = true
     ;(async () => {
       setLoading(true)
       try {
         const groupId = currentGroupId()
-        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes, financeEntries] = await Promise.all([
-          supabase.from('objects').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
-          supabase.from('weapons').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
-          supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).eq('group_id', groupId).is('returned_at', null),
-          supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('group_id', groupId).gte('created_at', todayIso),
+        const [recentTxRes, recentExpensesRes, financeEntries] = await Promise.all([
           supabase
             .from('transactions')
             .select('id,type,total,counterparty,created_at,transaction_items(name_snapshot,quantity)')
@@ -221,24 +192,11 @@ export function DashboardClient() {
             .order('created_at', { ascending: false })
             .limit(5),
           supabase
-            .from('weapon_loans')
-            .select('id,borrower_name,quantity,loaned_at,weapons(name,weapon_id)')
-            .eq('group_id', groupId)
-            .is('returned_at', null)
-            .order('loaned_at', { ascending: false })
-            .limit(5),
-          supabase
             .from('expenses')
             .select('id,item_label,total,quantity,created_at')
             .eq('group_id', groupId)
             .order('created_at', { ascending: false })
             .limit(5),
-          supabase
-            .from('drug_items')
-            .select('id,name,stock,type')
-            .eq('group_id', groupId)
-            .order('stock', { ascending: false })
-            .limit(8),
           listFinanceEntries(),
         ])
 
@@ -250,14 +208,8 @@ export function DashboardClient() {
           categoryCounts[entry.category] += 1
           movementCounts[entry.movement_type] += 1
         }
-        setObjectCount(objRes.count ?? 0)
-        setWeaponCount(weapRes.count ?? 0)
-        setActiveLoans(loansRes.count ?? 0)
-        setTxToday(txRes.count ?? 0)
         setRecentTx((recentTxRes.data as Tx[]) ?? [])
-        setRecentLoans((recentLoansRes.data as Loan[]) ?? [])
         setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
-        setDrugItems((drugItemsRes.data as DrugItem[]) ?? [])
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
       } finally {
@@ -270,10 +222,10 @@ export function DashboardClient() {
     return () => {
       alive = false
     }
-  }, [todayIso])
+  }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['transactions', 'loans', 'expenses', 'plantations']
+    const views: ActivityView[] = ['transactions', 'expenses']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -402,9 +354,7 @@ export function DashboardClient() {
           <div className="mt-3 flex flex-wrap gap-2">
             {[
               ['transactions', 'Transactions'],
-              ['loans', 'Prêts'],
               ['expenses', 'Dépenses'],
-              ['plantations', 'Plantations'],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -443,18 +393,6 @@ export function DashboardClient() {
                 </div>
               ))
             ) : null}
-            {activityView === 'loans' ? (
-              recentLoans.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucun prêt actif.</div>
-              ) : (
-                recentLoans.map((l) => (
-                  <div key={l.id} className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                    <p className="text-sm font-medium">{l.borrower_name} • x{l.quantity}</p>
-                    <p className="text-xs text-white/60">{new Date(l.loaned_at).toLocaleString()}</p>
-                  </div>
-                ))
-              )
-            ) : null}
             {activityView === 'expenses' ? (
               recentExpenses.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune dépense récente.</div>
@@ -466,18 +404,6 @@ export function DashboardClient() {
                       <p className="text-xs text-white/60">{new Date(e.created_at).toLocaleString()}</p>
                     </div>
                     <p className="text-sm font-semibold text-white/80">{e.total}$</p>
-                  </div>
-                ))
-              )
-            ) : null}
-            {activityView === 'plantations' ? (
-              drugItems.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune donnée plantation.</div>
-              ) : (
-                drugItems.map((d) => (
-                  <div key={d.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                    <p className="text-sm font-medium">{d.name}</p>
-                    <p className="text-xs text-white/70">Stock: {d.stock}</p>
                   </div>
                 ))
               )
