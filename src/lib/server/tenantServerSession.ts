@@ -25,6 +25,16 @@ export async function requireAdminSession() {
   return session
 }
 
+export async function requireAdminSession(): Promise<TenantSession> {
+  return assertAdminSession(await readTenantServerSession())
+}
+
+export async function requireAdminSessionFromRequest(request: Request): Promise<TenantSession> {
+  const fromRequest = readTenantSessionFromRequest(request)
+  const session = fromRequest ?? (await readTenantServerSession())
+  return assertAdminSession(session)
+}
+
 export async function requireGroupSession() {
   const session = await readTenantServerSession()
   if (!session?.groupId || session.groupId === 'admin') {

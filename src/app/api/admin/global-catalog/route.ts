@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireAdminSession } from '@/lib/server/tenantServerSession'
+import { requireAdminSessionFromRequest } from '@/lib/server/tenantServerSession'
 import { normalizeCatalogCategory } from '@/lib/catalogConfig'
 
 export async function GET(request: Request) {
