@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { clearTenantSession, getTenantSession } from '@/lib/tenantSession'
+import { clearTenantSession, getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
 import { SecondaryButton } from '@/components/ui/design-system'
 
 export function Topbar() {
@@ -10,7 +10,7 @@ export function Topbar() {
 
   useEffect(() => {
     const session = getTenantSession()
-    setIsAdmin(Boolean(session?.isAdmin))
+    setIsAdmin(isAdminTenantSession(session))
   }, [])
 
   return (
