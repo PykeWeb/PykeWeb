@@ -1,37 +1,20 @@
-import { cookies } from 'next/headers'
+import { requireAdmin, requireGroup } from '@/server/auth/guards'
+import { resolveServerSession, type ServerTenantSession } from '@/server/auth/session'
 
-type TenantSession = {
-  v?: number
-  groupId?: string
-  groupName?: string
-  isAdmin?: boolean
-}
-
-const COOKIE_KEY = 'tenant_session_v3'
+export type TenantSession = ServerTenantSession
 
 export async function readTenantServerSession(): Promise<TenantSession | null> {
-  const raw = (await cookies()).get(COOKIE_KEY)?.value
-  if (!raw) return null
-  try {
-    const json = Buffer.from(raw, 'base64').toString('utf8')
-    return JSON.parse(json) as TenantSession
-  } catch {
-    return null
-  }
+  return resolveServerSession()
 }
 
-export async function requireAdminSession() {
-  const session = await readTenantServerSession()
-  if (!session || !(session.isAdmin || session.groupId === 'admin')) {
-    throw new Error('Admin non autorisé')
-  }
-  return session
+export async function requireAdminSession(): Promise<TenantSession> {
+  return requireAdmin()
 }
 
-export async function requireGroupSession() {
-  const session = await readTenantServerSession()
-  if (!session?.groupId || session.groupId === 'admin') {
-    throw new Error('Session groupe invalide')
-  }
-  return session
+export async function requireAdminSessionFromRequest(request: Request): Promise<TenantSession> {
+  return requireAdmin(request)
+}
+
+export async function requireGroupSession(): Promise<TenantSession> {
+  return requireGroup()
 }

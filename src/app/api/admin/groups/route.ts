@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireAdminSession } from '@/lib/server/tenantServerSession'
+import { requireAdminSessionFromRequest } from '@/lib/server/tenantServerSession'
 
 const TABLE = 'tenant_groups'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    await requireAdminSession()
+    await requireAdminSessionFromRequest(request)
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from(TABLE)
@@ -21,7 +21,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireAdminSession()
+    await requireAdminSessionFromRequest(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    await requireAdminSession()
+    await requireAdminSessionFromRequest(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
@@ -56,7 +56,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireAdminSession()
+    await requireAdminSessionFromRequest(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { error } = await supabase.from(TABLE).delete().eq('id', String(body.id))

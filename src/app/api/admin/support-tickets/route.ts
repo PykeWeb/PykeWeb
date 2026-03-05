@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireAdminSession } from '@/lib/server/tenantServerSession'
+import { requireAdminSessionFromRequest } from '@/lib/server/tenantServerSession'
 
 export async function GET(request: Request) {
   try {
-    await requireAdminSession()
+    await requireAdminSessionFromRequest(request)
     const { searchParams } = new URL(request.url)
     const kind = searchParams.get('kind') as 'bug' | 'message' | null
     const includeResolved = searchParams.get('includeResolved') === '1'
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await requireAdminSession()
+    await requireAdminSessionFromRequest(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { error } = await supabase
