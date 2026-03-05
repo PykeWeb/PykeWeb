@@ -1,21 +1,25 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Image as ImageIcon } from 'lucide-react'
-import { GlassSelect } from '@/components/ui/GlassSelect'
+import { ArrowDownRight, ArrowUpRight, Box, Image as ImageIcon, Pill, Search, Shapes, Shield, Swords, Plus, Minus } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
-import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
-import { categoryTypeOptions, getTypeLabel, itemCategoryOptions } from '@/lib/catalogConfig'
+import { categoryTypeOptions, getTypeLabel } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
+
+type TradeLine = {
+  itemId: string
+  quantity: number
+  unitPrice: string
+}
 
 function toErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message
@@ -31,24 +35,26 @@ export function FinanceItemTradeModal({
   onClose,
   onSubmit,
   enableModeSelect = false,
+  inline = false,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
   onClose: () => void
   onSubmit: (payload: { item: CatalogItem; mode: 'buy' | 'sell'; quantity: number; unitPrice: number; counterparty: string; notes: string }) => Promise<void>
   enableModeSelect?: boolean
+  inline?: boolean
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
-  const [itemId, setItemId] = useState('')
-  const [quantity, setQuantity] = useState(1)
-  const [unitPrice, setUnitPrice] = useState('0')
+  const [itemSearch, setItemSearch] = useState('')
+  const [lines, setLines] = useState<TradeLine[]>([])
   const [counterparty, setCounterparty] = useState('')
-  const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  void enableModeSelect
 
   useEffect(() => {
     setTradeMode(mode)
@@ -59,134 +65,237 @@ export function FinanceItemTradeModal({
     ;(async () => {
       const rows = await listCatalogItemsUnified()
       setItems(rows)
-      const first = rows[0]
-      if (first) setItemId(first.id)
+      setLines([])
     })().catch((e: unknown) => setError(e instanceof Error ? e.message : copy.finance.errors.loadItemsFailed))
   }, [open])
 
   const typeOptions = useMemo(() => {
     if (category === 'all') {
       const values = Array.from(new Set(items.map((it) => it.item_type)))
-      return [{ value: 'all', label: 'Tous les types' }, ...values.map((value) => ({ value, label: getTypeLabel(value) }))]
+      return [{ value: 'all', label: copy.common.allTypes }, ...values.map((value) => ({ value, label: getTypeLabel(value) }))]
     }
-    return [{ value: 'all', label: 'Tous les types' }, ...categoryTypeOptions[category]]
+    return [{ value: 'all', label: copy.common.allTypes }, ...categoryTypeOptions[category]]
   }, [category, items])
 
-  const filtered = useMemo(
-    () => items.filter((it) => (category === 'all' ? true : it.category === category)).filter((it) => (type === 'all' ? true : it.item_type === type)),
-    [items, category, type]
-  )
+  const filtered = useMemo(() => {
+    const search = itemSearch.trim().toLowerCase()
+    return items
+      .filter((it) => (category === 'all' ? true : it.category === category))
+      .filter((it) => (type === 'all' ? true : it.item_type === type))
+      .filter((it) => {
+        if (!search) return true
+        return `${it.name} ${it.internal_id}`.toLowerCase().includes(search)
+      })
+  }, [items, category, type, itemSearch])
+
+  const linesWithItems = useMemo(() => {
+    return lines
+      .map((line) => {
+        const item = items.find((entry) => entry.id === line.itemId)
+        if (!item) return null
+        const qty = toPositiveInt(line.quantity)
+        const unit = toNonNegative(line.unitPrice)
+        return { line, item, qty, unit, subtotal: calcTotal(qty, unit) }
+      })
+      .filter((entry): entry is { line: TradeLine; item: CatalogItem; qty: number; unit: number; subtotal: number } => !!entry)
+  }, [items, lines])
 
   useEffect(() => {
-    if (!filtered.find((x) => x.id === itemId)) setItemId(filtered[0]?.id || '')
-  }, [filtered, itemId])
+    setLines((current) =>
+      current.map((line) => {
+        const item = items.find((entry) => entry.id === line.itemId)
+        if (!item) return line
+        const quantity = tradeMode === 'sell' ? Math.min(toPositiveInt(line.quantity), Math.max(1, item.stock)) : toPositiveInt(line.quantity)
+        const unitPrice = String(tradeMode === 'buy' ? item.buy_price : item.sell_price)
+        return { ...line, quantity, unitPrice }
+      })
+    )
+  }, [items, tradeMode])
 
-  const selected = useMemo(() => filtered.find((x) => x.id === itemId) || null, [filtered, itemId])
+  const total = useMemo(() => linesWithItems.reduce((sum, entry) => sum + entry.subtotal, 0), [linesWithItems])
 
-  useEffect(() => {
-    if (!selected) return
-    setUnitPrice(String(tradeMode === 'buy' ? selected.buy_price : selected.sell_price))
-    setQuantity(1)
-  }, [selected, tradeMode])
+  function addItemToLines(item: CatalogItem) {
+    setLines((current) => {
+      const exists = current.find((line) => line.itemId === item.id)
+      if (exists) {
+        return current.map((line) => (line.itemId === item.id ? { ...line, quantity: line.quantity + 1 } : line))
+      }
+      const defaultPrice = tradeMode === 'buy' ? item.buy_price : item.sell_price
+      return [...current, { itemId: item.id, quantity: 1, unitPrice: String(defaultPrice) }]
+    })
+  }
 
-  const computedQuantityRaw = toPositiveInt(quantity)
-  const maxForSell = selected?.stock ?? 0
-  const computedQuantity = tradeMode === 'sell' ? Math.min(computedQuantityRaw, Math.max(1, maxForSell)) : computedQuantityRaw
-  const computedUnitPrice = toNonNegative(unitPrice)
-  const total = calcTotal(computedQuantity, computedUnitPrice)
+  function updateLine(itemId: string, patch: Partial<TradeLine>) {
+    setLines((current) => current.map((line) => (line.itemId === itemId ? { ...line, ...patch } : line)))
+  }
+
+  function removeLine(itemId: string) {
+    setLines((current) => current.filter((line) => line.itemId !== itemId))
+  }
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="mx-auto w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
-        <CenteredFormLayout
-          title="Achat / Vente"
-          subtitle="Formulaire unifié"
-          actions={
-            <>
-              <SecondaryButton onClick={onClose}>{copy.common.cancel}</SecondaryButton>
-              <PrimaryButton
-                disabled={saving || !selected || (tradeMode === 'sell' && computedQuantity > (selected.stock || 0))}
-                onClick={async () => {
-                  if (!selected) return
-                  try {
-                    setSaving(true)
-                    setError(null)
-                    await onSubmit({ item: selected, mode: tradeMode, quantity: computedQuantity, unitPrice: computedUnitPrice, counterparty, notes })
-                    onClose()
-                  } catch (e: unknown) {
-                    setError(toErrorMessage(e, copy.finance.errors.saveFailed))
-                  } finally {
-                    setSaving(false)
+  const content = (
+    <div className="mx-auto w-full max-w-5xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain" onClick={(e) => e.stopPropagation()}>
+      <CenteredFormLayout
+        title={copy.finance.trade.title}
+        actions={
+          <>
+            <SecondaryButton onClick={onClose}>Fermer</SecondaryButton>
+            <PrimaryButton
+              disabled={saving || linesWithItems.length === 0}
+              onClick={async () => {
+                try {
+                  setSaving(true)
+                  setError(null)
+                  for (const entry of linesWithItems) {
+                    await onSubmit({
+                      item: entry.item,
+                      mode: tradeMode,
+                      quantity: entry.qty,
+                      unitPrice: entry.unit,
+                      counterparty,
+                      notes: '',
+                    })
                   }
-                }}
-              >
-                {copy.finance.actions.validate}
-              </PrimaryButton>
-            </>
-          }
-          actionsPlacement="bottom-right"
-        >
-          <div className="grid gap-3 md:grid-cols-2">
-            {enableModeSelect ? (
-              <div>
-                <label className="mb-1 block text-xs text-white/60">Mode</label>
-                <GlassSelect value={tradeMode} onChange={(v) => setTradeMode(v as 'buy' | 'sell')} options={[{ value: 'buy', label: 'Achat' }, { value: 'sell', label: 'Vente' }]} />
-              </div>
-            ) : null}
-            <div>
-              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.category}</label>
-              <GlassSelect value={category} onChange={(v) => setCategory(v as CategoryFilter)} options={[{ value: 'all', label: 'Toutes' }, ...itemCategoryOptions]} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Type (optionnel)</label>
-              <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
-              <GlassSelect value={itemId} onChange={setItemId} options={filtered.map((it) => ({ value: it.id, label: it.name }))} />
-            </div>
+                  onClose()
+                } catch (e: unknown) {
+                  setError(toErrorMessage(e, copy.finance.errors.saveFailed))
+                } finally {
+                  setSaving(false)
+                }
+              }}
+            >
+              {saving ? copy.finance.trade.saveInProgress : copy.finance.actions.validate}
+            </PrimaryButton>
+          </>
+        }
+        actionsPlacement="top-right"
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
+            <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
+              <ArrowDownRight className="h-4 w-4" />
+              {copy.finance.trade.modeBuy}
+            </TabPill>
+            <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
+              <ArrowUpRight className="h-4 w-4" />
+              {copy.finance.trade.modeSell}
+            </TabPill>
+          </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/75 md:col-span-2">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
-                  {selected?.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={selected.image_url} alt={selected.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
-                  )}
-                </div>
-                <div>
-                  <div className="font-semibold text-white">{selected?.name || '—'}</div>
-                  <div>Type: <span className="text-white">{selected ? getTypeLabel(selected.item_type, selected.category) : '—'}</span> · Stock actuel: <span className="text-white">{selected?.stock ?? 0}</span></div>
-                </div>
-              </div>
-            </div>
+          <div className="md:col-span-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {[
+              { key: 'all', label: copy.common.allCategories, icon: Shapes },
+              { key: 'objects', label: 'Objets', icon: Box },
+              { key: 'weapons', label: 'Armes', icon: Swords },
+              { key: 'equipment', label: 'Équipement', icon: Shield },
+              { key: 'drugs', label: 'Drogues', icon: Pill },
+              { key: 'custom', label: 'Autres', icon: Shapes },
+            ].map((option) => {
+              const Icon = option.icon
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => {
+                    setCategory(option.key as CategoryFilter)
+                    setType('all')
+                  }}
+                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[96px] ${category === option.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs text-white/70">{option.label}</p>
+                    <span className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></span>
+                  </div>
+                  <p className="mt-5 text-xl font-semibold leading-none">{option.key === 'all' ? items.length : items.filter((it) => it.category === option.key).length}</p>
+                </button>
+              )
+            })}
+          </div>
 
-            <div>
-              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.quantity}</label>
-              <div className="max-w-[260px]"><QuantityStepper value={quantity} onChange={setQuantity} min={1} max={tradeMode === 'sell' ? Math.max(1, selected?.stock ?? 0) : undefined} /></div>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.unitPrice}</label>
-              <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} inputMode="decimal" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
-              <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.notes}</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[70px]" />
+          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
+            {typeOptions.map((option) => (
+              <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)}>
+                {option.label}
+              </TabPill>
+            ))}
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-2">
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <Search className="h-4 w-4 text-white/50" />
+                <input
+                  value={itemSearch}
+                  onChange={(event) => setItemSearch(event.target.value)}
+                  placeholder="Rechercher un item"
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
+                />
+              </div>
+              <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                {filtered.map((it) => (
+                  <div key={it.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                        {it.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-white">{it.name}</p>
+                        <p className="truncate text-xs text-white/60">{getTypeLabel(it.item_type, it.category)} · Stock: {it.stock}</p>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => addItemToLines(it)} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-1.5 text-cyan-100 hover:bg-cyan-500/20">
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                {filtered.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item pour ces filtres.</p> : null}
+              </div>
             </div>
           </div>
 
-          <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
-          {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-        </CenteredFormLayout>
-      </div>
+          <div className="md:col-span-2 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée</p>
+            {linesWithItems.length === 0 ? <p className="text-sm text-white/60">Ajoute des items à la liste pour continuer.</p> : null}
+            {linesWithItems.map((entry) => (
+              <div key={entry.item.id} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{entry.item.name}</p>
+                  <p className="text-xs text-white/60">{getTypeLabel(entry.item.item_type, entry.item.category)} · Stock: {entry.item.stock}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => updateLine(entry.item.id, { quantity: Math.max(1, entry.line.quantity - 1) })} className="rounded-md border border-white/10 bg-white/5 p-1"><Minus className="h-3.5 w-3.5" /></button>
+                  <div className="w-[160px]"><QuantityStepper value={entry.line.quantity} onChange={(value) => updateLine(entry.item.id, { quantity: value })} min={1} max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined} /></div>
+                </div>
+                <Input value={entry.line.unitPrice} onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })} inputMode="decimal" className="md:w-[140px]" />
+                <button type="button" onClick={() => removeLine(entry.item.id)} className="rounded-md border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-xs text-rose-100">Retirer</button>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
+            <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
+          </div>
+        </div>
+        <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
+        {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+      </CenteredFormLayout>
+    </div>
+  )
+
+  if (inline) return <div className="mt-6">{content}</div>
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      {content}
     </div>
   )
 }

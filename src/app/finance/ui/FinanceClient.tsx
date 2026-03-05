@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Pencil, Receipt, Trash2, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
@@ -29,6 +30,11 @@ type EditableExpense = {
   status: ExpenseStatus
 }
 
+type ExpenseActionEntry = FinanceEntry & {
+  source: 'expenses'
+  movement_type: 'expense'
+}
+
 const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', sale: 'Vente/Sortie' }
 const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Custom', other: 'Autre' }
 
@@ -44,7 +50,7 @@ function toNonNegativeNumber(value: string, fallback = 0) {
   return Math.max(0, parsed)
 }
 
-function isExpenseEntry(entry: FinanceEntry) {
+function isExpenseEntry(entry: FinanceEntry): entry is ExpenseActionEntry {
   return entry.source === 'expenses' && entry.movement_type === 'expense'
 }
 
@@ -67,8 +73,10 @@ export default function FinanceClient() {
   const [busyExpenseId, setBusyExpenseId] = useState<string | null>(null)
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null)
   const [editingExpense, setEditingExpense] = useState<EditableExpense | null>(null)
+  const [expenseActionEntry, setExpenseActionEntry] = useState<ExpenseActionEntry | null>(null)
   const [editingQuantity, setEditingQuantity] = useState('1')
   const [editingUnitPrice, setEditingUnitPrice] = useState('0')
+  const searchParams = useSearchParams()
 
   async function refresh() {
     try {
@@ -84,6 +92,18 @@ export default function FinanceClient() {
   useEffect(() => {
     void refresh()
   }, [])
+
+
+  useEffect(() => {
+    const categoryParam = searchParams.get('category')
+    const typeParam = searchParams.get('type')
+    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) {
+      setCategory(categoryParam as FilterCategory)
+    }
+    if (typeParam && ['expense', 'purchase', 'sale'].includes(typeParam)) {
+      setType(typeParam as FilterType)
+    }
+  }, [searchParams])
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase()
@@ -118,6 +138,21 @@ export default function FinanceClient() {
 
   const editingTotal = useMemo(() => toPositiveInt(editingQuantity) * toNonNegativeNumber(editingUnitPrice), [editingQuantity, editingUnitPrice])
 
+  function openEditExpense(entry: ExpenseActionEntry) {
+    const unit = Number(entry.expense_unit_price ?? (entry.amount ?? 0) / Math.max(1, entry.quantity))
+    setEditingExpense({
+      id: entry.id,
+      member_name: entry.member_name || '',
+      item_label: entry.item_label,
+      quantity: Math.max(1, entry.quantity || 1),
+      unit_price: Number.isFinite(unit) ? unit : 0,
+      description: entry.notes || '',
+      status: entry.expense_status === 'paid' ? 'paid' : 'pending',
+    })
+    setEditingQuantity(String(Math.max(1, entry.quantity || 1)))
+    setEditingUnitPrice(String(Number.isFinite(unit) ? unit : 0))
+  }
+
   return (
     <Panel>
       <div className="grid gap-3 md:grid-cols-4">
@@ -143,14 +178,21 @@ export default function FinanceClient() {
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
         <table className="w-full text-sm">
-          <thead className="bg-white/[0.03] text-white/70"><tr><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Catégorie</th><th className="px-4 py-3 text-left">Item / Interlocuteur</th><th className="px-4 py-3 text-left">Qté</th><th className="px-4 py-3 text-left">Montant</th><th className="px-4 py-3 text-left">Date</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
+          <thead className="bg-white/[0.03] text-white/70"><tr><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Catégorie</th><th className="px-4 py-3 text-left">Item / Interlocuteur</th><th className="px-4 py-3 text-left">Qté</th><th className="px-4 py-3 text-left">Montant</th><th className="px-4 py-3 text-left">Date</th><th className="px-4 py-3 text-right"></th></tr></thead>
           <tbody className="divide-y divide-white/10">
             {loading ? <tr><td colSpan={7} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr> : null}
             {!loading && filtered.length === 0 ? <tr><td colSpan={7} className="px-4 py-8 text-center text-white/60">Aucun mouvement.</td></tr> : null}
             {!loading ? filtered.map((entry) => {
               const canManageExpense = isExpenseEntry(entry)
               return (
-                <tr key={`${entry.source}:${entry.id}`} className="hover:bg-white/[0.02]">
+                <tr
+                  key={`${entry.source}:${entry.id}`}
+                  className={canManageExpense ? 'cursor-pointer hover:bg-white/[0.05]' : 'hover:bg-white/[0.02]'}
+                  onClick={() => {
+                    if (!canManageExpense) return
+                    setExpenseActionEntry(entry)
+                  }}
+                >
                   <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs">{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
                   <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
                   <td className="px-4 py-3">
@@ -162,56 +204,7 @@ export default function FinanceClient() {
                   <td className="px-4 py-3">{entry.quantity}</td>
                   <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>
                   <td className="px-4 py-3 text-white/70">{new Date(entry.created_at).toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    {canManageExpense ? (
-                      <div className="flex justify-end gap-2">
-                        <SecondaryButton
-                          disabled={busyExpenseId === entry.id}
-                          onClick={async () => {
-                            setBusyExpenseId(entry.id)
-                            setError(null)
-                            try {
-                              const nextStatus: ExpenseStatus = entry.expense_status === 'paid' ? 'pending' : 'paid'
-                              await setExpenseStatus({ expenseId: entry.id, status: nextStatus })
-                              toast.success(nextStatus === 'paid' ? 'Dépense remboursée.' : 'Dépense repassée en attente.')
-                              await refresh()
-                            } catch (err: unknown) {
-                              setError(err instanceof Error ? err.message : 'Impossible de modifier le statut')
-                            } finally {
-                              setBusyExpenseId(null)
-                            }
-                          }}
-                        >
-                          {entry.expense_status === 'paid' ? 'Attente' : 'Rembourser'}
-                        </SecondaryButton>
-                        <SecondaryButton
-                          disabled={busyExpenseId === entry.id}
-                          icon={<Pencil className="h-4 w-4" />}
-                          onClick={() => {
-                            const unit = Number(entry.expense_unit_price ?? (entry.amount ?? 0) / Math.max(1, entry.quantity))
-                            setEditingExpense({
-                              id: entry.id,
-                              member_name: entry.member_name || '',
-                              item_label: entry.item_label,
-                              quantity: Math.max(1, entry.quantity || 1),
-                              unit_price: Number.isFinite(unit) ? unit : 0,
-                              description: entry.notes || '',
-                              status: entry.expense_status === 'paid' ? 'paid' : 'pending',
-                            })
-                            setEditingQuantity(String(Math.max(1, entry.quantity || 1)))
-                            setEditingUnitPrice(String(Number.isFinite(unit) ? unit : 0))
-                          }}
-                        >
-                          Modifier
-                        </SecondaryButton>
-                        <SecondaryButton disabled={busyExpenseId === entry.id} icon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteExpenseId(entry.id)}>
-                          Supprimer
-                        </SecondaryButton>
-                      </div>
-                    ) : (
-                      <div className="text-right text-xs text-white/40">—</div>
-                    )}
-                  </td>
+                  <td className="px-4 py-3"></td>
                 </tr>
               )
             }) : null}
@@ -252,6 +245,70 @@ export default function FinanceClient() {
       </div>
       {error ? <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
       <p className="mt-4 text-xs text-white/55"><Wallet className="mr-1 inline h-3 w-3" />Le total global affiché dépend du filtre courant.</p>
+
+      {expenseActionEntry ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" onClick={() => setExpenseActionEntry(null)}>
+          <div className="w-full max-w-lg" onClick={(event) => event.stopPropagation()}>
+            <Panel>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-white/60">Gestion de dépense</p>
+                  <h3 className="text-lg font-semibold">{expenseActionEntry.item_label}</h3>
+                </div>
+                <SecondaryButton onClick={() => setExpenseActionEntry(null)}>Fermer</SecondaryButton>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/75">
+                <p>Interlocuteur: <span className="font-semibold text-white">{expenseActionEntry.member_name || '—'}</span></p>
+                <p className="mt-1">Montant: <span className="font-semibold text-white">{Number(expenseActionEntry.amount || 0).toFixed(2)} $</span></p>
+                <div className="mt-2">{statusBadge(expenseActionEntry.expense_status)}</div>
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <SecondaryButton
+                  disabled={busyExpenseId === expenseActionEntry.id}
+                  onClick={async () => {
+                    const activeEntry = expenseActionEntry
+                    setBusyExpenseId(activeEntry.id)
+                    setError(null)
+                    try {
+                      const nextStatus: ExpenseStatus = activeEntry.expense_status === 'paid' ? 'pending' : 'paid'
+                      await setExpenseStatus({ expenseId: activeEntry.id, status: nextStatus })
+                      toast.success(nextStatus === 'paid' ? 'Dépense remboursée.' : 'Dépense repassée en attente.')
+                      setExpenseActionEntry(null)
+                      await refresh()
+                    } catch (err: unknown) {
+                      setError(err instanceof Error ? err.message : 'Impossible de modifier le statut')
+                    } finally {
+                      setBusyExpenseId(null)
+                    }
+                  }}
+                >
+                  {expenseActionEntry.expense_status === 'paid' ? 'Attente' : 'Rembourser'}
+                </SecondaryButton>
+                <SecondaryButton
+                  disabled={busyExpenseId === expenseActionEntry.id}
+                  icon={<Pencil className="h-4 w-4" />}
+                  onClick={() => {
+                    openEditExpense(expenseActionEntry)
+                    setExpenseActionEntry(null)
+                  }}
+                >
+                  Modifier
+                </SecondaryButton>
+                <SecondaryButton
+                  disabled={busyExpenseId === expenseActionEntry.id}
+                  icon={<Trash2 className="h-4 w-4" />}
+                  onClick={() => {
+                    setDeleteExpenseId(expenseActionEntry.id)
+                    setExpenseActionEntry(null)
+                  }}
+                >
+                  Supprimer
+                </SecondaryButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      ) : null}
 
       {editingExpense ? (
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">

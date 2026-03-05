@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Calculator, Factory, Image as ImageIcon } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Box, Calculator, Factory, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
@@ -12,7 +13,7 @@ import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
 import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
-import { getCategoryLabel, getTypeLabel, itemCategoryOptions } from '@/lib/catalogConfig'
+import { getCategoryLabel, getTypeLabel } from '@/lib/catalogConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
@@ -62,15 +63,12 @@ export default function ItemsClient() {
   const [view, setView] = useState<ItemsView>('catalog')
   const [openCreate, setOpenCreate] = useState(false)
   const [openTrade, setOpenTrade] = useState(false)
-  const [openManager, setOpenManager] = useState(false)
-  const [managerQuery, setManagerQuery] = useState('')
-  const [managerCategory, setManagerCategory] = useState<CategoryFilter>('all')
-  const [managerType, setManagerType] = useState<TypeFilter>('all')
-  const [managerSelectedId, setManagerSelectedId] = useState('')
+  const [itemActionEntry, setItemActionEntry] = useState<{ id: string; name: string } | null>(null)
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null)
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
+  const searchParams = useSearchParams()
 
   const refresh = useCallback(async () => {
     setItems(await listCatalogItemsUnified())
@@ -96,33 +94,29 @@ export default function ItemsClient() {
     })
   }, [items, category, type, query])
 
-  const managerTypeOptions = useMemo(() => {
-    const pool = items.filter((x) => (managerCategory === 'all' ? true : x.category === managerCategory))
-    const dynamicTypes = Array.from(new Set(pool.map((x) => x.item_type))).map((value) => ({ value, label: getTypeLabel(value) }))
-    return [{ value: 'all', label: copy.common.allTypes }, ...dynamicTypes]
-  }, [items, managerCategory])
-
-  const managerFiltered = useMemo(() => {
-    const q = managerQuery.trim().toLowerCase()
-    return items.filter((it) => {
-      if (managerCategory !== 'all' && it.category !== managerCategory) return false
-      if (managerType !== 'all' && it.item_type !== managerType) return false
-      if (!q) return true
-      return `${it.name} ${it.internal_id} ${it.description || ''}`.toLowerCase().includes(q)
-    })
-  }, [items, managerCategory, managerType, managerQuery])
 
   useEffect(() => {
-    if (!openManager) return
-    if (!managerFiltered.find((x) => x.id === managerSelectedId)) {
-      setManagerSelectedId(managerFiltered[0]?.id || '')
-    }
-  }, [openManager, managerFiltered, managerSelectedId])
-
-  const selectedManagerItem = useMemo(() => managerFiltered.find((x) => x.id === managerSelectedId) || null, [managerFiltered, managerSelectedId])
+    const action = searchParams.get('action')
+    const viewParam = searchParams.get('view')
+    const categoryParam = searchParams.get('category')
+    if (action === 'create') setOpenCreate(true)
+    if (action === 'trade') setOpenTrade(true)
+    if (viewParam === 'tools') setView('tools')
+    if (viewParam === 'catalog') setView('catalog')
+    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(categoryParam)) setCategory(categoryParam as CategoryFilter)
+  }, [searchParams])
 
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
+  const categoryCounts = useMemo(() => {
+    return {
+      objects: items.filter((it) => it.category === 'objects').length,
+      weapons: items.filter((it) => it.category === 'weapons').length,
+      equipment: items.filter((it) => it.category === 'equipment').length,
+      drugs: items.filter((it) => it.category === 'drugs').length,
+      other: items.filter((it) => it.category === 'custom').length,
+    }
+  }, [items])
 
   return (
     <Panel>
@@ -136,7 +130,6 @@ export default function ItemsClient() {
           onChange={setView}
         />
         <div className="flex flex-wrap items-center gap-3">
-          <SecondaryButton onClick={() => setOpenManager(true)}>Gérer items</SecondaryButton>
           <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
           <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
         </div>
@@ -144,15 +137,40 @@ export default function ItemsClient() {
 
       {view === 'catalog' ? (
         <>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {[
+              { key: 'all', label: 'Tous', value: items.length, icon: Shapes },
+              { key: 'objects', label: 'Objets', value: categoryCounts.objects, icon: Box },
+              { key: 'weapons', label: 'Armes', value: categoryCounts.weapons, icon: Swords },
+              { key: 'equipment', label: 'Équipement', value: categoryCounts.equipment, icon: Shield },
+              { key: 'drugs', label: 'Drogues', value: categoryCounts.drugs, icon: Pill },
+              { key: 'custom', label: 'Autres', value: categoryCounts.other, icon: Shapes },
+            ].map((card) => {
+              const Icon = card.icon
+              return (
+                <button
+                  key={card.key}
+                  type="button"
+                  onClick={() => { setCategory(card.key as CategoryFilter); setType('all') }}
+                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${category === card.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs text-white/70">{card.label}</p>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
+                  </div>
+                  <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
+                </button>
+              )
+            })}
+          </div>
+
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[240px]" />
-            <GlassSelect value={type} onChange={(v) => setType(v as TypeFilter)} options={typeOptions} />
+            <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[280px]" />
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <TabPill active={category === 'all'} onClick={() => setCategory('all')}>Tous</TabPill>
-            {itemCategoryOptions.map((opt) => (
-              <TabPill key={opt.value} active={category === opt.value} onClick={() => setCategory(opt.value as CategoryFilter)}>
+            {typeOptions.map((opt) => (
+              <TabPill key={opt.value} active={type === opt.value} onClick={() => setType(opt.value as TypeFilter)}>
                 {opt.label}
               </TabPill>
             ))}
@@ -173,7 +191,7 @@ export default function ItemsClient() {
               </thead>
               <tbody className="divide-y divide-white/10">
                 {filtered.map((it) => (
-                  <tr key={it.id} className="hover:bg-white/[0.02]">
+                  <tr key={it.id} className="cursor-pointer hover:bg-white/[0.02]" onClick={() => setItemActionEntry({ id: it.id, name: it.name })}>
                     <td className="px-4 py-3">
                       <div className="h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
                         {it.image_url ? (
@@ -260,52 +278,78 @@ export default function ItemsClient() {
         </div>
       )}
 
+      {openTrade ? (
+        <FinanceItemTradeModal
+          open={openTrade}
+          mode="buy"
+          enableModeSelect
+          onClose={() => setOpenTrade(false)}
+          onSubmit={async (payload) => {
+            await createFinanceTransaction({
+              item_id: payload.item.id,
+              mode: payload.mode,
+              quantity: payload.quantity,
+              unit_price: payload.unitPrice,
+              counterparty: payload.counterparty,
+              notes: payload.notes,
+            })
+            toast.success(copy.finance.toastSaved)
+            await refresh()
+            setOpenTrade(false)
+          }}
+        />
+      ) : null}
+
       {openCreate ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="mx-auto w-full max-w-5xl">
-            <ItemForm
-              onCancel={() => setOpenCreate(false)}
-              onSave={async (payload) => {
-                try {
-                  await createCatalogItem(payload)
-                  toast.success('Item créé.')
-                  await refresh()
-                  setOpenCreate(false)
-                } catch (error: unknown) {
-                  console.error('[items:create]', error)
-                  toast.error(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
-                }
-              }}
-            />
-          </div>
+        <div className="mt-6">
+          <ItemForm
+            onCancel={() => setOpenCreate(false)}
+            onSave={async (payload) => {
+              try {
+                await createCatalogItem(payload)
+                toast.success('Item créé.')
+                await refresh()
+                setOpenCreate(false)
+              } catch (error: unknown) {
+                console.error('[items:create]', error)
+                toast.error(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
+              }
+            }}
+          />
         </div>
       ) : null}
 
-      {openManager ? (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setOpenManager(false)}>
-          <div className="mx-auto w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+
+
+      {itemActionEntry ? (
+        <div className="fixed inset-0 z-[130] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setItemActionEntry(null)}>
+          <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <Panel>
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="text-lg font-semibold">Gestion des items</h3>
-                <SecondaryButton onClick={() => setOpenManager(false)}>Fermer</SecondaryButton>
+              <h3 className="text-lg font-semibold">Gérer l’item</h3>
+              <p className="mt-1 text-sm text-white/65">{itemActionEntry.name}</p>
+              <div className="mt-4 grid gap-2">
+                <SecondaryButton
+                  onClick={() => {
+                    const target = items.find((entry) => entry.id === itemActionEntry.id)
+                    if (!target) return
+                    setEditingItem(target)
+                    setItemActionEntry(null)
+                  }}
+                >
+                  Modifier
+                </SecondaryButton>
+                <DangerButton
+                  onClick={() => {
+                    const target = items.find((entry) => entry.id === itemActionEntry.id)
+                    if (!target) return
+                    setDeletingItem(target)
+                    setItemActionEntry(null)
+                  }}
+                >
+                  Supprimer
+                </DangerButton>
+                <SecondaryButton onClick={() => setItemActionEntry(null)}>{copy.common.cancel}</SecondaryButton>
               </div>
-              <div className="grid gap-3 md:grid-cols-4">
-                <SearchInput value={managerQuery} onChange={(e) => setManagerQuery(e.target.value)} placeholder="Chercher un item" />
-                <GlassSelect value={managerCategory} onChange={(v) => setManagerCategory(v as CategoryFilter)} options={[{ value: 'all', label: copy.common.allCategories }, ...itemCategoryOptions]} />
-                <GlassSelect value={managerType} onChange={(v) => setManagerType(v as TypeFilter)} options={managerTypeOptions} />
-                <GlassSelect value={managerSelectedId} onChange={setManagerSelectedId} options={managerFiltered.map((it) => ({ value: it.id, label: `${it.name} · ${getCategoryLabel(it.category)}` }))} />
-              </div>
-              {selectedManagerItem ? (
-                <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="text-sm text-white/70">Sélection: <span className="font-semibold text-white">{selectedManagerItem.name}</span></div>
-                  <div className="mt-3 flex justify-end gap-2">
-                    <SecondaryButton onClick={() => { setEditingItem(selectedManagerItem); setOpenManager(false) }}>Modifier</SecondaryButton>
-                    <DangerButton onClick={() => { setDeletingItem(selectedManagerItem); setOpenManager(false) }}>Supprimer</DangerButton>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 text-sm text-white/60">Aucun item correspondant.</div>
-              )}
             </Panel>
           </div>
         </div>
@@ -361,24 +405,6 @@ export default function ItemsClient() {
         </div>
       ) : null}
 
-      <FinanceItemTradeModal
-        open={openTrade}
-        mode="buy"
-        enableModeSelect
-        onClose={() => setOpenTrade(false)}
-        onSubmit={async (payload) => {
-          await createFinanceTransaction({
-            item_id: payload.item.id,
-            mode: payload.mode,
-            quantity: payload.quantity,
-            unit_price: payload.unitPrice,
-            counterparty: payload.counterparty,
-            notes: payload.notes,
-          })
-          toast.success(copy.finance.toastSaved)
-          await refresh()
-        }}
-      />
     </Panel>
   )
 }

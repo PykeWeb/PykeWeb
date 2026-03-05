@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ClipboardEvent } from 'react'
+import type { ClipboardEvent, MouseEvent as ReactMouseEvent } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
@@ -9,7 +10,8 @@ import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
-import { Box, Handshake, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Crosshair, Wrench, Leaf } from 'lucide-react'
+import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -32,29 +34,49 @@ type Expense = { id: string; item_label: string; total: number; quantity: number
 type DrugItem = { id: string; name: string; stock: number; type: string }
 type ActivityView = 'transactions' | 'loans' | 'expenses' | 'plantations'
 
-type QuickActionKey = 'purchase' | 'loans' | 'catalogue' | 'objects' | 'weapons' | 'expenses' | 'drugs' | 'transactions'
-type CardKey = 'objects' | 'weapons' | 'loans' | 'transactions' | 'expenses' | 'drugs' | 'catalogue' | 'equipment'
+type QuickActionKey = 'newExpense' | 'purchase' | 'sale' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
+type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
-const QUICK_ACTION_OPTIONS: { key: QuickActionKey; title: string; subtitle: string; href: string; icon: any }[] = [
+type DashboardMetrics = {
+  loading: boolean
+  categoryCounts: Record<FinanceCategory, number>
+  movementCounts: Record<FinanceMovementType, number>
+}
+
+type QuickActionOption = { key: QuickActionKey; title: string; subtitle: string; href: string; icon: LucideIcon }
+type CardOption = { key: CardKey; title: string; href: string; icon: LucideIcon; getValue: (metrics: DashboardMetrics) => string }
+
+const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
+  { key: 'newExpense', title: 'Nouvelle dépense', subtitle: 'Créer une dépense Finance', href: '/finance/depense/nouveau', icon: Wallet },
   { key: 'purchase', title: 'Nouvel achat', subtitle: 'Créer une entrée stock', href: '/transactions/nouveau?type=purchase', icon: ShoppingCart },
-  { key: 'loans', title: 'Prêts en cours', subtitle: 'Suivre les prêts actifs', href: '/armes/prets', icon: Handshake },
-  { key: 'catalogue', title: 'Catalogue', subtitle: 'Voir tous les objets', href: '/objets', icon: FolderOpen },
-  { key: 'objects', title: 'Objets', subtitle: 'Catalogue objets', href: '/objets', icon: Box },
-  { key: 'weapons', title: 'Armes', subtitle: 'Gestion des armes', href: '/armes', icon: Crosshair },
-  { key: 'transactions', title: 'Transactions', subtitle: 'Historique des transactions', href: '/transactions', icon: Receipt },
-  { key: 'expenses', title: 'Dépenses', subtitle: 'Suivre les dépenses', href: '/depenses', icon: Receipt },
-  { key: 'drugs', title: 'Drogues', subtitle: 'Catalogue drogues', href: '/drogues', icon: Leaf },
+  { key: 'sale', title: 'Nouvelle vente/sortie', subtitle: 'Sortir un item du stock', href: '/transactions/nouveau?type=sale', icon: ArrowUpRight },
+  { key: 'itemCreate', title: 'Créer un item', subtitle: 'Ouvrir le formulaire item', href: '/items?action=create', icon: PlusCircle },
+  { key: 'itemTrade', title: 'Achat/Vente items', subtitle: 'Ouvrir l’outil Items', href: '/items?action=trade', icon: Receipt },
+  { key: 'finance', title: 'Espace Finance', subtitle: 'Voir toutes les opérations', href: '/finance', icon: Wallet },
+  { key: 'items', title: 'Espace Items', subtitle: 'Voir le catalogue items', href: '/items', icon: Box },
 ]
-const CARD_OPTIONS: { key: CardKey; title: string; href: string; icon: any; getValue: (v: any) => string }[] = [
-  { key: 'objects', title: 'Objets', href: '/objets', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.objectCount)) },
-  { key: 'weapons', title: 'Armes', href: '/armes', icon: Crosshair, getValue: (v) => (v.loading ? '—' : String(v.weaponCount)) },
-  { key: 'loans', title: 'Prêts en cours', href: '/armes/prets', icon: Handshake, getValue: (v) => (v.loading ? '—' : String(v.activeLoans)) },
-  { key: 'transactions', title: 'Transactions', href: '/transactions', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.txToday)) },
-  { key: 'expenses', title: 'Dépenses', href: '/depenses', icon: Receipt, getValue: (v) => (v.loading ? '—' : String(v.expenseCount)) },
-  { key: 'drugs', title: 'Drogues', href: '/drogues', icon: Leaf, getValue: (v) => (v.loading ? '—' : String(v.drugCount)) },
-  { key: 'catalogue', title: 'Catalogue', href: '/objets', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.objectCount + v.weaponCount + v.drugCount)) },
-  { key: 'equipment', title: 'Équipement', href: '/equipement', icon: Wrench, getValue: () => '→' },
+const CARD_OPTIONS: CardOption[] = [
+  { key: 'catObjects', title: 'Objets', href: '/items?category=objects', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.objects)) },
+  { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
+  { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
+  { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
+  { key: 'catOther', title: 'Autres', href: '/items?category=custom', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
+  { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
+  { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
+  { key: 'mvSale', title: 'Ventes', href: '/finance?type=sale', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
+  { key: 'calculator', title: 'Calculateur', href: '/items?view=tools', icon: Receipt, getValue: () => '→' },
 ]
+
+const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs']
+
+function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
+  const allowed = new Set(CARD_OPTIONS.map((option) => option.key))
+  const safeOrder = (order ?? [])
+    .filter((key, index, list) => allowed.has(key) && list.indexOf(key) === index)
+    .slice(0, DEFAULT_DASHBOARD_CARDS.length)
+  const missing = DEFAULT_DASHBOARD_CARDS.filter((key) => !safeOrder.includes(key))
+  return [...safeOrder, ...missing].slice(0, DEFAULT_DASHBOARD_CARDS.length)
+}
 
 function startOfTodayIso() {
   const d = new Date()
@@ -72,6 +94,20 @@ export function DashboardClient() {
   const [recentLoans, setRecentLoans] = useState<Loan[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
   const [drugItems, setDrugItems] = useState<DrugItem[]>([])
+
+  const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>({
+    objects: 0,
+    weapons: 0,
+    equipment: 0,
+    drugs: 0,
+    custom: 0,
+    other: 0,
+  })
+  const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>({
+    expense: 0,
+    purchase: 0,
+    sale: 0,
+  })
   const [activityView, setActivityView] = useState<ActivityView>('transactions')
   const [pauseAutoUntil, setPauseAutoUntil] = useState(0)
   const [ticketKind, setTicketKind] = useState<'bug' | 'message'>('bug')
@@ -80,13 +116,18 @@ export function DashboardClient() {
   const [ticketStatus, setTicketStatus] = useState('')
   const [supportOpen, setSupportOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
-  const pressTimerRef = useRef<number | null>(null)
-  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['purchase', 'loans', 'catalogue'])
-  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(['objects', 'weapons', 'loans', 'transactions'])
+  const cardLongPressTimerRef = useRef<number | null>(null)
+  const longPressTriggeredRef = useRef(false)
+  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'purchase', 'sale', 'itemCreate', 'itemTrade'])
+  const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
+  const [uiLayoutsReady, setUiLayoutsReady] = useState(false)
+  const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
+
+
 
   useEffect(() => {
     return () => {
@@ -117,20 +158,34 @@ export function DashboardClient() {
 
 
   useEffect(() => {
+    let alive = true
     ;(async () => {
-      const [quickRes, cardsRes] = await Promise.all([
-        fetch('/api/ui-layouts?page_key=dashboard.quick_actions', { cache: 'no-store' }),
-        fetch('/api/ui-layouts?page_key=dashboard.cards', { cache: 'no-store' }),
-      ])
-      if (quickRes.ok) {
-        const data = await quickRes.json()
-        if (Array.isArray(data.order) && data.order.length) setQuickActions(data.order)
-      }
-      if (cardsRes.ok) {
-        const data = await cardsRes.json()
-        if (Array.isArray(data.order) && data.order.length) setDashboardCards(data.order)
+      try {
+        const [quickRes, cardsRes] = await Promise.all([
+          fetch('/api/ui-layouts?page_key=dashboard.quick_actions', { cache: 'no-store' }),
+          fetch('/api/ui-layouts?page_key=dashboard.cards', { cache: 'no-store' }),
+        ])
+        if (quickRes.ok) {
+          const data = await quickRes.json()
+          if (Array.isArray(data.order) && data.order.length) {
+            const next = data.order.filter((key: unknown): key is QuickActionKey => QUICK_ACTION_OPTIONS.some((option) => option.key === key))
+            if (next.length && alive) setQuickActions(next)
+          }
+        }
+        if (cardsRes.ok) {
+          const data = await cardsRes.json()
+          if (Array.isArray(data.order) && data.order.length) {
+            const next = data.order.filter((key: unknown): key is CardKey => CARD_OPTIONS.some((option) => option.key === key))
+            if (alive) setDashboardCards(mergeCardOrder(next))
+          }
+        }
+      } finally {
+        if (alive) setUiLayoutsReady(true)
       }
     })()
+    return () => {
+      alive = false
+    }
   }, [])
 
   async function persistLayouts(nextQuick = quickActions, nextCards = dashboardCards) {
@@ -154,7 +209,7 @@ export function DashboardClient() {
       setLoading(true)
       try {
         const groupId = currentGroupId()
-        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes] = await Promise.all([
+        const [objRes, weapRes, loansRes, txRes, recentTxRes, recentLoansRes, recentExpensesRes, drugItemsRes, financeEntries] = await Promise.all([
           supabase.from('objects').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapons').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
           supabase.from('weapon_loans').select('id', { count: 'exact', head: true }).eq('group_id', groupId).is('returned_at', null),
@@ -184,9 +239,17 @@ export function DashboardClient() {
             .eq('group_id', groupId)
             .order('stock', { ascending: false })
             .limit(8),
+          listFinanceEntries(),
         ])
 
         if (!alive) return
+
+        const categoryCounts: Record<FinanceCategory, number> = { objects: 0, weapons: 0, equipment: 0, drugs: 0, custom: 0, other: 0 }
+        const movementCounts: Record<FinanceMovementType, number> = { expense: 0, purchase: 0, sale: 0 }
+        for (const entry of financeEntries) {
+          categoryCounts[entry.category] += 1
+          movementCounts[entry.movement_type] += 1
+        }
         setObjectCount(objRes.count ?? 0)
         setWeaponCount(weapRes.count ?? 0)
         setActiveLoans(loansRes.count ?? 0)
@@ -195,6 +258,8 @@ export function DashboardClient() {
         setRecentLoans((recentLoansRes.data as Loan[]) ?? [])
         setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
         setDrugItems((drugItemsRes.data as DrugItem[]) ?? [])
+        setFinanceCategoryCounts(categoryCounts)
+        setFinanceMovementCounts(movementCounts)
       } finally {
         if (alive) setLoading(false)
       }
@@ -229,8 +294,8 @@ export function DashboardClient() {
       setTicketMessage('')
       setTicketImage(null)
       setTicketStatus(ticketKind === 'bug' ? 'Bug envoyé.' : 'Message envoyé.')
-    } catch (e: any) {
-      setTicketStatus(e?.message || 'Envoi impossible')
+    } catch (e: unknown) {
+      setTicketStatus(e instanceof Error ? e.message : 'Envoi impossible')
     }
   }
 
@@ -255,23 +320,50 @@ export function DashboardClient() {
     void persistLayouts(next, dashboardCards)
   }
 
-  function onCardPressStart(cardKey: CardKey) {
-    const slot = dashboardCards.findIndex((k) => k === cardKey)
-    if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current)
-    pressTimerRef.current = window.setTimeout(() => setCardPickerSlot(slot >= 0 ? slot : 0), 550)
+
+
+
+  function onCardPointerDown() {
+    longPressTriggeredRef.current = false
+    if (cardLongPressTimerRef.current) window.clearTimeout(cardLongPressTimerRef.current)
+    cardLongPressTimerRef.current = window.setTimeout(() => {
+      longPressTriggeredRef.current = true
+      setCardManagerOpen(true)
+    }, 600)
   }
-  function onCardPressEnd() {
-    if (pressTimerRef.current) {
-      window.clearTimeout(pressTimerRef.current)
-      pressTimerRef.current = null
-    }
+
+  function onCardPointerEnd() {
+    if (!cardLongPressTimerRef.current) return
+    window.clearTimeout(cardLongPressTimerRef.current)
+    cardLongPressTimerRef.current = null
   }
+
+  function onCardClickCapture(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!longPressTriggeredRef.current) return
+    event.preventDefault()
+    event.stopPropagation()
+    longPressTriggeredRef.current = false
+  }
+
 
   function applyCardChoice(nextCard: CardKey) {
     if (cardPickerSlot === null) return
-    const next = dashboardCards.map((value, index) => (index === cardPickerSlot ? nextCard : value))
-    setDashboardCards(next)
+    const next = dashboardCards.map((card, index) => (index === cardPickerSlot ? nextCard : card))
+    const unique = next.filter((card, index, list) => list.indexOf(card) === index)
+    const missing = DEFAULT_DASHBOARD_CARDS.filter((card) => !unique.includes(card))
+    const finalOrder = [...unique, ...missing].slice(0, DEFAULT_DASHBOARD_CARDS.length)
+    setDashboardCards(finalOrder)
     setCardPickerSlot(null)
+    void persistLayouts(quickActions, finalOrder)
+  }
+
+  function moveDashboardCard(index: number, direction: 'up' | 'down') {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= dashboardCards.length) return
+    const next = [...dashboardCards]
+    const [entry] = next.splice(index, 1)
+    next.splice(targetIndex, 0, entry)
+    setDashboardCards(next)
     void persistLayouts(quickActions, next)
   }
 
@@ -291,15 +383,18 @@ export function DashboardClient() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {dashboardCards.map((cardKey, idx) => {
+          {!uiLayoutsReady ? Array.from({ length: 4 }).map((_, idx) => (
+            <div key={`card-skeleton-${idx}`} className="h-[118px] rounded-2xl border border-white/10 bg-white/[0.03] animate-pulse" />
+          )) : null}
+          {uiLayoutsReady ? dashboardCards.map((cardKey, idx) => {
             const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
             const Icon = card.icon
             return (
-              <div key={`${card.key}-${idx}`} onMouseDown={() => onCardPressStart(card.key)} onMouseUp={onCardPressEnd} onMouseLeave={onCardPressEnd} onContextMenu={(e) => { e.preventDefault(); onCardPressStart(card.key) }}>
-              <StatCard title={card.title} value={card.getValue({ loading, objectCount, weaponCount, activeLoans, txToday, expenseCount: recentExpenses.length, drugCount: drugItems.length })} icon={<Icon className="h-5 w-5" />} href={card.href} />
+              <div key={`${card.key}-${idx}`} className="select-none touch-none" onPointerDown={onCardPointerDown} onPointerUp={onCardPointerEnd} onPointerLeave={onCardPointerEnd} onPointerCancel={onCardPointerEnd} onClickCapture={onCardClickCapture}>
+              <StatCard title={card.title} value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })} icon={<Icon className="h-5 w-5" />} href={card.href} />
               </div>
             )
-          })}
+          }) : null}
         </div>
 
         <Panel>
@@ -403,7 +498,10 @@ export function DashboardClient() {
           </div>
           <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
           <div className="mt-3 space-y-2">
-            {quickActions.map((actionKey, idx) => {
+            {!uiLayoutsReady ? Array.from({ length: 3 }).map((_, idx) => (
+              <div key={`quick-skeleton-${idx}`} className="h-[62px] rounded-xl border border-white/10 bg-white/[0.03] animate-pulse" />
+            )) : null}
+            {uiLayoutsReady ? quickActions.map((actionKey, idx) => {
               const action = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey) || QUICK_ACTION_OPTIONS[idx]
               if (!action) return null
               const Icon = action.icon
@@ -433,7 +531,7 @@ export function DashboardClient() {
                   </div>
                 </Link>
               )
-            })}
+            }) : null}
           </div>
         </Panel>
 
@@ -465,19 +563,62 @@ export function DashboardClient() {
         </div>
       ) : null}
 
-      {cardPickerSlot !== null ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-          <div className="w-full max-w-xl rounded-2xl border border-white/20 bg-slate-950/95 p-4">
+
+      {cardManagerOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setCardManagerOpen(false)}>
+          <div className="w-full max-w-3xl rounded-2xl border border-white/20 bg-slate-950/95 p-4" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Choisir la carte</h3>
+              <h3 className="text-sm font-semibold">Bulles Dashboard</h3>
+              <button type="button" onClick={() => setCardManagerOpen(false)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="space-y-2">
+              {dashboardCards.map((cardKey, index) => {
+                const card = CARD_OPTIONS.find((option) => option.key === cardKey)
+                if (!card) return null
+                const Icon = card.icon
+                return (
+                  <div key={`${card.key}-${index}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/10"><Icon className="h-4 w-4" /></span>
+                      <div>
+                        <p className="text-sm font-medium">{card.title}</p>
+                        <p className="text-xs text-white/60">{card.href}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => moveDashboardCard(index, 'up')} disabled={index === 0} className="rounded-md border border-white/10 bg-white/5 p-1 disabled:opacity-40"><ChevronUp className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => moveDashboardCard(index, 'down')} disabled={index === dashboardCards.length - 1} className="rounded-md border border-white/10 bg-white/5 p-1 disabled:opacity-40"><ChevronDown className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => setCardPickerSlot(index)} className="rounded-md border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">Remplacer</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cardPickerSlot !== null ? (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setCardPickerSlot(null)}>
+          <div className="w-full max-w-3xl rounded-2xl border border-white/20 bg-slate-950/95 p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Choisir une bulle</h3>
               <button type="button" onClick={() => setCardPickerSlot(null)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              {CARD_OPTIONS.map((opt) => (
-                <button key={opt.key} type="button" onClick={() => applyCardChoice(opt.key)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left text-sm hover:bg-white/10">
-                  {opt.title}
-                </button>
-              ))}
+              {CARD_OPTIONS.map((option) => {
+                const Icon = option.icon
+                const disabled = dashboardCards.includes(option.key)
+                return (
+                  <button key={option.key} type="button" disabled={disabled} onClick={() => applyCardChoice(option.key)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10 disabled:opacity-40">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/10"><Icon className="h-4 w-4" /></span>
+                    <div>
+                      <p className="text-sm font-medium">{option.title}</p>
+                      <p className="text-xs text-white/60">{disabled ? 'Déjà utilisée' : option.href}</p>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
