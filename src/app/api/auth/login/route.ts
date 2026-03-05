@@ -17,6 +17,7 @@ type GroupRow = {
   name: string
   badge: string | null
   login: string
+  password: string
   active: boolean
   paid_until: string | null
 }
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from('tenant_groups')
-      .select('id,name,badge,login,active,paid_until')
+      .select('id,name,badge,login,password,active,paid_until')
       .eq('login', login)
       .eq('password', password)
       .maybeSingle<GroupRow>()

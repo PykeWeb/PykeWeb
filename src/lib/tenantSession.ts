@@ -1,6 +1,9 @@
 import {
+  decodeTenantSession,
+  encodeTenantSession,
   isAdminSession,
   isValidTenantSession,
+  TENANT_SESSION_COOKIE_KEY,
   TENANT_SESSION_VERSION,
   type TenantSessionPayload,
 } from '@/lib/tenantSessionShared'
@@ -14,7 +17,8 @@ export function isAdminTenantSession(session: TenantSession | null | undefined) 
 const SESSION_VERSION = TENANT_SESSION_VERSION
 const STORAGE_KEY = 'pykeweb:tenant-session:v3'
 const LEGACY_STORAGE_KEYS = ['pykeweb:tenant-session', 'pykeweb:tenant-session:v1', 'pykeweb:tenant-session:v2']
-const LEGACY_COOKIE_KEYS = ['tenant_session', 'tenant_session_v2', 'tenant_session_v3']
+const COOKIE_KEY = TENANT_SESSION_COOKIE_KEY
+const LEGACY_COOKIE_KEYS = ['tenant_session', 'tenant_session_v2']
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -64,7 +68,19 @@ export function getTenantSession(): TenantSession | null {
     }
   }
 
-  return null
+  const cookieEntry = document.cookie
+    .split('; ')
+    .find((v) => v.startsWith(`${COOKIE_KEY}=`))
+  const cookie = cookieEntry ? cookieEntry.slice(`${COOKIE_KEY}=`.length) : null
+  if (!cookie) return null
+
+  const decoded = decodeTenantSession(cookie)
+  if (!isValidSession(decoded)) {
+    clearTenantSession()
+    return null
+  }
+
+  return decoded
 }
 
 export function saveTenantSession(session: TenantSession) {
@@ -76,10 +92,24 @@ export function saveTenantSession(session: TenantSession) {
 
   safeSetLocalStorage(STORAGE_KEY, JSON.stringify(normalized))
   clearLegacySessionArtifacts()
+  const payload = encodeTenantSession(normalized)
+  document.cookie = `${COOKIE_KEY}=${payload}; path=/; max-age=${60 * 60 * 24 * 14}; SameSite=Lax`
+}
+
+export async function syncTenantSessionToServer(session: TenantSession) {
+  const res = await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ session }),
+  })
+  if (!res.ok) {
+    throw new Error('Synchronisation de session impossible')
+  }
 }
 
 export async function clearTenantSessionOnServer() {
-  await fetch('/api/auth/login', {
+  await fetch('/api/auth/session', {
     method: 'DELETE',
     credentials: 'include',
   })

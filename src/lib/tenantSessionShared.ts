@@ -24,27 +24,15 @@ export function isAdminSession(session: Pick<TenantSessionPayload, 'groupId' | '
 }
 
 export function encodeTenantSession(session: TenantSessionPayload) {
-  const raw = JSON.stringify(session)
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(raw, 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
-  }
-  const bytes = new TextEncoder().encode(raw)
-  let binary = ''
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte)
-  })
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+  return btoa(JSON.stringify(session))
 }
 
 export function decodeTenantSession(raw: string | undefined): TenantSessionPayload | null {
   if (!raw) return null
   try {
-    const padded = raw.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(raw.length / 4) * 4, '=')
-    const json = typeof Buffer !== 'undefined'
-      ? Buffer.from(padded, 'base64').toString('utf8')
-      : new TextDecoder().decode(Uint8Array.from(atob(padded), (char) => char.charCodeAt(0)))
-    return JSON.parse(json) as TenantSessionPayload
+    return JSON.parse(atob(raw)) as TenantSessionPayload
   } catch {
     return null
   }
 }
+
