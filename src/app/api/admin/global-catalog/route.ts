@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireAdminSessionFromRequest } from '@/lib/server/tenantServerSession'
+import { assertAdminSession } from '@/server/auth/admin'
 import { normalizeCatalogCategory } from '@/lib/catalogConfig'
 
 export async function GET(request: Request) {
   try {
-    await requireAdminSession(request)
+    await assertAdminSession(request)
     const { searchParams } = new URL(request.url)
     const category = normalizeCatalogCategory(searchParams.get('category'))
     const supabase = getSupabaseAdmin()
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireAdminSession(request)
+    await assertAdminSession(request)
     const body = (await request.json()) as Record<string, unknown>
     const category = normalizeCatalogCategory(String(body.category ?? ''))
     if (!category) return NextResponse.json({ error: 'Catégorie invalide' }, { status: 400 })
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    await requireAdminSession(request)
+    await assertAdminSession(request)
     const body = (await request.json()) as { id?: string; patch?: Record<string, unknown> }
     if (!body.id || !body.patch) return NextResponse.json({ error: 'Payload invalide' }, { status: 400 })
 
@@ -75,7 +75,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireAdminSession(request)
+    await assertAdminSession(request)
     const body = (await request.json()) as { id?: string }
     if (!body.id) return NextResponse.json({ error: 'ID requis' }, { status: 400 })
 

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { readTenantServerSession } from '@/lib/server/tenantServerSession'
+import { getSessionFromRequest } from '@/server/auth/session'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = getSupabaseAdmin()
-    const session = await readTenantServerSession()
+    const session = await getSessionFromRequest(request)
     const groupId = session?.groupId && session.groupId !== 'admin' ? session.groupId : null
 
     const { data: globalRows, error: gErr } = await supabase
@@ -15,7 +15,7 @@ export async function GET() {
 
     if (gErr) return NextResponse.json({ error: gErr.message }, { status: 500 })
 
-    let merged: Record<string, string> = Object.fromEntries((globalRows ?? []).map((r: any) => [r.key, r.value]))
+    let merged: Record<string, string> = Object.fromEntries((globalRows ?? []).map((r: { key: string; value: string }) => [r.key, r.value]))
 
     if (groupId) {
       const { data: groupRows } = await supabase
@@ -23,7 +23,7 @@ export async function GET() {
         .select('key,value')
         .eq('scope', 'group')
         .eq('group_id', groupId)
-      merged = { ...merged, ...Object.fromEntries((groupRows ?? []).map((r: any) => [r.key, r.value])) }
+      merged = { ...merged, ...Object.fromEntries((groupRows ?? []).map((r: { key: string; value: string }) => [r.key, r.value])) }
     }
 
     return NextResponse.json({ overrides: merged })
