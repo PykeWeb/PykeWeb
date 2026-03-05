@@ -16,16 +16,9 @@ export async function readTenantServerSession(): Promise<TenantSession | null> {
   return isValidTenantSession(decoded) ? decoded : null
 }
 
-function readTenantSessionFromRequest(request: Request) {
-  const raw = request.headers.get('x-tenant-session') || undefined
-  if (!raw) return null
-  const decoded = decodeTenantSession(raw)
-  return isValidTenantSession(decoded) ? decoded : null
-}
-
-export async function requireAdminSession(request?: Request) {
-  const fromRequest = request ? readTenantSessionFromRequest(request) : null
-  const session = fromRequest ?? (await readTenantServerSession())
+export async function requireAdminSession() {
+  const session = await readTenantServerSession()
+  // Utiliser isAdminSession pour une validation cohérente
   if (!session || !isAdminSession(session)) {
     throw new Error('Admin non autorisé')
   }
