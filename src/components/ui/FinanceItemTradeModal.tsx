@@ -136,7 +136,7 @@ export function FinanceItemTradeModal({
   if (!open) return null
 
   const content = (
-    <div className="mx-auto w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+    <div className="mx-auto w-full max-w-5xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain" onClick={(e) => e.stopPropagation()}>
       <CenteredFormLayout
         title={copy.finance.trade.title}
         actions={
