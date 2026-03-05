@@ -18,11 +18,13 @@ export function ItemForm({
   onSave,
   initialItem,
   submitLabel,
+  actionsPlacement,
 }: {
   onCancel: () => void
   onSave: (payload: CreateCatalogItemInput) => Promise<void>
   initialItem?: CatalogItem
   submitLabel?: string
+  actionsPlacement?: 'top-right' | 'bottom-right'
 }) {
   const [name, setName] = useState(initialItem?.name ?? '')
   const [category, setCategory] = useState<ItemCategory>(initialItem?.category ?? 'objects')
@@ -40,6 +42,9 @@ export function ItemForm({
 
   const typeOptions = useMemo(() => categoryTypeOptions[category], [category])
   const canSave = useMemo(() => name.trim().length > 0 && !saving, [name, saving])
+  const safeBuyPrice = toNonNegative(buyPrice)
+  const safeSellPrice = toNonNegative(sellPrice)
+  const safeStock = toNonNegative(Math.floor(Number(stock || 0)))
 
   async function handleSubmit() {
     if (!name.trim()) {
@@ -60,12 +65,12 @@ export function ItemForm({
         internal_id: uniqueInternalId,
         description: description.trim() || null,
         imageFile,
-        buy_price: toNonNegative(buyPrice),
-        sell_price: toNonNegative(sellPrice),
+        buy_price: safeBuyPrice,
+        sell_price: safeSellPrice,
         internal_value: initialItem?.internal_value ?? 0,
         show_in_finance: initialItem?.show_in_finance ?? true,
         is_active: initialItem?.is_active ?? true,
-        stock: toNonNegative(Math.floor(Number(stock || 0))),
+        stock: safeStock,
         low_stock_threshold: initialItem?.low_stock_threshold ?? 0,
         stackable: initialItem?.stackable ?? true,
         max_stack: initialItem?.max_stack ?? 100,
@@ -81,68 +86,80 @@ export function ItemForm({
 
   return (
     <CenteredFormLayout
-      title={initialItem ? 'Modifier l’item' : 'Créer un item'}
-      subtitle="Formulaire unifié"
+      title={initialItem ? 'Modifier l’item (Items)' : 'Nouvel item (Items)'}
+      subtitle={copy.itemForm.labels.unifiedSubtitle}
       actions={
         <>
           <SecondaryButton onClick={onCancel}>{copy.common.cancel}</SecondaryButton>
           <PrimaryButton onClick={handleSubmit} disabled={!canSave}>{saving ? 'Enregistrement…' : submitLabel || copy.common.save}</PrimaryButton>
         </>
       }
-      actionsPlacement="bottom-right"
+      actionsPlacement={actionsPlacement || 'top-right'}
     >
-      <div className="grid gap-3 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Nom</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'item" />
-          {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Catégorie</label>
-          <GlassSelect
-            value={category}
-            onChange={(v) => {
-              const nextCategory = v as ItemCategory
-              setCategory(nextCategory)
-              setItemType(categoryTypeOptions[nextCategory][0].value)
-            }}
-            options={itemCategoryOptions}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Type</label>
-          <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={typeOptions} />
-        </div>
-
-        {category === 'weapons' ? (
+      <div className="grid gap-4">
+        <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs text-white/60">ID (arme)</label>
-            <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.name}</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Coke" />
+            {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
           </div>
-        ) : null}
 
-        <ImageDropzone label="Image (copier/coller ou PNG/JPEG)" onChange={setImageFile} />
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.category}</label>
+            <GlassSelect
+              value={category}
+              onChange={(v) => {
+                const nextCategory = v as ItemCategory
+                setCategory(nextCategory)
+                setItemType(categoryTypeOptions[nextCategory][0].value)
+              }}
+              options={itemCategoryOptions}
+            />
+          </div>
 
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Prix achat</label>
-          <Input value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} inputMode="decimal" />
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.type}</label>
+            <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={typeOptions} />
+          </div>
+
+          {category === 'weapons' ? (
+            <div>
+              <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.weaponId}</label>
+              <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
+            </div>
+          ) : null}
         </div>
 
         <div>
-          <label className="mb-1 block text-xs text-white/60">Prix vente</label>
-          <Input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} inputMode="decimal" />
+          <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.image}</label>
+          <ImageDropzone label="Ajoute une image (PNG/JPEG)" onChange={setImageFile} />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.buyPrice}</label>
+            <Input value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} inputMode="decimal" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.sellPrice}</label>
+            <Input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} inputMode="decimal" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.initialStock}</label>
+            <Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
+          </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-xs text-white/60">Stock initial</label>
-          <Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
+          <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.description}</label>
+          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[120px]" />
         </div>
 
-        <div className="md:col-span-2">
-          <label className="mb-1 block text-xs text-white/60">Description</label>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[90px]" />
+        <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-50">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>Résumé item</span>
+            <span className="font-semibold">Achat: {safeBuyPrice.toFixed(2)} $ · Vente: {safeSellPrice.toFixed(2)} $ · Stock: {safeStock}</span>
+          </div>
         </div>
       </div>
 
