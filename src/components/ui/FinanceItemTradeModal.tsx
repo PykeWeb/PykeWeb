@@ -36,6 +36,7 @@ export function FinanceItemTradeModal({
   onSubmit,
   enableModeSelect = false,
   inline = false,
+  initialItems = [],
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -43,6 +44,7 @@ export function FinanceItemTradeModal({
   onSubmit: (payload: { item: CatalogItem; mode: 'buy' | 'sell'; quantity: number; unitPrice: number; counterparty: string; notes: string }) => Promise<void>
   enableModeSelect?: boolean
   inline?: boolean
+  initialItems?: CatalogItem[]
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
@@ -53,6 +55,7 @@ export function FinanceItemTradeModal({
   const [counterparty, setCounterparty] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadingItems, setLoadingItems] = useState(false)
 
   void enableModeSelect
 
@@ -62,12 +65,18 @@ export function FinanceItemTradeModal({
 
   useEffect(() => {
     if (!open) return
+
+    setItems(initialItems)
+    setLines([])
+    setLoadingItems(true)
+
     ;(async () => {
       const rows = await listCatalogItemsUnified()
       setItems(rows)
-      setLines([])
-    })().catch((e: unknown) => setError(e instanceof Error ? e.message : copy.finance.errors.loadItemsFailed))
-  }, [open])
+    })()
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : copy.finance.errors.loadItemsFailed))
+      .finally(() => setLoadingItems(false))
+  }, [open, initialItems])
 
   const typeOptions = useMemo(() => {
     if (category === 'all') {
@@ -249,6 +258,7 @@ export function FinanceItemTradeModal({
                 />
               </div>
               <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
                 {filtered.map((it) => (
                   <div key={it.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                     <div className="flex min-w-0 items-center gap-3">

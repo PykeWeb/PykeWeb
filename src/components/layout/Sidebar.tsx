@@ -41,6 +41,7 @@ function mergeUnique(values: string[]) {
 }
 
 const HIDDEN_CATEGORIES_KEY = 'sidebar.hiddenCategories'
+const ALL_CATEGORY_NAV_IDS = ['objects', 'weapons', 'equipment', 'drugs', 'expenses'] as const
 
 const HIDDEN_FETCH_RETRY_MS = 180
 const HIDDEN_FETCH_MAX_RETRIES = 6
@@ -136,7 +137,7 @@ export function Sidebar() {
         }
 
         if (groupFetch.status === 401 || groupFetch.status === 403) {
-          setHiddenCategoryNav([])
+          setHiddenCategoryNav([...ALL_CATEGORY_NAV_IDS])
           setHiddenCategoriesReady(true)
           return
         }
@@ -189,11 +190,11 @@ export function Sidebar() {
   })
 
   const categoryToggles = [
-    { id: 'objects', label: labels.nav_objets || 'Objets' },
-    { id: 'weapons', label: labels.nav_armes || 'Armes' },
-    { id: 'equipment', label: labels.nav_equipement || 'Équipement' },
-    { id: 'drugs', label: labels.nav_drogues || 'Drogues' },
-    { id: 'expenses', label: labels.nav_depenses || 'Dépenses' },
+    { id: ALL_CATEGORY_NAV_IDS[0], label: labels.nav_objets || 'Objets' },
+    { id: ALL_CATEGORY_NAV_IDS[1], label: labels.nav_armes || 'Armes' },
+    { id: ALL_CATEGORY_NAV_IDS[2], label: labels.nav_equipement || 'Équipement' },
+    { id: ALL_CATEGORY_NAV_IDS[3], label: labels.nav_drogues || 'Drogues' },
+    { id: ALL_CATEGORY_NAV_IDS[4], label: labels.nav_depenses || 'Dépenses' },
   ]
 
   function updateHidden(next: string[]) {

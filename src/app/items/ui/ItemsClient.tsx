@@ -284,6 +284,7 @@ export default function ItemsClient() {
           mode="buy"
           enableModeSelect
           onClose={() => setOpenTrade(false)}
+          initialItems={items}
           onSubmit={async (payload) => {
             await createFinanceTransaction({
               item_id: payload.item.id,
