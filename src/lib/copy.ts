@@ -7,6 +7,19 @@ export const copy = {
     allTypes: 'Tous les types',
   },
   itemForm: {
+
+    labels: {
+      name: 'Nom',
+      category: 'Catégorie',
+      type: 'Type',
+      weaponId: 'ID (arme)',
+      image: 'Image (copier/coller ou PNG/JPEG)',
+      buyPrice: 'Prix achat',
+      sellPrice: 'Prix vente',
+      initialStock: 'Stock initial',
+      description: 'Description',
+      unifiedSubtitle: 'Formulaire unifié',
+    },
     sections: {
       infos: 'Infos',
       economy: 'Économie',
@@ -38,6 +51,18 @@ export const copy = {
     },
   },
   finance: {
+
+    trade: {
+      title: 'Achat / Vente (Items)',
+      subtitle: 'Formulaire unifié',
+      modeBuy: 'Achat',
+      modeSell: 'Vente / Sortie',
+      typeOptional: 'Type (optionnel)',
+      selectedItem: 'Item sélectionné',
+      stockNow: 'Stock actuel',
+      noItem: 'Aucun item sélectionné',
+      saveInProgress: 'Validation…',
+    },
     actions: {
       buy: 'Achat',
       sell: 'Vente / Sortie',
