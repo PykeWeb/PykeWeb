@@ -127,6 +127,11 @@ export function Sidebar() {
     void (async () => {
       if (!isAdmin) {
         const globalFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'global')
+        if (globalFetch.status !== 200) {
+          setHiddenCategoryNav([...ALL_CATEGORY_NAV_IDS])
+          setHiddenCategoriesReady(true)
+          return
+        }
 
         let groupFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'group')
         let attempts = 0

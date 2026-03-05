@@ -1,17 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Box, Calculator, Factory, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs, TabPill } from '@/components/ui/design-system'
-import { createCatalogItem, createFinanceTransaction, deleteCatalogItem, listCatalogItemsUnified, updateCatalogItem } from '@/lib/itemsApi'
+import { deleteCatalogItem, listCatalogItemsUnified, updateCatalogItem } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
-import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
 import { getCategoryLabel, getTypeLabel } from '@/lib/catalogConfig'
 
@@ -61,8 +61,6 @@ export default function ItemsClient() {
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
   const [view, setView] = useState<ItemsView>('catalog')
-  const [openCreate, setOpenCreate] = useState(false)
-  const [openTrade, setOpenTrade] = useState(false)
   const [itemActionEntry, setItemActionEntry] = useState<{ id: string; name: string } | null>(null)
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null)
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
@@ -96,11 +94,8 @@ export default function ItemsClient() {
 
 
   useEffect(() => {
-    const action = searchParams.get('action')
     const viewParam = searchParams.get('view')
     const categoryParam = searchParams.get('category')
-    if (action === 'create') setOpenCreate(true)
-    if (action === 'trade') setOpenTrade(true)
     if (viewParam === 'tools') setView('tools')
     if (viewParam === 'catalog') setView('catalog')
     if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(categoryParam)) setCategory(categoryParam as CategoryFilter)
@@ -130,8 +125,12 @@ export default function ItemsClient() {
           onChange={setView}
         />
         <div className="flex flex-wrap items-center gap-3">
-          <SecondaryButton onClick={() => setOpenTrade(true)}>Achat / Vente</SecondaryButton>
-          <PrimaryButton onClick={() => setOpenCreate(true)}>{copy.common.createItem}</PrimaryButton>
+          <Link href="/items/achat-vente">
+            <SecondaryButton>Achat / Vente</SecondaryButton>
+          </Link>
+          <Link href="/items/nouveau">
+            <PrimaryButton>{copy.common.createItem}</PrimaryButton>
+          </Link>
         </div>
       </div>
 
@@ -277,51 +276,6 @@ export default function ItemsClient() {
           </div>
         </div>
       )}
-
-      {openTrade ? (
-        <FinanceItemTradeModal
-          open={openTrade}
-          mode="buy"
-          enableModeSelect
-          onClose={() => setOpenTrade(false)}
-          initialItems={items}
-          onSubmit={async (payload) => {
-            await createFinanceTransaction({
-              item_id: payload.item.id,
-              mode: payload.mode,
-              quantity: payload.quantity,
-              unit_price: payload.unitPrice,
-              counterparty: payload.counterparty,
-              notes: payload.notes,
-            })
-            toast.success(copy.finance.toastSaved)
-            await refresh()
-            setOpenTrade(false)
-          }}
-        />
-      ) : null}
-
-      {openCreate ? (
-        <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950 p-4">
-          <div className="mx-auto w-full max-w-5xl">
-            <ItemForm
-              panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
-              onCancel={() => setOpenCreate(false)}
-              onSave={async (payload) => {
-                try {
-                  await createCatalogItem(payload)
-                  toast.success('Item créé.')
-                  await refresh()
-                  setOpenCreate(false)
-                } catch (error: unknown) {
-                  console.error('[items:create]', error)
-                  toast.error(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
-                }
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
 
 
 
