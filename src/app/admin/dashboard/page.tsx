@@ -21,7 +21,10 @@ export default function AdminDashboardPage() {
         setGroups(data)
         setError(null)
       })
-      .catch((e: any) => setError(e?.message || 'Impossible de charger les statistiques admin.'))
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : 'Impossible de charger les statistiques admin.'
+        setError(message)
+      })
   }, [])
 
   const stats = useMemo(() => {
