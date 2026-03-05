@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { loginTenant } from '@/lib/tenantAuthApi'
-import { saveTenantSession } from '@/lib/tenantSession'
+import { saveTenantSession, syncTenantSessionToServer } from '@/lib/tenantSession'
 import { listActivePatchNotes, type PatchNote } from '@/lib/communicationApi'
 import { PatchNoteModal } from '@/components/ui/PatchNoteModal'
 import { PatchNotesRecapModal } from '@/components/ui/PatchNotesRecapModal'
@@ -54,7 +54,9 @@ export default function LoginPage() {
       }
 
       saveTenantSession(session)
-      window.location.href = isAdmin ? '/admin/dashboard' : '/'
+      await syncTenantSessionToServer(session).catch(() => undefined)
+      const nextPath = isAdmin ? '/admin/dashboard' : '/'
+      window.location.href = `/auth/bridge?next=${encodeURIComponent(nextPath)}`
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Connexion impossible')
     } finally {

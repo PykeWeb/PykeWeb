@@ -96,8 +96,20 @@ export function saveTenantSession(session: TenantSession) {
   document.cookie = `${COOKIE_KEY}=${payload}; path=/; max-age=${60 * 60 * 24 * 14}; SameSite=Lax`
 }
 
+export async function syncTenantSessionToServer(session: TenantSession) {
+  const res = await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ session }),
+  })
+  if (!res.ok) {
+    throw new Error('Synchronisation de session impossible')
+  }
+}
+
 export async function clearTenantSessionOnServer() {
-  await fetch('/api/auth/login', {
+  await fetch('/api/auth/session', {
     method: 'DELETE',
     credentials: 'include',
   })
