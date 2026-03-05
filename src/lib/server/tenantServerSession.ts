@@ -16,25 +16,35 @@ export async function readTenantServerSession(): Promise<TenantSession | null> {
   return isValidTenantSession(decoded) ? decoded : null
 }
 
-export async function requireAdminSession() {
-  const session = await readTenantServerSession()
-  // Utiliser isAdminSession pour une validation cohérente
+// Fonction utilitaire pour assertion
+function assertAdminSession(session: TenantSession | null): TenantSession {
   if (!session || !isAdminSession(session)) {
     throw new Error('Admin non autorisé')
   }
   return session
 }
 
+// Version principale utilisant assertAdminSession
 export async function requireAdminSession(): Promise<TenantSession> {
   return assertAdminSession(await readTenantServerSession())
 }
 
+// Version avec Request pour les API routes
 export async function requireAdminSessionFromRequest(request: Request): Promise<TenantSession> {
-  const fromRequest = readTenantSessionFromRequest(request)
-  const session = fromRequest ?? (await readTenantServerSession())
-  return assertAdminSession(session)
+  const cookiesHeader = request.headers.get('cookie')
+  const raw = cookiesHeader?.split('; ')
+    .find(c => c.startsWith(`${TENANT_SESSION_COOKIE_KEY}=`))
+    ?.split('=')[1]
+  
+  if (!raw) {
+    return requireAdminSession() // Fallback aux cookies du serveur
+  }
+  
+  const decoded = decodeTenantSession(raw)
+  return assertAdminSession(isValidTenantSession(decoded) ? decoded : null)
 }
 
+// Pour les sessions groupe (non-admin)
 export async function requireGroupSession() {
   const session = await readTenantServerSession()
   if (!session?.groupId || session.groupId === 'admin') {
@@ -42,4 +52,3 @@ export async function requireGroupSession() {
   }
   return session
 }
-
