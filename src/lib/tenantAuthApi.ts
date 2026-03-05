@@ -1,5 +1,15 @@
 import { supabase } from '@/lib/supabase/client'
 
+
+async function readApiError(res: Response) {
+  try {
+    const json = (await res.json()) as { error?: string }
+    return json.error || 'Erreur API'
+  } catch {
+    return (await res.text()) || 'Erreur API'
+  }
+}
+
 export type TenantGroup = {
   id: string
   name: string
@@ -13,7 +23,7 @@ export type TenantGroup = {
 
 export async function listTenantGroups() {
   const res = await fetch('/api/admin/groups', { cache: 'no-store' })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await readApiError(res))
   return (await res.json()) as TenantGroup[]
 }
 
@@ -23,7 +33,7 @@ export async function createTenantGroup(input: Omit<TenantGroup, 'id' | 'created
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await readApiError(res))
   return (await res.json()) as TenantGroup
 }
 
@@ -33,7 +43,7 @@ export async function updateTenantGroup(id: string, patch: Partial<Omit<TenantGr
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, patch }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await readApiError(res))
   return (await res.json()) as TenantGroup
 }
 
@@ -43,7 +53,7 @@ export async function deleteTenantGroup(id: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await readApiError(res))
 }
 
 export async function loginTenant(login: string, password: string) {

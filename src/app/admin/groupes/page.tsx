@@ -258,7 +258,7 @@ export default function AdminGroupsPage() {
 
   useEffect(() => {
     const session = getTenantSession()
-    if (!session?.isAdmin) {
+    if (!(session?.isAdmin || session?.groupId === 'admin')) {
       window.location.href = '/'
       return
     }

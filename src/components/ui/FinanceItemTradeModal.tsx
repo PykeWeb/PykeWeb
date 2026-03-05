@@ -173,15 +173,22 @@ export function FinanceItemTradeModal({
         actionsPlacement="top-right"
       >
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
-            <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
-              <ArrowDownRight className="h-4 w-4" />
-              {copy.finance.trade.modeBuy}
-            </TabPill>
-            <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
-              <ArrowUpRight className="h-4 w-4" />
-              {copy.finance.trade.modeSell}
-            </TabPill>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
+                <ArrowDownRight className="h-4 w-4" />
+                {copy.finance.trade.modeBuy}
+              </TabPill>
+              <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
+                <ArrowUpRight className="h-4 w-4" />
+                {copy.finance.trade.modeSell}
+              </TabPill>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
+            <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
           </div>
 
           <div className="md:col-span-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -279,11 +286,15 @@ export function FinanceItemTradeModal({
               </div>
             ))}
           </div>
+        </div>
+        <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
+        {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+      </CenteredFormLayout>
+    </div>
+  )
 
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
-            <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
-          </div>
+  if (inline) return <div className="mt-6">{content}</div>
+
         </div>
         <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
         {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
