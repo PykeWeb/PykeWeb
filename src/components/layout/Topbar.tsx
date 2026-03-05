@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { clearTenantSession, getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
+import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
 import { SecondaryButton } from '@/components/ui/design-system'
 
 export function Topbar() {
@@ -26,7 +26,9 @@ export function Topbar() {
           type="button"
           onClick={() => {
             clearTenantSession()
-            window.location.href = '/login'
+            void clearTenantSessionOnServer().finally(() => {
+              window.location.href = '/login'
+            })
           }}
         >
           Déconnexion

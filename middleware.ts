@@ -1,33 +1,19 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import {
+  decodeTenantSession,
+  isAdminSession,
+  isValidTenantSession,
+  TENANT_SESSION_COOKIE_KEY,
+} from '@/lib/tenantSessionShared'
 
-const PUBLIC_PATHS = ['/login', '/_next', '/favicon.ico']
-const COOKIE_KEY = 'tenant_session_v3'
-const SESSION_VERSION = 3
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-type TenantSession = {
-  v?: number
-  groupId?: string
-  groupName?: string
-  isAdmin?: boolean
-}
-
-function parseSessionCookie(raw: string | undefined): TenantSession | null {
-  if (!raw) return null
-  try {
-    const json = atob(raw)
-    return JSON.parse(json) as TenantSession
-  } catch {
-    return null
-  }
-}
+const PUBLIC_PATHS = ['/login', '/auth/bridge', '/_next', '/favicon.ico']
 
 function redirectToLogin(request: NextRequest) {
   const url = request.nextUrl.clone()
   url.pathname = '/login'
   const response = NextResponse.redirect(url)
-  response.cookies.set(COOKIE_KEY, '', { path: '/', maxAge: 0, sameSite: 'lax' })
+  response.cookies.set(TENANT_SESSION_COOKIE_KEY, '', { path: '/', maxAge: 0, sameSite: 'lax' })
   return response
 }
 
@@ -35,14 +21,13 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next()
 
-  const token = request.cookies.get(COOKIE_KEY)?.value
-  const session = parseSessionCookie(token)
-  if (!session?.groupId || !session.groupName?.trim()) return redirectToLogin(request)
-  if ((session.v ?? 0) !== SESSION_VERSION) return redirectToLogin(request)
+  const token = request.cookies.get(TENANT_SESSION_COOKIE_KEY)?.value
+  const session = decodeTenantSession(token)
+  if (!isValidTenantSession(session)) return redirectToLogin(request)
 
-  const isAdminSession = session.groupId === 'admin' || Boolean(session.isAdmin)
+  const isAdminUser = isAdminSession(session)
 
-  if (isAdminSession) {
+  if (isAdminUser) {
     if (!pathname.startsWith('/admin')) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin/dashboard'
@@ -56,8 +41,6 @@ export function middleware(request: NextRequest) {
     url.pathname = '/'
     return NextResponse.redirect(url)
   }
-
-  if (!UUID_RE.test(session.groupId)) return redirectToLogin(request)
 
   return NextResponse.next()
 }
