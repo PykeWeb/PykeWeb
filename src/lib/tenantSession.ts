@@ -119,7 +119,6 @@ export function clearTenantSession() {
   if (typeof window === 'undefined') return
   safeRemoveLocalStorage(STORAGE_KEY)
   clearLegacySessionArtifacts()
-  document.cookie = `${COOKIE_KEY}=; path=/; max-age=0; SameSite=Lax`
 }
 
 export function requireTenantGroupId() {
