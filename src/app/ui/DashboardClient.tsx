@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ClipboardEvent } from 'react'
+import type { ClipboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
@@ -11,7 +11,7 @@ import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, Settings2, ChevronUp, ChevronDown } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -114,6 +114,8 @@ export function DashboardClient() {
   const [supportOpen, setSupportOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const pressTimerRef = useRef<number | null>(null)
+  const cardLongPressTimerRef = useRef<number | null>(null)
+  const longPressTriggeredRef = useRef(false)
   const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'purchase', 'sale', 'itemCreate', 'itemTrade'])
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
   const [quickModalOpen, setQuickModalOpen] = useState(false)
@@ -121,6 +123,14 @@ export function DashboardClient() {
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
+
+
+  useEffect(() => {
+    return () => {
+      if (cardLongPressTimerRef.current) window.clearTimeout(cardLongPressTimerRef.current)
+    }
+  }, [])
+
 
   useEffect(() => {
     return () => {
@@ -310,11 +320,35 @@ export function DashboardClient() {
     if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current)
     pressTimerRef.current = window.setTimeout(() => setCardPickerSlot(slot >= 0 ? slot : 0), 550)
   }
+
   function onCardPressEnd() {
     if (pressTimerRef.current) {
       window.clearTimeout(pressTimerRef.current)
       pressTimerRef.current = null
     }
+  }
+
+  function onCardPointerDown() {
+    longPressTriggeredRef.current = false
+    if (cardLongPressTimerRef.current) window.clearTimeout(cardLongPressTimerRef.current)
+    cardLongPressTimerRef.current = window.setTimeout(() => {
+      longPressTriggeredRef.current = true
+      setCardManagerOpen(true)
+    }, 600)
+  }
+
+  function onCardPointerEnd() {
+    if (cardLongPressTimerRef.current) {
+      window.clearTimeout(cardLongPressTimerRef.current)
+      cardLongPressTimerRef.current = null
+    }
+  }
+
+  function onCardClickCapture(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!longPressTriggeredRef.current) return
+    event.preventDefault()
+    event.stopPropagation()
+    longPressTriggeredRef.current = false
   }
 
   function applyCardChoice(nextCard: CardKey) {
@@ -365,19 +399,12 @@ export function DashboardClient() {
     <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-white/75">Bulles Dashboard</h3>
-          <button type="button" onClick={() => setCardManagerOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs hover:bg-white/10">
-            <Settings2 className="h-3.5 w-3.5" />
-            Gérer les bulles
-          </button>
-        </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           {dashboardCards.map((cardKey, idx) => {
             const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
             const Icon = card.icon
             return (
-              <div key={`${card.key}-${idx}`} onMouseDown={() => onCardPressStart(card.key)} onMouseUp={onCardPressEnd} onMouseLeave={onCardPressEnd} onContextMenu={(e) => { e.preventDefault(); onCardPressStart(card.key) }}>
+              <div key={`${card.key}-${idx}`} className="select-none touch-none" onPointerDown={onCardPointerDown} onPointerUp={onCardPointerEnd} onPointerLeave={onCardPointerEnd} onPointerCancel={onCardPointerEnd} onClickCapture={onCardClickCapture} onMouseDown={() => onCardPressStart(card.key)} onMouseUp={onCardPressEnd} onMouseLeave={onCardPressEnd} onContextMenu={(e) => { e.preventDefault(); onCardPressStart(card.key) }}>
               <StatCard title={card.title} value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })} icon={<Icon className="h-5 w-5" />} href={card.href} />
               </div>
             )

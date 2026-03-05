@@ -278,6 +278,29 @@ export default function ItemsClient() {
         </div>
       )}
 
+      {openTrade ? (
+        <FinanceItemTradeModal
+          open={openTrade}
+          inline
+          mode="buy"
+          enableModeSelect
+          onClose={() => setOpenTrade(false)}
+          onSubmit={async (payload) => {
+            await createFinanceTransaction({
+              item_id: payload.item.id,
+              mode: payload.mode,
+              quantity: payload.quantity,
+              unit_price: payload.unitPrice,
+              counterparty: payload.counterparty,
+              notes: payload.notes,
+            })
+            toast.success(copy.finance.toastSaved)
+            await refresh()
+            setOpenTrade(false)
+          }}
+        />
+      ) : null}
+
       {openCreate ? (
         <div className="mt-6">
           <ItemForm
@@ -383,24 +406,6 @@ export default function ItemsClient() {
         </div>
       ) : null}
 
-      <FinanceItemTradeModal
-        open={openTrade}
-        mode="buy"
-        enableModeSelect
-        onClose={() => setOpenTrade(false)}
-        onSubmit={async (payload) => {
-          await createFinanceTransaction({
-            item_id: payload.item.id,
-            mode: payload.mode,
-            quantity: payload.quantity,
-            unit_price: payload.unitPrice,
-            counterparty: payload.counterparty,
-            notes: payload.notes,
-          })
-          toast.success(copy.finance.toastSaved)
-          await refresh()
-        }}
-      />
     </Panel>
   )
 }

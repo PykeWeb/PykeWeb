@@ -31,12 +31,14 @@ export function FinanceItemTradeModal({
   onClose,
   onSubmit,
   enableModeSelect = false,
+  inline = false,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
   onClose: () => void
   onSubmit: (payload: { item: CatalogItem; mode: 'buy' | 'sell'; quantity: number; unitPrice: number; counterparty: string; notes: string }) => Promise<void>
   enableModeSelect?: boolean
+  inline?: boolean
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
@@ -104,10 +106,9 @@ export function FinanceItemTradeModal({
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="mx-auto w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
-        <CenteredFormLayout
+  const content = (
+    <div className="mx-auto w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+      <CenteredFormLayout
           title={copy.finance.trade.title}
           subtitle={copy.finance.trade.subtitle}
           actions={
@@ -133,7 +134,7 @@ export function FinanceItemTradeModal({
               </PrimaryButton>
             </>
           }
-          actionsPlacement="top-right"
+          actionsPlacement="bottom-right"
         >
           <div className="grid gap-3 md:grid-cols-2">
             <div className="md:col-span-2 text-xs font-semibold uppercase tracking-wide text-white/50">Informations</div>
@@ -244,8 +245,15 @@ export function FinanceItemTradeModal({
 
           <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">{copy.finance.labels.total}: <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span></div>
           {error ? <div className="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-        </CenteredFormLayout>
-      </div>
+      </CenteredFormLayout>
+    </div>
+  )
+
+  if (inline) return <div className="mt-6">{content}</div>
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      {content}
     </div>
   )
 }
