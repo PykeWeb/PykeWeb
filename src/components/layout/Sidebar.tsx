@@ -8,7 +8,7 @@ import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { getTenantSession } from '@/lib/tenantSession'
+import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
 import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
 import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
@@ -62,7 +62,7 @@ export function Sidebar() {
     setGroupName(session?.groupName || 'Groupe')
     setGroupBadge(session?.groupBadge || 'GROUPE')
     setGroupId(session?.groupId || '')
-    setIsAdmin(Boolean(session?.isAdmin))
+    setIsAdmin(isAdminTenantSession(session))
   }, [])
 
   useEffect(() => {
@@ -207,9 +207,9 @@ export function Sidebar() {
           />
         )}
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/70">
-          <p className="mb-2 font-semibold text-white/85">Afficher les catégories</p>
-          {isAdmin ? (
+        {isAdmin ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/70">
+            <p className="mb-2 font-semibold text-white/85">Afficher les catégories</p>
             <div className="mb-2 grid gap-2">
               <label className="inline-flex items-center gap-2">
                 <input type="radio" checked={categoryVisibilityScope === 'global'} onChange={() => setCategoryVisibilityScope('global')} />
@@ -227,30 +227,29 @@ export function Sidebar() {
                 />
               ) : null}
             </div>
-          ) : null}
-          {!isAdmin ? <p className="mb-2 text-[11px] text-white/55">Synchronisé en ligne pour votre groupe.</p> : null}
-          <div className="grid grid-cols-2 gap-2">
-            {categoryToggles.map((row) => {
-              const checked = !hiddenCategoryNav.includes(row.id)
-              return (
-                <label key={row.id} className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => {
-                      const next = e.target.checked
-                        ? hiddenCategoryNav.filter((id) => id !== row.id)
-                        : [...hiddenCategoryNav, row.id]
-                      updateHidden(mergeUnique(next))
-                    }}
-                    className="h-4 w-4 rounded border-white/20 bg-white/5"
-                  />
-                  {row.label}
-                </label>
-              )
-            })}
+            <div className="grid grid-cols-2 gap-2">
+              {categoryToggles.map((row) => {
+                const checked = !hiddenCategoryNav.includes(row.id)
+                return (
+                  <label key={row.id} className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? hiddenCategoryNav.filter((id) => id !== row.id)
+                          : [...hiddenCategoryNav, row.id]
+                        updateHidden(mergeUnique(next))
+                      }}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5"
+                    />
+                    {row.label}
+                  </label>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </aside>
   )
