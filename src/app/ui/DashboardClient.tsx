@@ -70,7 +70,7 @@ const CARD_OPTIONS: CardOption[] = [
 const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs']
 
 function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
-  const allowed = new Set(DEFAULT_DASHBOARD_CARDS)
+  const allowed = new Set(CARD_OPTIONS.map((option) => option.key))
   const safeOrder = (order ?? [])
     .filter((key, index, list) => allowed.has(key) && list.indexOf(key) === index)
     .slice(0, DEFAULT_DASHBOARD_CARDS.length)
@@ -123,6 +123,7 @@ export function DashboardClient() {
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
   const [cardManagerOpen, setCardManagerOpen] = useState(false)
+  const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
 
 
@@ -333,6 +334,18 @@ export function DashboardClient() {
     event.preventDefault()
     event.stopPropagation()
     longPressTriggeredRef.current = false
+  }
+
+
+  function applyCardChoice(nextCard: CardKey) {
+    if (cardPickerSlot === null) return
+    const next = dashboardCards.map((card, index) => (index === cardPickerSlot ? nextCard : card))
+    const unique = next.filter((card, index, list) => list.indexOf(card) === index)
+    const missing = DEFAULT_DASHBOARD_CARDS.filter((card) => !unique.includes(card))
+    const finalOrder = [...unique, ...missing].slice(0, DEFAULT_DASHBOARD_CARDS.length)
+    setDashboardCards(finalOrder)
+    setCardPickerSlot(null)
+    void persistLayouts(quickActions, finalOrder)
   }
 
   function moveDashboardCard(index: number, direction: 'up' | 'down') {
@@ -560,8 +573,35 @@ export function DashboardClient() {
                     <div className="flex items-center gap-1">
                       <button type="button" onClick={() => moveDashboardCard(index, 'up')} disabled={index === 0} className="rounded-md border border-white/10 bg-white/5 p-1 disabled:opacity-40"><ChevronUp className="h-4 w-4" /></button>
                       <button type="button" onClick={() => moveDashboardCard(index, 'down')} disabled={index === dashboardCards.length - 1} className="rounded-md border border-white/10 bg-white/5 p-1 disabled:opacity-40"><ChevronDown className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => setCardPickerSlot(index)} className="rounded-md border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">Remplacer</button>
                     </div>
                   </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cardPickerSlot !== null ? (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setCardPickerSlot(null)}>
+          <div className="w-full max-w-3xl rounded-2xl border border-white/20 bg-slate-950/95 p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Choisir une bulle</h3>
+              <button type="button" onClick={() => setCardPickerSlot(null)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {CARD_OPTIONS.map((option) => {
+                const Icon = option.icon
+                const disabled = dashboardCards.includes(option.key)
+                return (
+                  <button key={option.key} type="button" disabled={disabled} onClick={() => applyCardChoice(option.key)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10 disabled:opacity-40">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/10"><Icon className="h-4 w-4" /></span>
+                    <div>
+                      <p className="text-sm font-medium">{option.title}</p>
+                      <p className="text-xs text-white/60">{disabled ? 'Déjà utilisée' : option.href}</p>
+                    </div>
+                  </button>
                 )
               })}
             </div>

@@ -281,7 +281,6 @@ export default function ItemsClient() {
       {openTrade ? (
         <FinanceItemTradeModal
           open={openTrade}
-          inline
           mode="buy"
           enableModeSelect
           onClose={() => setOpenTrade(false)}
