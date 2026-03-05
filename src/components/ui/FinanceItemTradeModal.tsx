@@ -100,6 +100,18 @@ export function FinanceItemTradeModal({
       .filter((entry): entry is { line: TradeLine; item: CatalogItem; qty: number; unit: number; subtotal: number } => !!entry)
   }, [items, lines])
 
+  useEffect(() => {
+    setLines((current) =>
+      current.map((line) => {
+        const item = items.find((entry) => entry.id === line.itemId)
+        if (!item) return line
+        const quantity = tradeMode === 'sell' ? Math.min(toPositiveInt(line.quantity), Math.max(1, item.stock)) : toPositiveInt(line.quantity)
+        const unitPrice = String(tradeMode === 'buy' ? item.buy_price : item.sell_price)
+        return { ...line, quantity, unitPrice }
+      })
+    )
+  }, [items, tradeMode])
+
   const total = useMemo(() => linesWithItems.reduce((sum, entry) => sum + entry.subtotal, 0), [linesWithItems])
 
   function addItemToLines(item: CatalogItem) {
@@ -124,7 +136,7 @@ export function FinanceItemTradeModal({
   if (!open) return null
 
   const content = (
-    <div className="mx-auto w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
+    <div className="mx-auto w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
       <CenteredFormLayout
         title={copy.finance.trade.title}
         actions={
@@ -222,7 +234,7 @@ export function FinanceItemTradeModal({
                   className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
                 />
               </div>
-              <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
+              <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
                 {filtered.map((it) => (
                   <div key={it.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                     <div className="flex min-w-0 items-center gap-3">

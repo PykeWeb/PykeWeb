@@ -122,6 +122,7 @@ export function DashboardClient() {
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
+  const [uiLayoutsReady, setUiLayoutsReady] = useState(false)
   const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
@@ -157,26 +158,34 @@ export function DashboardClient() {
 
 
   useEffect(() => {
+    let alive = true
     ;(async () => {
-      const [quickRes, cardsRes] = await Promise.all([
-        fetch('/api/ui-layouts?page_key=dashboard.quick_actions', { cache: 'no-store' }),
-        fetch('/api/ui-layouts?page_key=dashboard.cards', { cache: 'no-store' }),
-      ])
-      if (quickRes.ok) {
-        const data = await quickRes.json()
-        if (Array.isArray(data.order) && data.order.length) {
-          const next = data.order.filter((key: unknown): key is QuickActionKey => QUICK_ACTION_OPTIONS.some((option) => option.key === key))
-          if (next.length) setQuickActions(next)
+      try {
+        const [quickRes, cardsRes] = await Promise.all([
+          fetch('/api/ui-layouts?page_key=dashboard.quick_actions', { cache: 'no-store' }),
+          fetch('/api/ui-layouts?page_key=dashboard.cards', { cache: 'no-store' }),
+        ])
+        if (quickRes.ok) {
+          const data = await quickRes.json()
+          if (Array.isArray(data.order) && data.order.length) {
+            const next = data.order.filter((key: unknown): key is QuickActionKey => QUICK_ACTION_OPTIONS.some((option) => option.key === key))
+            if (next.length && alive) setQuickActions(next)
+          }
         }
-      }
-      if (cardsRes.ok) {
-        const data = await cardsRes.json()
-        if (Array.isArray(data.order) && data.order.length) {
-          const next = data.order.filter((key: unknown): key is CardKey => CARD_OPTIONS.some((option) => option.key === key))
-          setDashboardCards(mergeCardOrder(next))
+        if (cardsRes.ok) {
+          const data = await cardsRes.json()
+          if (Array.isArray(data.order) && data.order.length) {
+            const next = data.order.filter((key: unknown): key is CardKey => CARD_OPTIONS.some((option) => option.key === key))
+            if (alive) setDashboardCards(mergeCardOrder(next))
+          }
         }
+      } finally {
+        if (alive) setUiLayoutsReady(true)
       }
     })()
+    return () => {
+      alive = false
+    }
   }, [])
 
   async function persistLayouts(nextQuick = quickActions, nextCards = dashboardCards) {
@@ -374,7 +383,10 @@ export function DashboardClient() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {dashboardCards.map((cardKey, idx) => {
+          {!uiLayoutsReady ? Array.from({ length: 4 }).map((_, idx) => (
+            <div key={`card-skeleton-${idx}`} className="h-[118px] rounded-2xl border border-white/10 bg-white/[0.03] animate-pulse" />
+          )) : null}
+          {uiLayoutsReady ? dashboardCards.map((cardKey, idx) => {
             const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
             const Icon = card.icon
             return (
@@ -382,7 +394,7 @@ export function DashboardClient() {
               <StatCard title={card.title} value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })} icon={<Icon className="h-5 w-5" />} href={card.href} />
               </div>
             )
-          })}
+          }) : null}
         </div>
 
         <Panel>
@@ -486,7 +498,10 @@ export function DashboardClient() {
           </div>
           <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
           <div className="mt-3 space-y-2">
-            {quickActions.map((actionKey, idx) => {
+            {!uiLayoutsReady ? Array.from({ length: 3 }).map((_, idx) => (
+              <div key={`quick-skeleton-${idx}`} className="h-[62px] rounded-xl border border-white/10 bg-white/[0.03] animate-pulse" />
+            )) : null}
+            {uiLayoutsReady ? quickActions.map((actionKey, idx) => {
               const action = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey) || QUICK_ACTION_OPTIONS[idx]
               if (!action) return null
               const Icon = action.icon
@@ -516,7 +531,7 @@ export function DashboardClient() {
                   </div>
                 </Link>
               )
-            })}
+            }) : null}
           </div>
         </Panel>
 
