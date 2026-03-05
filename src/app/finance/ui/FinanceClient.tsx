@@ -8,8 +8,6 @@ import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
-import { createFinanceTransaction } from '@/lib/itemsApi'
-import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { toast } from 'sonner'
 import { copy } from '@/lib/copy'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -68,7 +66,6 @@ export default function FinanceClient() {
   const [q, setQ] = useState('')
   const [type, setType] = useState<FilterType>('all')
   const [category, setCategory] = useState<FilterCategory>('all')
-  const [tradeMode, setTradeMode] = useState<'buy' | 'sell' | null>(null)
   const [selectedCounterparty, setSelectedCounterparty] = useState<string | null>(null)
   const [busyExpenseId, setBusyExpenseId] = useState<string | null>(null)
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null)
@@ -166,7 +163,7 @@ export default function FinanceClient() {
         <SearchInput value={q} onChange={(e) => { setQ(e.target.value); setSelectedCounterparty(null) }} placeholder="Recherche (item / interlocuteur / note)" className="w-[360px]" />
         <GlassSelect value={category} onChange={(v) => setCategory(v as FilterCategory)} options={[{ value: 'all', label: 'Toutes catégories' }, { value: 'objects', label: 'Objets' }, { value: 'weapons', label: 'Armes' }, { value: 'equipment', label: 'Équipement' }, { value: 'drugs', label: 'Drogues' }, { value: 'custom', label: 'Custom' }]} />
         <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
-        <PrimaryButton onClick={() => setTradeMode('buy')}>Achat / Vente</PrimaryButton>
+        <Link href="/finance/achat-vente"><PrimaryButton>Achat / Vente</PrimaryButton></Link>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -422,24 +419,6 @@ export default function FinanceClient() {
         }}
       />
 
-      <FinanceItemTradeModal
-        open={!!tradeMode}
-        mode={tradeMode || 'buy'}
-        enableModeSelect
-        onClose={() => setTradeMode(null)}
-        onSubmit={async (payload) => {
-          await createFinanceTransaction({
-            item_id: payload.item.id,
-            mode: payload.mode,
-            quantity: payload.quantity,
-            unit_price: payload.unitPrice,
-            counterparty: payload.counterparty,
-            notes: payload.notes,
-          })
-          toast.success(copy.finance.toastSaved)
-          await refresh()
-        }}
-      />
     </Panel>
   )
 }

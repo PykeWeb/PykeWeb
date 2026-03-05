@@ -115,8 +115,8 @@ export function FinanceItemTradeModal({
         const item = items.find((entry) => entry.id === line.itemId)
         if (!item) return line
         const quantity = tradeMode === 'sell' ? Math.min(toPositiveInt(line.quantity), Math.max(1, item.stock)) : toPositiveInt(line.quantity)
-        const unitPrice = String(tradeMode === 'buy' ? item.buy_price : item.sell_price)
-        return { ...line, quantity, unitPrice }
+        const nextUnit = tradeMode === 'buy' ? item.buy_price : item.sell_price
+        return { ...line, quantity, unitPrice: String(toNonNegative(nextUnit)) }
       })
     )
   }, [items, tradeMode])
@@ -145,7 +145,7 @@ export function FinanceItemTradeModal({
   if (!open) return null
 
   const content = (
-    <div className="mx-auto w-full max-w-5xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain" onClick={(e) => e.stopPropagation()}>
+    <div className="mx-auto w-full max-w-6xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain" onClick={(e) => e.stopPropagation()}>
       <CenteredFormLayout
         panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
         title={copy.finance.trade.title}
@@ -275,7 +275,7 @@ export function FinanceItemTradeModal({
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-white">{it.name}</p>
                         <p className="truncate text-xs text-white/60">
-                          {getTypeLabel(it.item_type, it.category)} · Stock: {it.stock}
+                          {getTypeLabel(it.item_type, it.category)} · Stock: {it.stock} · Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $
                         </p>
                       </div>
                     </div>

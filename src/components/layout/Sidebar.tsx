@@ -45,9 +45,32 @@ const ALL_CATEGORY_NAV_IDS = ['objects', 'weapons', 'equipment', 'drugs', 'expen
 
 const HIDDEN_FETCH_RETRY_MS = 180
 const HIDDEN_FETCH_MAX_RETRIES = 6
+const HIDDEN_CACHE_KEY = 'sidebar.hiddenCategories.cache'
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+
+function readCachedHiddenCategories(groupId: string) {
+  if (typeof window === 'undefined' || !groupId) return null
+  try {
+    const raw = window.localStorage.getItem(`${HIDDEN_CACHE_KEY}:${groupId}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedHiddenCategories(groupId: string, hidden: string[]) {
+  if (typeof window === 'undefined' || !groupId) return
+  try {
+    window.localStorage.setItem(`${HIDDEN_CACHE_KEY}:${groupId}`, JSON.stringify(hidden))
+  } catch {
+    // ignore storage limits
+  }
 }
 
 async function fetchLayoutOrderWithStatus(pageKey: string, scopeType: 'global' | 'group', scopeId?: string): Promise<{ status: number; order: string[] }> {
@@ -126,12 +149,13 @@ export function Sidebar() {
 
     void (async () => {
       if (!isAdmin) {
-        const globalFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'global')
-        if (globalFetch.status !== 200) {
-          setHiddenCategoryNav([...ALL_CATEGORY_NAV_IDS])
+        const cached = readCachedHiddenCategories(groupId)
+        if (cached) {
+          setHiddenCategoryNav(cached)
           setHiddenCategoriesReady(true)
-          return
         }
+
+        const globalFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'global')
 
         let groupFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'group')
         let attempts = 0
@@ -141,16 +165,18 @@ export function Sidebar() {
           groupFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'group')
         }
 
-        if (groupFetch.status === 401 || groupFetch.status === 403) {
-          setHiddenCategoryNav([...ALL_CATEGORY_NAV_IDS])
-          setHiddenCategoriesReady(true)
+        if (globalFetch.status !== 200 || groupFetch.status !== 200) {
+          if (!cached) {
+            setHiddenCategoryNav([])
+            setHiddenCategoriesReady(true)
+          }
           return
         }
 
-        const globalHidden = globalFetch.order
-        const groupHidden = groupFetch.order
-        setHiddenCategoryNav(mergeUnique([...globalHidden, ...groupHidden]))
+        const mergedHidden = mergeUnique([...globalFetch.order, ...groupFetch.order])
+        setHiddenCategoryNav(mergedHidden)
         setHiddenCategoriesReady(true)
+        writeCachedHiddenCategories(groupId, mergedHidden)
         return
       }
 
