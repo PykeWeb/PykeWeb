@@ -220,7 +220,7 @@ export function FinanceItemTradeModal({
                     setType('all')
                   }}
                   className={`rounded-2xl border px-3 py-3 text-left transition min-h-[96px] ${
-                    category === option.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                    category === option.key ? 'border-white/25 bg-white/[0.12]' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -282,7 +282,7 @@ export function FinanceItemTradeModal({
                     <button
                       type="button"
                       onClick={() => addItemToLines(it)}
-                      className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-1.5 text-cyan-100 hover:bg-cyan-500/20"
+                      className="rounded-lg border border-white/20 bg-white/10 p-1.5 text-white hover:bg-white/20"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
