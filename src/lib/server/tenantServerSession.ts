@@ -18,6 +18,7 @@ export async function readTenantServerSession(): Promise<TenantSession | null> {
 
 export async function requireAdminSession() {
   const session = await readTenantServerSession()
+  // Utiliser isAdminSession pour une validation cohérente
   if (!session || !isAdminSession(session)) {
     throw new Error('Admin non autorisé')
   }

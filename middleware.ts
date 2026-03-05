@@ -7,7 +7,7 @@ import {
   TENANT_SESSION_COOKIE_KEY,
 } from '@/lib/tenantSessionShared'
 
-const PUBLIC_PATHS = ['/login', '/_next', '/favicon.ico']
+const PUBLIC_PATHS = ['/login', '/auth/bridge', '/_next', '/favicon.ico']
 
 function redirectToLogin(request: NextRequest) {
   const url = request.nextUrl.clone()
