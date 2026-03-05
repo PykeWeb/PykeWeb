@@ -67,12 +67,15 @@ const CARD_OPTIONS: CardOption[] = [
   { key: 'calculator', title: 'Calculateur', href: '/items?view=tools', icon: Receipt, getValue: () => '→' },
 ]
 
-const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs', 'catOther', 'mvExpense', 'mvPurchase', 'mvSale', 'calculator']
+const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs']
 
 function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
-  const safeOrder = (order ?? []).filter((key, index, list) => CARD_OPTIONS.some((option) => option.key === key) && list.indexOf(key) === index)
+  const allowed = new Set(DEFAULT_DASHBOARD_CARDS)
+  const safeOrder = (order ?? [])
+    .filter((key, index, list) => allowed.has(key) && list.indexOf(key) === index)
+    .slice(0, DEFAULT_DASHBOARD_CARDS.length)
   const missing = DEFAULT_DASHBOARD_CARDS.filter((key) => !safeOrder.includes(key))
-  return [...safeOrder, ...missing]
+  return [...safeOrder, ...missing].slice(0, DEFAULT_DASHBOARD_CARDS.length)
 }
 
 function startOfTodayIso() {
@@ -113,23 +116,15 @@ export function DashboardClient() {
   const [ticketStatus, setTicketStatus] = useState('')
   const [supportOpen, setSupportOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
-  const pressTimerRef = useRef<number | null>(null)
   const cardLongPressTimerRef = useRef<number | null>(null)
   const longPressTriggeredRef = useRef(false)
   const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'purchase', 'sale', 'itemCreate', 'itemTrade'])
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
   const [quickModalOpen, setQuickModalOpen] = useState(false)
   const [quickRemoveMode, setQuickRemoveMode] = useState(false)
-  const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
 
-
-  useEffect(() => {
-    return () => {
-      if (cardLongPressTimerRef.current) window.clearTimeout(cardLongPressTimerRef.current)
-    }
-  }, [])
 
 
   useEffect(() => {
@@ -315,18 +310,8 @@ export function DashboardClient() {
     void persistLayouts(next, dashboardCards)
   }
 
-  function onCardPressStart(cardKey: CardKey) {
-    const slot = dashboardCards.findIndex((k) => k === cardKey)
-    if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current)
-    pressTimerRef.current = window.setTimeout(() => setCardPickerSlot(slot >= 0 ? slot : 0), 550)
-  }
 
-  function onCardPressEnd() {
-    if (pressTimerRef.current) {
-      window.clearTimeout(pressTimerRef.current)
-      pressTimerRef.current = null
-    }
-  }
+
 
   function onCardPointerDown() {
     longPressTriggeredRef.current = false
@@ -338,10 +323,9 @@ export function DashboardClient() {
   }
 
   function onCardPointerEnd() {
-    if (cardLongPressTimerRef.current) {
-      window.clearTimeout(cardLongPressTimerRef.current)
-      cardLongPressTimerRef.current = null
-    }
+    if (!cardLongPressTimerRef.current) return
+    window.clearTimeout(cardLongPressTimerRef.current)
+    cardLongPressTimerRef.current = null
   }
 
   function onCardClickCapture(event: ReactMouseEvent<HTMLDivElement>) {
@@ -351,35 +335,12 @@ export function DashboardClient() {
     longPressTriggeredRef.current = false
   }
 
-  function applyCardChoice(nextCard: CardKey) {
-    if (cardPickerSlot === null) return
-    const next = dashboardCards.map((value, index) => (index === cardPickerSlot ? nextCard : value))
-    setDashboardCards(next)
-    setCardPickerSlot(null)
-    void persistLayouts(quickActions, next)
-  }
-
-
-  function removeDashboardCard(index: number) {
-    if (dashboardCards.length <= 1) return
-    const next = dashboardCards.filter((_, idx) => idx !== index)
-    setDashboardCards(next)
-    void persistLayouts(quickActions, next)
-  }
-
   function moveDashboardCard(index: number, direction: 'up' | 'down') {
     const targetIndex = direction === 'up' ? index - 1 : index + 1
     if (targetIndex < 0 || targetIndex >= dashboardCards.length) return
     const next = [...dashboardCards]
     const [entry] = next.splice(index, 1)
     next.splice(targetIndex, 0, entry)
-    setDashboardCards(next)
-    void persistLayouts(quickActions, next)
-  }
-
-  function addDashboardCard(cardKey: CardKey) {
-    if (dashboardCards.includes(cardKey)) return
-    const next = [...dashboardCards, cardKey]
     setDashboardCards(next)
     void persistLayouts(quickActions, next)
   }
@@ -404,7 +365,7 @@ export function DashboardClient() {
             const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
             const Icon = card.icon
             return (
-              <div key={`${card.key}-${idx}`} className="select-none touch-none" onPointerDown={onCardPointerDown} onPointerUp={onCardPointerEnd} onPointerLeave={onCardPointerEnd} onPointerCancel={onCardPointerEnd} onClickCapture={onCardClickCapture} onMouseDown={() => onCardPressStart(card.key)} onMouseUp={onCardPressEnd} onMouseLeave={onCardPressEnd} onContextMenu={(e) => { e.preventDefault(); onCardPressStart(card.key) }}>
+              <div key={`${card.key}-${idx}`} className="select-none touch-none" onPointerDown={onCardPointerDown} onPointerUp={onCardPointerEnd} onPointerLeave={onCardPointerEnd} onPointerCancel={onCardPointerEnd} onClickCapture={onCardClickCapture}>
               <StatCard title={card.title} value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })} icon={<Icon className="h-5 w-5" />} href={card.href} />
               </div>
             )
@@ -579,7 +540,7 @@ export function DashboardClient() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setCardManagerOpen(false)}>
           <div className="w-full max-w-3xl rounded-2xl border border-white/20 bg-slate-950/95 p-4" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Gestion des bulles</h3>
+              <h3 className="text-sm font-semibold">Bulles Dashboard</h3>
               <button type="button" onClick={() => setCardManagerOpen(false)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
             </div>
             <div className="space-y-2">
@@ -599,43 +560,10 @@ export function DashboardClient() {
                     <div className="flex items-center gap-1">
                       <button type="button" onClick={() => moveDashboardCard(index, 'up')} disabled={index === 0} className="rounded-md border border-white/10 bg-white/5 p-1 disabled:opacity-40"><ChevronUp className="h-4 w-4" /></button>
                       <button type="button" onClick={() => moveDashboardCard(index, 'down')} disabled={index === dashboardCards.length - 1} className="rounded-md border border-white/10 bg-white/5 p-1 disabled:opacity-40"><ChevronDown className="h-4 w-4" /></button>
-                      <button type="button" onClick={() => removeDashboardCard(index)} disabled={dashboardCards.length <= 1} className="rounded-md border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-xs text-rose-100 disabled:opacity-40">Supprimer</button>
                     </div>
                   </div>
                 )
               })}
-            </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {CARD_OPTIONS.filter((option) => !dashboardCards.includes(option.key)).map((option) => {
-                const Icon = option.icon
-                return (
-                  <button key={option.key} type="button" onClick={() => addDashboardCard(option.key)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/10"><Icon className="h-4 w-4" /></span>
-                    <div>
-                      <p className="text-sm font-medium">Ajouter: {option.title}</p>
-                      <p className="text-xs text-white/60">{option.href}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {cardPickerSlot !== null ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-          <div className="w-full max-w-xl rounded-2xl border border-white/20 bg-slate-950/95 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Choisir la carte</h3>
-              <button type="button" onClick={() => setCardPickerSlot(null)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {CARD_OPTIONS.map((opt) => (
-                <button key={opt.key} type="button" onClick={() => applyCardChoice(opt.key)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left text-sm hover:bg-white/10">
-                  {opt.title}
-                </button>
-              ))}
             </div>
           </div>
         </div>
