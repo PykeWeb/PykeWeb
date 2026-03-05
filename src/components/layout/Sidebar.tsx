@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Package, Crosshair, Wrench, Leaf, Receipt, Boxes, LifeBuoy, ScrollText, Wallet } from 'lucide-react'
+import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
@@ -13,11 +13,8 @@ import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
 import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
 import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
-import { GlassSelect } from '@/components/ui/GlassSelect'
-import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 type AccessInfo = { paid_until: string | null; active: boolean } | null
-type GroupSummary = { id: string; name: string }
 
 type NavLink = { id: string; href: string; label: string; icon: ReactNode; active: boolean }
 
@@ -36,76 +33,20 @@ const NavItem = ({ href, label, icon, active }: { href: string; label: string; i
   )
 }
 
-function mergeUnique(values: string[]) {
-  return Array.from(new Set(values))
-}
-
-const HIDDEN_CATEGORIES_KEY = 'sidebar.hiddenCategories'
-const ALL_CATEGORY_NAV_IDS = ['objects', 'weapons', 'equipment', 'drugs', 'expenses'] as const
-
-const HIDDEN_FETCH_RETRY_MS = 180
-const HIDDEN_FETCH_MAX_RETRIES = 6
-const HIDDEN_CACHE_KEY = 'sidebar.hiddenCategories.cache'
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-
-function readCachedHiddenCategories(groupId: string) {
-  if (typeof window === 'undefined' || !groupId) return null
-  try {
-    const raw = window.localStorage.getItem(`${HIDDEN_CACHE_KEY}:${groupId}`)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : null
-  } catch {
-    return null
-  }
-}
-
-function writeCachedHiddenCategories(groupId: string, hidden: string[]) {
-  if (typeof window === 'undefined' || !groupId) return
-  try {
-    window.localStorage.setItem(`${HIDDEN_CACHE_KEY}:${groupId}`, JSON.stringify(hidden))
-  } catch {
-    // ignore storage limits
-  }
-}
-
-async function fetchLayoutOrderWithStatus(pageKey: string, scopeType: 'global' | 'group', scopeId?: string): Promise<{ status: number; order: string[] }> {
-  const params = new URLSearchParams({ page_key: pageKey, scope_type: scopeType })
-  if (scopeId) params.set('scope_id', scopeId)
-  const res = await fetch(`/api/ui-layouts?${params.toString()}`, { cache: 'no-store', credentials: 'include' })
-  if (!res.ok) return { status: res.status, order: [] }
-  const data = (await res.json()) as { order?: unknown }
-  return { status: 200, order: Array.isArray(data.order) ? (data.order as string[]) : [] }
-}
-
 export function Sidebar() {
   const pathname = usePathname()
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
   const [groupBadge, setGroupBadge] = useState('GROUPE')
-  const [groupId, setGroupId] = useState<string>('')
-  const [sessionResolved, setSessionResolved] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
-  const [navOrder, setNavOrder] = useState(['dashboard', 'objects', 'weapons', 'equipment', 'drugs', 'expenses', 'finance', 'items'])
-  const [hiddenCategoryNav, setHiddenCategoryNav] = useState<string[] | null>(null)
-  const [hiddenCategoriesReady, setHiddenCategoriesReady] = useState(false)
-
-  const [categoryVisibilityScope, setCategoryVisibilityScope] = useState<'global' | 'group'>('global')
-  const [adminGroups, setAdminGroups] = useState<GroupSummary[]>([])
-  const [adminTargetGroupId, setAdminTargetGroupId] = useState('')
+  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items'])
 
   useEffect(() => {
     const session = getTenantSession()
     setGroupName(session?.groupName || 'Groupe')
     setGroupBadge(session?.groupBadge || 'GROUPE')
-    setGroupId(session?.groupId || '')
     setIsAdmin(isAdminTenantSession(session))
-    setSessionResolved(true)
   }, [])
 
   useEffect(() => {
@@ -116,82 +57,6 @@ export function Sidebar() {
       if (saved.length) setNavOrder(saved)
     })()
   }, [isAdmin])
-
-  useEffect(() => {
-    if (!isAdmin) return
-    void (async () => {
-      try {
-        const res = await fetch('/api/admin/groups', withTenantSessionHeader({ cache: 'no-store' }))
-        if (!res.ok) return
-        const rows = (await res.json()) as Array<{ id: string; name: string }>
-        const clean = rows.map((row) => ({ id: row.id, name: row.name }))
-        setAdminGroups(clean)
-        if (!adminTargetGroupId && clean[0]?.id) setAdminTargetGroupId(clean[0].id)
-      } catch {
-        setAdminGroups([])
-      }
-    })()
-  }, [isAdmin, adminTargetGroupId])
-
-  useEffect(() => {
-    setHiddenCategoriesReady(false)
-
-    if (!sessionResolved) {
-      setHiddenCategoryNav(null)
-      return
-    }
-
-    if (!isAdmin && !groupId) {
-      setHiddenCategoryNav([])
-      setHiddenCategoriesReady(true)
-      return
-    }
-
-    void (async () => {
-      if (!isAdmin) {
-        const cached = readCachedHiddenCategories(groupId)
-        if (cached) {
-          setHiddenCategoryNav(cached)
-          setHiddenCategoriesReady(true)
-        }
-
-        const globalFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'global')
-
-        let groupFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'group')
-        let attempts = 0
-        while ((groupFetch.status === 401 || groupFetch.status === 403) && attempts < HIDDEN_FETCH_MAX_RETRIES) {
-          attempts += 1
-          await sleep(HIDDEN_FETCH_RETRY_MS)
-          groupFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'group')
-        }
-
-        if (globalFetch.status !== 200 || groupFetch.status !== 200) {
-          if (!cached) {
-            setHiddenCategoryNav([])
-            setHiddenCategoriesReady(true)
-          }
-          return
-        }
-
-        const mergedHidden = mergeUnique([...globalFetch.order, ...groupFetch.order])
-        setHiddenCategoryNav(mergedHidden)
-        setHiddenCategoriesReady(true)
-        writeCachedHiddenCategories(groupId, mergedHidden)
-        return
-      }
-
-      const scopeType = categoryVisibilityScope
-      if (scopeType === 'group' && !adminTargetGroupId) {
-        setHiddenCategoryNav([])
-        setHiddenCategoriesReady(true)
-        return
-      }
-      const scopeId = scopeType === 'group' ? adminTargetGroupId : undefined
-      const hidden = await getLayoutOrder(HIDDEN_CATEGORIES_KEY, scopeType, scopeId)
-      setHiddenCategoryNav(hidden)
-      setHiddenCategoriesReady(true)
-    })().catch(() => { setHiddenCategoryNav([]); setHiddenCategoriesReady(true) })
-  }, [sessionResolved, isAdmin, groupId, categoryVisibilityScope, adminTargetGroupId])
 
   const accessLabel = useMemo(() => {
     if (!accessInfo) return '—'
@@ -204,37 +69,9 @@ export function Sidebar() {
 
   const userNavLinks: NavLink[] = [
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
-    { id: 'objects', href: '/objets', label: labels.nav_objets || 'Objets', icon: <Package className="h-5 w-5" />, active: pathname.startsWith('/objets') },
-    { id: 'weapons', href: '/armes', label: labels.nav_armes || 'Armes', icon: <Crosshair className="h-5 w-5" />, active: pathname.startsWith('/armes') },
-    { id: 'equipment', href: '/equipement', label: labels.nav_equipement || 'Équipement', icon: <Wrench className="h-5 w-5" />, active: pathname.startsWith('/equipement') },
-    { id: 'drugs', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Leaf className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
-    { id: 'expenses', href: '/depenses', label: labels.nav_depenses || 'Dépenses', icon: <Receipt className="h-5 w-5" />, active: pathname.startsWith('/depenses') },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
   ]
-
-  const visibleUserNavLinks = userNavLinks.filter((link) => {
-    const isCategory = link.id === 'objects' || link.id === 'weapons' || link.id === 'equipment' || link.id === 'drugs' || link.id === 'expenses'
-    if (!isCategory) return true
-    if (!sessionResolved || !hiddenCategoriesReady || !hiddenCategoryNav) return false
-    return !hiddenCategoryNav.includes(link.id)
-  })
-
-  const categoryToggles = [
-    { id: ALL_CATEGORY_NAV_IDS[0], label: labels.nav_objets || 'Objets' },
-    { id: ALL_CATEGORY_NAV_IDS[1], label: labels.nav_armes || 'Armes' },
-    { id: ALL_CATEGORY_NAV_IDS[2], label: labels.nav_equipement || 'Équipement' },
-    { id: ALL_CATEGORY_NAV_IDS[3], label: labels.nav_drogues || 'Drogues' },
-    { id: ALL_CATEGORY_NAV_IDS[4], label: labels.nav_depenses || 'Dépenses' },
-  ]
-
-  function updateHidden(next: string[]) {
-    setHiddenCategoryNav(next)
-    const scopeType = isAdmin ? categoryVisibilityScope : 'group'
-    if (scopeType === 'group' && isAdmin && !adminTargetGroupId) return
-    const scopeId = scopeType === 'group' && isAdmin ? adminTargetGroupId : undefined
-    void saveLayoutOrder(HIDDEN_CATEGORIES_KEY, next, scopeType, scopeId)
-  }
 
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex">
@@ -277,56 +114,12 @@ export function Sidebar() {
               setNavOrder(next)
               await saveLayoutOrder('sidebar.nav', next, 'group')
             }}
-            items={visibleUserNavLinks.map((link) => ({
+            items={userNavLinks.map((link) => ({
               id: link.id,
               element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
             }))}
           />
         )}
-
-        {isAdmin ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/70">
-            <p className="mb-2 font-semibold text-white/85">Afficher les catégories</p>
-            <div className="mb-2 grid gap-2">
-              <label className="inline-flex items-center gap-2">
-                <input type="radio" checked={categoryVisibilityScope === 'global'} onChange={() => setCategoryVisibilityScope('global')} />
-                Tous les groupes
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input type="radio" checked={categoryVisibilityScope === 'group'} onChange={() => setCategoryVisibilityScope('group')} />
-                Groupe spécifique
-              </label>
-              {categoryVisibilityScope === 'group' ? (
-                <GlassSelect
-                  value={adminTargetGroupId}
-                  onChange={setAdminTargetGroupId}
-                  options={adminGroups.map((g) => ({ value: g.id, label: g.name }))}
-                />
-              ) : null}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {categoryToggles.map((row) => {
-                const checked = !(hiddenCategoryNav ?? []).includes(row.id)
-                return (
-                  <label key={row.id} className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? (hiddenCategoryNav ?? []).filter((id) => id !== row.id)
-                          : [...(hiddenCategoryNav ?? []), row.id]
-                        updateHidden(mergeUnique(next))
-                      }}
-                      className="h-4 w-4 rounded border-white/20 bg-white/5"
-                    />
-                    {row.label}
-                  </label>
-                )
-              })}
-            </div>
-          </div>
-        ) : null}
       </div>
     </aside>
   )
