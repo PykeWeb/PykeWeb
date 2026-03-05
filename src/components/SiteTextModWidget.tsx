@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Settings2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 const STORAGE_KEY = 'pykeweb:text-overrides:v1'
 const ADMIN_USER = 'admin'
@@ -33,12 +34,14 @@ async function readOverridesFromDatabase(): Promise<Overrides> {
 
 async function upsertOverrideOnline(key: string, value: string): Promise<number> {
   const res = await fetch('/api/admin/ui-texts/upsert', {
+    ...withTenantSessionHeader({
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-user': ADMIN_USER,
+        'x-admin-password': ADMIN_PASSWORD,
+      },
+    }),
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-user': ADMIN_USER,
-      'x-admin-password': ADMIN_PASSWORD,
-    },
     body: JSON.stringify({ key, value, scope: 'global' }),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -48,11 +51,13 @@ async function upsertOverrideOnline(key: string, value: string): Promise<number>
 
 async function resetOverridesOnline() {
   const res = await fetch('/api/admin/ui-texts/reset', {
+    ...withTenantSessionHeader({
+      headers: {
+        'x-admin-user': ADMIN_USER,
+        'x-admin-password': ADMIN_PASSWORD,
+      },
+    }),
     method: 'POST',
-    headers: {
-      'x-admin-user': ADMIN_USER,
-      'x-admin-password': ADMIN_PASSWORD,
-    },
   })
   if (!res.ok) throw new Error(await res.text())
 }

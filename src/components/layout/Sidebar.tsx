@@ -14,6 +14,7 @@ import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
 import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
 import { GlassSelect } from '@/components/ui/GlassSelect'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 type AccessInfo = { paid_until: string | null; active: boolean } | null
 type GroupSummary = { id: string; name: string }
@@ -78,7 +79,7 @@ export function Sidebar() {
     if (!isAdmin) return
     void (async () => {
       try {
-        const res = await fetch('/api/admin/groups', { cache: 'no-store' })
+        const res = await fetch('/api/admin/groups', withTenantSessionHeader({ cache: 'no-store' }))
         if (!res.ok) return
         const rows = (await res.json()) as Array<{ id: string; name: string }>
         const clean = rows.map((row) => ({ id: row.id, name: row.name }))

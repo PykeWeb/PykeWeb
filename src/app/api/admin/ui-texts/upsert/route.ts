@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const user = request.headers.get('x-admin-user')
     const pass = request.headers.get('x-admin-password')
     if (!(user === 'admin' && pass === 'santa1234')) {
-      await requireAdminSession()
+      await requireAdminSession(request)
     }
     const body = await request.json()
     const key = String(body.key || '').trim()
