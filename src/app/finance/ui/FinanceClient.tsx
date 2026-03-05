@@ -13,7 +13,6 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { deleteExpense, setExpenseStatus, updateExpense, type ExpenseStatus } from '@/lib/expensesApi'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
-import { Button } from '@/components/ui/Button'
 
 type FilterType = 'all' | FinanceMovementType
 type FilterCategory = 'all' | FinanceCategory
@@ -66,14 +65,12 @@ export default function FinanceClient() {
   const [q, setQ] = useState('')
   const [type, setType] = useState<FilterType>('all')
   const [category, setCategory] = useState<FilterCategory>('all')
-  const [selectedCounterparty, setSelectedCounterparty] = useState<string | null>(null)
   const [busyExpenseId, setBusyExpenseId] = useState<string | null>(null)
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null)
   const [editingExpense, setEditingExpense] = useState<EditableExpense | null>(null)
   const [expenseActionEntry, setExpenseActionEntry] = useState<ExpenseActionEntry | null>(null)
   const [editingQuantity, setEditingQuantity] = useState('1')
   const [editingUnitPrice, setEditingUnitPrice] = useState('0')
-  const [statsModalOpen, setStatsModalOpen] = useState(false)
   const searchParams = useSearchParams()
 
   async function refresh() {
@@ -118,22 +115,6 @@ export default function FinanceClient() {
   const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
 
-  const counterpartyStats = useMemo(() => {
-    const map = new Map<string, { total: number; count: number }>()
-    for (const entry of filtered) {
-      const name = (entry.member_name || '').trim()
-      if (!name) continue
-      const current = map.get(name) || { total: 0, count: 0 }
-      current.count += 1
-      current.total += Number(entry.amount || 0)
-      map.set(name, current)
-    }
-    return Array.from(map.entries())
-      .map(([name, value]) => ({ name, ...value }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5)
-  }, [filtered])
-
   const editingTotal = useMemo(() => toPositiveInt(editingQuantity) * toNonNegativeNumber(editingUnitPrice), [editingQuantity, editingUnitPrice])
 
   function openEditExpense(entry: ExpenseActionEntry) {
@@ -160,18 +141,20 @@ export default function FinanceClient() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes / Sorties</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-        <SearchInput value={q} onChange={(e) => { setQ(e.target.value); setSelectedCounterparty(null) }} placeholder="Recherche (item / interlocuteur / note)" className="w-[360px]" />
-        <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
-        <Link href="/finance/achat-vente"><PrimaryButton>Achat / Vente</PrimaryButton></Link>
-        <Button type="button" variant="secondary" onClick={() => setStatsModalOpen(true)}>Stats interlocuteurs</Button>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
         <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
         <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
         <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
+        <SearchInput
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Recherche (item / interlocuteur / note)"
+          className="ml-1 w-full min-w-[240px] flex-1 max-w-[320px]"
+        />
+        <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
+        <Link href="/finance/achat-vente"><PrimaryButton>Achat / Vente</PrimaryButton></Link>
+        <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -222,51 +205,6 @@ export default function FinanceClient() {
 
       {error ? <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
       <p className="mt-4 text-xs text-white/55"><Wallet className="mr-1 inline h-3 w-3" />Le total global affiché dépend du filtre courant.</p>
-
-      {statsModalOpen ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" onClick={() => setStatsModalOpen(false)}>
-          <div className="w-full max-w-2xl" onClick={(event) => event.stopPropagation()}>
-            <Panel>
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">Stats interlocuteurs</h3>
-                <div className="flex items-center gap-2">
-                  {selectedCounterparty ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQ('')
-                        setSelectedCounterparty(null)
-                      }}
-                      className="rounded-lg border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80 hover:bg-white/10"
-                    >
-                      Retour à tous
-                    </button>
-                  ) : null}
-                  <SecondaryButton onClick={() => setStatsModalOpen(false)}>Fermer</SecondaryButton>
-                </div>
-              </div>
-              {counterpartyStats.length === 0 ? <p className="mt-2 text-xs text-white/60">Aucune transaction avec interlocuteur pour le filtre actuel.</p> : null}
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
-                {counterpartyStats.map((row) => (
-                  <button
-                    key={row.name}
-                    type="button"
-                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left hover:bg-white/[0.08]"
-                    onClick={() => {
-                      setQ(row.name)
-                      setSelectedCounterparty(row.name)
-                      setStatsModalOpen(false)
-                    }}
-                  >
-                    <div className="text-sm font-semibold">{row.name}</div>
-                    <div className="text-xs text-white/65">{row.count} transaction(s) · {row.total.toFixed(2)} $</div>
-                  </button>
-                ))}
-              </div>
-            </Panel>
-          </div>
-        </div>
-      ) : null}
 
       {expenseActionEntry ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" onClick={() => setExpenseActionEntry(null)}>
