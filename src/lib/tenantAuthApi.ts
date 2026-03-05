@@ -1,6 +1,3 @@
-import { supabase } from '@/lib/supabase/client'
-
-
 async function readApiError(res: Response) {
   try {
     const json = (await res.json()) as { error?: string }
@@ -57,19 +54,13 @@ export async function deleteTenantGroup(id: string) {
 }
 
 export async function loginTenant(login: string, password: string) {
-  const { data, error } = await supabase
-    .from('tenant_groups')
-    .select('id,name,badge,login,password,active,paid_until')
-    .eq('login', login)
-    .eq('password', password)
-    .maybeSingle()
-
-  if (error) throw error
-  if (!data) throw new Error('Identifiants invalides')
-  if (!data.active) throw new Error('Groupe désactivé')
-  if (data.paid_until && new Date(data.paid_until).getTime() < Date.now()) {
-    throw new Error('Accès expiré (paiement en retard).')
-  }
-
-  return data as TenantGroup
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ login, password }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  const json = (await res.json()) as { group: TenantGroup }
+  return json.group
 }
