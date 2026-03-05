@@ -138,6 +138,7 @@ export function FinanceItemTradeModal({
   const content = (
     <div className="mx-auto w-full max-w-5xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain" onClick={(e) => e.stopPropagation()}>
       <CenteredFormLayout
+        panelClassName="border-white/15 bg-slate-950 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
         title={copy.finance.trade.title}
         actions={
           <>
@@ -343,7 +344,7 @@ export function FinanceItemTradeModal({
   if (inline) return <div className="mt-6">{content}</div>
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[130] grid place-items-center bg-slate-950/85 p-4" onClick={onClose}>
       {content}
     </div>
   )

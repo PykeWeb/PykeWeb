@@ -42,6 +42,22 @@ function mergeUnique(values: string[]) {
 
 const HIDDEN_CATEGORIES_KEY = 'sidebar.hiddenCategories'
 
+const HIDDEN_FETCH_RETRY_MS = 180
+const HIDDEN_FETCH_MAX_RETRIES = 6
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function fetchLayoutOrderWithStatus(pageKey: string, scopeType: 'global' | 'group', scopeId?: string): Promise<{ status: number; order: string[] }> {
+  const params = new URLSearchParams({ page_key: pageKey, scope_type: scopeType })
+  if (scopeId) params.set('scope_id', scopeId)
+  const res = await fetch(`/api/ui-layouts?${params.toString()}`, { cache: 'no-store', credentials: 'include' })
+  if (!res.ok) return { status: res.status, order: [] }
+  const data = (await res.json()) as { order?: unknown }
+  return { status: 200, order: Array.isArray(data.order) ? (data.order as string[]) : [] }
+}
+
 export function Sidebar() {
   const pathname = usePathname()
   const { labels } = useUiSettings()
@@ -101,10 +117,23 @@ export function Sidebar() {
 
     void (async () => {
       if (!isAdmin) {
-        const [globalHidden, groupHidden] = await Promise.all([
-          getLayoutOrder(HIDDEN_CATEGORIES_KEY, 'global'),
-          getLayoutOrder(HIDDEN_CATEGORIES_KEY, 'group'),
-        ])
+        const globalFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'global')
+
+        let groupFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'group')
+        let attempts = 0
+        while ((groupFetch.status === 401 || groupFetch.status === 403) && attempts < HIDDEN_FETCH_MAX_RETRIES) {
+          attempts += 1
+          await sleep(HIDDEN_FETCH_RETRY_MS)
+          groupFetch = await fetchLayoutOrderWithStatus(HIDDEN_CATEGORIES_KEY, 'group')
+        }
+
+        if (groupFetch.status === 401 || groupFetch.status === 403) {
+          setHiddenCategoryNav([])
+          return
+        }
+
+        const globalHidden = globalFetch.order
+        const groupHidden = groupFetch.order
         setHiddenCategoryNav(mergeUnique([...globalHidden, ...groupHidden]))
         setHiddenCategoriesReady(true)
         return

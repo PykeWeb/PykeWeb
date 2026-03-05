@@ -301,7 +301,7 @@ export default function ItemsClient() {
       ) : null}
 
       {openCreate ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/85 p-4">
           <div className="mx-auto w-full max-w-5xl">
             <ItemForm
               panelClassName="border-white/15 bg-slate-950 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
