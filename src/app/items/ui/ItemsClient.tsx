@@ -301,21 +301,24 @@ export default function ItemsClient() {
       ) : null}
 
       {openCreate ? (
-        <div className="mt-6">
-          <ItemForm
-            onCancel={() => setOpenCreate(false)}
-            onSave={async (payload) => {
-              try {
-                await createCatalogItem(payload)
-                toast.success('Item créé.')
-                await refresh()
-                setOpenCreate(false)
-              } catch (error: unknown) {
-                console.error('[items:create]', error)
-                toast.error(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
-              }
-            }}
-          />
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4">
+          <div className="mx-auto w-full max-w-5xl">
+            <ItemForm
+              panelClassName="border-white/15 bg-slate-950 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
+              onCancel={() => setOpenCreate(false)}
+              onSave={async (payload) => {
+                try {
+                  await createCatalogItem(payload)
+                  toast.success('Item créé.')
+                  await refresh()
+                  setOpenCreate(false)
+                } catch (error: unknown) {
+                  console.error('[items:create]', error)
+                  toast.error(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
+                }
+              }}
+            />
+          </div>
         </div>
       ) : null}
 

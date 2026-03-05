@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireGroupSession } from '@/lib/server/tenantServerSession'
+import { requireGroupSession } from '@/server/auth/requireSession'
 import { normalizeCatalogCategory } from '@/lib/catalogConfig'
 
 type GlobalCatalogRow = {
@@ -28,7 +28,7 @@ type CatalogOverrideRow = {
 
 export async function GET(request: Request) {
   try {
-    const session = await requireGroupSession()
+    const session = await requireGroupSession(request)
     const { searchParams } = new URL(request.url)
     const category = normalizeCatalogCategory(searchParams.get('category'))
     if (!category) return NextResponse.json({ error: 'category invalide' }, { status: 400 })

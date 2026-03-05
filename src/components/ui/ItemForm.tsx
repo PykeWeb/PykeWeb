@@ -19,12 +19,14 @@ export function ItemForm({
   initialItem,
   submitLabel,
   actionsPlacement,
+  panelClassName,
 }: {
   onCancel: () => void
   onSave: (payload: CreateCatalogItemInput) => Promise<void>
   initialItem?: CatalogItem
   submitLabel?: string
   actionsPlacement?: 'top-right' | 'bottom-right'
+  panelClassName?: string
 }) {
   const [name, setName] = useState(initialItem?.name ?? '')
   const [category, setCategory] = useState<ItemCategory>(initialItem?.category ?? 'objects')
@@ -95,6 +97,7 @@ export function ItemForm({
         </>
       }
       actionsPlacement={actionsPlacement || 'top-right'}
+      panelClassName={panelClassName}
     >
       <div className="grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">

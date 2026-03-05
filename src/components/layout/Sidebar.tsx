@@ -93,6 +93,12 @@ export function Sidebar() {
 
   useEffect(() => {
     setHiddenCategoriesReady(false)
+
+    if (!isAdmin && !groupId) {
+      setHiddenCategoryNav([])
+      return
+    }
+
     void (async () => {
       if (!isAdmin) {
         const [globalHidden, groupHidden] = await Promise.all([
