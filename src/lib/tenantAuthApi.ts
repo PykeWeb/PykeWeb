@@ -1,5 +1,3 @@
-import { withTenantSessionHeader } from '@/lib/tenantRequest'
-
 async function readApiError(res: Response) {
   try {
     const json = (await res.json()) as { error?: string }
