@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { readTenantServerSession } from '@/lib/server/tenantServerSession'
+import { getSessionFromRequest } from '@/server/auth/session'
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status })
@@ -25,7 +25,7 @@ function resolveScope(bodyOrQuery: { scope_type?: string | null; scope_id?: stri
 }
 
 export async function GET(request: Request) {
-  const session = await readTenantServerSession()
+  const session = await getSessionFromRequest(request)
   if (!session?.groupId) return jsonError('Non autorisé', 401)
   const safeSession = { groupId: session.groupId, isAdmin: session.isAdmin }
 
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
 
 
 export async function POST(request: Request) {
-  const session = await readTenantServerSession()
+  const session = await getSessionFromRequest(request)
   if (!session?.groupId) return jsonError('Non autorisé', 401)
   const safeSession = { groupId: session.groupId, isAdmin: session.isAdmin }
 
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const session = await readTenantServerSession()
+  const session = await getSessionFromRequest(request)
   if (!session?.groupId) return jsonError('Non autorisé', 401)
   const safeSession = { groupId: session.groupId, isAdmin: session.isAdmin }
 
