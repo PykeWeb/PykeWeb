@@ -6,6 +6,10 @@ export type TenantSession = {
   isAdmin?: boolean
 }
 
+export function isAdminTenantSession(session: TenantSession | null | undefined) {
+  return Boolean(session?.isAdmin || session?.groupId === 'admin')
+}
+
 const SESSION_VERSION = 3
 const STORAGE_KEY = 'pykeweb:tenant-session:v3'
 const LEGACY_STORAGE_KEYS = ['pykeweb:tenant-session', 'pykeweb:tenant-session:v1', 'pykeweb:tenant-session:v2']

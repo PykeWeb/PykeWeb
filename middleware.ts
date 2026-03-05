@@ -40,13 +40,21 @@ export function middleware(request: NextRequest) {
   if (!session?.groupId || !session.groupName?.trim()) return redirectToLogin(request)
   if ((session.v ?? 0) !== SESSION_VERSION) return redirectToLogin(request)
 
-  if (session.groupId === 'admin' || session.isAdmin) {
-    if (!pathname.startsWith('/admin/groupes')) {
+  const isAdminSession = session.groupId === 'admin' || Boolean(session.isAdmin)
+
+  if (isAdminSession) {
+    if (!pathname.startsWith('/admin')) {
       const url = request.nextUrl.clone()
-      url.pathname = '/admin/groupes'
+      url.pathname = '/admin/dashboard'
       return NextResponse.redirect(url)
     }
     return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/admin')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
   }
 
   if (!UUID_RE.test(session.groupId)) return redirectToLogin(request)
