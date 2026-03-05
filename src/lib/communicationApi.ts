@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 export type PatchNote = {
   id: string
@@ -27,15 +28,15 @@ export async function listActivePatchNotes(limit = 5): Promise<PatchNote[]> {
 }
 
 export async function listPatchNotesAdmin(): Promise<PatchNote[]> {
-  const res = await fetch('/api/admin/patch-notes', { cache: 'no-store' })
+  const res = await fetch('/api/admin/patch-notes', withTenantSessionHeader({ cache: 'no-store' }))
   if (!res.ok) throw new Error('Impossible de charger les patch notes admin')
   return (await res.json()) as PatchNote[]
 }
 
 export async function createPatchNote(input: { title: string; content: string; is_active: boolean }) {
   const res = await fetch('/api/admin/patch-notes', {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -44,8 +45,8 @@ export async function createPatchNote(input: { title: string; content: string; i
 
 export async function updatePatchNote(id: string, patch: Partial<Pick<PatchNote, 'title' | 'content' | 'is_active'>>) {
   const res = await fetch('/api/admin/patch-notes', {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, patch }),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -54,17 +55,20 @@ export async function updatePatchNote(id: string, patch: Partial<Pick<PatchNote,
 
 export async function deletePatchNote(id: string) {
   const res = await fetch('/api/admin/patch-notes', {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id }),
   })
   if (!res.ok) throw new Error(await res.text())
 }
 
 export async function listSupportTicketsAdmin(kind: 'bug' | 'message', includeResolved = false) {
-  const res = await fetch(`/api/admin/support-tickets?kind=${kind}&includeResolved=${includeResolved ? '1' : '0'}`, { cache: 'no-store' })
+  const res = await fetch(
+    `/api/admin/support-tickets?kind=${kind}&includeResolved=${includeResolved ? '1' : '0'}`,
+    withTenantSessionHeader({ cache: 'no-store' })
+  )
   if (!res.ok) throw new Error('Impossible de charger les tickets')
-  const rows = (await res.json()) as any[]
+  const rows = (await res.json()) as Array<Record<string, unknown>>
   return rows.map((row) => ({
     ...row,
     tenant_groups: Array.isArray(row.tenant_groups)
@@ -92,8 +96,8 @@ export async function createSupportTicket(input: { kind: 'bug' | 'message'; mess
 
 export async function updateSupportTicketStatus(id: string, status: SupportTicket['status']) {
   const res = await fetch('/api/admin/support-tickets', {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, status }),
   })
   if (!res.ok) throw new Error(await res.text())

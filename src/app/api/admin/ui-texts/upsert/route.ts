@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireAdminSession } from '@/lib/server/tenantServerSession'
+import { requireAdminSessionFromRequest } from '@/lib/server/tenantServerSession'
 
 export async function POST(request: Request) {
   try {
     const user = request.headers.get('x-admin-user')
     const pass = request.headers.get('x-admin-password')
     if (!(user === 'admin' && pass === 'santa1234')) {
-      await requireAdminSession()
+      await requireAdminSessionFromRequest(request)
     }
     const body = await request.json()
     const key = String(body.key || '').trim()

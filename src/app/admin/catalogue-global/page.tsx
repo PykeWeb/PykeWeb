@@ -10,6 +10,7 @@ import { Panel } from '@/components/ui/Panel'
 import { DangerButton, PrimaryButton, SearchInput } from '@/components/ui/design-system'
 import { itemCategoryOptions, normalizeCatalogCategory } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 type GlobalItem = {
   id: string
@@ -45,7 +46,7 @@ export default function AdminCatalogueGlobalPage() {
   const [error, setError] = useState<string | null>(null)
 
   async function refresh() {
-    const res = await fetch('/api/admin/global-catalog', { cache: 'no-store' })
+    const res = await fetch('/api/admin/global-catalog', withTenantSessionHeader({ cache: 'no-store' }))
     const data = await res.json()
     const normalized = (Array.isArray(data) ? data : [])
       .map((row) => ({ ...row, category: normalizeCatalogCategory(String(row.category)) }))
@@ -81,8 +82,8 @@ export default function AdminCatalogueGlobalPage() {
       setError(null)
       const image_url = imageFile ? await uploadImage(imageFile) : null
       const res = await fetch('/api/admin/global-catalog', {
+        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: createCategory,
           name: name.trim(),
@@ -108,7 +109,14 @@ export default function AdminCatalogueGlobalPage() {
   }
 
   async function removeItem(id: string) {
-    const res = await fetch('/api/admin/global-catalog', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    const res = await fetch(
+      '/api/admin/global-catalog',
+      {
+        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+        method: 'DELETE',
+        body: JSON.stringify({ id }),
+      }
+    )
     if (!res.ok) return
     await refresh()
   }
