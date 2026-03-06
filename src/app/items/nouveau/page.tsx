@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/PageHeader'
 import { ItemForm } from '@/components/ui/ItemForm'
 import { createCatalogItem } from '@/lib/itemsApi'
 import { copy } from '@/lib/copy'
@@ -12,10 +11,8 @@ export default function NewItemPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Nouvel item (Items)" />
       <ItemForm
         panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
-        hideTitle
         onCancel={() => router.push('/items')}
         onSave={async (payload) => {
           try {

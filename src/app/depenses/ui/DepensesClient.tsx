@@ -26,9 +26,11 @@ function badge(status: string) {
 export default function DepensesClient({
   newExpenseHref = '/depenses/nouveau',
   backHref,
+  title,
 }: {
   newExpenseHref?: string
   backHref?: string
+  title?: string
 } = {}) {
   const [items, setItems] = useState<DbExpense[]>([])
   const [query, setQuery] = useState('')
@@ -83,7 +85,7 @@ export default function DepensesClient({
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-white/60">Suivi des dépenses et remboursements.</p>
+          {title ? <h2 className="text-lg font-semibold">{title}</h2> : <div />}
           <div className="flex items-center gap-2">
             {backHref ? (
               <Link href={backHref}>

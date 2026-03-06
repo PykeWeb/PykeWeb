@@ -150,7 +150,7 @@ export default function FinanceClient() {
       <div className="mt-4 mb-3 flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
-          <Link href="/finance/achat-vente"><PrimaryButton>Achat / Vente</PrimaryButton></Link>
+          <Link href="/finance/achat-vente"><SecondaryButton>Achat / Vente</SecondaryButton></Link>
           <Link href="/finance/depenses"><SecondaryButton>Dépenses</SecondaryButton></Link>
           <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
         </div>

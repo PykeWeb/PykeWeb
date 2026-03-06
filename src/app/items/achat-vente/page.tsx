@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/PageHeader'
 import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
@@ -21,14 +20,12 @@ export default function ItemTradePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={copy.finance.trade.title} />
       <FinanceItemTradeModal
         inline
         open
         mode="buy"
         enableModeSelect
         initialItems={initialItems}
-        hideTitle
         onClose={() => router.push('/items')}
         onSubmit={async (payload) => {
           await createFinanceTransaction({
