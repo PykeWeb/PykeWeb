@@ -7,10 +7,10 @@ import {
   type TenantSessionPayload,
 } from '@/lib/tenantSessionShared'
 
-function cookieOptions() {
+function cookieOptions(remember = true) {
   return {
     path: '/',
-    maxAge: 60 * 60 * 24 * 14,
+    maxAge: remember ? 60 * 60 * 24 * 14 : undefined,
     sameSite: 'lax' as const,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -19,8 +19,9 @@ function cookieOptions() {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { session?: TenantSessionPayload }
+    const body = (await request.json()) as { session?: TenantSessionPayload; remember?: boolean }
     const session = body.session
+    const remember = body.remember !== false
 
     if (!session || !isValidTenantSession({ ...session, v: TENANT_SESSION_VERSION })) {
       return NextResponse.json({ error: 'Session invalide' }, { status: 400 })
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({ ok: true })
-    response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(normalized), cookieOptions())
+    response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(normalized), cookieOptions(remember))
     return response
   } catch {
     return NextResponse.json({ error: 'Payload invalide' }, { status: 400 })

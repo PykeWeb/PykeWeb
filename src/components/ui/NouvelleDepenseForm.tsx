@@ -103,7 +103,6 @@ export function NouvelleDepenseForm({ backHref = '/depenses', successHref = '/de
   return (
     <CenteredFormLayout
       title={title}
-      subtitle="Choisis une catégorie, sélectionne un item ou saisis un item provisoire"
       actions={
         <>
           <Link href={backHref}><SecondaryButton>Retour</SecondaryButton></Link>

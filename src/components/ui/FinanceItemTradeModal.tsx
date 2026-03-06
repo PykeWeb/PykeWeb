@@ -240,6 +240,13 @@ export function FinanceItemTradeModal({
             })}
           </div>
 
+          <div className="md:col-span-2 flex justify-end">
+            <div className="rounded-2xl border border-white/20 bg-white/[0.05] px-4 py-3 text-right text-sm">
+              {copy.finance.labels.total}:{' '}
+              <span className="text-lg font-semibold text-white">{total.toFixed(2)} $</span>
+            </div>
+          </div>
+
           <div className="md:col-span-2 flex flex-wrap items-center gap-2">
             {typeOptions.map((option) => (
               <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)}>
@@ -250,7 +257,7 @@ export function FinanceItemTradeModal({
 
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
-            <div className="rounded-2xl border border-slate-700 bg-slate-900 p-2">
+            <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-2">
               <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                 <Search className="h-4 w-4 text-white/50" />
                 <input
@@ -296,7 +303,7 @@ export function FinanceItemTradeModal({
             </div>
           </div>
 
-          <div className="md:col-span-2 space-y-2 rounded-2xl border border-slate-700 bg-slate-900 p-3">
+          <div className="md:col-span-2 space-y-2 rounded-2xl border border-white/12 bg-white/[0.03] p-3">
             <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée</p>
             {linesWithItems.length === 0 ? <p className="text-sm text-white/60">Ajoute des items à la liste pour continuer.</p> : null}
             {linesWithItems.map((entry) => (
@@ -340,11 +347,6 @@ export function FinanceItemTradeModal({
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-right text-sm">
-          {copy.finance.labels.total}:{' '}
-          <span className="text-lg font-semibold text-cyan-100">{total.toFixed(2)} $</span>
         </div>
 
         {error ? (

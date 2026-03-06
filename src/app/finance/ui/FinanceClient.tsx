@@ -156,7 +156,7 @@ export default function FinanceClient() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Recherche (item / interlocuteur / note)"
-          className="ml-1 w-full min-w-[96px] flex-1 max-w-[96px]"
+          className="ml-1 w-full min-w-[72px] flex-1 max-w-[72px]"
         />
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
@@ -165,7 +165,7 @@ export default function FinanceClient() {
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
         <TabPill active={category === 'all'} onClick={() => setCategory('all')}>Toutes catégories</TabPill>
         <TabPill active={category === 'objects'} onClick={() => setCategory('objects')}>Objets</TabPill>
         <TabPill active={category === 'weapons'} onClick={() => setCategory('weapons')}>Armes</TabPill>

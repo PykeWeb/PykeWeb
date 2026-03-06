@@ -21,7 +21,7 @@ export default function FinanceItemTradePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={copy.finance.trade.title} subtitle="Achat • vente • stock (Finance)" />
+      <PageHeader title={copy.finance.trade.title} />
       <FinanceItemTradeModal
         inline
         open

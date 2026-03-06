@@ -12,7 +12,7 @@ export default function NewItemPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Nouvel item (Items)" subtitle="Nom • catégorie • type • prix • stock" />
+      <PageHeader title="Nouvel item (Items)" />
       <ItemForm
         panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
         onCancel={() => router.push('/items')}

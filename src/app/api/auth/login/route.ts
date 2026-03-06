@@ -10,6 +10,7 @@ import {
 type LoginPayload = {
   login?: string
   password?: string
+  remember?: boolean
 }
 
 type GroupRow = {
@@ -28,10 +29,10 @@ function isAdminGroup(group: Pick<GroupRow, 'login' | 'badge' | 'name'>) {
     || group.name.trim().toLowerCase() === 'administration'
 }
 
-function cookieOptions() {
+function cookieOptions(remember = true) {
   return {
     path: '/',
-    maxAge: 60 * 60 * 24 * 14,
+    maxAge: remember ? 60 * 60 * 24 * 14 : undefined,
     sameSite: 'lax' as const,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as LoginPayload
     const login = body.login?.trim() || ''
     const password = body.password?.trim() || ''
+    const remember = body.remember !== false
 
     if (!login || !password) {
       return NextResponse.json({ error: 'Identifiants invalides' }, { status: 400 })
@@ -73,7 +75,7 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({ group: data, session })
-    response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(session), cookieOptions())
+    response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(session), cookieOptions(remember))
     return response
   } catch {
     return NextResponse.json({ error: 'Payload invalide' }, { status: 400 })

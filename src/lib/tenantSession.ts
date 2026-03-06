@@ -83,7 +83,7 @@ export function getTenantSession(): TenantSession | null {
   return decoded
 }
 
-export function saveTenantSession(session: TenantSession) {
+export function saveTenantSession(session: TenantSession, remember = true) {
   if (typeof window === 'undefined') return
   const normalized: TenantSession = {
     ...session,
@@ -93,15 +93,16 @@ export function saveTenantSession(session: TenantSession) {
   safeSetLocalStorage(STORAGE_KEY, JSON.stringify(normalized))
   clearLegacySessionArtifacts()
   const payload = encodeTenantSession(normalized)
-  document.cookie = `${COOKIE_KEY}=${payload}; path=/; max-age=${60 * 60 * 24 * 14}; SameSite=Lax`
+  const rememberDirective = remember ? `max-age=${60 * 60 * 24 * 14}; ` : ''
+  document.cookie = `${COOKIE_KEY}=${payload}; path=/; ${rememberDirective}SameSite=Lax`
 }
 
-export async function syncTenantSessionToServer(session: TenantSession) {
+export async function syncTenantSessionToServer(session: TenantSession, remember = true) {
   const res = await fetch('/api/auth/session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ session }),
+    body: JSON.stringify({ session, remember }),
   })
   if (!res.ok) {
     throw new Error('Synchronisation de session impossible')

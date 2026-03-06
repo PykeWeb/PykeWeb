@@ -55,12 +55,12 @@ export async function deleteTenantGroup(id: string) {
   if (!res.ok) throw new Error(await readApiError(res))
 }
 
-export async function loginTenant(login: string, password: string) {
+export async function loginTenant(login: string, password: string, remember = true) {
   const res = await fetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ login, password }),
+    body: JSON.stringify({ login, password, remember }),
   })
   if (!res.ok) throw new Error(await readApiError(res))
   const json = (await res.json()) as { group: TenantGroup }

@@ -21,6 +21,7 @@ function isAdminGroup(group: { login: string; badge: string | null; name: string
 export default function LoginPage() {
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notes, setNotes] = useState<PatchNote[]>([])
@@ -44,7 +45,7 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const group = await loginTenant(login, password)
+      const group = await loginTenant(login, password, rememberMe)
       const isAdmin = isAdminGroup(group)
       const session = {
         groupId: isAdmin ? 'admin' : group.id,
@@ -53,8 +54,8 @@ export default function LoginPage() {
         isAdmin,
       }
 
-      saveTenantSession(session)
-      await syncTenantSessionToServer(session).catch(() => undefined)
+      saveTenantSession(session, rememberMe)
+      await syncTenantSessionToServer(session, rememberMe).catch(() => undefined)
       const nextPath = isAdmin ? '/admin/dashboard' : '/'
       window.location.href = `/auth/bridge?next=${encodeURIComponent(nextPath)}`
     } catch (err: unknown) {
@@ -101,6 +102,15 @@ export default function LoginPage() {
                     placeholder="Mot de passe"
                     className="h-11 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/35 focus:shadow-[0_0_0_3px_rgba(255,255,255,0.08)]"
                   />
+                  <label className="inline-flex items-center gap-2 text-sm text-white/80">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(event) => setRememberMe(event.target.checked)}
+                      className="h-4 w-4 rounded border border-white/25 bg-white/10"
+                    />
+                    Rester connecté
+                  </label>
                   {error ? <p className="text-sm text-rose-300">{error}</p> : null}
                   <button
                     disabled={loading}

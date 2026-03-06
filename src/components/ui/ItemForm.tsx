@@ -88,7 +88,6 @@ export function ItemForm({
   return (
     <CenteredFormLayout
       title={initialItem ? 'Modifier l’item (Items)' : 'Nouvel item (Items)'}
-      subtitle={copy.itemForm.labels.unifiedSubtitle}
       actions={
         <>
           <SecondaryButton onClick={onCancel}>{copy.common.cancel}</SecondaryButton>
