@@ -29,12 +29,14 @@ function isAdminGroup(group: Pick<GroupRow, 'login' | 'badge' | 'name'>) {
 }
 
 function cookieOptions() {
+  const isProd = process.env.NODE_ENV === 'production'
   return {
     path: '/',
     maxAge: 60 * 60 * 24 * 14,
-    sameSite: 'lax' as const,
+    // FiveM / CEF: embedded context => use SameSite=None in prod
+    sameSite: (isProd ? 'none' : 'lax') as const,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProd,
   }
 }
 
@@ -81,13 +83,14 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
+  const isProd = process.env.NODE_ENV === 'production'
   const response = NextResponse.json({ ok: true })
   response.cookies.set(TENANT_SESSION_COOKIE_KEY, '', {
     path: '/',
     maxAge: 0,
-    sameSite: 'lax',
+    sameSite: (isProd ? 'none' : 'lax'),
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProd,
   })
   return response
 }
