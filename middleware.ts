@@ -9,11 +9,26 @@ import {
 
 const PUBLIC_PATHS = ['/login', '/auth/bridge', '/_next', '/favicon.ico']
 
+function getCookieClearOptions() {
+  const isProd = process.env.NODE_ENV === 'production'
+  return {
+    path: '/',
+    maxAge: 0,
+    // FiveM / CEF embedded context: in prod use SameSite=None; Secure
+    sameSite: (isProd ? 'none' : 'lax') as const,
+    secure: isProd,
+    httpOnly: true,
+  }
+}
+
 function redirectToLogin(request: NextRequest) {
   const url = request.nextUrl.clone()
   url.pathname = '/login'
   const response = NextResponse.redirect(url)
-  response.cookies.set(TENANT_SESSION_COOKIE_KEY, '', { path: '/', maxAge: 0, sameSite: 'lax' })
+
+  // Clear cookie with matching attributes (important for some embedded browsers)
+  response.cookies.set(TENANT_SESSION_COOKIE_KEY, '', getCookieClearOptions())
+
   return response
 }
 
