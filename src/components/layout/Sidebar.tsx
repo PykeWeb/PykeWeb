@@ -122,7 +122,7 @@ export function Sidebar() {
               Déconnexion
             </button>
           </div>
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-4 flex items-center justify-between gap-3">
             <p className="min-w-0 truncate text-xl font-semibold tracking-tight">{groupName}</p>
             <div className="inline-flex shrink-0 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
           </div>

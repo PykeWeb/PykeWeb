@@ -23,7 +23,7 @@ function badge(status: string) {
   )
 }
 
-export default function DepensesClient() {
+export default function DepensesClient({ newExpenseHref = '/depenses/nouveau' }: { newExpenseHref?: string } = {}) {
   const [items, setItems] = useState<DbExpense[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -78,7 +78,7 @@ export default function DepensesClient() {
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-white/60">Astuce : clique sur “Rembourser” pour passer en payé (ou revenir en attente).</p>
-          <Link href="/depenses/nouveau">
+          <Link href={newExpenseHref}>
             <PrimaryButton size="lg">Ajouter une dépense</PrimaryButton>
           </Link>
         </div>

@@ -240,19 +240,18 @@ export function FinanceItemTradeModal({
             })}
           </div>
 
-          <div className="md:col-span-2 flex justify-end">
-            <div className="rounded-2xl border border-white/20 bg-white/[0.05] px-4 py-3 text-right text-sm">
+          <div className="md:col-span-2 flex flex-wrap items-start gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {typeOptions.map((option) => (
+                <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)}>
+                  {option.label}
+                </TabPill>
+              ))}
+            </div>
+            <div className="ml-auto rounded-2xl border border-white/20 bg-white/[0.05] px-4 py-3 text-right text-sm">
               {copy.finance.labels.total}:{' '}
               <span className="text-lg font-semibold text-white">{total.toFixed(2)} $</span>
             </div>
-          </div>
-
-          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
-            {typeOptions.map((option) => (
-              <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)}>
-                {option.label}
-              </TabPill>
-            ))}
           </div>
 
           <div className="md:col-span-2">
