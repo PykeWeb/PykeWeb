@@ -37,6 +37,7 @@ export default function AdminGroupDetailsPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [exportItems, setExportItems] = useState<EditableExportItem[]>([])
+  const [showPassword, setShowPassword] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!groupId) return
@@ -156,6 +157,13 @@ export default function AdminGroupDetailsPage() {
             <span className="mb-1 block text-white/70">Identifiant</span>
             <input defaultValue={group.login} onBlur={(e) => void savePatch({ login: e.target.value.trim() || group.login })} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3" />
           </label>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+          <p className="text-xs text-white/60">Mot de passe du groupe</p>
+          <span className="rounded-lg border border-white/12 bg-white/[0.06] px-3 py-1 text-sm">{showPassword ? (group.password || '—') : '••••••••'}</span>
+          <button type="button" onClick={() => setShowPassword((v) => !v)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">{showPassword ? 'Masquer' : 'Voir'}</button>
+          <button type="button" onClick={() => void copyToClipboard(group.password || '')} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
+import { getTenantSession } from '@/lib/tenantSession'
 import { toNonNegative, toPositiveInt, calcTotal } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
 import { getSuggestedInternalId } from '@/lib/itemId'
@@ -592,7 +593,8 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
     item_type: args.item_type,
   })
 
-  if (group_id === 'admin') {
+  const isAdminSession = typeof window !== 'undefined' && Boolean(getTenantSession()?.isAdmin)
+  if (group_id === 'admin' || isAdminSession) {
     const { error: globalError } = await supabase.from('catalog_items_global').insert({
       category: args.category,
       item_type: normalizeItemType(args.item_type, args.category),

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import type { TabletRentalTicket } from '@/lib/tabletRental'
 
@@ -13,7 +14,7 @@ export default function AdminTablettePage() {
   const [validatingId, setValidatingId] = useState<string | null>(null)
 
   async function refresh() {
-    const res = await fetch('/api/admin/tablette/rentals', { cache: 'no-store' })
+    const res = await fetch('/api/admin/tablette/rentals', withTenantSessionHeader({ cache: 'no-store' }))
     if (!res.ok) {
       setError(await res.text())
       return
@@ -31,8 +32,8 @@ export default function AdminTablettePage() {
     try {
       setValidatingId(row.id)
       const res = await fetch('/api/admin/tablette/rentals', {
+        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: row.id, group_id: row.group_id, weeks: row.weeks }),
       })
       if (!res.ok) throw new Error(await res.text())
