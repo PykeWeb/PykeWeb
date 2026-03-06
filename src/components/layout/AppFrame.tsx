@@ -41,9 +41,9 @@ export function AppFrame({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1480px] gap-6 px-4 py-6">
+    <div className="mx-auto flex min-h-screen w-full max-w-[1480px] gap-6 px-4 py-6 md:h-screen md:overflow-hidden">
       <Sidebar />
-      <main className="flex min-w-0 flex-1 flex-col gap-6">
+      <main className="flex min-w-0 flex-1 flex-col gap-6 md:min-h-0 md:overflow-y-auto md:pr-1">
         <Topbar />
         {children}
       </main>

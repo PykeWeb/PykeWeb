@@ -23,7 +23,7 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string }
-type ActivityView = 'transactions' | 'expenses'
+type ActivityView = 'summary' | 'transactions' | 'expenses'
 
 type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
@@ -85,7 +85,7 @@ export function DashboardClient() {
     purchase: 0,
     sale: 0,
   })
-  const [activityView, setActivityView] = useState<ActivityView>('transactions')
+  const [activityView, setActivityView] = useState<ActivityView>('summary')
   const [pauseAutoUntil, setPauseAutoUntil] = useState(0)
   const [ticketKind, setTicketKind] = useState<'bug' | 'message'>('bug')
   const [ticketMessage, setTicketMessage] = useState('')
@@ -225,7 +225,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['transactions', 'expenses']
+    const views: ActivityView[] = ['summary', 'transactions', 'expenses']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -255,6 +255,17 @@ export function DashboardClient() {
     setActivityView(view)
     setPauseAutoUntil(Date.now() + 12000)
   }
+
+  const financeActivitySummary = useMemo(() => {
+    const totalOps = financeMovementCounts.expense + financeMovementCounts.purchase + financeMovementCounts.sale
+    const totalAmountTx = recentTx.reduce((sum, tx) => sum + (Number(tx.total ?? 0) || 0), 0)
+    const totalAmountExpenses = recentExpenses.reduce((sum, expense) => sum + (Number(expense.total ?? 0) || 0), 0)
+    return {
+      totalOps,
+      totalAmountTx,
+      totalAmountExpenses,
+    }
+  }, [financeMovementCounts, recentExpenses, recentTx])
 
 
   function addQuickAction(actionKey: QuickActionKey) {
@@ -353,6 +364,7 @@ export function DashboardClient() {
           <h3 className="text-sm font-semibold">Dernière activité</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
+              ['summary', 'Résumé'],
               ['transactions', 'Transactions'],
               ['expenses', 'Dépenses'],
             ].map(([key, label]) => (
@@ -367,6 +379,26 @@ export function DashboardClient() {
             ))}
           </div>
           <div className="mt-3 space-y-2">
+            {activityView === 'summary' ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-xs text-white/60">Opérations Finance</p>
+                  <p className="text-sm font-semibold">{financeActivitySummary.totalOps} au total</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-xs text-white/60">Répartition</p>
+                  <p className="text-sm font-semibold">{financeMovementCounts.purchase} achats · {financeMovementCounts.sale} ventes · {financeMovementCounts.expense} dépenses</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-xs text-white/60">Montant transactions récentes</p>
+                  <p className="text-sm font-semibold">{financeActivitySummary.totalAmountTx.toFixed(2)} $</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-xs text-white/60">Montant dépenses récentes</p>
+                  <p className="text-sm font-semibold">{financeActivitySummary.totalAmountExpenses.toFixed(2)} $</p>
+                </div>
+              </div>
+            ) : null}
             {activityView === 'transactions' && recentTx.length === 0 ? (
               <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune transaction pour le moment.</div>
             ) : null}

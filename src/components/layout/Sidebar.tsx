@@ -74,7 +74,7 @@ export function Sidebar() {
   ]
 
   return (
-    <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex">
+    <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
       <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex items-center gap-4">
           <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
