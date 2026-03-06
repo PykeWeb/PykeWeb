@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Pencil, Receipt, Trash2, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
@@ -78,6 +78,7 @@ export default function FinanceClient() {
   const [editingQuantity, setEditingQuantity] = useState('1')
   const [editingUnitPrice, setEditingUnitPrice] = useState('0')
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   async function refresh() {
     try {
@@ -190,10 +191,13 @@ export default function FinanceClient() {
               return (
                 <tr
                   key={`${entry.source}:${entry.id}`}
-                  className={canManageExpense ? 'cursor-pointer hover:bg-white/[0.05]' : 'hover:bg-white/[0.02]'}
+                  className={canManageExpense ? 'cursor-pointer hover:bg-white/[0.05]' : 'cursor-pointer hover:bg-white/[0.05]'}
                   onClick={() => {
-                    if (!canManageExpense) return
-                    setExpenseActionEntry(entry)
+                    if (canManageExpense) {
+                      setExpenseActionEntry(entry)
+                      return
+                    }
+                    router.push(`/finance/transactions/${entry.source}/${entry.id}`)
                   }}
                 >
                   <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs">{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>

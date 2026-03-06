@@ -198,8 +198,20 @@ export function NouvelleDepenseForm({
                       pickedId === item.id ? 'border-cyan-300/40 bg-cyan-500/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]'
                     }`}
                   >
-                    <div className="font-medium">{item.name}</div>
-                    <div className="text-xs text-white/60">Prix catalogue: {Number(item.price || 0).toFixed(2)} $</div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                        {item.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{item.name}</div>
+                        <div className="text-xs text-white/60">Prix catalogue: {Number(item.price || 0).toFixed(2)} $</div>
+                      </div>
+                    </div>
                   </button>
                 ))}
                 {filteredItems.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item trouvé.</p> : null}

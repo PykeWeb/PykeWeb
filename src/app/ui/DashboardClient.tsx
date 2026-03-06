@@ -11,7 +11,7 @@ import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -92,6 +92,7 @@ export function DashboardClient() {
   const [ticketImage, setTicketImage] = useState<File | null>(null)
   const [ticketStatus, setTicketStatus] = useState('')
   const [supportOpen, setSupportOpen] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const cardLongPressTimerRef = useRef<number | null>(null)
   const longPressTriggeredRef = useRef(false)
@@ -645,6 +646,26 @@ export function DashboardClient() {
           </div>
         </div>
       ) : null}
+      <button
+        type="button"
+        onClick={() => setInfoOpen((value) => !value)}
+        className="fixed bottom-3 left-[88px] z-40 inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/70 px-2 py-1 text-[10px] text-white/80 hover:bg-black/90"
+      >
+        <Info className="h-3 w-3" />
+        Info
+      </button>
+
+      {infoOpen ? (
+        <div className="fixed bottom-14 left-[88px] z-40 w-[min(92vw,320px)] rounded-2xl border border-white/20 bg-slate-950/95 p-3 shadow-2xl">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Info</h3>
+            <button type="button" onClick={() => setInfoOpen(false)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
+          </div>
+          <p className="text-xs text-white/70">Paiement tablette disponible via virement (preuves + suivi du statut).</p>
+          <Link href="/tablette/paiement" className="mt-2 inline-flex rounded-lg border border-white/15 bg-white/10 px-2 py-1 text-xs font-semibold hover:bg-white/15">Ouvrir la page tablette</Link>
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={() => setSupportOpen((value) => !value)}

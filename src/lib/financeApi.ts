@@ -71,9 +71,13 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   }
 
   for (const tx of txRes.data ?? []) {
-    const firstItem = ((tx.transaction_items as TxJoinItem[] | null)?.[0] ?? null)
-    const itemName = firstItem?.name_snapshot || 'Transaction'
-    const qty = Number(firstItem?.quantity ?? 0) || 1
+    const txItems = (tx.transaction_items as TxJoinItem[] | null) ?? []
+    const firstItem = txItems[0] ?? null
+    const sameName = firstItem?.name_snapshot
+      ? txItems.every((item) => (item.name_snapshot || '').trim().toLowerCase() === (firstItem.name_snapshot || '').trim().toLowerCase())
+      : false
+    const itemName = txItems.length > 1 && !sameName ? 'Multiple' : (firstItem?.name_snapshot || 'Transaction')
+    const qty = txItems.reduce((sum, item) => sum + Math.max(0, Number(item.quantity ?? 0) || 0), 0) || 1
     entries.push({
       id: tx.id,
       source: 'transactions',
