@@ -194,7 +194,7 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
   const catalogQuery = supabase.from('catalog_items').select('*').eq('group_id', groupId)
   if (!includeInactive) catalogQuery.eq('is_active', true)
 
-  const [catalogRes, hiddenRes, objectsRes, weaponsRes, equipmentRes, drugsRes, globalRes, overridesRes] = await Promise.all([
+  const [catalogRes, hiddenRes, objectsRes, weaponsRes, equipmentRes, drugsRes, globalRes, overridesRes, adminCatalogRes] = await Promise.all([
     catalogQuery.order('created_at', { ascending: false }),
     supabase.from('catalog_items').select('name,category').eq('group_id', groupId).eq('is_active', false),
     supabase.from('objects').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
@@ -207,6 +207,9 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
     groupId === 'admin'
       ? Promise.resolve({ data: [], error: null })
       : supabase.from('catalog_items_group_overrides').select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id').eq('group_id', groupId),
+    groupId === 'admin'
+      ? Promise.resolve({ data: [], error: null })
+      : supabase.from('catalog_items').select('*').eq('group_id', 'admin').eq('is_active', true),
   ])
 
   if (catalogRes.error) throw catalogRes.error
@@ -217,6 +220,7 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
   if (drugsRes.error) throw drugsRes.error
   if (globalRes.error) throw globalRes.error
   if (overridesRes.error) throw overridesRes.error
+  if (adminCatalogRes.error) throw adminCatalogRes.error
 
   const catalogItems = (catalogRes.data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
   const byName = new Set(catalogItems.map((x) => `${x.category}:${x.name.trim().toLowerCase()}`))
@@ -333,7 +337,21 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
     })
     .filter((item): item is CatalogItem => Boolean(item))
 
-  return [...catalogItems, ...mergedLegacy, ...globalItems].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const adminSharedItems = ((adminCatalogRes.data ?? []) as CatalogItemRow[])
+    .map((row) => {
+      const mapped = mapCatalogItem(row)
+      const key = `${mapped.category}:${mapped.name.trim().toLowerCase()}`
+      if (byName.has(key) || hiddenNames.has(key)) return null
+      return {
+        ...mapped,
+        id: `admin:${mapped.id}`,
+        group_id: groupId,
+        internal_id: `admin-${mapped.id}`,
+      }
+    })
+    .filter((item): item is CatalogItem => Boolean(item))
+
+  return [...catalogItems, ...mergedLegacy, ...globalItems, ...adminSharedItems].sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 export async function makeUniqueInternalId(name: string, current?: string) {
   const base = getSuggestedInternalId(name)
@@ -771,6 +789,63 @@ async function ensureCatalogItemId(itemId: string): Promise<string> {
         fivem_item_id: override?.override_weapon_id ?? globalRow.weapon_id,
         hash: null,
         rarity: null,
+      })
+      .select('id')
+      .single<{ id: string }>()
+
+    if (insertErr) throw insertErr
+    return inserted.id
+  }
+
+  if (itemId.startsWith('admin:')) {
+    const adminItemId = itemId.slice('admin:'.length)
+    if (!adminItemId) throw new Error('ID item admin invalide.')
+
+    const [{ data: existing }, { data: sourceRow, error: sourceErr }] = await Promise.all([
+      supabase
+        .from('catalog_items')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('internal_id', `admin-${adminItemId}`)
+        .maybeSingle<{ id: string }>(),
+      supabase
+        .from('catalog_items')
+        .select('*')
+        .eq('group_id', 'admin')
+        .eq('id', adminItemId)
+        .eq('is_active', true)
+        .single<CatalogItemRow>(),
+    ])
+
+    if (existing?.id) return existing.id
+    if (sourceErr || !sourceRow) throw sourceErr || new Error('Item admin introuvable.')
+
+    const source = mapCatalogItem(sourceRow)
+    const internal_id = await makeUniqueInternalId(source.name, `admin-${adminItemId}`)
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('catalog_items')
+      .insert({
+        group_id: groupId,
+        internal_id,
+        name: source.name,
+        category: source.category,
+        item_type: normalizeItemType(source.item_type, source.category),
+        description: source.description,
+        image_url: source.image_url,
+        buy_price: toNonNegative(source.buy_price),
+        sell_price: toNonNegative(source.sell_price),
+        internal_value: toNonNegative(source.internal_value),
+        show_in_finance: source.show_in_finance,
+        is_active: true,
+        stock: toNonNegative(source.stock),
+        low_stock_threshold: toNonNegative(source.low_stock_threshold),
+        stackable: source.stackable,
+        max_stack: toPositiveInt(source.max_stack),
+        weight: source.weight == null ? null : toNonNegative(source.weight),
+        fivem_item_id: source.fivem_item_id,
+        hash: source.hash,
+        rarity: source.rarity,
       })
       .select('id')
       .single<{ id: string }>()
