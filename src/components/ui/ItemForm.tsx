@@ -3,9 +3,8 @@
 import { useMemo, useState } from 'react'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
-import { GlassSelect } from '@/components/ui/GlassSelect'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
-import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { makeUniqueInternalId, type CreateCatalogItemInput } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
@@ -19,12 +18,14 @@ export function ItemForm({
   initialItem,
   submitLabel,
   actionsPlacement,
+  panelClassName,
 }: {
   onCancel: () => void
   onSave: (payload: CreateCatalogItemInput) => Promise<void>
   initialItem?: CatalogItem
   submitLabel?: string
   actionsPlacement?: 'top-right' | 'bottom-right'
+  panelClassName?: string
 }) {
   const [name, setName] = useState(initialItem?.name ?? '')
   const [category, setCategory] = useState<ItemCategory>(initialItem?.category ?? 'objects')
@@ -95,6 +96,7 @@ export function ItemForm({
         </>
       }
       actionsPlacement={actionsPlacement || 'top-right'}
+      panelClassName={panelClassName}
     >
       <div className="grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
@@ -104,22 +106,34 @@ export function ItemForm({
             {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.category}</label>
-            <GlassSelect
-              value={category}
-              onChange={(v) => {
-                const nextCategory = v as ItemCategory
-                setCategory(nextCategory)
-                setItemType(categoryTypeOptions[nextCategory][0].value)
-              }}
-              options={itemCategoryOptions}
-            />
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-xs text-white/60">{copy.itemForm.labels.category}</label>
+            <div className="flex flex-wrap gap-2">
+              {itemCategoryOptions.map((option) => (
+                <TabPill
+                  key={option.value}
+                  active={category === option.value}
+                  onClick={() => {
+                    const nextCategory = option.value as ItemCategory
+                    setCategory(nextCategory)
+                    setItemType(categoryTypeOptions[nextCategory][0].value)
+                  }}
+                >
+                  {option.label}
+                </TabPill>
+              ))}
+            </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.type}</label>
-            <GlassSelect value={itemType} onChange={(v) => setItemType(v as ItemType)} options={typeOptions} />
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-xs text-white/60">{copy.itemForm.labels.type}</label>
+            <div className="flex flex-wrap gap-2">
+              {typeOptions.map((option) => (
+                <TabPill key={option.value} active={itemType === option.value} onClick={() => setItemType(option.value as ItemType)}>
+                  {option.label}
+                </TabPill>
+              ))}
+            </div>
           </div>
 
           {category === 'weapons' ? (

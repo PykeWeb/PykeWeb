@@ -130,8 +130,11 @@ export default function DroguesPlantationsPage() {
             <label className="text-xs text-white/60">Quantité</label>
             <input type="number" min={1} step={1} value={calcQuantity} onChange={(e) => setCalcQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))} className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
           </div>
-          <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-sm">
-            Total connu: <span className="font-semibold">{calculatorResult.totalKnown.toFixed(0)}$</span>
+          <div>
+            <label className="text-xs text-white/60">Total connu</label>
+            <div className="mt-1 flex h-[42px] items-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 text-sm">
+              <span className="font-semibold">{calculatorResult.totalKnown.toFixed(0)}$</span>
+            </div>
           </div>
         </div>
       </div>

@@ -4,11 +4,7 @@ import { assertAdminSession } from '@/server/auth/admin'
 
 export async function POST(request: Request) {
   try {
-    const user = request.headers.get('x-admin-user')
-    const pass = request.headers.get('x-admin-password')
-    if (!(user === 'admin' && pass === 'santa1234')) {
-      await assertAdminSession(request)
-    }
+    await assertAdminSession(request)
     const body = await request.json()
     const key = String(body.key || '').trim()
     const value = String(body.value || '')

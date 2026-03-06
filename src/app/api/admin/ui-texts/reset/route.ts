@@ -4,11 +4,7 @@ import { assertAdminSession } from '@/server/auth/admin'
 
 export async function POST(request: Request) {
   try {
-    const user = request.headers.get('x-admin-user')
-    const pass = request.headers.get('x-admin-password')
-    if (!(user === 'admin' && pass === 'santa1234')) {
-      await assertAdminSession(request)
-    }
+    await assertAdminSession(request)
 
     const supabase = getSupabaseAdmin()
     const { error } = await supabase.from('ui_texts').delete().eq('scope', 'global')
