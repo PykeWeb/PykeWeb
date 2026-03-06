@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
-import { supabase } from '@/lib/supabase/client'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
@@ -63,12 +62,20 @@ export default function AdminCatalogueGlobalPage() {
   }, [])
 
   async function uploadImage(file: File) {
-    const ext = file.type.includes('png') ? 'png' : 'jpg'
-    const path = `global/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const { error: uploadErr } = await supabase.storage.from('global-item-images').upload(path, file, { upsert: true, contentType: file.type || undefined })
-    if (uploadErr) throw uploadErr
-    const { data } = supabase.storage.from('global-item-images').getPublicUrl(path)
-    return data.publicUrl
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch('/api/admin/global-catalog/upload-image', {
+      ...withTenantSessionHeader(),
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) {
+      const message = await res.text()
+      throw new Error(message || 'Upload image impossible.')
+    }
+    const json = (await res.json()) as { publicUrl?: string }
+    if (!json.publicUrl) throw new Error('URL image manquante après upload.')
+    return json.publicUrl
   }
 
   async function addItem() {

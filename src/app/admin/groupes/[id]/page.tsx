@@ -1,0 +1,243 @@
+'use client'
+
+import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useParams } from 'next/navigation'
+import {
+  deleteTenantGroup,
+  exportGroupCatalogItems,
+  getTenantGroup,
+  resetTenantGroupData,
+  updateTenantGroup,
+  type ExportableGroupItem,
+  type TenantGroup,
+} from '@/lib/tenantAuthApi'
+import { getTenantSession } from '@/lib/tenantSession'
+import { copyToClipboard, generatePassword } from '@/lib/utils/password'
+import { toast } from 'sonner'
+
+type EditableExportItem = ExportableGroupItem & { selected: boolean }
+
+function downloadJson(filename: string, payload: unknown) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+export default function AdminGroupDetailsPage() {
+  const params = useParams<{ id: string }>()
+  const groupId = params?.id
+
+  const [group, setGroup] = useState<TenantGroup | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [exportItems, setExportItems] = useState<EditableExportItem[]>([])
+
+  const refresh = useCallback(async () => {
+    if (!groupId) return
+    setLoading(true)
+    try {
+      const [groupRow, catalogRows] = await Promise.all([
+        getTenantGroup(groupId),
+        exportGroupCatalogItems(groupId),
+      ])
+      setGroup(groupRow)
+      setExportItems(catalogRows.map((row) => ({ ...row, selected: true })))
+      setError(null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Impossible de charger le groupe.')
+    } finally {
+      setLoading(false)
+    }
+  }, [groupId])
+
+  useEffect(() => {
+    const session = getTenantSession()
+    if (!(session?.isAdmin || session?.groupId === 'admin')) {
+      window.location.href = '/'
+      return
+    }
+    void refresh()
+  }, [refresh])
+
+  async function savePatch(patch: Partial<TenantGroup>) {
+    if (!group) return
+    try {
+      setBusy(true)
+      await updateTenantGroup(group.id, patch)
+      await refresh()
+      toast.success('Groupe mis à jour.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Modification impossible.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function addDays() {
+    if (!group) return
+    const rawDays = window.prompt('Ajouter combien de jours ?', '7')
+    if (rawDays === null) return
+    const days = Number(rawDays)
+    if (!Number.isFinite(days) || days <= 0) {
+      setError('Nombre de jours invalide.')
+      return
+    }
+    const baseTs = group.paid_until ? new Date(group.paid_until).getTime() : Date.now()
+    const next = new Date(Math.max(Date.now(), baseTs) + days * 24 * 60 * 60 * 1000)
+    await savePatch({ paid_until: next.toISOString() })
+  }
+
+  async function resetGroupData() {
+    if (!group) return
+    if (!window.confirm(`Réinitialiser toutes les données du groupe ${group.name} sans supprimer le compte ?`)) return
+    try {
+      setBusy(true)
+      await resetTenantGroupData(group.id)
+      await refresh()
+      toast.success('Le groupe a été remis à neuf.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Reset impossible.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deleteGroup() {
+    if (!group) return
+    if (!window.confirm(`Supprimer définitivement le groupe ${group.name} ?`)) return
+    try {
+      setBusy(true)
+      await deleteTenantGroup(group.id)
+      window.location.href = '/admin/groupes'
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Suppression impossible.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const selectedCount = useMemo(() => exportItems.filter((x) => x.selected).length, [exportItems])
+
+  if (loading) {
+    return <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">Chargement du groupe…</div>
+  }
+
+  if (!group) {
+    return <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">Groupe introuvable.</div>
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold">Gestion : {group.name} {group.badge ? `(${group.badge})` : ''}</h1>
+            <p className="mt-1 text-sm text-white/70">Modifier, sécurité, activation et reset sans suppression.</p>
+          </div>
+          <Link href="/admin/groupes" className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Retour</Link>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-white/70">Nom</span>
+            <input defaultValue={group.name} onBlur={(e) => void savePatch({ name: e.target.value.trim() || group.name })} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-white/70">Badge</span>
+            <input defaultValue={group.badge || ''} onBlur={(e) => void savePatch({ badge: e.target.value.trim() || null })} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-white/70">Identifiant</span>
+            <input defaultValue={group.login} onBlur={(e) => void savePatch({ login: e.target.value.trim() || group.login })} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3" />
+          </label>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button disabled={busy} onClick={() => void savePatch({ password: generatePassword({ avoidAmbiguous: true }) })} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">Générer MDP</button>
+          <button disabled={busy} onClick={() => void copyToClipboard(group.password || '')} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">Copier MDP</button>
+          <button disabled={busy} onClick={() => void savePatch({ active: !group.active })} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">{group.active ? 'Désactiver' : 'Activer'}</button>
+          <button disabled={busy} onClick={() => void addDays()} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">+ jours</button>
+          <button disabled={busy} onClick={() => void savePatch({ paid_until: null })} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">Illimité</button>
+          <button disabled={busy} onClick={() => void resetGroupData()} className="h-10 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 text-sm text-amber-100 hover:bg-amber-500/20">Reset groupe</button>
+          <button disabled={busy} onClick={() => void deleteGroup()} className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-4 text-sm text-rose-100 hover:bg-rose-500/22">Supprimer groupe</button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-semibold">Export items du groupe</h2>
+            <p className="text-sm text-white/70">Sélectionnez et modifiez les champs avant export JSON.</p>
+          </div>
+          <button
+            onClick={() => downloadJson(`items-${group.login}.json`, exportItems.filter((x) => x.selected))}
+            className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"
+          >
+            Exporter ({selectedCount})
+          </button>
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[980px] text-sm">
+            <thead className="bg-white/[0.04] text-white/70">
+              <tr>
+                <th className="px-3 py-2">Exporter</th>
+                <th className="px-3 py-2">Nom</th>
+                <th className="px-3 py-2">Catégorie</th>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Prix</th>
+                <th className="px-3 py-2">Stock</th>
+              </tr>
+            </thead>
+            <tbody>
+              {exportItems.map((row, index) => (
+                <tr key={row.id} className="border-t border-white/10">
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={row.selected}
+                      onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, selected: e.target.checked } : it)))}
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input value={row.name} onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, name: e.target.value } : it)))} className="h-9 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input value={row.category} onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, category: e.target.value } : it)))} className="h-9 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input value={row.item_type ?? ''} onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, item_type: e.target.value || null } : it)))} className="h-9 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      value={row.buy_price}
+                      onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, buy_price: Math.max(0, Number(e.target.value || 0) || 0) } : it)))}
+                      className="h-9 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      value={row.stock}
+                      onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, stock: Math.max(0, Math.floor(Number(e.target.value || 0) || 0)) } : it)))}
+                      className="h-9 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {error ? <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
+    </div>
+  )
+}
