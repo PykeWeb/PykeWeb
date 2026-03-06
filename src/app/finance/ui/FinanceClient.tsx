@@ -147,26 +147,29 @@ export default function FinanceClient() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes / Sorties</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
-        <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
-        <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
-        <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
-        <SearchInput
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Recherche (item / interlocuteur / note)"
-          className="ml-1 w-full min-w-[10px] flex-1 max-w-[10px]"
-        />
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+      <div className="mt-4 mb-3 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
           <Link href="/finance/achat-vente"><PrimaryButton>Achat / Vente</PrimaryButton></Link>
           <Link href="/finance/depenses"><SecondaryButton>Dépenses</SecondaryButton></Link>
           <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
         </div>
+        <SearchInput
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Recherche (item / interlocuteur / note)"
+          className="ml-auto w-full max-w-[140px]"
+        />
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
+      <div className="mb-[10px] mt-1 flex flex-wrap items-center gap-2">
+        <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
+        <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
+        <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
+        <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
+      </div>
+
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
         <TabPill active={category === 'all'} onClick={() => setCategory('all')}>Toutes catégories</TabPill>
         <TabPill active={category === 'objects'} onClick={() => setCategory('objects')}>Objets</TabPill>
         <TabPill active={category === 'weapons'} onClick={() => setCategory('weapons')}>Armes</TabPill>
@@ -205,7 +208,7 @@ export default function FinanceClient() {
                   <td className="px-4 py-3 text-white/70">
                     <div className="flex items-center gap-2">
                       <span>{entry.member_name || '—'}</span>
-                      {canManageExpense ? statusBadge(entry.expense_status) : null}
+                      {canManageExpense ? <span className="ml-3">{statusBadge(entry.expense_status)}</span> : null}
                     </div>
                   </td>
                   <td className="px-4 py-3"></td>
