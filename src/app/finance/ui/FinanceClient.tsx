@@ -58,6 +58,12 @@ function statusBadge(status: ExpenseStatus | null | undefined) {
   return <span className="inline-flex rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-100">En attente</span>
 }
 
+function formatDateOnly(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('fr-FR')
+}
+
 export default function FinanceClient() {
   const [entries, setEntries] = useState<FinanceEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -141,20 +147,24 @@ export default function FinanceClient() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes / Sorties</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
-        <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
-        <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
-        <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
-        <SearchInput
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Recherche (item / interlocuteur / note)"
-          className="ml-1 w-full min-w-[240px] flex-1 max-w-[320px]"
-        />
-        <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
-        <Link href="/finance/achat-vente"><PrimaryButton>Achat / Vente</PrimaryButton></Link>
-        <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
+          <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
+          <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
+          <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
+          <SearchInput
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Recherche (item / interlocuteur / note)"
+            className="ml-1 w-full min-w-[220px] flex-1 max-w-[280px]"
+          />
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
+            <Link href="/finance/achat-vente"><PrimaryButton>Achat / Vente</PrimaryButton></Link>
+            <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
+          </div>
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -169,10 +179,10 @@ export default function FinanceClient() {
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
         <table className="w-full text-sm">
-          <thead className="bg-white/[0.03] text-white/70"><tr><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Catégorie</th><th className="px-4 py-3 text-left">Item / Interlocuteur</th><th className="px-4 py-3 text-left">Qté</th><th className="px-4 py-3 text-left">Montant</th><th className="px-4 py-3 text-left">Date</th><th className="px-4 py-3 text-right"></th></tr></thead>
+          <thead className="bg-white/[0.03] text-white/70"><tr><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Catégorie</th><th className="px-4 py-3 text-left">Item</th><th className="px-4 py-3 text-left">Qté</th><th className="px-4 py-3 text-left">Montant</th><th className="px-4 py-3 text-left">Date</th><th className="px-4 py-3 text-left">Interlocuteur</th><th className="px-4 py-3 text-right"></th></tr></thead>
           <tbody className="divide-y divide-white/10">
-            {loading ? <tr><td colSpan={7} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr> : null}
-            {!loading && filtered.length === 0 ? <tr><td colSpan={7} className="px-4 py-8 text-center text-white/60">Aucun mouvement.</td></tr> : null}
+            {loading ? <tr><td colSpan={8} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr> : null}
+            {!loading && filtered.length === 0 ? <tr><td colSpan={8} className="px-4 py-8 text-center text-white/60">Aucun mouvement.</td></tr> : null}
             {!loading ? filtered.map((entry) => {
               const canManageExpense = isExpenseEntry(entry)
               return (
@@ -188,13 +198,13 @@ export default function FinanceClient() {
                   <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
                   <td className="px-4 py-3">
                     <div className="font-semibold">{entry.item_label}</div>
-                    {entry.member_name ? <div className="text-xs text-white/60">Interlocuteur: {entry.member_name}</div> : null}
                     {canManageExpense ? <div className="mt-1">{statusBadge(entry.expense_status)}</div> : null}
                     {entry.notes ? <div className="text-xs text-white/50 line-clamp-1">{entry.notes}</div> : null}
                   </td>
                   <td className="px-4 py-3">{entry.quantity}</td>
                   <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>
-                  <td className="px-4 py-3 text-white/70">{new Date(entry.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-white/70">{formatDateOnly(entry.created_at)}</td>
+                  <td className="px-4 py-3 text-white/70">{entry.member_name || '—'}</td>
                   <td className="px-4 py-3"></td>
                 </tr>
               )
