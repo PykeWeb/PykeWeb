@@ -10,6 +10,7 @@ export function CenteredFormLayout({
   actions,
   children,
   className,
+  panelClassName,
   actionsPlacement = 'bottom-right',
 }: {
   title: string
@@ -17,11 +18,12 @@ export function CenteredFormLayout({
   actions?: ReactNode
   children: ReactNode
   className?: string
+  panelClassName?: string
   actionsPlacement?: ActionPlacement
 }) {
   return (
     <div className={clsx('mx-auto w-full max-w-6xl', className)}>
-      <Panel>
+      <Panel className={panelClassName}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">{title}</h2>

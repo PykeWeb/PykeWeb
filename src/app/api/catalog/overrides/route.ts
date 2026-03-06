@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireGroupSession } from '@/lib/server/tenantServerSession'
+import { requireGroupSession } from '@/server/auth/requireSession'
 
 export async function POST(request: Request) {
   try {
-    const session = await requireGroupSession()
+    const session = await requireGroupSession(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { error } = await supabase
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const session = await requireGroupSession()
+    const session = await requireGroupSession(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { error } = await supabase

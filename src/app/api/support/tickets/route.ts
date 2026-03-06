@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireGroupSession } from '@/lib/server/tenantServerSession'
+import { requireGroupSession } from '@/server/auth/requireSession'
 
 function getExt(file: File) {
   const ext = file.name.split('.').pop()?.toLowerCase()
@@ -10,7 +10,7 @@ function getExt(file: File) {
 
 export async function POST(request: Request) {
   try {
-    const session = await requireGroupSession()
+    const session = await requireGroupSession(request)
     const form = await request.formData()
     const kind = String(form.get('kind') || 'message') as 'bug' | 'message'
     const message = String(form.get('message') || '').trim()

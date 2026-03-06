@@ -36,6 +36,7 @@ export function FinanceItemTradeModal({
   onSubmit,
   enableModeSelect = false,
   inline = false,
+  initialItems = [],
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -43,6 +44,7 @@ export function FinanceItemTradeModal({
   onSubmit: (payload: { item: CatalogItem; mode: 'buy' | 'sell'; quantity: number; unitPrice: number; counterparty: string; notes: string }) => Promise<void>
   enableModeSelect?: boolean
   inline?: boolean
+  initialItems?: CatalogItem[]
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
@@ -53,6 +55,7 @@ export function FinanceItemTradeModal({
   const [counterparty, setCounterparty] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadingItems, setLoadingItems] = useState(false)
 
   void enableModeSelect
 
@@ -62,12 +65,18 @@ export function FinanceItemTradeModal({
 
   useEffect(() => {
     if (!open) return
+
+    setItems(initialItems)
+    setLines([])
+    setLoadingItems(true)
+
     ;(async () => {
       const rows = await listCatalogItemsUnified()
       setItems(rows)
-      setLines([])
-    })().catch((e: unknown) => setError(e instanceof Error ? e.message : copy.finance.errors.loadItemsFailed))
-  }, [open])
+    })()
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : copy.finance.errors.loadItemsFailed))
+      .finally(() => setLoadingItems(false))
+  }, [open, initialItems])
 
   const typeOptions = useMemo(() => {
     if (category === 'all') {
@@ -106,8 +115,8 @@ export function FinanceItemTradeModal({
         const item = items.find((entry) => entry.id === line.itemId)
         if (!item) return line
         const quantity = tradeMode === 'sell' ? Math.min(toPositiveInt(line.quantity), Math.max(1, item.stock)) : toPositiveInt(line.quantity)
-        const unitPrice = String(tradeMode === 'buy' ? item.buy_price : item.sell_price)
-        return { ...line, quantity, unitPrice }
+        const nextUnit = tradeMode === 'buy' ? item.buy_price : item.sell_price
+        return { ...line, quantity, unitPrice: String(toNonNegative(nextUnit)) }
       })
     )
   }, [items, tradeMode])
@@ -136,8 +145,12 @@ export function FinanceItemTradeModal({
   if (!open) return null
 
   const content = (
-    <div className="mx-auto w-full max-w-5xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={inline ? 'mx-auto w-full max-w-6xl' : 'mx-auto w-full max-w-6xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain'}
+      onClick={(e) => e.stopPropagation()}
+    >
       <CenteredFormLayout
+        panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
         title={copy.finance.trade.title}
         actions={
           <>
@@ -210,7 +223,7 @@ export function FinanceItemTradeModal({
                     setType('all')
                   }}
                   className={`rounded-2xl border px-3 py-3 text-left transition min-h-[96px] ${
-                    category === option.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                    category === option.key ? 'border-white/25 bg-white/[0.12]' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -237,7 +250,7 @@ export function FinanceItemTradeModal({
 
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-2">
+            <div className="rounded-2xl border border-slate-700 bg-slate-900 p-2">
               <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                 <Search className="h-4 w-4 text-white/50" />
                 <input
@@ -248,6 +261,7 @@ export function FinanceItemTradeModal({
                 />
               </div>
               <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
                 {filtered.map((it) => (
                   <div key={it.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                     <div className="flex min-w-0 items-center gap-3">
@@ -264,14 +278,14 @@ export function FinanceItemTradeModal({
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-white">{it.name}</p>
                         <p className="truncate text-xs text-white/60">
-                          {getTypeLabel(it.item_type, it.category)} · Stock: {it.stock}
+                          {getTypeLabel(it.item_type, it.category)} · Stock: {it.stock} · Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $
                         </p>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => addItemToLines(it)}
-                      className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-1.5 text-cyan-100 hover:bg-cyan-500/20"
+                      className="rounded-lg border border-white/20 bg-white/10 p-1.5 text-white hover:bg-white/20"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
@@ -282,7 +296,7 @@ export function FinanceItemTradeModal({
             </div>
           </div>
 
-          <div className="md:col-span-2 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="md:col-span-2 space-y-2 rounded-2xl border border-slate-700 bg-slate-900 p-3">
             <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée</p>
             {linesWithItems.length === 0 ? <p className="text-sm text-white/60">Ajoute des items à la liste pour continuer.</p> : null}
             {linesWithItems.map((entry) => (
@@ -343,7 +357,7 @@ export function FinanceItemTradeModal({
   if (inline) return <div className="mt-6">{content}</div>
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[130] grid place-items-center bg-slate-950 p-4" onClick={onClose}>
       {content}
     </div>
   )

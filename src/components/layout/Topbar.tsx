@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
+import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
 import { SecondaryButton } from '@/components/ui/design-system'
 
 export function Topbar() {
@@ -13,27 +13,13 @@ export function Topbar() {
     setIsAdmin(isAdminTenantSession(session))
   }, [])
 
+  if (!isAdmin) return null
+
   return (
     <div className="flex items-center justify-end">
-      <div className="flex items-center gap-3">
-        {isAdmin ? (
-          <Link href="/admin/dashboard">
-            <SecondaryButton>Admin groupes</SecondaryButton>
-          </Link>
-        ) : null}
-
-        <SecondaryButton
-          type="button"
-          onClick={() => {
-            clearTenantSession()
-            void clearTenantSessionOnServer().finally(() => {
-              window.location.href = '/login'
-            })
-          }}
-        >
-          Déconnexion
-        </SecondaryButton>
-      </div>
+      <Link href="/admin/dashboard">
+        <SecondaryButton>Admin groupes</SecondaryButton>
+      </Link>
     </div>
   )
 }

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { requireAdminSessionFromRequest } from '@/lib/server/tenantServerSession'
+import { assertAdminSession } from '@/server/auth/admin'
 
 export async function GET(request: Request) {
   try {
-    await requireAdminSession(request)
+    await assertAdminSession(request)
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase.from('patch_notes').select('id,title,content,is_active,created_at').order('created_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireAdminSession(request)
+    await assertAdminSession(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    await requireAdminSession(request)
+    await assertAdminSession(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
@@ -51,7 +51,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireAdminSession(request)
+    await assertAdminSession(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
     const { error } = await supabase.from('patch_notes').delete().eq('id', String(body.id))
