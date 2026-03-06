@@ -58,13 +58,33 @@ export function Sidebar() {
     })()
   }, [isAdmin])
 
-  const accessLabel = useMemo(() => {
-    if (!accessInfo) return '—'
-    if (!accessInfo.active) return 'Expiré'
-    if (!accessInfo.paid_until) return 'Illimité'
+  const accessStatus = useMemo(() => {
+    if (!accessInfo) {
+      return { label: '—', className: 'border-white/15 bg-white/5 text-white/75' }
+    }
+
+    if (!accessInfo.active) {
+      return { label: 'Expiré', className: 'border-rose-300/35 bg-rose-500/20 text-rose-100' }
+    }
+
+    if (!accessInfo.paid_until) {
+      return { label: 'Illimité', className: 'border-amber-300/35 bg-amber-500/20 text-amber-100' }
+    }
+
     const ts = new Date(accessInfo.paid_until).getTime()
-    if (ts < Date.now()) return 'Expiré'
-    return `Valide jusqu’au ${new Date(accessInfo.paid_until).toLocaleDateString('fr-FR')}`
+    const now = Date.now()
+    if (!Number.isFinite(ts) || ts <= now) {
+      return { label: 'Expiré', className: 'border-rose-300/35 bg-rose-500/20 text-rose-100' }
+    }
+
+    const daysLeft = (ts - now) / (1000 * 60 * 60 * 24)
+    const dateLabel = new Date(accessInfo.paid_until).toLocaleDateString('fr-FR')
+
+    if (daysLeft <= 10) {
+      return { label: `Valide jusqu’au ${dateLabel}`, className: 'border-rose-300/35 bg-rose-500/20 text-rose-100' }
+    }
+
+    return { label: `Valide jusqu’au ${dateLabel}`, className: 'border-emerald-300/35 bg-emerald-500/20 text-emerald-100' }
   }, [accessInfo])
 
   const userNavLinks: NavLink[] = [
@@ -87,26 +107,30 @@ export function Sidebar() {
         </div>
 
         <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm text-white/60">Groupe</p>
-            <button
-              type="button"
-              onClick={() => {
-                clearTenantSession()
-                void clearTenantSessionOnServer().finally(() => {
-                  window.location.href = '/login'
-                })
-              }}
-              className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/90 transition hover:bg-white/10"
-            >
-              Déconnexion
-            </button>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-white/60">Groupe</p>
+              <p className="mt-2 truncate text-xl font-semibold tracking-tight">{groupName}</p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  clearTenantSession()
+                  void clearTenantSessionOnServer().finally(() => {
+                    window.location.href = '/login'
+                  })
+                }}
+                className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/90 transition hover:bg-white/10"
+              >
+                Déconnexion
+              </button>
+              <div className="inline-flex rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
+            </div>
           </div>
-          <p className="mt-2 text-xl font-semibold tracking-tight">{groupName}</p>
-          <div className="mt-3 inline-flex rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
           <div className="mt-4 border-t border-white/10 pt-3">
             <p className="text-sm text-white/55">Accès</p>
-            <p className="mt-1 text-sm font-semibold text-white/90">{accessLabel}</p>
+            <p className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
           </div>
         </div>
       </div>

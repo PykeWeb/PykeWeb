@@ -23,7 +23,7 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string }
-type ActivityView = 'summary' | 'transactions' | 'expenses'
+type ActivityView = 'summary' | 'transactions' | 'expenses' | 'finance'
 
 type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
@@ -225,7 +225,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'transactions', 'expenses']
+    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'finance']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -266,6 +266,31 @@ export function DashboardClient() {
       totalAmountExpenses,
     }
   }, [financeMovementCounts, recentExpenses, recentTx])
+
+
+  const mergedFinanceActivity = useMemo(() => {
+    const txRows = recentTx.map((tx) => ({
+      id: `tx-${tx.id}`,
+      label: tx.type === 'purchase' ? 'Transaction achat' : 'Transaction vente',
+      detail: tx.counterparty || 'Interlocuteur non renseigné',
+      amount: tx.total,
+      href: `/finance?type=${tx.type}`,
+      createdAt: tx.created_at,
+    }))
+
+    const expenseRows = recentExpenses.map((expense) => ({
+      id: `expense-${expense.id}`,
+      label: 'Dépense',
+      detail: expense.item_label,
+      amount: expense.total,
+      href: '/finance?type=expense',
+      createdAt: expense.created_at,
+    }))
+
+    return [...txRows, ...expenseRows]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 8)
+  }, [recentExpenses, recentTx])
 
 
   function addQuickAction(actionKey: QuickActionKey) {
@@ -361,12 +386,19 @@ export function DashboardClient() {
         </div>
 
         <Panel>
-          <h3 className="text-sm font-semibold">Dernière activité</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold">Dernière activité</h3>
+            <Link href="/finance" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
+              Ouvrir Finance
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
               ['summary', 'Résumé'],
               ['transactions', 'Transactions'],
               ['expenses', 'Dépenses'],
+              ['finance', 'Flux Finance'],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -397,6 +429,14 @@ export function DashboardClient() {
                   <p className="text-xs text-white/60">Montant dépenses récentes</p>
                   <p className="text-sm font-semibold">{financeActivitySummary.totalAmountExpenses.toFixed(2)} $</p>
                 </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-xs text-white/60">Dernière transaction</p>
+                  <p className="truncate text-sm font-semibold">{recentTx[0]?.counterparty || '—'}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-xs text-white/60">Dernière dépense</p>
+                  <p className="truncate text-sm font-semibold">{recentExpenses[0]?.item_label || '—'}</p>
+                </div>
               </div>
             ) : null}
             {activityView === 'transactions' && recentTx.length === 0 ? (
@@ -404,7 +444,7 @@ export function DashboardClient() {
             ) : null}
             {activityView === 'transactions' ? (
               recentTx.map((t) => (
-                <div key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                <Link href={`/finance?type=${t.type}`} key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       <span
@@ -417,12 +457,13 @@ export function DashboardClient() {
                         {t.type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
                         {t.type === 'purchase' ? 'Entrée' : 'Sortie'}
                       </span>
-                      {t.counterparty ? `• ${t.counterparty}` : ''}
+                      {t.counterparty ? `• ${t.counterparty}` : '• Interlocuteur non renseigné'}
                     </p>
                     <p className="text-xs text-white/60">{new Date(t.created_at).toLocaleString()}</p>
+                    <p className="truncate text-xs text-white/50">{t.transaction_items?.map((item) => `${item.name_snapshot || 'Item'} x${Math.max(1, Number(item.quantity) || 1)}`).join(' · ') || 'Aucun item lié'}</p>
                   </div>
                   <div className="text-sm font-semibold text-white/80">{t.total ?? '—'}</div>
-                </div>
+                </Link>
               ))
             ) : null}
             {activityView === 'expenses' ? (
@@ -430,13 +471,28 @@ export function DashboardClient() {
                 <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune dépense récente.</div>
               ) : (
                 recentExpenses.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                  <Link href="/finance?type=expense" key={e.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
                     <div>
                       <p className="text-sm font-medium">{e.item_label} • x{e.quantity}</p>
                       <p className="text-xs text-white/60">{new Date(e.created_at).toLocaleString()}</p>
                     </div>
                     <p className="text-sm font-semibold text-white/80">{e.total}$</p>
-                  </div>
+                  </Link>
+                ))
+              )
+            ) : null}
+            {activityView === 'finance' ? (
+              mergedFinanceActivity.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité Finance récente.</div>
+              ) : (
+                mergedFinanceActivity.map((entry) => (
+                  <Link href={entry.href} key={entry.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{entry.label} • {entry.detail}</p>
+                      <p className="text-xs text-white/60">{new Date(entry.createdAt).toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-white/80">{entry.amount ?? '—'}{entry.amount != null ? '$' : ''}</p>
+                  </Link>
                 ))
               )
             ) : null}
