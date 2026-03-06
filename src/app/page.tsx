@@ -7,7 +7,6 @@ export default function Page() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Dashboard"
-        subtitle="Vue globale : objets, transactions, armes et prêts"
       />
 
       <Suspense

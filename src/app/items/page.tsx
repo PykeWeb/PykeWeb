@@ -9,7 +9,7 @@ export default function ItemsPage({ searchParams }: { searchParams?: { action?: 
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Catalogue global d’items" subtitle="Objets, armes, équipement et drogues." />
+      <PageHeader title="Catalogue global d’items" />
       <ItemsClient />
     </div>
   )

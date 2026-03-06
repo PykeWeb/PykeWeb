@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import {
   decodeTenantSession,
   isValidTenantSession,
@@ -8,9 +8,15 @@ import {
 
 export type AppServerSession = TenantSessionPayload
 
-export async function getSessionFromRequest(_request?: Request): Promise<AppServerSession | null> {
-  const raw = (await cookies()).get(TENANT_SESSION_COOKIE_KEY)?.value
-  if (!raw) return null
-  const decoded = decodeTenantSession(raw)
-  return isValidTenantSession(decoded) ? decoded : null
+export async function getSessionFromRequest(request?: Request): Promise<AppServerSession | null> {
+  const rawCookie = (await cookies()).get(TENANT_SESSION_COOKIE_KEY)?.value
+  if (rawCookie) {
+    const decodedCookie = decodeTenantSession(rawCookie)
+    if (isValidTenantSession(decodedCookie)) return decodedCookie
+  }
+
+  const headerValue = request?.headers.get('x-tenant-session') ?? (await headers()).get('x-tenant-session')
+  if (!headerValue) return null
+  const decodedHeader = decodeTenantSession(headerValue)
+  return isValidTenantSession(decodedHeader) ? decodedHeader : null
 }
