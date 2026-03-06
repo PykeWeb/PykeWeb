@@ -7,8 +7,8 @@ import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
-import { DangerButton, PrimaryButton, SearchInput } from '@/components/ui/design-system'
-import { itemCategoryOptions, normalizeCatalogCategory } from '@/lib/catalogConfig'
+import { DangerButton, PrimaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
+import { categoryTypeOptions, itemCategoryOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
@@ -23,13 +23,13 @@ type GlobalItem = {
   weapon_id: string | null
 }
 
-const drugTypeOptions = [
-  { value: 'drug', label: 'Produit' },
-  { value: 'seed', label: 'Graine' },
-  { value: 'planting', label: 'Plantation' },
-  { value: 'pouch', label: 'Pochon' },
-  { value: 'other', label: 'Autre' },
-]
+const defaultTypeByCategory: Record<ItemCategory, string> = {
+  objects: categoryTypeOptions.objects[0]?.value ?? 'other',
+  weapons: categoryTypeOptions.weapons[0]?.value ?? 'other',
+  equipment: categoryTypeOptions.equipment[0]?.value ?? 'other',
+  drugs: categoryTypeOptions.drugs[0]?.value ?? 'drug',
+  custom: categoryTypeOptions.custom[0]?.value ?? 'other',
+}
 
 export default function AdminCatalogueGlobalPage() {
   const [items, setItems] = useState<GlobalItem[]>([])
@@ -40,7 +40,7 @@ export default function AdminCatalogueGlobalPage() {
   const [price, setPrice] = useState('0')
   const [quantity, setQuantity] = useState('0')
   const [weaponId, setWeaponId] = useState('')
-  const [drugType, setDrugType] = useState('drug')
+  const [createItemType, setCreateItemType] = useState<string>(defaultTypeByCategory.objects)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -90,7 +90,7 @@ export default function AdminCatalogueGlobalPage() {
           price: Math.max(0, Number(price || 0) || 0),
           default_quantity: Math.max(0, Math.floor(Number(quantity || 0) || 0)),
           weapon_id: createCategory === 'weapons' ? weaponId.trim() || null : null,
-          item_type: createCategory === 'drugs' ? drugType : null,
+          item_type: normalizeItemType(createItemType, createCategory),
           image_url,
         }),
       })
@@ -99,6 +99,7 @@ export default function AdminCatalogueGlobalPage() {
       setPrice('0')
       setQuantity('0')
       setWeaponId('')
+      setCreateItemType(defaultTypeByCategory.objects)
       setImageFile(null)
       await refresh()
     } catch (e: unknown) {
@@ -130,6 +131,8 @@ export default function AdminCatalogueGlobalPage() {
     })
   }, [items, query, filterCategory])
 
+  const createTypeOptions = categoryTypeOptions[createCategory]
+
   return (
     <div className="space-y-4">
       <Panel>
@@ -137,10 +140,36 @@ export default function AdminCatalogueGlobalPage() {
         <p className="mt-1 text-sm text-white/70">Catalogue partagé entre modules, avec override local par groupe.</p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs text-white/60">Catégorie</label>
-            <GlassSelect value={createCategory} onChange={(v) => setCreateCategory(v as ItemCategory)} options={itemCategoryOptions} />
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-xs text-white/60">Catégorie</label>
+            <div className="flex flex-wrap gap-2">
+              {itemCategoryOptions.map((option) => (
+                <TabPill
+                  key={option.value}
+                  active={createCategory === option.value}
+                  onClick={() => {
+                    const nextCategory = option.value as ItemCategory
+                    setCreateCategory(nextCategory)
+                    setCreateItemType(defaultTypeByCategory[nextCategory])
+                  }}
+                >
+                  {option.label}
+                </TabPill>
+              ))}
+            </div>
           </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-xs text-white/60">Type</label>
+            <div className="flex flex-wrap gap-2">
+              {createTypeOptions.map((option) => (
+                <TabPill key={option.value} active={createItemType === option.value} onClick={() => setCreateItemType(option.value)}>
+                  {option.label}
+                </TabPill>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className="mb-1 block text-xs text-white/60">Nom</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'item" />
@@ -157,12 +186,6 @@ export default function AdminCatalogueGlobalPage() {
             <div>
               <label className="mb-1 block text-xs text-white/60">Weapon ID / hash</label>
               <Input value={weaponId} onChange={(e) => setWeaponId(e.target.value)} placeholder="weapon_pistol" />
-            </div>
-          ) : null}
-          {createCategory === 'drugs' ? (
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Type drogue</label>
-              <GlassSelect value={drugType} onChange={setDrugType} options={drugTypeOptions} />
             </div>
           ) : null}
           <ImageDropzone label="Image (upload / coller / glisser)" onChange={setImageFile} />

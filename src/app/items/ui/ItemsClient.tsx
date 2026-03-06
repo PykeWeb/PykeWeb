@@ -235,8 +235,11 @@ export default function ItemsClient() {
                   inputMode="numeric"
                 />
               </div>
-              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-sm">
-                Total connu: <span className="font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</span>
+              <div>
+                <label className="mb-1 block text-xs text-white/60">Total connu</label>
+                <div className="flex h-10 items-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 text-sm">
+                  <span className="font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</span>
+                </div>
               </div>
             </div>
             <div className="mt-3 grid gap-2 md:grid-cols-2">

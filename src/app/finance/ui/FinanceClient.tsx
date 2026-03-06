@@ -156,7 +156,7 @@ export default function FinanceClient() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Recherche (item / interlocuteur / note)"
-          className="ml-1 w-full min-w-[180px] flex-1 max-w-[220px]"
+          className="ml-1 w-full min-w-[160px] flex-1 max-w-[180px]"
         />
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
