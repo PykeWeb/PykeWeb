@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Box, Calculator, Factory, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
@@ -67,14 +67,47 @@ export default function ItemsClient() {
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
   const searchParams = useSearchParams()
+  const refreshInFlightRef = useRef(false)
 
   const refresh = useCallback(async () => {
-    setItems(await listCatalogItemsUnified())
+    if (refreshInFlightRef.current) return
+    refreshInFlightRef.current = true
+    try {
+      setItems(await listCatalogItemsUnified())
+    } finally {
+      refreshInFlightRef.current = false
+    }
   }, [])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (view !== 'catalog') return
+
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) return
+      void refresh()
+    }, 4000)
+
+    const onWindowFocus = () => {
+      void refresh()
+    }
+
+    const onVisibility = () => {
+      if (!document.hidden) void refresh()
+    }
+
+    window.addEventListener('focus', onWindowFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', onWindowFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [refresh, view])
 
   const typeOptions = useMemo(() => {
     const pool = items.filter((x) => (category === 'all' ? true : x.category === category))
