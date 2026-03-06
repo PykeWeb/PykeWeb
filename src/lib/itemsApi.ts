@@ -220,7 +220,9 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
   if (drugsRes.error) throw drugsRes.error
   if (globalRes.error) throw globalRes.error
   if (overridesRes.error) throw overridesRes.error
-  if (adminCatalogRes.error) throw adminCatalogRes.error
+  if (adminCatalogRes.error) {
+    console.warn('[items:listCatalogItemsUnified] admin shared items unavailable, fallback to local/global only', adminCatalogRes.error.message)
+  }
 
   const catalogItems = (catalogRes.data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
   const byName = new Set(catalogItems.map((x) => `${x.category}:${x.name.trim().toLowerCase()}`))
@@ -337,7 +339,7 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
     })
     .filter((item): item is CatalogItem => Boolean(item))
 
-  const adminSharedItems = ((adminCatalogRes.data ?? []) as CatalogItemRow[])
+  const adminSharedItems = ((adminCatalogRes.error ? [] : (adminCatalogRes.data ?? [])) as CatalogItemRow[])
     .map((row) => {
       const mapped = mapCatalogItem(row)
       const key = `${mapped.category}:${mapped.name.trim().toLowerCase()}`
