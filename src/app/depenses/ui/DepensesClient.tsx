@@ -83,7 +83,7 @@ export default function DepensesClient({
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-white/60">Astuce : clique sur “Rembourser” pour passer en payé (ou revenir en attente).</p>
+          <p className="text-sm text-white/60">Suivi des dépenses et remboursements.</p>
           <div className="flex items-center gap-2">
             {backHref ? (
               <Link href={backHref}>

@@ -37,6 +37,7 @@ export function FinanceItemTradeModal({
   enableModeSelect = false,
   inline = false,
   initialItems = [],
+  hideTitle = false,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -45,6 +46,7 @@ export function FinanceItemTradeModal({
   enableModeSelect?: boolean
   inline?: boolean
   initialItems?: CatalogItem[]
+  hideTitle?: boolean
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
@@ -151,7 +153,7 @@ export function FinanceItemTradeModal({
     >
       <CenteredFormLayout
         panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
-        title={copy.finance.trade.title}
+        title={hideTitle ? undefined : copy.finance.trade.title}
         actions={
           <>
             <SecondaryButton onClick={onClose}>Fermer</SecondaryButton>

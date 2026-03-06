@@ -246,7 +246,7 @@ export default function ItemsClient() {
               {drugCalculator.requirements.map((req) => (
                 <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
                   <div className="font-medium">{req.label}</div>
-                  <div className="text-white/70">Qté: {req.qty} · PU: {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
+                  <div className="text-white/70">Qté: {req.qty} · PU : {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
                   <div className="text-white/80">Sous-total: {req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</div>
                 </div>
               ))}
@@ -272,7 +272,7 @@ export default function ItemsClient() {
                       </div>
                     ))}
                   </div>
-                  <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">Output: {recipe.output}</p>
+                  <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">Production : {recipe.output === 'Feuille de coke' ? 'Feuille de Coke' : recipe.output === 'Meth brut' ? 'Meth Brut' : recipe.output}</p>
                 </div>
               ))}
             </div>

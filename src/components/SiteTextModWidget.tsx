@@ -85,22 +85,6 @@ async function resetOverridesOnline(creds: AdminCreds) {
   }
 }
 
-async function changeAdminPasswordOnline(newPassword: string, creds: AdminCreds) {
-  const res = await fetch('/api/admin/mod/admin-password', {
-    ...withTenantSessionHeader({
-      headers: {
-        'Content-Type': 'application/json',
-        ...buildAdminHeaders(creds),
-      },
-    }),
-    method: 'POST',
-    body: JSON.stringify({ newPassword }),
-  })
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({ error: 'Mise à jour impossible' }))) as { error?: string }
-    throw new Error(data.error || 'Mise à jour impossible')
-  }
-}
 
 function shouldSkipNode(parent: Node | null) {
   if (!parent || !(parent instanceof HTMLElement)) return true
@@ -161,8 +145,6 @@ export function SiteTextModWidget() {
   const [dbStatus, setDbStatus] = useState<string>('Sauvegarde en ligne active')
   const [dbCount, setDbCount] = useState<number>(0)
   const [adminCreds, setAdminCreds] = useState<AdminCreds | null>(null)
-  const [newAdminPassword, setNewAdminPassword] = useState('')
-  const [passwordStatus, setPasswordStatus] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -225,7 +207,6 @@ export function SiteTextModWidget() {
       setIsAdmin(true)
       setAdminCreds(creds)
       setLoginError('')
-      setPasswordStatus('')
       setPassword('')
     } catch (error: unknown) {
       setLoginError(error instanceof Error ? error.message : 'Identifiants invalides.')
@@ -251,23 +232,6 @@ export function SiteTextModWidget() {
         setConfirmResetOpen(false)
         window.location.reload()
       })
-  }
-
-  const saveAdminPassword = async () => {
-    if (!adminCreds) return
-    try {
-      const nextPassword = newAdminPassword.trim()
-      if (nextPassword.length < 4) {
-        setPasswordStatus('Mot de passe trop court (min 4 caractères).')
-        return
-      }
-      await changeAdminPasswordOnline(nextPassword, adminCreds)
-      setAdminCreds({ ...adminCreds, password: nextPassword })
-      setNewAdminPassword('')
-      setPasswordStatus('Mot de passe admin mis à jour.')
-    } catch (error: unknown) {
-      setPasswordStatus(error instanceof Error ? error.message : 'Mise à jour impossible')
-    }
   }
 
   return (
@@ -302,20 +266,6 @@ export function SiteTextModWidget() {
               <p className="text-[11px] text-cyan-200">{dbStatus}</p>
               <button type="button" onClick={() => setModMode((value) => !value)} className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1">{modMode ? 'Désactiver la modification' : 'Activer la modification'}</button>
               <button type="button" onClick={clearOverrides} className="w-full rounded-md border border-amber-400/40 bg-amber-600/20 px-2 py-1">Réinitialiser les textes</button>
-
-              <div className="rounded-md border border-white/15 bg-white/[0.04] p-2">
-                <p className="mb-1 text-[11px] text-white/75">Mdp compte admin</p>
-                <input
-                  type="password"
-                  value={newAdminPassword}
-                  onChange={(event) => setNewAdminPassword(event.target.value)}
-                  placeholder="Nouveau mot de passe admin"
-                  className="w-full rounded-md border border-white/20 bg-black/50 px-2 py-1"
-                />
-                <button type="button" onClick={() => { void saveAdminPassword() }} className="mt-2 w-full rounded-md border border-white/20 bg-white/10 px-2 py-1">Enregistrer le mot de passe</button>
-                {passwordStatus ? <p className="mt-1 text-[11px] text-cyan-200">{passwordStatus}</p> : null}
-              </div>
-
               <button type="button" onClick={() => { setIsAdmin(false); setModMode(false); setAdminCreds(null) }} className="w-full rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Déconnexion</button>
               <p className="text-[11px] text-white/60">Astuce: active le mode puis clique sur un texte pour le modifier.</p>
             </div>

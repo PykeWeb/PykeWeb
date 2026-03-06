@@ -19,6 +19,7 @@ export function ItemForm({
   submitLabel,
   actionsPlacement,
   panelClassName,
+  hideTitle = false,
 }: {
   onCancel: () => void
   onSave: (payload: CreateCatalogItemInput) => Promise<void>
@@ -26,6 +27,7 @@ export function ItemForm({
   submitLabel?: string
   actionsPlacement?: 'top-right' | 'bottom-right'
   panelClassName?: string
+  hideTitle?: boolean
 }) {
   const [name, setName] = useState(initialItem?.name ?? '')
   const [category, setCategory] = useState<ItemCategory>(initialItem?.category ?? 'objects')
@@ -87,7 +89,7 @@ export function ItemForm({
 
   return (
     <CenteredFormLayout
-      title={initialItem ? 'Modifier l’item (Items)' : 'Nouvel item (Items)'}
+      title={hideTitle ? undefined : (initialItem ? 'Modifier l’item (Items)' : 'Nouvel item (Items)')}
       actions={
         <>
           <SecondaryButton onClick={onCancel}>{copy.common.cancel}</SecondaryButton>

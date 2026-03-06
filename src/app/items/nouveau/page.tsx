@@ -15,6 +15,7 @@ export default function NewItemPage() {
       <PageHeader title="Nouvel item (Items)" />
       <ItemForm
         panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
+        hideTitle
         onCancel={() => router.push('/items')}
         onSave={async (payload) => {
           try {

@@ -28,6 +28,7 @@ export default function ItemTradePage() {
         mode="buy"
         enableModeSelect
         initialItems={initialItems}
+        hideTitle
         onClose={() => router.push('/items')}
         onSubmit={async (payload) => {
           await createFinanceTransaction({
