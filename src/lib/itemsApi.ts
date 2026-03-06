@@ -72,6 +72,31 @@ export async function listCatalogItems(includeInactive = false): Promise<Catalog
 
 
 
+
+type GlobalCatalogRow = {
+  id: string
+  category: ItemCategory
+  item_type: ItemType | null
+  name: string
+  description: string | null
+  image_url: string | null
+  price: number | null
+  default_quantity: number | null
+  weapon_id: string | null
+  created_at: string
+}
+
+type GlobalCatalogOverrideRow = {
+  global_item_id: string
+  is_hidden: boolean | null
+  override_name: string | null
+  override_price: number | null
+  override_description: string | null
+  override_image_url: string | null
+  override_item_type: string | null
+  override_weapon_id: string | null
+}
+
 type LegacyObjectRow = {
   id: string
   name: string
@@ -167,13 +192,19 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
   const catalogQuery = supabase.from('catalog_items').select('*').eq('group_id', groupId)
   if (!includeInactive) catalogQuery.eq('is_active', true)
 
-  const [catalogRes, hiddenRes, objectsRes, weaponsRes, equipmentRes, drugsRes] = await Promise.all([
+  const [catalogRes, hiddenRes, objectsRes, weaponsRes, equipmentRes, drugsRes, globalRes, overridesRes] = await Promise.all([
     catalogQuery.order('created_at', { ascending: false }),
     supabase.from('catalog_items').select('name,category').eq('group_id', groupId).eq('is_active', false),
     supabase.from('objects').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
     supabase.from('weapons').select('id,name,weapon_id,description,image_url,stock,created_at').eq('group_id', groupId),
     supabase.from('equipment').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
     supabase.from('drug_items').select('id,type,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
+    groupId === 'admin'
+      ? Promise.resolve({ data: [], error: null })
+      : supabase.from('catalog_items_global').select('id,category,item_type,name,description,image_url,price,default_quantity,weapon_id,created_at'),
+    groupId === 'admin'
+      ? Promise.resolve({ data: [], error: null })
+      : supabase.from('catalog_items_group_overrides').select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id').eq('group_id', groupId),
   ])
 
   if (catalogRes.error) throw catalogRes.error
@@ -182,6 +213,8 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
   if (weaponsRes.error) throw weaponsRes.error
   if (equipmentRes.error) throw equipmentRes.error
   if (drugsRes.error) throw drugsRes.error
+  if (globalRes.error) throw globalRes.error
+  if (overridesRes.error) throw overridesRes.error
 
   const catalogItems = (catalogRes.data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
   const byName = new Set(catalogItems.map((x) => `${x.category}:${x.name.trim().toLowerCase()}`))
@@ -257,7 +290,48 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
     return !byName.has(key) && !hiddenNames.has(key)
   })
 
-  return [...catalogItems, ...mergedLegacy].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const overrideMap = new Map(((overridesRes.data ?? []) as GlobalCatalogOverrideRow[]).map((row) => [row.global_item_id, row]))
+  const globalItems = ((globalRes.data ?? []) as GlobalCatalogRow[])
+    .map((row) => {
+      const override = overrideMap.get(row.id)
+      if (override?.is_hidden) return null
+      const category = row.category as ItemCategory
+      const name = (override?.override_name || row.name || '').trim()
+      if (!name) return null
+      const key = `${category}:${name.toLowerCase()}`
+      if (byName.has(key) || hiddenNames.has(key)) return null
+      const buyPrice = toNonNegative(override?.override_price ?? row.price ?? 0)
+      const itemTypeRaw = (override?.override_item_type || row.item_type || 'other') as ItemType
+      const itemType = normalizeItemType(itemTypeRaw, category)
+      return {
+        id: `global:${row.id}`,
+        group_id: groupId,
+        internal_id: `global-${row.id}`,
+        name,
+        category,
+        item_type: itemType,
+        description: override?.override_description ?? row.description,
+        image_url: override?.override_image_url ?? row.image_url,
+        buy_price: buyPrice,
+        sell_price: buyPrice,
+        internal_value: 0,
+        show_in_finance: true,
+        is_active: true,
+        stock: toNonNegative(row.default_quantity ?? 0),
+        low_stock_threshold: 0,
+        stackable: true,
+        max_stack: 100,
+        weight: null,
+        fivem_item_id: override?.override_weapon_id ?? row.weapon_id,
+        hash: null,
+        rarity: null,
+        created_at: row.created_at,
+        updated_at: row.created_at,
+      } as CatalogItem
+    })
+    .filter((item): item is CatalogItem => Boolean(item))
+
+  return [...catalogItems, ...mergedLegacy, ...globalItems].sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 export async function makeUniqueInternalId(name: string, current?: string) {
   const base = getSuggestedInternalId(name)
@@ -518,6 +592,22 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
     item_type: args.item_type,
   })
 
+  if (group_id === 'admin') {
+    const { error: globalError } = await supabase.from('catalog_items_global').insert({
+      category: args.category,
+      item_type: normalizeItemType(args.item_type, args.category),
+      name: args.name,
+      description: args.description || null,
+      image_url: inserted.image_url || null,
+      price: toNonNegative(args.buy_price),
+      default_quantity: toNonNegative(args.stock),
+      weapon_id: args.fivem_item_id || null,
+    })
+    if (globalError) {
+      console.warn('[items:create] global insert skipped', globalError.message)
+    }
+  }
+
   return mapCatalogItem(inserted)
 }
 
@@ -601,11 +691,80 @@ export async function deleteCatalogItem(itemId: string) {
 
 
 async function ensureCatalogItemId(itemId: string): Promise<string> {
+  const groupId = currentGroupId()
+
+  if (itemId.startsWith('global:')) {
+    const globalId = itemId.slice('global:'.length)
+    if (!globalId) throw new Error('ID item global invalide.')
+
+    const { data: existing } = await supabase
+      .from('catalog_items')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('internal_id', `global-${globalId}`)
+      .maybeSingle<{ id: string }>()
+    if (existing?.id) return existing.id
+
+    const [{ data: globalRow, error: globalErr }, { data: override }] = await Promise.all([
+      supabase
+        .from('catalog_items_global')
+        .select('id,category,item_type,name,description,image_url,price,default_quantity,weapon_id,created_at')
+        .eq('id', globalId)
+        .single<GlobalCatalogRow>(),
+      supabase
+        .from('catalog_items_group_overrides')
+        .select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id')
+        .eq('group_id', groupId)
+        .eq('global_item_id', globalId)
+        .maybeSingle<GlobalCatalogOverrideRow>(),
+    ])
+
+    if (globalErr || !globalRow) throw globalErr || new Error('Item global introuvable.')
+    if (override?.is_hidden) throw new Error('Cet item est masqué pour ce groupe.')
+
+    const category = globalRow.category as ItemCategory
+    const name = (override?.override_name || globalRow.name || '').trim()
+    if (!name) throw new Error('Nom item global invalide.')
+
+    const internal_id = await makeUniqueInternalId(name, `global-${globalId}`)
+    const buyPrice = toNonNegative(override?.override_price ?? globalRow.price ?? 0)
+    const itemTypeRaw = (override?.override_item_type || globalRow.item_type || 'other') as ItemType
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('catalog_items')
+      .insert({
+        group_id: groupId,
+        internal_id,
+        name,
+        category,
+        item_type: normalizeItemType(itemTypeRaw, category),
+        description: override?.override_description ?? globalRow.description,
+        image_url: override?.override_image_url ?? globalRow.image_url,
+        buy_price: buyPrice,
+        sell_price: buyPrice,
+        internal_value: 0,
+        show_in_finance: true,
+        is_active: true,
+        stock: toNonNegative(globalRow.default_quantity ?? 0),
+        low_stock_threshold: 0,
+        stackable: true,
+        max_stack: 100,
+        weight: null,
+        fivem_item_id: override?.override_weapon_id ?? globalRow.weapon_id,
+        hash: null,
+        rarity: null,
+      })
+      .select('id')
+      .single<{ id: string }>()
+
+    if (insertErr) throw insertErr
+    return inserted.id
+  }
+
   if (!itemId.startsWith('legacy:')) return itemId
 
   const [, categoryRaw, sourceId] = itemId.split(':')
   const category = categoryRaw as ItemCategory
-  const groupId = currentGroupId()
 
   if (!sourceId || !category) throw new Error('ID item legacy invalide.')
 
