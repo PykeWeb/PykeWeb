@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 import { getTenantSession } from '@/lib/tenantSession'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { toNonNegative, toPositiveInt, calcTotal } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
 import { getSuggestedInternalId } from '@/lib/itemId'
@@ -595,7 +596,7 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
 
   const isAdminSession = typeof window !== 'undefined' && Boolean(getTenantSession()?.isAdmin)
   if (group_id === 'admin' || isAdminSession) {
-    const { error: globalError } = await supabase.from('catalog_items_global').insert({
+    const globalPayload = {
       category: args.category,
       item_type: normalizeItemType(args.item_type, args.category),
       name: args.name,
@@ -604,9 +605,24 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
       price: toNonNegative(args.buy_price),
       default_quantity: toNonNegative(args.stock),
       weapon_id: args.fivem_item_id || null,
-    })
-    if (globalError) {
-      console.warn('[items:create] global insert skipped', globalError.message)
+    }
+
+    try {
+      const res = await fetch('/api/admin/global-catalog', {
+        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+        method: 'POST',
+        body: JSON.stringify(globalPayload),
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || 'Global sync failed')
+      }
+    } catch (globalApiError) {
+      const { error: globalError } = await supabase.from('catalog_items_global').insert(globalPayload)
+      if (globalError) {
+        console.warn('[items:create] global insert skipped', globalError.message, globalApiError)
+      }
     }
   }
 

@@ -13,6 +13,17 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const [authChecked, setAuthChecked] = useState(isLogin)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (pathname !== '/' && pathname !== '/login') return
+
+    const key = pathname === '/login' ? 'pyke-refresh-login-v1' : 'pyke-refresh-home-v1'
+    if (window.sessionStorage.getItem(key)) return
+
+    window.sessionStorage.setItem(key, '1')
+    window.location.reload()
+  }, [pathname])
+
+  useEffect(() => {
     if (isLogin) {
       setAuthChecked(true)
       return
