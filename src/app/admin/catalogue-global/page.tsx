@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { supabase } from '@/lib/supabase/client'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
-import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { DangerButton, PrimaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
@@ -200,11 +199,14 @@ export default function AdminCatalogueGlobalPage() {
       <Panel>
         <div className="flex flex-wrap items-center gap-3">
           <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher un item" className="w-[320px]" />
-          <GlassSelect
-            value={filterCategory}
-            onChange={(v) => setFilterCategory(v as 'all' | ItemCategory)}
-            options={[{ value: 'all', label: 'Toutes catégories' }, ...itemCategoryOptions]}
-          />
+          <div className="flex flex-wrap gap-2">
+            <TabPill active={filterCategory === 'all'} onClick={() => setFilterCategory('all')}>Toutes catégories</TabPill>
+            {itemCategoryOptions.map((option) => (
+              <TabPill key={option.value} active={filterCategory === option.value} onClick={() => setFilterCategory(option.value as ItemCategory)}>
+                {option.label}
+              </TabPill>
+            ))}
+          </div>
         </div>
 
         <div className="mt-4 space-y-2">

@@ -156,7 +156,7 @@ export default function FinanceClient() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Recherche (item / interlocuteur / note)"
-          className="ml-1 w-full min-w-[160px] flex-1 max-w-[180px]"
+          className="ml-1 w-full min-w-[96px] flex-1 max-w-[96px]"
         />
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
@@ -196,13 +196,17 @@ export default function FinanceClient() {
                   <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
                   <td className="px-4 py-3">
                     <div className="font-semibold">{entry.item_label}</div>
-                    {canManageExpense ? <div className="mt-1">{statusBadge(entry.expense_status)}</div> : null}
                     {entry.notes ? <div className="text-xs text-white/50 line-clamp-1">{entry.notes}</div> : null}
                   </td>
                   <td className="px-4 py-3">{entry.quantity}</td>
                   <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>
                   <td className="px-4 py-3 text-white/70">{formatDateOnly(entry.created_at)}</td>
-                  <td className="px-4 py-3 text-white/70">{entry.member_name || '—'}</td>
+                  <td className="px-4 py-3 text-white/70">
+                    <div className="flex items-center gap-2">
+                      <span>{entry.member_name || '—'}</span>
+                      {canManageExpense ? statusBadge(entry.expense_status) : null}
+                    </div>
+                  </td>
                   <td className="px-4 py-3"></td>
                 </tr>
               )
