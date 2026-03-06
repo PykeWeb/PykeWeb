@@ -107,26 +107,24 @@ export function Sidebar() {
         </div>
 
         <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm text-white/60">Groupe</p>
-              <p className="mt-2 truncate text-xl font-semibold tracking-tight">{groupName}</p>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  clearTenantSession()
-                  void clearTenantSessionOnServer().finally(() => {
-                    window.location.href = '/login'
-                  })
-                }}
-                className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/90 transition hover:bg-white/10"
-              >
-                Déconnexion
-              </button>
-              <div className="inline-flex rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-white/60">Groupe</p>
+            <button
+              type="button"
+              onClick={() => {
+                clearTenantSession()
+                void clearTenantSessionOnServer().finally(() => {
+                  window.location.href = '/login'
+                })
+              }}
+              className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/90 transition hover:bg-white/10"
+            >
+              Déconnexion
+            </button>
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="min-w-0 truncate text-xl font-semibold tracking-tight">{groupName}</p>
+            <div className="inline-flex shrink-0 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
           </div>
           <div className="mt-4 border-t border-white/10 pt-3">
             <p className="text-sm text-white/55">Accès</p>

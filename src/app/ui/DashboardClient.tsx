@@ -184,13 +184,7 @@ export function DashboardClient() {
       setLoading(true)
       try {
         const groupId = currentGroupId()
-        const [recentTxRes, recentExpensesRes, financeEntries] = await Promise.all([
-          supabase
-            .from('transactions')
-            .select('id,type,total,counterparty,created_at,transaction_items(name_snapshot,quantity)')
-            .eq('group_id', groupId)
-            .order('created_at', { ascending: false })
-            .limit(5),
+        const [recentExpensesRes, financeEntries] = await Promise.all([
           supabase
             .from('expenses')
             .select('id,item_label,total,quantity,created_at')
@@ -208,7 +202,21 @@ export function DashboardClient() {
           categoryCounts[entry.category] += 1
           movementCounts[entry.movement_type] += 1
         }
-        setRecentTx((recentTxRes.data as Tx[]) ?? [])
+
+        const recentFinanceTransactions: Tx[] = financeEntries
+          .filter((entry) => entry.movement_type === 'purchase' || entry.movement_type === 'sale')
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 8)
+          .map((entry) => ({
+            id: `${entry.source}-${entry.id}`,
+            type: entry.movement_type === 'purchase' ? 'purchase' : 'sale',
+            total: entry.amount ?? null,
+            counterparty: entry.member_name || null,
+            created_at: entry.created_at,
+            transaction_items: [{ name_snapshot: entry.item_label, quantity: entry.quantity }],
+          }))
+
+        setRecentTx(recentFinanceTransactions)
         setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
