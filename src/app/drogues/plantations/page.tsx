@@ -159,7 +159,6 @@ export default function DroguesPlantationsPage() {
                   <div key={req.name} className="grid grid-cols-2 items-center gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2"><span>{req.name}</span><span className="text-right">× {req.qty}</span></div>
                 ))}
               </div>
-              <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80">Output : {r.output.name}{' '}{r.output.range ? `(${r.output.range[0]} à ${r.output.range[1]})` : `× ${r.output.qty}`}</div>
               <div className="mt-3 flex items-center justify-between">
                 <span className="text-xs text-white/60">Batches possibles : {possibleBatches[r.key] ?? 0}</span>
                 <button disabled={!canDo || busyId === r.key} onClick={() => void produce(r)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-50">

@@ -14,7 +14,7 @@ export default function FinanceDepensesPage() {
           </div>
         }
       >
-        <DepensesClient newExpenseHref="/finance/depense/nouveau" />
+        <DepensesClient newExpenseHref="/finance/depense/nouveau" backHref="/finance" />
       </Suspense>
     </div>
   )

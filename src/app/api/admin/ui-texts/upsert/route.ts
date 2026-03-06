@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { assertAdminSession } from '@/server/auth/admin'
+import { assertAdminRequestAuthorized } from '@/server/auth/adminRequest'
 
 export async function POST(request: Request) {
   try {
-    await assertAdminSession(request)
+    await assertAdminRequestAuthorized(request)
     const body = await request.json()
     const key = String(body.key || '').trim()
     const value = String(body.value || '')
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
     const { count } = await supabase.from('ui_texts').select('id', { count: 'exact', head: true })
     return NextResponse.json({ ok: true, count: count ?? 0 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Non autorisé' }, { status: 401 })
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Non autorisé' }, { status: 401 })
   }
 }

@@ -30,7 +30,17 @@ const catalogTypeOptions: Array<{ value: Exclude<ExpenseItemType, 'custom'>; lab
   { value: 'drugs', label: 'Drogues' },
 ]
 
-export function NouvelleDepenseForm({ backHref = '/depenses', successHref = '/depenses', title = 'Nouvelle dépense' }: { backHref?: string; successHref?: string; title?: string }) {
+export function NouvelleDepenseForm({
+  backHref = '/depenses',
+  successHref = '/depenses',
+  title = 'Nouvelle dépense',
+  actionsPlacement = 'bottom-right',
+}: {
+  backHref?: string
+  successHref?: string
+  title?: string
+  actionsPlacement?: 'top-right' | 'bottom-right'
+}) {
   const router = useRouter()
 
   const [memberName, setMemberName] = useState('')
@@ -137,7 +147,7 @@ export function NouvelleDepenseForm({ backHref = '/depenses', successHref = '/de
           </PrimaryButton>
         </>
       }
-      actionsPlacement="bottom-right"
+      actionsPlacement={actionsPlacement}
     >
       <div className="grid gap-3 md:grid-cols-2">
         <div className="md:col-span-2">

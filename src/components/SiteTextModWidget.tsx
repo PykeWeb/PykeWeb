@@ -6,10 +6,9 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 const STORAGE_KEY = 'pykeweb:text-overrides:v1'
-const ADMIN_USER = 'admin'
-const ADMIN_PASSWORD = 'santa1234'
 
 type Overrides = Record<string, string>
+type AdminCreds = { username: string; password: string }
 
 function readOverrides(): Overrides {
   if (typeof window === 'undefined') return {}
@@ -32,34 +31,75 @@ async function readOverridesFromDatabase(): Promise<Overrides> {
   return data.overrides ?? {}
 }
 
-async function upsertOverrideOnline(key: string, value: string): Promise<number> {
+function buildAdminHeaders(creds: AdminCreds) {
+  return {
+    'x-admin-user': creds.username,
+    'x-admin-password': creds.password,
+  }
+}
+
+async function verifyAdminCredentialsOnline(creds: AdminCreds) {
+  const res = await fetch('/api/admin/mod/verify', {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+    method: 'POST',
+    body: JSON.stringify(creds),
+  })
+
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({ error: 'Identifiants invalides' }))) as { error?: string }
+    throw new Error(data.error || 'Identifiants invalides')
+  }
+}
+
+async function upsertOverrideOnline(key: string, value: string, creds: AdminCreds): Promise<number> {
   const res = await fetch('/api/admin/ui-texts/upsert', {
     ...withTenantSessionHeader({
       headers: {
         'Content-Type': 'application/json',
-        'x-admin-user': ADMIN_USER,
-        'x-admin-password': ADMIN_PASSWORD,
+        ...buildAdminHeaders(creds),
       },
     }),
     method: 'POST',
     body: JSON.stringify({ key, value, scope: 'global' }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({ error: 'Sauvegarde impossible' }))) as { error?: string }
+    throw new Error(data.error || 'Sauvegarde impossible')
+  }
   const body = (await res.json()) as { count?: number }
   return body.count ?? 0
 }
 
-async function resetOverridesOnline() {
+async function resetOverridesOnline(creds: AdminCreds) {
   const res = await fetch('/api/admin/ui-texts/reset', {
     ...withTenantSessionHeader({
       headers: {
-        'x-admin-user': ADMIN_USER,
-        'x-admin-password': ADMIN_PASSWORD,
+        ...buildAdminHeaders(creds),
       },
     }),
     method: 'POST',
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({ error: 'Réinitialisation impossible' }))) as { error?: string }
+    throw new Error(data.error || 'Réinitialisation impossible')
+  }
+}
+
+async function changeAdminPasswordOnline(newPassword: string, creds: AdminCreds) {
+  const res = await fetch('/api/admin/mod/admin-password', {
+    ...withTenantSessionHeader({
+      headers: {
+        'Content-Type': 'application/json',
+        ...buildAdminHeaders(creds),
+      },
+    }),
+    method: 'POST',
+    body: JSON.stringify({ newPassword }),
+  })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({ error: 'Mise à jour impossible' }))) as { error?: string }
+    throw new Error(data.error || 'Mise à jour impossible')
+  }
 }
 
 function shouldSkipNode(parent: Node | null) {
@@ -113,13 +153,16 @@ export function SiteTextModWidget() {
   const [open, setOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [modMode, setModMode] = useState(false)
-  const [username, setUsername] = useState('')
+  const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [overrides, setOverrides] = useState<Overrides>({})
   const [dbStatus, setDbStatus] = useState<string>('Sauvegarde en ligne active')
   const [dbCount, setDbCount] = useState<number>(0)
+  const [adminCreds, setAdminCreds] = useState<AdminCreds | null>(null)
+  const [newAdminPassword, setNewAdminPassword] = useState('')
+  const [passwordStatus, setPasswordStatus] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -132,7 +175,7 @@ export function SiteTextModWidget() {
       writeOverrides(merged)
       setDbCount(Object.keys(remote).length)
       setTimeout(() => applyOverrides(merged), 0)
-    })().catch((e) => setDbStatus(`Erreur base : ${e?.message || 'inconnue'}`))
+    })().catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
     return () => {
       alive = false
     }
@@ -146,7 +189,7 @@ export function SiteTextModWidget() {
   }, [overrides])
 
   useEffect(() => {
-    if (!modMode) return
+    if (!modMode || !adminCreds) return
     const onClick = (event: MouseEvent) => {
       const editable = getEditableText(event.target)
       if (!editable) return
@@ -161,28 +204,32 @@ export function SiteTextModWidget() {
       const nextOverrides = { ...overrides, [sourceText]: nextValue }
       setOverrides(nextOverrides)
       writeOverrides(nextOverrides)
-      void upsertOverrideOnline(sourceText, nextValue)
+      void upsertOverrideOnline(sourceText, nextValue, adminCreds)
         .then((count) => {
           setDbStatus('Sauvegarde en ligne active')
           setDbCount(count)
         })
-        .catch((e) => setDbStatus(`Erreur base : ${e?.message || 'inconnue'}`))
+        .catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
     }
 
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [modMode, overrides])
+  }, [modMode, overrides, adminCreds])
 
   const overrideCount = useMemo(() => dbCount || Object.keys(overrides).length, [dbCount, overrides])
 
-  const handleLogin = () => {
-    if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
+  const handleLogin = async () => {
+    const creds = { username: username.trim(), password: password.trim() }
+    try {
+      await verifyAdminCredentialsOnline(creds)
       setIsAdmin(true)
+      setAdminCreds(creds)
       setLoginError('')
+      setPasswordStatus('')
       setPassword('')
-      return
+    } catch (error: unknown) {
+      setLoginError(error instanceof Error ? error.message : 'Identifiants invalides.')
     }
-    setLoginError('Identifiants invalides.')
   }
 
   const clearOverrides = () => {
@@ -190,19 +237,37 @@ export function SiteTextModWidget() {
   }
 
   const applyClearOverrides = () => {
+    if (!adminCreds) return
     const cleared = {}
     setOverrides(cleared)
     writeOverrides(cleared)
-    void resetOverridesOnline()
+    void resetOverridesOnline(adminCreds)
       .then(() => {
         setDbStatus('Sauvegarde en ligne active')
         setDbCount(0)
       })
-      .catch((e) => setDbStatus(`Erreur base : ${e?.message || 'inconnue'}`))
+      .catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
       .finally(() => {
         setConfirmResetOpen(false)
         window.location.reload()
       })
+  }
+
+  const saveAdminPassword = async () => {
+    if (!adminCreds) return
+    try {
+      const nextPassword = newAdminPassword.trim()
+      if (nextPassword.length < 4) {
+        setPasswordStatus('Mot de passe trop court (min 4 caractères).')
+        return
+      }
+      await changeAdminPasswordOnline(nextPassword, adminCreds)
+      setAdminCreds({ ...adminCreds, password: nextPassword })
+      setNewAdminPassword('')
+      setPasswordStatus('Mot de passe admin mis à jour.')
+    } catch (error: unknown) {
+      setPasswordStatus(error instanceof Error ? error.message : 'Mise à jour impossible')
+    }
   }
 
   return (
@@ -228,7 +293,7 @@ export function SiteTextModWidget() {
               <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Utilisateur" className="w-full rounded-md border border-white/20 bg-black/50 px-2 py-1" />
               <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mot de passe" className="w-full rounded-md border border-white/20 bg-black/50 px-2 py-1" />
               {loginError ? <p className="text-rose-300">{loginError}</p> : null}
-              <button type="button" onClick={handleLogin} className="w-full rounded-md border border-emerald-400/40 bg-emerald-600/20 px-2 py-1 font-medium">Se connecter</button>
+              <button type="button" onClick={() => { void handleLogin() }} className="w-full rounded-md border border-emerald-400/40 bg-emerald-600/20 px-2 py-1 font-medium">Se connecter</button>
             </div>
           ) : (
             <div className="space-y-2">
@@ -237,7 +302,21 @@ export function SiteTextModWidget() {
               <p className="text-[11px] text-cyan-200">{dbStatus}</p>
               <button type="button" onClick={() => setModMode((value) => !value)} className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1">{modMode ? 'Désactiver la modification' : 'Activer la modification'}</button>
               <button type="button" onClick={clearOverrides} className="w-full rounded-md border border-amber-400/40 bg-amber-600/20 px-2 py-1">Réinitialiser les textes</button>
-              <button type="button" onClick={() => { setIsAdmin(false); setModMode(false) }} className="w-full rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Déconnexion</button>
+
+              <div className="rounded-md border border-white/15 bg-white/[0.04] p-2">
+                <p className="mb-1 text-[11px] text-white/75">Mdp compte admin</p>
+                <input
+                  type="password"
+                  value={newAdminPassword}
+                  onChange={(event) => setNewAdminPassword(event.target.value)}
+                  placeholder="Nouveau mot de passe admin"
+                  className="w-full rounded-md border border-white/20 bg-black/50 px-2 py-1"
+                />
+                <button type="button" onClick={() => { void saveAdminPassword() }} className="mt-2 w-full rounded-md border border-white/20 bg-white/10 px-2 py-1">Enregistrer le mot de passe</button>
+                {passwordStatus ? <p className="mt-1 text-[11px] text-cyan-200">{passwordStatus}</p> : null}
+              </div>
+
+              <button type="button" onClick={() => { setIsAdmin(false); setModMode(false); setAdminCreds(null) }} className="w-full rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Déconnexion</button>
               <p className="text-[11px] text-white/60">Astuce: active le mode puis clique sur un texte pour le modifier.</p>
             </div>
           )}

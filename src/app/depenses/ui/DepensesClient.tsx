@@ -23,7 +23,13 @@ function badge(status: string) {
   )
 }
 
-export default function DepensesClient({ newExpenseHref = '/depenses/nouveau' }: { newExpenseHref?: string } = {}) {
+export default function DepensesClient({
+  newExpenseHref = '/depenses/nouveau',
+  backHref,
+}: {
+  newExpenseHref?: string
+  backHref?: string
+} = {}) {
   const [items, setItems] = useState<DbExpense[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -36,8 +42,8 @@ export default function DepensesClient({ newExpenseHref = '/depenses/nouveau' }:
     setLoading(true)
     try {
       setItems(await listExpenses())
-    } catch (e: any) {
-      setError(e?.message || 'Erreur')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur')
     } finally {
       setLoading(false)
     }
@@ -64,8 +70,8 @@ export default function DepensesClient({ newExpenseHref = '/depenses/nouveau' }:
       await refresh()
       toast.success('Dépense supprimée.')
       setPendingDelete(null)
-    } catch (e: any) {
-      const message = e?.message || 'Impossible de supprimer la dépense.'
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Impossible de supprimer la dépense.'
       setError(message)
       toast.error(message)
     } finally {
@@ -78,9 +84,16 @@ export default function DepensesClient({ newExpenseHref = '/depenses/nouveau' }:
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-white/60">Astuce : clique sur “Rembourser” pour passer en payé (ou revenir en attente).</p>
-          <Link href={newExpenseHref}>
-            <PrimaryButton size="lg">Ajouter une dépense</PrimaryButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            {backHref ? (
+              <Link href={backHref}>
+                <SecondaryButton size="lg">Retour</SecondaryButton>
+              </Link>
+            ) : null}
+            <Link href={newExpenseHref}>
+              <PrimaryButton size="lg">Ajouter une dépense</PrimaryButton>
+            </Link>
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-3">

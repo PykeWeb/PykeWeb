@@ -256,7 +256,7 @@ export function FinanceItemTradeModal({
 
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
-            <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-2">
+            <div className="rounded-2xl p-0">
               <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                 <Search className="h-4 w-4 text-white/50" />
                 <input
@@ -283,18 +283,20 @@ export function FinanceItemTradeModal({
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-white">{it.name}</p>
-                        <p className="truncate text-xs text-white/60">
-                          {getTypeLabel(it.item_type, it.category)} · Stock: {it.stock} · Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $
-                        </p>
+                        <p className="truncate text-xs text-white/60">{getTypeLabel(it.item_type, it.category)}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => addItemToLines(it)}
-                      className="rounded-lg border border-white/20 bg-white/10 p-1.5 text-white hover:bg-white/20"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-white/65">Stock: {it.stock}</span>
+                      <span className="text-xs text-white/65">Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $</span>
+                      <button
+                        type="button"
+                        onClick={() => addItemToLines(it)}
+                        className="rounded-lg border border-white/20 bg-white/10 p-1.5 text-white hover:bg-white/20"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {filtered.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item pour ces filtres.</p> : null}
@@ -302,7 +304,7 @@ export function FinanceItemTradeModal({
             </div>
           </div>
 
-          <div className="md:col-span-2 space-y-2 rounded-2xl border border-white/12 bg-white/[0.03] p-3">
+          <div className="md:col-span-2 space-y-2">
             <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée</p>
             {linesWithItems.length === 0 ? <p className="text-sm text-white/60">Ajoute des items à la liste pour continuer.</p> : null}
             {linesWithItems.map((entry) => (
