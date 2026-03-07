@@ -647,7 +647,7 @@ export function DashboardClient() {
       ) : null}
       <Link
         href="/tablette/paiement"
-        className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/70 px-2 py-1 text-[10px] text-white/80 hover:bg-black/90"
+        className="fixed bottom-3 left-[92px] z-40 inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/70 px-2 py-1 text-[10px] text-white/80 hover:bg-black/90"
       >
         <Info className="h-3 w-3" />
         Info

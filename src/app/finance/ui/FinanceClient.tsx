@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Pencil, Receipt, Trash2, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Layers3, Pencil, Receipt, Trash2, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
@@ -182,10 +182,10 @@ export default function FinanceClient() {
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
         <table className="w-full text-sm">
-          <thead className="bg-white/[0.03] text-white/70"><tr><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Catégorie</th><th className="px-4 py-3 text-left">Item</th><th className="px-4 py-3 text-left">Qté</th><th className="px-4 py-3 text-left">Montant</th><th className="px-4 py-3 text-left">Date</th><th className="px-4 py-3 text-left">Interlocuteur</th><th className="px-4 py-3 text-right"></th></tr></thead>
+          <thead className="bg-white/[0.03] text-white/70"><tr><th className="px-4 py-3 text-left">Image</th><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Catégorie</th><th className="px-4 py-3 text-left">Item</th><th className="px-4 py-3 text-left">Qté</th><th className="px-4 py-3 text-left">Montant</th><th className="px-4 py-3 text-left">Date</th><th className="px-4 py-3 text-left">Interlocuteur</th><th className="px-4 py-3 text-right"></th></tr></thead>
           <tbody className="divide-y divide-white/10">
-            {loading ? <tr><td colSpan={8} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr> : null}
-            {!loading && filtered.length === 0 ? <tr><td colSpan={8} className="px-4 py-8 text-center text-white/60">Aucun mouvement.</td></tr> : null}
+            {loading ? <tr><td colSpan={9} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr> : null}
+            {!loading && filtered.length === 0 ? <tr><td colSpan={9} className="px-4 py-8 text-center text-white/60">Aucun mouvement.</td></tr> : null}
             {!loading ? filtered.map((entry) => {
               const canManageExpense = isExpenseEntry(entry)
               return (
@@ -200,10 +200,23 @@ export default function FinanceClient() {
                     router.push(`/finance/transactions/${entry.source}/${entry.id}`)
                   }}
                 >
+                  <td className="px-4 py-3">
+                    <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                      {entry.item_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={entry.item_image_url} alt={entry.item_label} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs">{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
                   <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
                   <td className="px-4 py-3">
-                    <div className="font-semibold">{entry.item_label}</div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <span>{entry.item_label}</span>
+                      {entry.is_multi ? <Layers3 className="h-3.5 w-3.5 text-cyan-200" /> : null}
+                    </div>
                     {entry.notes ? <div className="text-xs text-white/50 line-clamp-1">{entry.notes}</div> : null}
                   </td>
                   <td className="px-4 py-3">{entry.quantity}</td>

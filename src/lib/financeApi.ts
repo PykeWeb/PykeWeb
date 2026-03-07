@@ -10,6 +10,8 @@ export type FinanceEntry = {
   movement_type: FinanceMovementType
   category: FinanceCategory
   item_label: string
+  item_image_url?: string | null
+  is_multi?: boolean
   member_name: string | null
   quantity: number
   amount: number | null
@@ -21,7 +23,7 @@ export type FinanceEntry = {
 }
 
 type TxJoinItem = { name_snapshot: string | null; quantity: number | null }
-type FinanceTransactionJoinItem = { name: string | null; category: string | null }
+type FinanceTransactionJoinItem = { name: string | null; category: string | null; image_url: string | null }
 
 export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   const groupId = currentGroupId()
@@ -29,7 +31,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   const [expensesRes, txRes, customTxRes] = await Promise.all([
     supabase
       .from('expenses')
-      .select('id,item_source,item_label,member_name,quantity,total,unit_price,status,description,created_at')
+      .select('id,item_source,item_id,item_label,member_name,quantity,total,unit_price,status,description,created_at')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
@@ -41,7 +43,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       .limit(500),
     supabase
       .from('finance_transactions')
-      .select('id,mode,quantity,unit_price,total,counterparty,payment_mode,notes,created_at,catalog_items(name,category)')
+      .select('id,mode,quantity,unit_price,total,counterparty,payment_mode,notes,created_at,catalog_items(name,category,image_url)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
@@ -51,15 +53,42 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   if (txRes.error) throw txRes.error
   if (customTxRes.error) throw customTxRes.error
 
+  const expenseRows = expensesRes.data ?? []
+  const objectIds = expenseRows.filter((row) => row.item_source === 'objects' && row.item_id).map((row) => row.item_id as string)
+  const weaponIds = expenseRows.filter((row) => row.item_source === 'weapons' && row.item_id).map((row) => row.item_id as string)
+  const equipmentIds = expenseRows.filter((row) => row.item_source === 'equipment' && row.item_id).map((row) => row.item_id as string)
+  const drugIds = expenseRows.filter((row) => row.item_source === 'drugs' && row.item_id).map((row) => row.item_id as string)
+
+  const [objectsRes, weaponsRes, equipmentRes, drugsRes] = await Promise.all([
+    objectIds.length > 0 ? supabase.from('objects').select('id,image_url').eq('group_id', groupId).in('id', objectIds) : Promise.resolve({ data: [], error: null }),
+    weaponIds.length > 0 ? supabase.from('weapons').select('id,image_url').eq('group_id', groupId).in('id', weaponIds) : Promise.resolve({ data: [], error: null }),
+    equipmentIds.length > 0 ? supabase.from('equipment').select('id,image_url').eq('group_id', groupId).in('id', equipmentIds) : Promise.resolve({ data: [], error: null }),
+    drugIds.length > 0 ? supabase.from('drug_items').select('id,image_url').eq('group_id', groupId).in('id', drugIds) : Promise.resolve({ data: [], error: null }),
+  ])
+
+  if (objectsRes.error) throw objectsRes.error
+  if (weaponsRes.error) throw weaponsRes.error
+  if (equipmentRes.error) throw equipmentRes.error
+  if (drugsRes.error) throw drugsRes.error
+
+  const expenseImageMap = new Map<string, string | null>()
+  for (const row of objectsRes.data ?? []) expenseImageMap.set(`objects:${(row as { id: string }).id}`, (row as { image_url: string | null }).image_url)
+  for (const row of weaponsRes.data ?? []) expenseImageMap.set(`weapons:${(row as { id: string }).id}`, (row as { image_url: string | null }).image_url)
+  for (const row of equipmentRes.data ?? []) expenseImageMap.set(`equipment:${(row as { id: string }).id}`, (row as { image_url: string | null }).image_url)
+  for (const row of drugsRes.data ?? []) expenseImageMap.set(`drugs:${(row as { id: string }).id}`, (row as { image_url: string | null }).image_url)
+
   const entries: FinanceEntry[] = []
 
-  for (const e of expensesRes.data ?? []) {
+  for (const e of expenseRows) {
+    const expenseKey = e.item_id ? `${e.item_source}:${e.item_id}` : null
     entries.push({
       id: e.id,
       source: 'expenses',
       movement_type: 'expense',
       category: (e.item_source as FinanceCategory) || 'other',
       item_label: e.item_label,
+      item_image_url: expenseKey ? expenseImageMap.get(expenseKey) ?? null : null,
+      is_multi: e.item_label.trim().toLowerCase().startsWith('multiple'),
       member_name: e.member_name,
       quantity: Number(e.quantity ?? 0),
       amount: Number(e.total ?? 0),
@@ -84,6 +113,8 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       movement_type: tx.type === 'purchase' ? 'purchase' : 'sale',
       category: 'objects',
       item_label: itemName,
+      item_image_url: null,
+      is_multi: txItems.length > 1,
       member_name: tx.counterparty,
       quantity: qty,
       amount: tx.total == null ? null : Number(tx.total),
@@ -104,6 +135,8 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       movement_type: row.mode === 'buy' ? 'purchase' : 'sale',
       category: (item?.category as FinanceCategory) || 'other',
       item_label: item?.name || 'Item',
+      item_image_url: item?.image_url || null,
+      is_multi: false,
       member_name: row.counterparty,
       quantity: Number(row.quantity ?? 0),
       amount: Number(row.total ?? 0),

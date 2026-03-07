@@ -23,6 +23,11 @@ type PickItem = {
   image_url?: string | null
 }
 
+type SelectedExpenseItem = PickItem & {
+  quantity: number
+  unitPrice: number
+}
+
 const catalogTypeOptions: Array<{ value: Exclude<ExpenseItemType, 'custom'>; label: string }> = [
   { value: 'objects', label: 'Objets' },
   { value: 'weapons', label: 'Armes' },
@@ -48,6 +53,7 @@ export function NouvelleDepenseForm({
   const [useTemporaryItem, setUseTemporaryItem] = useState(false)
   const [items, setItems] = useState<PickItem[]>([])
   const [pickedId, setPickedId] = useState<string>('')
+  const [selectedItems, setSelectedItems] = useState<SelectedExpenseItem[]>([])
   const [itemQuery, setItemQuery] = useState('')
   const [temporaryName, setTemporaryName] = useState('')
   const [unitPrice, setUnitPrice] = useState<string>('0')
@@ -58,7 +64,12 @@ export function NouvelleDepenseForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const total = useMemo(() => Number(unitPrice || 0) * Number(quantity || 0), [unitPrice, quantity])
+  const total = useMemo(() => {
+    if (!useTemporaryItem) {
+      return selectedItems.reduce((sum, item) => sum + Math.max(1, item.quantity) * Math.max(0, item.unitPrice), 0)
+    }
+    return Number(unitPrice || 0) * Number(quantity || 0)
+  }, [selectedItems, unitPrice, quantity, useTemporaryItem])
   const pickedItem = useMemo(() => items.find((x) => x.id === pickedId) || null, [items, pickedId])
 
   const filteredItems = useMemo(() => {
@@ -70,8 +81,8 @@ export function NouvelleDepenseForm({
   const canSave = useMemo(() => {
     if (!memberName.trim()) return false
     if (useTemporaryItem) return temporaryName.trim().length > 0 && Number(unitPrice) >= 0 && quantity > 0 && !saving
-    return pickedId.length > 0 && Number(unitPrice) >= 0 && quantity > 0 && !saving
-  }, [memberName, useTemporaryItem, temporaryName, unitPrice, quantity, pickedId, saving])
+    return selectedItems.length > 0 && !saving
+  }, [memberName, useTemporaryItem, temporaryName, unitPrice, quantity, selectedItems, saving])
 
   useEffect(() => {
     async function load() {
@@ -100,6 +111,7 @@ export function NouvelleDepenseForm({
     }
 
     setPickedId('')
+    setSelectedItems([])
     setItemQuery('')
     void load()
   }, [itemType])
@@ -109,6 +121,17 @@ export function NouvelleDepenseForm({
     const item = items.find((x) => x.id === pickedId)
     if (item) setUnitPrice(String(item.price ?? 0))
   }, [pickedId, items, useTemporaryItem])
+
+  function toggleSelectedItem(item: PickItem) {
+    setPickedId(item.id)
+    setSelectedItems((prev) => {
+      const existing = prev.find((entry) => entry.id === item.id)
+      if (existing) {
+        return prev.filter((entry) => entry.id !== item.id)
+      }
+      return [...prev, { ...item, quantity: 1, unitPrice: Math.max(0, Number(item.price || 0) || 0) }]
+    })
+  }
 
   return (
     <CenteredFormLayout
@@ -122,16 +145,27 @@ export function NouvelleDepenseForm({
               setSaving(true)
               setError(null)
               try {
-                const item = useTemporaryItem ? null : items.find((x) => x.id === pickedId) || null
+                const item = useTemporaryItem ? null : selectedItems[0] || null
+                const totalQuantity = !useTemporaryItem
+                  ? selectedItems.reduce((sum, row) => sum + Math.max(1, row.quantity), 0)
+                  : quantity
+                const totalAmount = !useTemporaryItem
+                  ? selectedItems.reduce((sum, row) => sum + Math.max(1, row.quantity) * Math.max(0, row.unitPrice), 0)
+                  : Number(unitPrice) * quantity
+                const normalizedUnit = totalQuantity > 0 ? totalAmount / totalQuantity : 0
+                const multiLabel = selectedItems.length > 1 ? 'Multiple' : item?.name || 'Item'
+                const mergedDescription = !useTemporaryItem && selectedItems.length > 1
+                  ? `${description.trim() || ''}${description.trim() ? '\n\n' : ''}Items:\n${selectedItems.map((row) => `- ${row.name} × ${Math.max(1, row.quantity)}`).join('\n')}`
+                  : description.trim()
                 await createExpense({
                   member_name: memberName.trim(),
                   item_source: useTemporaryItem ? 'custom' : itemType,
-                  item_id: item?.id || null,
-                  item_label: useTemporaryItem ? temporaryName.trim() : item?.name || 'Item',
-                  unit_price: Number(unitPrice),
-                  default_unit_price: item ? Number(item.price ?? 0) : null,
-                  quantity,
-                  description: description.trim() || undefined,
+                  item_id: useTemporaryItem || selectedItems.length !== 1 ? null : item?.id || null,
+                  item_label: useTemporaryItem ? temporaryName.trim() : multiLabel,
+                  unit_price: useTemporaryItem ? Number(unitPrice) : normalizedUnit,
+                  default_unit_price: useTemporaryItem ? null : normalizedUnit,
+                  quantity: useTemporaryItem ? quantity : Math.max(1, totalQuantity),
+                  description: mergedDescription || undefined,
                   proofFile,
                 })
                 router.push(successHref)
@@ -193,9 +227,9 @@ export function NouvelleDepenseForm({
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setPickedId(item.id)}
+                    onClick={() => toggleSelectedItem(item)}
                     className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
-                      pickedId === item.id ? 'border-cyan-300/40 bg-cyan-500/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]'
+                      selectedItems.some((entry) => entry.id === item.id) ? 'border-cyan-300/40 bg-cyan-500/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -220,15 +254,48 @@ export function NouvelleDepenseForm({
           </>
         )}
 
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Prix unitaire</label>
-          <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} inputMode="decimal" />
-        </div>
+        {useTemporaryItem ? (
+          <>
+            <div>
+              <label className="mb-1 block text-xs text-white/60">Prix unitaire</label>
+              <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} inputMode="decimal" />
+            </div>
 
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Quantité</label>
-          <QuantityStepper value={quantity} onChange={setQuantity} min={1} />
-        </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/60">Quantité</label>
+              <QuantityStepper value={quantity} onChange={setQuantity} min={1} />
+            </div>
+          </>
+        ) : (
+          <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="mb-2 text-xs text-white/60">Items sélectionnés</p>
+            <div className="space-y-2">
+              {selectedItems.map((item) => (
+                <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-2">
+                  <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                    {item.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+                  <div className="min-w-[160px] flex-1">
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-white/60">{item.unitPrice.toFixed(2)} $ / unité</p>
+                  </div>
+                  <div className="w-[170px]">
+                    <QuantityStepper
+                      value={item.quantity}
+                      min={1}
+                      onChange={(nextQty) => setSelectedItems((prev) => prev.map((row) => row.id === item.id ? { ...row, quantity: nextQty } : row))}
+                    />
+                  </div>
+                  <SecondaryButton onClick={() => setSelectedItems((prev) => prev.filter((row) => row.id !== item.id))}>Retirer</SecondaryButton>
+                </div>
+              ))}
+              {selectedItems.length === 0 ? <p className="text-xs text-white/55">Sélectionne un ou plusieurs objets dans la liste.</p> : null}
+            </div>
+          </div>
+        )}
 
         <ImageDropzone label="Preuve (image optionnelle)" onChange={setProofFile} />
 
@@ -243,7 +310,7 @@ export function NouvelleDepenseForm({
         </div>
 
         {error ? <div className="md:col-span-2 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
-        {pickedItem?.image_url ? (
+        {pickedItem?.image_url && !useTemporaryItem && selectedItems.length === 1 ? (
           <div className="md:col-span-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <div className="h-12 w-12 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
