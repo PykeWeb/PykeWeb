@@ -20,6 +20,15 @@ type CatalogItemRow = Omit<CatalogItem, 'buy_price' | 'sell_price' | 'internal_v
   weight: number | string | null
 }
 
+async function fetchAdminSharedCatalogItems(): Promise<CatalogItemRow[]> {
+  const response = await fetch('/api/catalog/admin-shared', withTenantSessionHeader({ cache: 'no-store' }))
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || 'admin shared items unavailable')
+  }
+  return (await response.json()) as CatalogItemRow[]
+}
+
 export type CreateCatalogItemInput = {
   name: string
   category: ItemCategory
@@ -208,8 +217,10 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
       ? Promise.resolve({ data: [], error: null })
       : supabase.from('catalog_items_group_overrides').select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id').eq('group_id', groupId),
     groupId === 'admin'
-      ? Promise.resolve({ data: [], error: null })
-      : supabase.from('catalog_items').select('*').eq('group_id', 'admin').eq('is_active', true),
+      ? Promise.resolve({ data: [], error: null } as { data: CatalogItemRow[]; error: null })
+      : fetchAdminSharedCatalogItems()
+          .then((data) => ({ data, error: null as null }))
+          .catch((error: unknown) => ({ data: [] as CatalogItemRow[], error: error instanceof Error ? error : new Error('admin shared items unavailable') })),
   ])
 
   if (catalogRes.error) throw catalogRes.error
