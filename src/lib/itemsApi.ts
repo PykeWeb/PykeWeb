@@ -797,22 +797,36 @@ async function ensureCatalogItemId(itemId: string): Promise<string> {
       .maybeSingle<{ id: string }>()
     if (existing?.id) return existing.id
 
-    const [{ data: globalRow, error: globalErr }, { data: override }] = await Promise.all([
-      supabase
-        .from('catalog_items_global')
-        .select('id,category,item_type,name,description,image_url,price,default_quantity,weapon_id,created_at')
-        .eq('id', globalId)
-        .single<GlobalCatalogRow>(),
-      supabase
-        .from('catalog_items_group_overrides')
-        .select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id')
-        .eq('group_id', groupId)
-        .eq('global_item_id', globalId)
-        .maybeSingle<GlobalCatalogOverrideRow>(),
-    ])
+    let globalRow: GlobalCatalogRow | null = null
+    let override: GlobalCatalogOverrideRow | null = null
 
-    if (globalErr || !globalRow) throw globalErr || new Error('Item global introuvable.')
-    if (override?.is_hidden) throw new Error('Cet item est masqué pour ce groupe.')
+    try {
+      const globalRows = await fetchGlobalCatalogItems()
+      globalRow = globalRows.find((row) => row.id === globalId) ?? null
+    } catch {
+      globalRow = null
+    }
+
+    if (!globalRow) {
+      const [{ data: directRow, error: globalErr }, { data: directOverride }] = await Promise.all([
+        supabase
+          .from('catalog_items_global')
+          .select('id,category,item_type,name,description,image_url,price,default_quantity,weapon_id,created_at')
+          .eq('id', globalId)
+          .single<GlobalCatalogRow>(),
+        supabase
+          .from('catalog_items_group_overrides')
+          .select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id')
+          .eq('group_id', groupId)
+          .eq('global_item_id', globalId)
+          .maybeSingle<GlobalCatalogOverrideRow>(),
+      ])
+
+      if (globalErr || !directRow) throw globalErr || new Error('Item global introuvable.')
+      if (directOverride?.is_hidden) throw new Error('Cet item est masqué pour ce groupe.')
+      globalRow = directRow
+      override = directOverride
+    }
 
     const category = globalRow.category as ItemCategory
     const name = (override?.override_name || globalRow.name || '').trim()
