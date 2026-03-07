@@ -66,47 +66,69 @@ function buildResponse(source: FinanceEntrySource, entry: FinanceEntryDetail): N
   return NextResponse.json({ source, entry })
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function parseGroupedFinanceTransactionIds(rawId: string): string[] {
+  if (!rawId.startsWith('group:')) return []
+  return rawId
+    .slice('group:'.length)
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => UUID_RE.test(id))
+}
+
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const session = await requireGroupSession(request)
     const source = params.source
-    const id = params.id
+    const id = decodeURIComponent(params.id)
     const supabase = getSupabaseAdmin()
 
     if (source === 'finance_transactions') {
-      const { data, error } = await supabase
+      const groupedIds = parseGroupedFinanceTransactionIds(id)
+      const baseQuery = supabase
         .from('finance_transactions')
         .select('id,mode,quantity,unit_price,total,counterparty,payment_mode,notes,created_at,catalog_items(name,image_url)')
         .eq('group_id', session.groupId)
-        .eq('id', id)
-        .single<FinanceTransactionRow>()
 
-      if (error || !data) return NextResponse.json({ error: error?.message || 'Transaction introuvable' }, { status: 404 })
+      const query = groupedIds.length > 0 ? baseQuery.in('id', groupedIds) : baseQuery.eq('id', id)
+      const { data, error } = await query.order('created_at', { ascending: true })
 
-      const joinedItem = Array.isArray(data.catalog_items) ? (data.catalog_items[0] ?? null) : data.catalog_items
-      const line: FinanceEntryDetailLine = {
-        name: joinedItem?.name || 'Item',
-        quantity: Math.max(1, toSafeNumber(data.quantity)),
-        unit_price: Math.max(0, toSafeNumber(data.unit_price)),
-        total: Math.max(0, toSafeNumber(data.total || toSafeNumber(data.quantity) * toSafeNumber(data.unit_price))),
-        image_url: joinedItem?.image_url || null,
-      }
+      if (error || !data || data.length === 0) return NextResponse.json({ error: error?.message || 'Transaction introuvable' }, { status: 404 })
 
+      const rows = data as FinanceTransactionRow[]
+      const lines = rows.map((row) => {
+        const joinedItem = Array.isArray(row.catalog_items) ? (row.catalog_items[0] ?? null) : row.catalog_items
+        const quantity = Math.max(1, toSafeNumber(row.quantity))
+        const unitPrice = Math.max(0, toSafeNumber(row.unit_price))
+        const lineTotal = Math.max(0, toSafeNumber(row.total || quantity * unitPrice))
+        return {
+          name: joinedItem?.name || 'Item',
+          quantity,
+          unit_price: unitPrice,
+          total: lineTotal,
+          image_url: joinedItem?.image_url || null,
+        } satisfies FinanceEntryDetailLine
+      })
+
+      const first = rows[0]
+      const isMulti = lines.length > 1
       return buildResponse('finance_transactions', {
-        id: data.id,
+        id,
         source: 'finance_transactions',
-        display_name: line.name,
-        movement_kind: data.mode === 'sell' ? 'sale' : 'purchase',
-        created_at: data.created_at,
-        counterparty: data.counterparty,
-        notes: data.notes,
-        payment_mode: data.payment_mode,
-        quantity: line.quantity,
-        total: line.total,
-        is_multi: false,
-        lines: [line],
+        display_name: isMulti ? 'Transaction multiple' : lines[0].name,
+        movement_kind: first.mode === 'sell' ? 'sale' : 'purchase',
+        created_at: first.created_at,
+        counterparty: first.counterparty,
+        notes: first.notes,
+        payment_mode: first.payment_mode,
+        quantity: sumQuantity(lines),
+        total: sumTotal(lines),
+        is_multi: isMulti,
+        lines,
       })
     }
+
 
     if (source === 'transactions') {
       const { data, error } = await supabase

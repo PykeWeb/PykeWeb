@@ -24,6 +24,18 @@ export type FinanceEntry = {
 
 type TxJoinItem = { name_snapshot: string | null; quantity: number | null }
 type FinanceTransactionJoinItem = { name: string | null; category: string | null; image_url: string | null }
+type FinanceTransactionRow = {
+  id: string
+  mode: 'buy' | 'sell'
+  quantity: number | null
+  unit_price: number | null
+  total: number | null
+  counterparty: string | null
+  payment_mode: string | null
+  notes: string | null
+  created_at: string
+  catalog_items: FinanceTransactionJoinItem[] | FinanceTransactionJoinItem | null
+}
 
 export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   const groupId = currentGroupId()
@@ -125,28 +137,83 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
     })
   }
 
-  for (const row of customTxRes.data ?? []) {
-    const itemJoin = row.catalog_items as FinanceTransactionJoinItem[] | FinanceTransactionJoinItem | null
+  const financeRows = ((customTxRes.data ?? []) as FinanceTransactionRow[]).map((row) => {
+    const itemJoin = row.catalog_items
     const item = Array.isArray(itemJoin) ? (itemJoin[0] ?? null) : itemJoin
+    return {
+      ...row,
+      parsedCreatedAt: new Date(row.created_at).getTime(),
+      item,
+      quantity: Math.max(0, Number(row.quantity ?? 0) || 0),
+      total: Number(row.total ?? 0) || 0,
+      unit_price: Number(row.unit_price ?? 0) || 0,
+    }
+  })
 
-    entries.push({
-      id: row.id,
-      source: 'finance_transactions',
-      movement_type: row.mode === 'buy' ? 'purchase' : 'sale',
-      category: (item?.category as FinanceCategory) || 'other',
-      item_label: item?.name || 'Item',
-      item_image_url: item?.image_url || null,
-      is_multi: false,
-      member_name: row.counterparty,
-      quantity: Number(row.quantity ?? 0),
-      amount: Number(row.total ?? 0),
-      expense_status: null,
+  const groupedFinanceRows: Array<{
+    sourceRows: (FinanceTransactionRow & { parsedCreatedAt: number; item: FinanceTransactionJoinItem | null; quantity: number; total: number; unit_price: number })[]
+    mode: 'buy' | 'sell'
+    counterparty: string | null
+    payment_mode: string | null
+    notes: string | null
+    created_at: string
+  }> = []
+
+  for (const row of financeRows) {
+    const target = groupedFinanceRows.find((group) => {
+      const createdDiff = Math.abs(new Date(group.created_at).getTime() - row.parsedCreatedAt)
+      return (
+        group.mode === row.mode &&
+        (group.counterparty || '') === (row.counterparty || '') &&
+        (group.payment_mode || '') === (row.payment_mode || '') &&
+        (group.notes || '') === (row.notes || '') &&
+        createdDiff <= 5000
+      )
+    })
+
+    if (target) {
+      target.sourceRows.push(row)
+      if (row.parsedCreatedAt > new Date(target.created_at).getTime()) target.created_at = row.created_at
+      continue
+    }
+
+    groupedFinanceRows.push({
+      sourceRows: [row],
+      mode: row.mode,
+      counterparty: row.counterparty,
       payment_mode: row.payment_mode,
       notes: row.notes,
       created_at: row.created_at,
+    })
+  }
+
+  for (const group of groupedFinanceRows) {
+    const first = group.sourceRows[0]
+    const isMulti = group.sourceRows.length > 1
+    const itemLabel = isMulti ? 'Multiple' : (first.item?.name || 'Item')
+    const amount = group.sourceRows.reduce((sum, row) => sum + Math.max(0, row.total), 0)
+    const quantity = group.sourceRows.reduce((sum, row) => sum + Math.max(0, row.quantity), 0)
+    const groupedId = isMulti ? `group:${group.sourceRows.map((row) => row.id).join(',')}` : first.id
+
+    entries.push({
+      id: groupedId,
+      source: 'finance_transactions',
+      movement_type: group.mode === 'buy' ? 'purchase' : 'sale',
+      category: (first.item?.category as FinanceCategory) || 'other',
+      item_label: itemLabel,
+      item_image_url: isMulti ? null : (first.item?.image_url || null),
+      is_multi: isMulti,
+      member_name: group.counterparty,
+      quantity,
+      amount,
+      expense_status: null,
+      payment_mode: group.payment_mode,
+      notes: group.notes,
+      created_at: group.created_at,
       expense_unit_price: null,
     })
   }
+
 
   return entries.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
 }

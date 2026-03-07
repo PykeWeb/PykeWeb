@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowDownRight, ArrowUpRight, Receipt, UserRound, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
@@ -66,6 +67,7 @@ function buildCounterpartyStats(entries: FinanceEntry[]): CounterpartyAggregate[
 }
 
 export default function CounterpartyStatsClient() {
+  const router = useRouter()
   const [entries, setEntries] = useState<FinanceEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -195,7 +197,12 @@ export default function CounterpartyStatsClient() {
               <div className="mt-3 space-y-2">
                 {selectedEntries.length === 0 ? <p className="text-sm text-white/60">Aucune opération trouvée.</p> : null}
                 {selectedEntries.map((entry) => (
-                  <div key={`${entry.source}:${entry.id}`} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                  <button
+                    key={`${entry.source}:${entry.id}`}
+                    type="button"
+                    onClick={() => router.push(`/finance/transactions/${entry.source}/${encodeURIComponent(entry.id)}`)}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left transition hover:bg-white/[0.08]"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold">{entry.item_label}</p>
                       <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs">
@@ -205,7 +212,7 @@ export default function CounterpartyStatsClient() {
                     </div>
                     <p className="mt-1 text-xs text-white/65">Qté: {entry.quantity} · Montant: {Number(entry.amount ?? 0).toFixed(2)} $</p>
                     <p className="text-xs text-white/50">{new Date(entry.created_at).toLocaleString()}</p>
-                  </div>
+                  </button>
                 ))}
               </div>
             </>

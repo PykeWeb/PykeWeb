@@ -197,7 +197,7 @@ export default function FinanceClient() {
                       setExpenseActionEntry(entry)
                       return
                     }
-                    router.push(`/finance/transactions/${entry.source}/${entry.id}`)
+                    router.push(`/finance/transactions/${entry.source}/${encodeURIComponent(entry.id)}`)
                   }}
                 >
                   <td className="px-4 py-3">

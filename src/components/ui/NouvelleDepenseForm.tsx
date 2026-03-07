@@ -24,6 +24,7 @@ type PickItem = {
 }
 
 type SelectedExpenseItem = PickItem & {
+  selectionKey: string
   quantity: number
   unitPrice: number
 }
@@ -72,6 +73,8 @@ export function NouvelleDepenseForm({
   }, [selectedItems, unitPrice, quantity, useTemporaryItem])
   const pickedItem = useMemo(() => items.find((x) => x.id === pickedId) || null, [items, pickedId])
 
+  const getSelectionKey = (item: PickItem) => `${item.type}:${item.id}`
+
   const filteredItems = useMemo(() => {
     const query = itemQuery.trim().toLowerCase()
     if (!query) return items
@@ -111,7 +114,6 @@ export function NouvelleDepenseForm({
     }
 
     setPickedId('')
-    setSelectedItems([])
     setItemQuery('')
     void load()
   }, [itemType])
@@ -123,13 +125,14 @@ export function NouvelleDepenseForm({
   }, [pickedId, items, useTemporaryItem])
 
   function toggleSelectedItem(item: PickItem) {
+    const selectionKey = getSelectionKey(item)
     setPickedId(item.id)
     setSelectedItems((prev) => {
-      const existing = prev.find((entry) => entry.id === item.id)
+      const existing = prev.find((entry) => entry.selectionKey === selectionKey)
       if (existing) {
-        return prev.filter((entry) => entry.id !== item.id)
+        return prev.filter((entry) => entry.selectionKey !== selectionKey)
       }
-      return [...prev, { ...item, quantity: 1, unitPrice: Math.max(0, Number(item.price || 0) || 0) }]
+      return [...prev, { ...item, selectionKey, quantity: 1, unitPrice: Math.max(0, Number(item.price || 0) || 0) }]
     })
   }
 
@@ -229,7 +232,7 @@ export function NouvelleDepenseForm({
                     type="button"
                     onClick={() => toggleSelectedItem(item)}
                     className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
-                      selectedItems.some((entry) => entry.id === item.id) ? 'border-cyan-300/40 bg-cyan-500/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]'
+                      selectedItems.some((entry) => entry.selectionKey === getSelectionKey(item)) ? 'border-cyan-300/40 bg-cyan-500/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -271,7 +274,7 @@ export function NouvelleDepenseForm({
             <p className="mb-2 text-xs text-white/60">Items sélectionnés</p>
             <div className="space-y-2">
               {selectedItems.map((item) => (
-                <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-2">
+                <div key={item.selectionKey} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-2">
                   <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                     {item.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -286,10 +289,10 @@ export function NouvelleDepenseForm({
                     <QuantityStepper
                       value={item.quantity}
                       min={1}
-                      onChange={(nextQty) => setSelectedItems((prev) => prev.map((row) => row.id === item.id ? { ...row, quantity: nextQty } : row))}
+                      onChange={(nextQty) => setSelectedItems((prev) => prev.map((row) => row.selectionKey === item.selectionKey ? { ...row, quantity: nextQty } : row))}
                     />
                   </div>
-                  <SecondaryButton onClick={() => setSelectedItems((prev) => prev.filter((row) => row.id !== item.id))}>Retirer</SecondaryButton>
+                  <SecondaryButton onClick={() => setSelectedItems((prev) => prev.filter((row) => row.selectionKey !== item.selectionKey))}>Retirer</SecondaryButton>
                 </div>
               ))}
               {selectedItems.length === 0 ? <p className="text-xs text-white/55">Sélectionne un ou plusieurs objets dans la liste.</p> : null}
