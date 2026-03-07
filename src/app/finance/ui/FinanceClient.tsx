@@ -199,12 +199,8 @@ export default function FinanceClient() {
               return (
                 <tr
                   key={`${entry.source}:${entry.id}`}
-                  className={canManageExpense ? 'cursor-pointer hover:bg-white/[0.05]' : 'cursor-pointer hover:bg-white/[0.05]'}
+                  className="cursor-pointer hover:bg-white/[0.05]"
                   onClick={() => {
-                    if (canManageExpense) {
-                      setExpenseActionEntry(entry)
-                      return
-                    }
                     router.push(`/finance/transactions/${entry.source}/${encodeURIComponent(entry.id)}`)
                   }}
                 >

@@ -7,6 +7,7 @@ import { ArrowDownRight, ArrowUpRight, Receipt, UserRound, Wallet } from 'lucide
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { listFinanceEntries, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
+import { getFinanceListImage } from '@/lib/financeVisuals'
 
 type FilterType = 'all' | FinanceMovementType
 
@@ -196,24 +197,42 @@ export default function CounterpartyStatsClient() {
               </div>
               <div className="mt-3 space-y-2">
                 {selectedEntries.length === 0 ? <p className="text-sm text-white/60">Aucune opération trouvée.</p> : null}
-                {selectedEntries.map((entry) => (
-                  <button
-                    key={`${entry.source}:${entry.id}`}
-                    type="button"
-                    onClick={() => router.push(`/finance/transactions/${entry.source}/${encodeURIComponent(entry.id)}`)}
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left transition hover:bg-white/[0.08]"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold">{entry.item_label}</p>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs">
-                        {typeIcon[entry.movement_type]}
-                        {typeLabel[entry.movement_type]}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-white/65">Qté: {entry.quantity} · Montant: {Number(entry.amount ?? 0).toFixed(2)} $</p>
-                    <p className="text-xs text-white/50">{new Date(entry.created_at).toLocaleString()}</p>
-                  </button>
-                ))}
+                {selectedEntries.map((entry) => {
+                  const imageUrl = getFinanceListImage({
+                    movementType: entry.movement_type,
+                    category: entry.category,
+                    isMulti: entry.is_multi,
+                    itemImageUrl: entry.item_image_url,
+                  })
+                  return (
+                    <button
+                      key={`${entry.source}:${entry.id}`}
+                      type="button"
+                      onClick={() => router.push(`/finance/transactions/${entry.source}/${encodeURIComponent(entry.id)}`)}
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left transition hover:bg-white/[0.08]"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                            {imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={imageUrl} alt={entry.item_label} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
+                            )}
+                          </div>
+                          <p className="text-sm font-semibold">{entry.item_label}</p>
+                        </div>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs">
+                          {typeIcon[entry.movement_type]}
+                          {typeLabel[entry.movement_type]}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-white/65">Qté: {entry.quantity} · Montant: {Number(entry.amount ?? 0).toFixed(2)} $</p>
+                      <p className="text-xs text-white/50">{new Date(entry.created_at).toLocaleString()}</p>
+                    </button>
+                  )
+                })}
               </div>
             </>
           ) : null}

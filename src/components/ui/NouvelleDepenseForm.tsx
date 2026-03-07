@@ -157,12 +157,13 @@ export function NouvelleDepenseForm({
                   : Number(unitPrice) * quantity
                 const normalizedUnit = totalQuantity > 0 ? totalAmount / totalQuantity : 0
                 const multiLabel = selectedItems.length > 1 ? 'Multiple' : item?.name || 'Item'
+                const isMultiCatalogExpense = !useTemporaryItem && selectedItems.length > 1
                 const mergedDescription = !useTemporaryItem && selectedItems.length > 1
                   ? `${description.trim() || ''}${description.trim() ? '\n\n' : ''}Items:\n${selectedItems.map((row) => `- ${row.name} × ${Math.max(1, row.quantity)}`).join('\n')}`
                   : description.trim()
                 await createExpense({
                   member_name: memberName.trim(),
-                  item_source: useTemporaryItem ? 'custom' : itemType,
+                  item_source: useTemporaryItem || isMultiCatalogExpense ? 'custom' : itemType,
                   item_id: useTemporaryItem || selectedItems.length !== 1 ? null : item?.id || null,
                   item_label: useTemporaryItem ? temporaryName.trim() : multiLabel,
                   unit_price: useTemporaryItem ? Number(unitPrice) : normalizedUnit,
@@ -279,7 +280,9 @@ export function NouvelleDepenseForm({
                     {item.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
-                    ) : null}
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
+                    )}
                   </div>
                   <div className="min-w-[160px] flex-1">
                     <p className="truncate text-sm font-medium">{item.name}</p>

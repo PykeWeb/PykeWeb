@@ -46,6 +46,7 @@ type ExpenseRow = {
   description: string | null
   created_at: string
   proof_image_url: string | null
+  status: 'pending' | 'paid' | null
 }
 
 function toSafeNumber(value: number | null | undefined): number {
@@ -125,6 +126,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         quantity: sumQuantity(lines),
         total: sumTotal(lines),
         is_multi: isMulti,
+        expense_status: null,
+        expense_id: null,
         lines,
       })
     }
@@ -172,6 +175,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         quantity: sumQuantity(normalizedLines),
         total,
         is_multi: normalizedLines.length > 1,
+        expense_status: null,
+        expense_id: null,
         lines: normalizedLines,
       })
     }
@@ -179,7 +184,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     if (source === 'expenses') {
       const { data, error } = await supabase
         .from('expenses')
-        .select('id,member_name,item_label,quantity,unit_price,total,description,created_at,proof_image_url')
+        .select('id,member_name,item_label,quantity,unit_price,total,description,created_at,proof_image_url,status')
         .eq('group_id', session.groupId)
         .eq('id', id)
         .single<ExpenseRow>()
@@ -206,6 +211,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         quantity: line.quantity,
         total: line.total,
         is_multi: false,
+        expense_status: data.status === 'paid' ? 'paid' : 'pending',
+        expense_id: data.id,
         lines: [line],
       })
     }
