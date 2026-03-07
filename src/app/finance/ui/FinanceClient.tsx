@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { deleteExpense, setExpenseStatus, updateExpense, type ExpenseStatus } from '@/lib/expensesApi'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
+import { getFinanceListImage } from '@/lib/financeVisuals'
 
 type FilterType = 'all' | FinanceMovementType
 type FilterCategory = 'all' | FinanceCategory
@@ -57,6 +58,7 @@ function statusBadge(status: ExpenseStatus | null | undefined) {
   }
   return <span className="inline-flex rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-100">En attente</span>
 }
+
 
 function formatDateOnly(value: string) {
   const date = new Date(value)
@@ -202,9 +204,9 @@ export default function FinanceClient() {
                 >
                   <td className="px-4 py-3">
                     <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-                      {entry.item_image_url ? (
+                      {getFinanceListImage({ movementType: entry.movement_type, isMulti: entry.is_multi, itemImageUrl: entry.item_image_url }) ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={entry.item_image_url} alt={entry.item_label} className="h-full w-full object-cover" />
+                        <img src={getFinanceListImage({ movementType: entry.movement_type, isMulti: entry.is_multi, itemImageUrl: entry.item_image_url }) || ''} alt={entry.item_label} className="h-full w-full object-cover" />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
                       )}

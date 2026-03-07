@@ -4,25 +4,28 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ClipboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react'
+import { getFinanceListImage } from '@/lib/financeVisuals'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon } from 'lucide-react'
 
 type Tx = {
   id: string
+  source: string
+  entry_id: string
   type: 'purchase' | 'sale'
   total: number | null
   counterparty: string | null
   created_at: string
+  item_image_url: string | null
   transaction_items?: { name_snapshot: string | null; quantity: number | null }[] | null
 }
 
-type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string }
+type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
 type ActivityView = 'summary' | 'transactions' | 'expenses' | 'finance'
 
 type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
@@ -183,16 +186,8 @@ export function DashboardClient() {
     ;(async () => {
       setLoading(true)
       try {
-        const groupId = currentGroupId()
-        const [recentExpensesRes, financeEntries] = await Promise.all([
-          supabase
-            .from('expenses')
-            .select('id,item_label,total,quantity,created_at')
-            .eq('group_id', groupId)
-            .order('created_at', { ascending: false })
-            .limit(5),
-          listFinanceEntries(),
-        ])
+        currentGroupId()
+        const financeEntries = await listFinanceEntries()
 
         if (!alive) return
 
@@ -209,15 +204,31 @@ export function DashboardClient() {
           .slice(0, 8)
           .map((entry) => ({
             id: `${entry.source}-${entry.id}`,
+            source: entry.source,
+            entry_id: entry.id,
             type: entry.movement_type === 'purchase' ? 'purchase' : 'sale',
             total: entry.amount ?? null,
             counterparty: entry.member_name || null,
             created_at: entry.created_at,
+            item_image_url: getFinanceListImage({ movementType: entry.movement_type, isMulti: entry.is_multi, itemImageUrl: entry.item_image_url }),
             transaction_items: [{ name_snapshot: entry.item_label, quantity: entry.quantity }],
           }))
 
+        const recentExpenseRows: Expense[] = financeEntries
+          .filter((entry) => entry.movement_type === 'expense')
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 5)
+          .map((entry) => ({
+            id: entry.id,
+            item_label: entry.item_label,
+            total: Number(entry.amount ?? 0) || 0,
+            quantity: Math.max(1, Number(entry.quantity ?? 1) || 1),
+            created_at: entry.created_at,
+            item_image_url: entry.item_image_url || null,
+          }))
+
         setRecentTx(recentFinanceTransactions)
-        setRecentExpenses((recentExpensesRes.data as Expense[]) ?? [])
+        setRecentExpenses(recentExpenseRows)
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
       } finally {
@@ -282,8 +293,9 @@ export function DashboardClient() {
       label: tx.type === 'purchase' ? 'Transaction achat' : 'Transaction vente',
       detail: tx.counterparty || 'Interlocuteur non renseigné',
       amount: tx.total,
-      href: `/finance?type=${tx.type}`,
+      href: `/finance/transactions/${tx.source}/${encodeURIComponent(tx.entry_id)}`,
       createdAt: tx.created_at,
+      imageUrl: tx.item_image_url,
     }))
 
     const expenseRows = recentExpenses.map((expense) => ({
@@ -293,6 +305,7 @@ export function DashboardClient() {
       amount: expense.total,
       href: '/finance?type=expense',
       createdAt: expense.created_at,
+      imageUrl: expense.item_image_url,
     }))
 
     return [...txRows, ...expenseRows]
@@ -452,8 +465,17 @@ export function DashboardClient() {
             ) : null}
             {activityView === 'transactions' ? (
               recentTx.map((t) => (
-                <Link href={`/finance?type=${t.type}`} key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
-                  <div className="min-w-0">
+                <Link href={`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`} key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                      {t.item_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={t.item_image_url} alt={t.counterparty || 'Transaction'} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       <span
                         className={`mr-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
@@ -469,6 +491,7 @@ export function DashboardClient() {
                     </p>
                     <p className="text-xs text-white/60">{new Date(t.created_at).toLocaleString()}</p>
                     <p className="truncate text-xs text-white/50">{t.transaction_items?.map((item) => `${item.name_snapshot || 'Item'} x${Math.max(1, Number(item.quantity) || 1)}`).join(' · ') || 'Aucun item lié'}</p>
+                    </div>
                   </div>
                   <div className="text-sm font-semibold text-white/80">{t.total ?? '—'}</div>
                 </Link>
@@ -480,9 +503,19 @@ export function DashboardClient() {
               ) : (
                 recentExpenses.map((e) => (
                   <Link href="/finance?type=expense" key={e.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
-                    <div>
-                      <p className="text-sm font-medium">{e.item_label} • x{e.quantity}</p>
-                      <p className="text-xs text-white/60">{new Date(e.created_at).toLocaleString()}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                        {e.item_image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={e.item_image_url} alt={e.item_label} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{e.item_label} • x{e.quantity}</p>
+                        <p className="text-xs text-white/60">{new Date(e.created_at).toLocaleString()}</p>
+                      </div>
                     </div>
                     <p className="text-sm font-semibold text-white/80">{e.total}$</p>
                   </Link>
@@ -495,9 +528,19 @@ export function DashboardClient() {
               ) : (
                 mergedFinanceActivity.map((entry) => (
                   <Link href={entry.href} key={entry.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{entry.label} • {entry.detail}</p>
-                      <p className="text-xs text-white/60">{new Date(entry.createdAt).toLocaleString()}</p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                        {entry.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={entry.imageUrl} alt={entry.label} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{entry.label} • {entry.detail}</p>
+                        <p className="text-xs text-white/60">{new Date(entry.createdAt).toLocaleString()}</p>
+                      </div>
                     </div>
                     <p className="text-sm font-semibold text-white/80">{entry.amount ?? '—'}{entry.amount != null ? '$' : ''}</p>
                   </Link>
