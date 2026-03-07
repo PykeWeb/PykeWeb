@@ -2,15 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Box, Calculator, Factory, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs, TabPill } from '@/components/ui/design-system'
-import { deleteCatalogItem, listCatalogItemsUnified, updateCatalogItem } from '@/lib/itemsApi'
+import { deleteCatalogItem, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
-import { ItemForm } from '@/components/ui/ItemForm'
 import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
 import { getCategoryLabel, getTypeLabel } from '@/lib/catalogConfig'
@@ -62,11 +61,11 @@ export default function ItemsClient() {
   const [type, setType] = useState<TypeFilter>('all')
   const [view, setView] = useState<ItemsView>('catalog')
   const [itemActionEntry, setItemActionEntry] = useState<{ id: string; name: string } | null>(null)
-  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null)
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
   const searchParams = useSearchParams()
+  const router = useRouter()
   const refreshInFlightRef = useRef(false)
 
   const refresh = useCallback(async () => {
@@ -324,9 +323,7 @@ export default function ItemsClient() {
               <div className="mt-4 grid gap-2">
                 <SecondaryButton
                   onClick={() => {
-                    const target = items.find((entry) => entry.id === itemActionEntry.id)
-                    if (!target) return
-                    setEditingItem(target)
+                    router.push(`/items/modifier/${encodeURIComponent(itemActionEntry.id)}`)
                     setItemActionEntry(null)
                   }}
                 >
@@ -345,28 +342,6 @@ export default function ItemsClient() {
                 <SecondaryButton onClick={() => setItemActionEntry(null)}>{copy.common.cancel}</SecondaryButton>
               </div>
             </Panel>
-          </div>
-        </div>
-      ) : null}
-
-      {editingItem ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="mx-auto w-full max-w-5xl">
-            <ItemForm
-              initialItem={editingItem}
-              submitLabel="Enregistrer les modifications"
-              onCancel={() => setEditingItem(null)}
-              onSave={async (payload) => {
-                try {
-                  await updateCatalogItem({ ...payload, id: editingItem.id })
-                  toast.success('Item modifié.')
-                  await refresh()
-                  setEditingItem(null)
-                } catch (error: unknown) {
-                  toast.error(error instanceof Error ? error.message : "Impossible de modifier l'item. Vérifie tes droits ou la politique RLS.")
-                }
-              }}
-            />
           </div>
         </div>
       ) : null}
