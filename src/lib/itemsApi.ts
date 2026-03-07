@@ -857,24 +857,33 @@ async function ensureCatalogItemId(itemId: string): Promise<string> {
     const adminItemId = itemId.slice('admin:'.length)
     if (!adminItemId) throw new Error('ID item admin invalide.')
 
-    const [{ data: existing }, { data: sourceRow, error: sourceErr }] = await Promise.all([
-      supabase
-        .from('catalog_items')
-        .select('id')
-        .eq('group_id', groupId)
-        .eq('internal_id', `admin-${adminItemId}`)
-        .maybeSingle<{ id: string }>(),
-      supabase
+    const { data: existing } = await supabase
+      .from('catalog_items')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('internal_id', `admin-${adminItemId}`)
+      .maybeSingle<{ id: string }>()
+    if (existing?.id) return existing.id
+
+    let sourceRow: CatalogItemRow | null = null
+    try {
+      const adminRows = await fetchAdminSharedCatalogItems()
+      sourceRow = adminRows.find((row) => row.id === adminItemId) ?? null
+    } catch {
+      sourceRow = null
+    }
+
+    if (!sourceRow) {
+      const { data: directRow, error: sourceErr } = await supabase
         .from('catalog_items')
         .select('*')
         .eq('group_id', 'admin')
         .eq('id', adminItemId)
         .eq('is_active', true)
-        .single<CatalogItemRow>(),
-    ])
-
-    if (existing?.id) return existing.id
-    if (sourceErr || !sourceRow) throw sourceErr || new Error('Item admin introuvable.')
+        .single<CatalogItemRow>()
+      if (sourceErr || !directRow) throw sourceErr || new Error('Item admin introuvable.')
+      sourceRow = directRow
+    }
 
     const source = mapCatalogItem(sourceRow)
     const internal_id = await makeUniqueInternalId(source.name, `admin-${adminItemId}`)
