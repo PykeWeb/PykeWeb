@@ -1,13 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { Image as ImageIcon, Layers3 } from 'lucide-react'
+import { Image as ImageIcon, Layers3, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Panel } from '@/components/ui/Panel'
-import { SecondaryButton } from '@/components/ui/design-system'
+import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import type { FinanceEntryDetailResponse, FinanceEntrySource } from '@/lib/types/financeDetail'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
+import { deleteExpense, setExpenseStatus, updateExpense, type ExpenseStatus } from '@/lib/expensesApi'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
+import { toast } from 'sonner'
 
 function formatMoney(value: number) {
   const normalized = Number.isFinite(value) ? value : 0
@@ -29,6 +33,14 @@ export default function FinanceTransactionDetailPage() {
   const params = useParams<{ source: FinanceEntrySource; id: string }>()
   const [detail, setDetail] = useState<FinanceEntryDetailResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [memberName, setMemberName] = useState('')
+  const [itemLabel, setItemLabel] = useState('')
+  const [quantity, setQuantity] = useState('1')
+  const [unitPrice, setUnitPrice] = useState('0')
+  const [notes, setNotes] = useState('')
+  const [status, setStatus] = useState<ExpenseStatus>('pending')
 
   useEffect(() => {
     async function load() {
@@ -40,6 +52,16 @@ export default function FinanceTransactionDetailPage() {
         if (!res.ok) throw new Error(await res.text())
         const json = (await res.json()) as FinanceEntryDetailResponse
         setDetail(json)
+        const current = json.entry
+        if (current.source === 'expenses') {
+          setMemberName(current.counterparty || '')
+          setItemLabel(current.display_name || '')
+          setQuantity(String(Math.max(1, Math.floor(Number(current.quantity) || 1))))
+          const lineUnit = current.lines[0]?.unit_price ?? 0
+          setUnitPrice(String(Math.max(0, Number.isFinite(lineUnit) ? lineUnit : 0)))
+          setNotes(current.notes || '')
+          setStatus(current.expense_status === 'paid' ? 'paid' : 'pending')
+        }
       } catch (loadError: unknown) {
         setError(loadError instanceof Error ? loadError.message : 'Impossible de charger la transaction.')
       }
@@ -48,6 +70,10 @@ export default function FinanceTransactionDetailPage() {
   }, [params.id, params.source])
 
   const entry = detail?.entry
+  const isExpense = entry?.source === 'expenses'
+  const expenseId = entry?.expense_id || entry?.id || null
+  const parsedQuantity = Math.max(1, Math.floor(Number(quantity) || 1))
+  const parsedUnitPrice = Math.max(0, Number(unitPrice) || 0)
 
   const totalItems = useMemo(() => {
     if (!entry) return 0
@@ -148,6 +174,96 @@ export default function FinanceTransactionDetailPage() {
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className="text-xs text-white/60">Notes</p>
                 <p className="mt-1 text-sm text-white/85">{entry.notes}</p>
+              </div>
+            ) : null}
+
+            {isExpense ? (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold">Gestion de la dépense</p>
+                  <div className="inline-flex items-center gap-2">
+                    <TabPill active={status === 'pending'} onClick={() => setStatus('pending')}>En attente</TabPill>
+                    <TabPill active={status === 'paid'} onClick={() => setStatus('paid')}>Remboursé</TabPill>
+                  </div>
+                </div>
+
+                {editing ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs text-white/60">Interlocuteur</label>
+                      <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/60">Item</label>
+                      <Input value={itemLabel} onChange={(e) => setItemLabel(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/60">Quantité</label>
+                      <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="numeric" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/60">Prix unitaire</label>
+                      <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} inputMode="decimal" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-xs text-white/60">Description</label>
+                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[96px]" />
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <SecondaryButton onClick={() => setEditing((prev) => !prev)} icon={<Pencil className="h-4 w-4" />}>{editing ? 'Fermer édition' : 'Modifier'}</SecondaryButton>
+                  <PrimaryButton
+                    disabled={busy || !expenseId || !memberName.trim() || !itemLabel.trim()}
+                    onClick={async () => {
+                      if (!expenseId) return
+                      setBusy(true)
+                      setError(null)
+                      try {
+                        await updateExpense({
+                          expenseId,
+                          member_name: memberName,
+                          item_label: itemLabel,
+                          quantity: parsedQuantity,
+                          unit_price: parsedUnitPrice,
+                          description: notes,
+                        })
+                        await setExpenseStatus({ expenseId, status })
+                        toast.success('Dépense mise à jour.')
+                        setEditing(false)
+                        const res = await fetch(`/api/finance/entries/${params.source}/${params.id}`, withTenantSessionHeader({ cache: 'no-store' }))
+                        if (res.ok) setDetail((await res.json()) as FinanceEntryDetailResponse)
+                      } catch (actionError: unknown) {
+                        setError(actionError instanceof Error ? actionError.message : 'Impossible de mettre à jour la dépense.')
+                      } finally {
+                        setBusy(false)
+                      }
+                    }}
+                  >
+                    Enregistrer changements
+                  </PrimaryButton>
+                  <SecondaryButton
+                    disabled={busy || !expenseId}
+                    icon={<Trash2 className="h-4 w-4" />}
+                    onClick={async () => {
+                      if (!expenseId) return
+                      if (!window.confirm('Supprimer cette dépense ?')) return
+                      setBusy(true)
+                      try {
+                        await deleteExpense(expenseId)
+                        toast.success('Dépense supprimée.')
+                        window.location.href = '/finance'
+                      } catch (actionError: unknown) {
+                        setError(actionError instanceof Error ? actionError.message : 'Impossible de supprimer la dépense.')
+                      } finally {
+                        setBusy(false)
+                      }
+                    }}
+                  >
+                    Supprimer
+                  </SecondaryButton>
+                </div>
               </div>
             ) : null}
           </div>

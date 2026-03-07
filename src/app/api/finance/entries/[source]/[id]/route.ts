@@ -39,6 +39,8 @@ type TransactionRow = {
 type ExpenseRow = {
   id: string
   member_name: string | null
+  item_source: 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom' | null
+  item_id: string | null
   item_label: string
   quantity: number | null
   unit_price: number | null
@@ -46,6 +48,127 @@ type ExpenseRow = {
   description: string | null
   created_at: string
   proof_image_url: string | null
+  status: 'pending' | 'paid' | null
+}
+
+type ParsedExpenseLine = {
+  name: string
+  quantity: number
+  unit_price: number
+  image_url?: string | null
+  item_source?: 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom' | null
+  item_id?: string | null
+}
+
+const EXPENSE_ITEMS_MARKER = '__ITEMS_JSON__:'
+
+function parseExpenseDescriptionItems(description: string | null | undefined): ParsedExpenseLine[] {
+  const text = String(description || '').trim()
+  if (!text) return []
+
+  const markerIndex = text.indexOf(EXPENSE_ITEMS_MARKER)
+  if (markerIndex >= 0) {
+    const rawJson = text.slice(markerIndex + EXPENSE_ITEMS_MARKER.length).trim()
+    try {
+      const parsed = JSON.parse(rawJson) as unknown
+      if (!Array.isArray(parsed)) return []
+      return parsed
+        .map((row): ParsedExpenseLine | null => {
+          if (!row || typeof row !== 'object') return null
+          const item = row as Record<string, unknown>
+          const name = String(item.name || '').trim()
+          if (!name) return null
+          const quantity = Math.max(1, toSafeNumber(Number(item.quantity ?? 1)))
+          const unit_price = Math.max(0, toSafeNumber(Number(item.unit_price ?? 0)))
+          const itemSourceRaw = String(item.item_source || '').trim()
+          const item_source = ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(itemSourceRaw)
+            ? (itemSourceRaw as ParsedExpenseLine['item_source'])
+            : null
+          return {
+            name,
+            quantity,
+            unit_price,
+            image_url: typeof item.image_url === 'string' ? item.image_url : null,
+            item_source,
+            item_id: typeof item.item_id === 'string' ? item.item_id : null,
+          } satisfies ParsedExpenseLine
+        })
+        .filter((line): line is ParsedExpenseLine => line !== null)
+    } catch {
+      return []
+    }
+  }
+
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('-'))
+    .map((line): ParsedExpenseLine | null => {
+      const cleaned = line.replace(/^-\s*/, '')
+      const match = cleaned.match(/^(.*?)\s*[x×]\s*(\d+)$/i)
+      if (!match) return null
+      const name = match[1]?.trim() || ''
+      const qty = Number(match[2])
+      if (!name) return null
+      return {
+        name,
+        quantity: Math.max(1, toSafeNumber(qty)),
+        unit_price: 0,
+      } satisfies ParsedExpenseLine
+    })
+    .filter((line): line is ParsedExpenseLine => line !== null)
+}
+
+function stripExpenseMetadata(description: string | null | undefined) {
+  const text = String(description || '')
+  const markerIndex = text.indexOf(EXPENSE_ITEMS_MARKER)
+  if (markerIndex < 0) return text.trim()
+  return text.slice(0, markerIndex).trim()
+}
+
+async function loadCatalogImageMapByNames(supabase: ReturnType<typeof getSupabaseAdmin>, groupId: string, names: string[]) {
+  const uniq = Array.from(new Set(names.map((name) => name.trim()).filter(Boolean)))
+  if (uniq.length === 0) return new Map<string, string | null>()
+
+  const [objectsRes, weaponsRes, equipmentRes, drugsRes] = await Promise.all([
+    supabase.from('objects').select('name,image_url').eq('group_id', groupId).in('name', uniq),
+    supabase.from('weapons').select('name,image_url').eq('group_id', groupId).in('name', uniq),
+    supabase.from('equipment').select('name,image_url').eq('group_id', groupId).in('name', uniq),
+    supabase.from('drug_items').select('name,image_url').eq('group_id', groupId).in('name', uniq),
+  ])
+
+  const map = new Map<string, string | null>()
+  for (const row of objectsRes.data ?? []) map.set(String((row as { name: string | null }).name || '').trim(), (row as { image_url: string | null }).image_url)
+  for (const row of weaponsRes.data ?? []) map.set(String((row as { name: string | null }).name || '').trim(), (row as { image_url: string | null }).image_url)
+  for (const row of equipmentRes.data ?? []) map.set(String((row as { name: string | null }).name || '').trim(), (row as { image_url: string | null }).image_url)
+  for (const row of drugsRes.data ?? []) map.set(String((row as { name: string | null }).name || '').trim(), (row as { image_url: string | null }).image_url)
+  return map
+}
+
+async function resolveCatalogImageBySource(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  groupId: string,
+  source: ExpenseRow['item_source'],
+  itemId: string | null | undefined,
+) {
+  if (!source || source === 'custom' || !itemId) return null
+  if (source === 'objects') {
+    const { data } = await supabase.from('objects').select('image_url').eq('group_id', groupId).eq('id', itemId).maybeSingle<{ image_url: string | null }>()
+    return data?.image_url || null
+  }
+  if (source === 'weapons') {
+    const { data } = await supabase.from('weapons').select('image_url').eq('group_id', groupId).eq('id', itemId).maybeSingle<{ image_url: string | null }>()
+    return data?.image_url || null
+  }
+  if (source === 'equipment') {
+    const { data } = await supabase.from('equipment').select('image_url').eq('group_id', groupId).eq('id', itemId).maybeSingle<{ image_url: string | null }>()
+    return data?.image_url || null
+  }
+  if (source === 'drugs') {
+    const { data } = await supabase.from('drug_items').select('image_url').eq('group_id', groupId).eq('id', itemId).maybeSingle<{ image_url: string | null }>()
+    return data?.image_url || null
+  }
+  return null
 }
 
 function toSafeNumber(value: number | null | undefined): number {
@@ -125,6 +248,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         quantity: sumQuantity(lines),
         total: sumTotal(lines),
         is_multi: isMulti,
+        expense_status: null,
+        expense_id: null,
         lines,
       })
     }
@@ -172,6 +297,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         quantity: sumQuantity(normalizedLines),
         total,
         is_multi: normalizedLines.length > 1,
+        expense_status: null,
+        expense_id: null,
         lines: normalizedLines,
       })
     }
@@ -179,34 +306,63 @@ export async function GET(request: Request, { params }: RouteParams) {
     if (source === 'expenses') {
       const { data, error } = await supabase
         .from('expenses')
-        .select('id,member_name,item_label,quantity,unit_price,total,description,created_at,proof_image_url')
+        .select('id,member_name,item_source,item_id,item_label,quantity,unit_price,total,description,created_at,proof_image_url,status')
         .eq('group_id', session.groupId)
         .eq('id', id)
         .single<ExpenseRow>()
 
       if (error || !data) return NextResponse.json({ error: error?.message || 'Dépense introuvable' }, { status: 404 })
 
-      const line: FinanceEntryDetailLine = {
-        name: data.item_label || 'Dépense',
-        quantity: Math.max(1, toSafeNumber(data.quantity)),
-        unit_price: Math.max(0, toSafeNumber(data.unit_price)),
-        total: Math.max(0, toSafeNumber(data.total || toSafeNumber(data.quantity) * toSafeNumber(data.unit_price))),
-        image_url: data.proof_image_url,
+      const parsedLines = parseExpenseDescriptionItems(data.description)
+      const total = Math.max(0, toSafeNumber(data.total || toSafeNumber(data.quantity) * toSafeNumber(data.unit_price)))
+      const quantity = Math.max(1, toSafeNumber(data.quantity))
+      const unitPrice = Math.max(0, toSafeNumber(data.unit_price))
+
+      let lines: FinanceEntryDetailLine[] = []
+      if (parsedLines.length > 0) {
+        const nameImageMap = await loadCatalogImageMapByNames(supabase, session.groupId, parsedLines.map((line) => line.name))
+        const parsedTotalQty = parsedLines.reduce((sum, line) => sum + Math.max(1, toSafeNumber(line.quantity)), 0)
+        lines = parsedLines.map((line) => {
+          const lineQty = Math.max(1, toSafeNumber(line.quantity))
+          const safeUnit = Math.max(0, toSafeNumber(line.unit_price || (parsedTotalQty > 0 ? total / parsedTotalQty : unitPrice)))
+          return {
+            name: line.name,
+            quantity: lineQty,
+            unit_price: safeUnit,
+            total: Math.max(0, lineQty * safeUnit),
+            image_url: line.image_url || nameImageMap.get(line.name) || null,
+          } satisfies FinanceEntryDetailLine
+        })
+      } else {
+        const catalogImage = await resolveCatalogImageBySource(supabase, session.groupId, data.item_source, data.item_id)
+        lines = [{
+          name: data.item_label || 'Dépense',
+          quantity,
+          unit_price: unitPrice,
+          total,
+          image_url: catalogImage || data.proof_image_url,
+        }]
       }
+
+      const isMulti = lines.length > 1
+      const displayName = isMulti ? 'Dépense multiple' : lines[0]?.name || 'Dépense'
+      const normalizedTotal = isMulti ? sumTotal(lines) : Math.max(0, toSafeNumber(lines[0]?.total ?? total))
 
       return buildResponse('expenses', {
         id: data.id,
         source: 'expenses',
-        display_name: line.name,
+        display_name: displayName,
         movement_kind: 'expense',
         created_at: data.created_at,
         counterparty: data.member_name,
-        notes: data.description,
+        notes: stripExpenseMetadata(data.description),
         payment_mode: null,
-        quantity: line.quantity,
-        total: line.total,
-        is_multi: false,
-        lines: [line],
+        quantity: sumQuantity(lines),
+        total: normalizedTotal,
+        is_multi: isMulti,
+        expense_status: data.status === 'paid' ? 'paid' : 'pending',
+        expense_id: data.id,
+        lines,
       })
     }
 

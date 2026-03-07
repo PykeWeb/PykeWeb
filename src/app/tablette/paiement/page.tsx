@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton } from '@/components/ui/design-system'
 import { Input } from '@/components/ui/Input'
+import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { getTenantSession } from '@/lib/tenantSession'
 import { TABLET_PHONE, TABLET_WEEKLY_PRICE, type TabletRentalTicket } from '@/lib/tabletRental'
 
@@ -69,16 +71,13 @@ export default function TablettePaiementPage() {
           </div>
           <div>
             <label className="mb-1 block text-xs text-white/60">Nombre de semaines</label>
-            <Input inputMode="numeric" value={String(weeks)} onChange={(e) => setWeeks(Math.max(1, Math.floor(Number(e.target.value) || 1)))} />
+            <QuantityStepper value={weeks} onChange={setWeeks} min={1} />
           </div>
           <div>
             <label className="mb-1 block text-xs text-white/60">Montant total</label>
             <Input value={`${amount.toFixed(2)} $`} readOnly />
           </div>
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-xs text-white/60">Preuve du virement (jpg/png)</label>
-            <input type="file" accept="image/png,image/jpeg" onChange={(e) => setProofFile(e.target.files?.[0] ?? null)} className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm" />
-          </div>
+          <ImageDropzone label="Preuve du virement (copier/coller ou PNG/JPEG)" onChange={setProofFile} />
         </div>
 
         <div className="mt-4 flex justify-end">

@@ -22,6 +22,8 @@ export type FinanceEntryDetail = {
   quantity: number
   total: number
   is_multi: boolean
+  expense_status?: 'pending' | 'paid' | null
+  expense_id?: string | null
   lines: FinanceEntryDetailLine[]
 }
 
