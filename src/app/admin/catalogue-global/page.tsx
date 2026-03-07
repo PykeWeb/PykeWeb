@@ -5,7 +5,7 @@ import { getTenantSession } from '@/lib/tenantSession'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
-import { DangerButton, PrimaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
+import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { categoryTypeOptions, itemCategoryOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
@@ -42,6 +42,13 @@ export default function AdminCatalogueGlobalPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editCategory, setEditCategory] = useState<ItemCategory>('objects')
+  const [editType, setEditType] = useState<string>(defaultTypeByCategory.objects)
+  const [editName, setEditName] = useState('')
+  const [editPrice, setEditPrice] = useState('0')
+  const [editQuantity, setEditQuantity] = useState('0')
+  const [editWeaponId, setEditWeaponId] = useState('')
 
   async function refresh() {
     const res = await fetch('/api/admin/global-catalog', withTenantSessionHeader({ cache: 'no-store' }))
@@ -126,6 +133,55 @@ export default function AdminCatalogueGlobalPage() {
     )
     if (!res.ok) return
     await refresh()
+  }
+
+  function startEdit(item: GlobalItem) {
+    setEditingId(item.id)
+    setEditCategory(item.category)
+    setEditType(normalizeItemType(item.item_type, item.category))
+    setEditName(item.name)
+    setEditPrice(String(Math.max(0, Number(item.price || 0) || 0)))
+    setEditQuantity(String(Math.max(0, Math.floor(Number(item.default_quantity || 0) || 0))))
+    setEditWeaponId(item.weapon_id || '')
+    setError(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setError(null)
+  }
+
+  async function saveEdit() {
+    if (!editingId) return
+    if (!editName.trim()) {
+      setError('Le nom est obligatoire.')
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/admin/global-catalog', {
+        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+        method: 'PUT',
+        body: JSON.stringify({
+          id: editingId,
+          patch: {
+            category: editCategory,
+            item_type: normalizeItemType(editType, editCategory),
+            name: editName.trim(),
+            price: Math.max(0, Number(editPrice || 0) || 0),
+            default_quantity: Math.max(0, Math.floor(Number(editQuantity || 0) || 0)),
+            weapon_id: editCategory === 'weapons' ? editWeaponId.trim() || null : null,
+          },
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setEditingId(null)
+      await refresh()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur modification')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const filtered = useMemo(() => {
@@ -220,18 +276,57 @@ export default function AdminCatalogueGlobalPage() {
           {filtered.length === 0 ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/70">Aucun item à afficher pour ces filtres.</div> : null}
           {filtered.map((it) => (
             <div key={it.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-1 items-center gap-3">
                 <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/5">
                   {it.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
                   ) : null}
                 </div>
-                <p>
-                  {it.name} <span className="text-white/60">{Number(it.price || 0).toFixed(2)}$ • stock {Math.max(0, Number(it.default_quantity || 0))}</span>
-                </p>
+                {editingId === it.id ? (
+                  <div className="grid flex-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nom" />
+                    <Input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} inputMode="decimal" placeholder="Prix" />
+                    <Input value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} inputMode="numeric" placeholder="Stock" />
+                    <div className="md:col-span-2 lg:col-span-3 flex flex-wrap gap-2">
+                      {itemCategoryOptions.map((option) => (
+                        <TabPill key={option.value} active={editCategory === option.value} onClick={() => {
+                          const next = option.value as ItemCategory
+                          setEditCategory(next)
+                          setEditType(defaultTypeByCategory[next])
+                        }}>
+                          {option.label}
+                        </TabPill>
+                      ))}
+                    </div>
+                    <div className="md:col-span-2 lg:col-span-3 flex flex-wrap gap-2">
+                      {categoryTypeOptions[editCategory].map((option) => (
+                        <TabPill key={option.value} active={editType === option.value} onClick={() => setEditType(option.value)}>
+                          {option.label}
+                        </TabPill>
+                      ))}
+                    </div>
+                    {editCategory === 'weapons' ? (
+                      <Input value={editWeaponId} onChange={(e) => setEditWeaponId(e.target.value)} placeholder="Weapon ID / hash" />
+                    ) : null}
+                  </div>
+                ) : (
+                  <p>
+                    {it.name} <span className="text-white/60">{Number(it.price || 0).toFixed(2)}$ • stock {Math.max(0, Number(it.default_quantity || 0))}</span>
+                  </p>
+                )}
               </div>
-              <DangerButton onClick={() => void removeItem(it.id)}>Supprimer</DangerButton>
+              <div className="ml-3 flex items-center gap-2">
+                {editingId === it.id ? (
+                  <>
+                    <PrimaryButton disabled={busy} onClick={() => void saveEdit()}>Enregistrer</PrimaryButton>
+                    <SecondaryButton disabled={busy} onClick={() => cancelEdit()}>Annuler</SecondaryButton>
+                  </>
+                ) : (
+                  <SecondaryButton onClick={() => startEdit(it)}>Modifier</SecondaryButton>
+                )}
+                <DangerButton onClick={() => void removeItem(it.id)}>Supprimer</DangerButton>
+              </div>
             </div>
           ))}
         </div>

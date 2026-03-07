@@ -8,6 +8,7 @@ type GlobalCatalogRow = {
   category: string
   name: string
   price: number | null
+  default_quantity: number | null
   description: string | null
   image_url: string | null
   item_type: string | null
@@ -31,11 +32,12 @@ export async function GET(request: Request) {
     const session = await requireGroupSession(request)
     const { searchParams } = new URL(request.url)
     const category = normalizeCatalogCategory(searchParams.get('category'))
-    if (!category) return NextResponse.json({ error: 'category invalide' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
     const [{ data: globals, error: gErr }, { data: overrides, error: oErr }] = await Promise.all([
-      supabase.from('catalog_items_global').select('*').eq('category', category),
+      category
+        ? supabase.from('catalog_items_global').select('*').eq('category', category)
+        : supabase.from('catalog_items_global').select('*'),
       supabase.from('catalog_items_group_overrides').select('*').eq('group_id', session.groupId),
     ])
     if (gErr) return NextResponse.json({ error: gErr.message }, { status: 500 })
@@ -53,6 +55,7 @@ export async function GET(request: Request) {
           category: g.category,
           name: ov?.override_name ?? g.name,
           price: ov?.override_price ?? g.price,
+          default_quantity: g.default_quantity,
           description: ov?.override_description ?? g.description,
           image_url: ov?.override_image_url ?? g.image_url,
           item_type: ov?.override_item_type ?? g.item_type,
@@ -64,7 +67,7 @@ export async function GET(request: Request) {
       .filter(Boolean)
 
     if (process.env.NODE_ENV !== 'production' && merged.length === 0) {
-      console.info(`[catalog/items] no rows for category=${category} group=${session.groupId}`)
+      console.info(`[catalog/items] no rows for category=${category || 'all'} group=${session.groupId}`)
     }
 
     return NextResponse.json(merged)

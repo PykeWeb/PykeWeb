@@ -6,7 +6,7 @@ import { toNonNegative, toPositiveInt, calcTotal } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
 import { getSuggestedInternalId } from '@/lib/itemId'
 import type { CatalogItem, FinancePaymentMode, FinanceTransaction, ItemCategory, ItemRarity, ItemType } from '@/lib/types/itemsFinance'
-import { normalizeItemType } from '@/lib/catalogConfig'
+import { normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
 
 const BUCKET = 'object-images'
 
@@ -27,6 +27,47 @@ async function fetchAdminSharedCatalogItems(): Promise<CatalogItemRow[]> {
     throw new Error(text || 'admin shared items unavailable')
   }
   return (await response.json()) as CatalogItemRow[]
+}
+
+type GlobalCatalogApiRow = {
+  id: string
+  global_item_id?: string
+  category: string
+  name: string
+  price: number | null
+  default_quantity: number | null
+  description: string | null
+  image_url: string | null
+  item_type: string | null
+  weapon_id: string | null
+  created_at: string
+}
+
+async function fetchGlobalCatalogItems(): Promise<GlobalCatalogRow[]> {
+  const response = await fetch('/api/catalog/items', withTenantSessionHeader({ cache: 'no-store' }))
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || 'global catalog unavailable')
+  }
+  const rows = (await response.json()) as GlobalCatalogApiRow[]
+  return rows
+    .map((row) => {
+      const category = normalizeCatalogCategory(row.category)
+      if (!category) return null
+      return {
+        id: row.global_item_id || row.id.replace(/^global:/, ''),
+        category,
+        item_type: normalizeItemType(row.item_type, category) as ItemType | null,
+        name: row.name,
+        description: row.description,
+        image_url: row.image_url,
+        price: row.price,
+        default_quantity: row.default_quantity,
+        weapon_id: row.weapon_id,
+        created_at: row.created_at,
+      }
+    })
+    .filter((row) => Boolean(row)) as GlobalCatalogRow[]
 }
 
 export type CreateCatalogItemInput = {
@@ -211,11 +252,13 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
     supabase.from('equipment').select('id,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
     supabase.from('drug_items').select('id,type,name,price,description,image_url,stock,created_at').eq('group_id', groupId),
     groupId === 'admin'
-      ? Promise.resolve({ data: [], error: null })
-      : supabase.from('catalog_items_global').select('id,category,item_type,name,description,image_url,price,default_quantity,weapon_id,created_at'),
+      ? Promise.resolve({ data: [], error: null } as { data: GlobalCatalogRow[]; error: null })
+      : fetchGlobalCatalogItems()
+          .then((data) => ({ data, error: null as null }))
+          .catch((error: unknown) => ({ data: [] as GlobalCatalogRow[], error: error instanceof Error ? error : new Error('global catalog unavailable') })),
     groupId === 'admin'
       ? Promise.resolve({ data: [], error: null })
-      : supabase.from('catalog_items_group_overrides').select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id').eq('group_id', groupId),
+      : Promise.resolve({ data: [], error: null }),
     groupId === 'admin'
       ? Promise.resolve({ data: [], error: null } as { data: CatalogItemRow[]; error: null })
       : fetchAdminSharedCatalogItems()

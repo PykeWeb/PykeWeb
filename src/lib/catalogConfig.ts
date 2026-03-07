@@ -10,11 +10,7 @@ export const itemCategoryOptions: { value: ItemCategory; label: string }[] = [
 
 export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label: string }[]> = {
   objects: [
-    { value: 'accessory', label: 'Accessoires' },
-    { value: 'tool', label: 'Outils' },
-    { value: 'consumable', label: 'Consommables' },
-    { value: 'material', label: 'Matériaux' },
-    { value: 'other', label: 'Autres' },
+    { value: 'other', label: 'Divers' },
   ],
   weapons: [
     { value: 'weapon', label: 'Arme' },
@@ -22,17 +18,14 @@ export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label:
     { value: 'weapon_accessory', label: "Accessoire d’arme" },
   ],
   equipment: [
-    { value: 'equipment', label: 'Équipement' },
-    { value: 'outfit', label: 'Tenue' },
-    { value: 'protection', label: 'Protection' },
-    { value: 'accessory', label: 'Accessoire' },
+    { value: 'accessory', label: 'Accessoires' },
+    { value: 'other', label: 'Divers' },
   ],
   drugs: [
     { value: 'seed', label: 'Graine' },
     { value: 'pouch', label: 'Pochon' },
-    { value: 'product', label: 'Produit' },
-    { value: 'recipe', label: 'Recette' },
-    { value: 'drug_material', label: 'Matériel' },
+    { value: 'accessory', label: 'Accessoires' },
+    { value: 'other', label: 'Divers' },
   ],
   custom: [{ value: 'other', label: 'Autre' }],
 }
@@ -57,6 +50,12 @@ const legacyTypeMap: Record<string, ItemType> = {
   consumable: 'consumable',
   weapon: 'weapon',
   equipment: 'equipment',
+  product: 'other',
+  recipe: 'other',
+  drug_material: 'other',
+  outfit: 'other',
+  protection: 'other',
+  accessory: 'accessory',
   other: 'other',
 }
 
@@ -69,7 +68,9 @@ export function normalizeItemType(raw: string | null, category: ItemCategory): I
   const value = (raw ?? '').toLowerCase().trim()
   const normalized = legacyTypeMap[value] ?? (value as ItemType)
   const allowed = new Set(categoryTypeOptions[category].map((opt) => opt.value))
-  return allowed.has(normalized) ? normalized : categoryTypeOptions[category][0].value
+  if (allowed.has(normalized)) return normalized
+  if (allowed.has('other')) return 'other'
+  return categoryTypeOptions[category][0].value
 }
 
 export function getCategoryLabel(category: ItemCategory): string {
