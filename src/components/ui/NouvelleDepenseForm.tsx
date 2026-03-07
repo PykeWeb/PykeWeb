@@ -208,7 +208,7 @@ export function NouvelleDepenseForm({
               </TabPill>
             ))}
             <TabPill active={useTemporaryItem} onClick={() => setUseTemporaryItem(true)}>
-              Item provisoire
+              Autres
             </TabPill>
           </div>
         </div>

@@ -147,6 +147,15 @@ export function ItemForm({
 
         <div>
           <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.image}</label>
+          {initialItem?.image_url ? (
+            <div className="mb-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2">
+              <div className="h-12 w-12 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={initialItem.image_url} alt={initialItem.name} className="h-full w-full object-cover" />
+              </div>
+              <p className="text-xs text-white/70">Image actuelle</p>
+            </div>
+          ) : null}
           <ImageDropzone label="Ajoute une image (PNG/JPEG)" onChange={setImageFile} />
         </div>
 
