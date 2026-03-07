@@ -12,6 +12,7 @@ export default function AdminTablettePage() {
   const [rows, setRows] = useState<AdminRentalTicket[]>([])
   const [error, setError] = useState<string | null>(null)
   const [validatingId, setValidatingId] = useState<string | null>(null)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
 
   async function refresh() {
     const res = await fetch('/api/admin/tablette/rentals', withTenantSessionHeader({ cache: 'no-store' }))
@@ -75,8 +76,10 @@ export default function AdminTablettePage() {
                 </div>
               </div>
               {row.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={row.image_url} alt="Preuve" className="mt-2 h-28 w-auto rounded-lg border border-white/10 object-cover" />
+                <button type="button" className="mt-2" onClick={() => setPreviewImageUrl(row.image_url || null)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={row.image_url} alt="Preuve" className="h-28 w-auto rounded-lg border border-white/10 object-cover transition hover:opacity-90" />
+                </button>
               ) : null}
             </div>
           ))}
@@ -84,6 +87,18 @@ export default function AdminTablettePage() {
         </div>
         {error ? <p className="mt-3 rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
       </Panel>
+
+      {previewImageUrl ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setPreviewImageUrl(null)}>
+          <div className="max-h-[90vh] max-w-[90vw]" onClick={(event) => event.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewImageUrl} alt="Preuve en grand" className="max-h-[90vh] max-w-[90vw] rounded-xl border border-white/10 object-contain" />
+            <div className="mt-3 flex justify-end">
+              <SecondaryButton onClick={() => setPreviewImageUrl(null)}>Fermer</SecondaryButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

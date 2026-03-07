@@ -29,6 +29,8 @@ type SelectedExpenseItem = PickItem & {
   unitPrice: number
 }
 
+const ITEMS_JSON_MARKER = '__ITEMS_JSON__:'
+
 const catalogTypeOptions: Array<{ value: Exclude<ExpenseItemType, 'custom'>; label: string }> = [
   { value: 'objects', label: 'Objets' },
   { value: 'weapons', label: 'Armes' },
@@ -159,7 +161,14 @@ export function NouvelleDepenseForm({
                 const multiLabel = selectedItems.length > 1 ? 'Multiple' : item?.name || 'Item'
                 const isMultiCatalogExpense = !useTemporaryItem && selectedItems.length > 1
                 const mergedDescription = !useTemporaryItem && selectedItems.length > 1
-                  ? `${description.trim() || ''}${description.trim() ? '\n\n' : ''}Items:\n${selectedItems.map((row) => `- ${row.name} × ${Math.max(1, row.quantity)}`).join('\n')}`
+                  ? `${description.trim() || ''}${description.trim() ? '\n\n' : ''}Items:\n${selectedItems.map((row) => `- ${row.name} × ${Math.max(1, row.quantity)}`).join('\n')}\n\n${ITEMS_JSON_MARKER}${JSON.stringify(selectedItems.map((row) => ({
+                    name: row.name,
+                    quantity: Math.max(1, row.quantity),
+                    unit_price: Math.max(0, row.unitPrice),
+                    image_url: row.image_url || null,
+                    item_source: row.type,
+                    item_id: row.id,
+                  })))}`
                   : description.trim()
                 await createExpense({
                   member_name: memberName.trim(),

@@ -224,7 +224,12 @@ export function DashboardClient() {
             total: Number(entry.amount ?? 0) || 0,
             quantity: Math.max(1, Number(entry.quantity ?? 1) || 1),
             created_at: entry.created_at,
-            item_image_url: entry.item_image_url || null,
+            item_image_url: getFinanceListImage({
+              movementType: entry.movement_type,
+              category: entry.category,
+              isMulti: entry.is_multi,
+              itemImageUrl: entry.item_image_url,
+            }),
           }))
 
         setRecentTx(recentFinanceTransactions)
