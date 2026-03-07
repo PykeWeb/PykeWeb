@@ -34,7 +34,7 @@ type ExpenseActionEntry = FinanceEntry & {
 }
 
 const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', sale: 'Vente/Sortie' }
-const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Custom', other: 'Autre' }
+const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Autres', other: 'Autre' }
 
 function toPositiveInt(value: string, fallback = 1) {
   const parsed = Number(value)
@@ -190,6 +190,12 @@ export default function FinanceClient() {
             {!loading && filtered.length === 0 ? <tr><td colSpan={9} className="px-4 py-8 text-center text-white/60">Aucun mouvement.</td></tr> : null}
             {!loading ? filtered.map((entry) => {
               const canManageExpense = isExpenseEntry(entry)
+              const listImageUrl = getFinanceListImage({
+                movementType: entry.movement_type,
+                category: entry.category,
+                isMulti: entry.is_multi,
+                itemImageUrl: entry.item_image_url,
+              })
               return (
                 <tr
                   key={`${entry.source}:${entry.id}`}
@@ -204,9 +210,9 @@ export default function FinanceClient() {
                 >
                   <td className="px-4 py-3">
                     <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-                      {getFinanceListImage({ movementType: entry.movement_type, isMulti: entry.is_multi, itemImageUrl: entry.item_image_url }) ? (
+                      {listImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={getFinanceListImage({ movementType: entry.movement_type, isMulti: entry.is_multi, itemImageUrl: entry.item_image_url }) || ''} alt={entry.item_label} className="h-full w-full object-cover" />
+                        <img src={listImageUrl} alt={entry.item_label} className="h-full w-full object-cover" />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
                       )}

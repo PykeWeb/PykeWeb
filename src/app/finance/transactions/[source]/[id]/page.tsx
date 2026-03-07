@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation'
 import { Panel } from '@/components/ui/Panel'
 import { SecondaryButton } from '@/components/ui/design-system'
 import type { FinanceEntryDetailResponse, FinanceEntrySource } from '@/lib/types/financeDetail'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 function formatMoney(value: number) {
   const normalized = Number.isFinite(value) ? value : 0
@@ -32,7 +33,10 @@ export default function FinanceTransactionDetailPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/finance/entries/${params.source}/${params.id}`, { cache: 'no-store' })
+        const res = await fetch(
+          `/api/finance/entries/${params.source}/${params.id}`,
+          withTenantSessionHeader({ cache: 'no-store' })
+        )
         if (!res.ok) throw new Error(await res.text())
         const json = (await res.json()) as FinanceEntryDetailResponse
         setDetail(json)

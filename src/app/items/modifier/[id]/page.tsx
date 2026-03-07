@@ -25,10 +25,18 @@ export default function EditItemPage() {
     void load()
   }, [])
 
+  const decodedId = useMemo(() => {
+    try {
+      return decodeURIComponent(params.id)
+    } catch {
+      return params.id
+    }
+  }, [params.id])
+
   const item = useMemo(() => {
     if (!items) return null
-    return items.find((entry) => entry.id === params.id) ?? null
-  }, [items, params.id])
+    return items.find((entry) => entry.id === decodedId) ?? null
+  }, [decodedId, items])
 
   if (error) {
     return (
