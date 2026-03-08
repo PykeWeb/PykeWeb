@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
+import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill } from 'lucide-react'
 
 type Tx = {
@@ -72,24 +73,21 @@ function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
   return [...safeOrder, ...missing].slice(0, DEFAULT_DASHBOARD_CARDS.length)
 }
 
+function createEmptyCategoryCounts(): Record<FinanceCategory, number> {
+  return { objects: 0, weapons: 0, equipment: 0, drugs: 0, custom: 0, other: 0 }
+}
+
+function createEmptyMovementCounts(): Record<FinanceMovementType, number> {
+  return { expense: 0, purchase: 0, sale: 0 }
+}
+
 export function DashboardClient() {
   const [loading, setLoading] = useState(true)
   const [recentTx, setRecentTx] = useState<Tx[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
 
-  const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>({
-    objects: 0,
-    weapons: 0,
-    equipment: 0,
-    drugs: 0,
-    custom: 0,
-    other: 0,
-  })
-  const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>({
-    expense: 0,
-    purchase: 0,
-    sale: 0,
-  })
+  const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>(createEmptyCategoryCounts)
+  const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>(createEmptyMovementCounts)
   const [activityView, setActivityView] = useState<ActivityView>('summary')
   const [pauseAutoUntil, setPauseAutoUntil] = useState(0)
   const [ticketKind, setTicketKind] = useState<'bug' | 'message'>('bug')
@@ -185,18 +183,26 @@ export function DashboardClient() {
 
   useEffect(() => {
     let alive = true
-    ;(async () => {
+    const loadDashboardData = async () => {
       setLoading(true)
       try {
         currentGroupId()
-        const financeEntries = await listFinanceEntries()
+        const [financeEntries, catalogItems] = await Promise.all([listFinanceEntries(), listCatalogItemsUnified()])
 
         if (!alive) return
 
-        const categoryCounts: Record<FinanceCategory, number> = { objects: 0, weapons: 0, equipment: 0, drugs: 0, custom: 0, other: 0 }
-        const movementCounts: Record<FinanceMovementType, number> = { expense: 0, purchase: 0, sale: 0 }
+        const categoryCounts = createEmptyCategoryCounts()
+        const movementCounts = createEmptyMovementCounts()
+
+        for (const item of catalogItems) {
+          if (item.category === 'objects' || item.category === 'weapons' || item.category === 'equipment' || item.category === 'drugs' || item.category === 'custom') {
+            categoryCounts[item.category] += 1
+          } else {
+            categoryCounts.other += 1
+          }
+        }
+
         for (const entry of financeEntries) {
-          categoryCounts[entry.category] += 1
           movementCounts[entry.movement_type] += 1
         }
 
@@ -241,12 +247,33 @@ export function DashboardClient() {
       } finally {
         if (alive) setLoading(false)
       }
-    })().catch(() => {
+    }
+
+    void loadDashboardData().catch(() => {
       if (alive) setLoading(false)
     })
 
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) return
+      void loadDashboardData().catch(() => undefined)
+    }, 5000)
+
+    const onWindowFocus = () => {
+      void loadDashboardData().catch(() => undefined)
+    }
+
+    const onVisibility = () => {
+      if (!document.hidden) void loadDashboardData().catch(() => undefined)
+    }
+
+    window.addEventListener('focus', onWindowFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+
     return () => {
       alive = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', onWindowFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 
