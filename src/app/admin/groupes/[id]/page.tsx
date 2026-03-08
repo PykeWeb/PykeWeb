@@ -160,14 +160,6 @@ export default function AdminGroupDetailsPage() {
           <div>
             <h1 className="text-3xl font-semibold">Gestion : {group.name} {group.badge ? `(${group.badge})` : ''}</h1>
             <p className="mt-1 text-sm text-white/70">Modifier, sécurité, activation et reset sans suppression.</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-white/80">
-                Expire le: {group.paid_until ? new Date(group.paid_until).toLocaleString('fr-FR') : 'Jamais'}
-              </span>
-              <span className="inline-flex rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-cyan-100">
-                Temps restant: {formatAccessRemaining(group.paid_until)}
-              </span>
-            </div>
           </div>
           <Link href="/admin/groupes" className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Retour</Link>
         </div>
@@ -197,6 +189,17 @@ export default function AdminGroupDetailsPage() {
             placeholder="Nouveau mot de passe"
           />
           <button type="button" onClick={() => setShowPassword((v) => !v)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">{showPassword ? 'Masquer' : 'Voir'}</button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              const generated = generatePassword({ avoidAmbiguous: true })
+              setPasswordDraft(generated)
+            }}
+            className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Générer
+          </button>
           <button type="button" onClick={() => void copyToClipboard(passwordDraft)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
           <button
             type="button"
@@ -208,22 +211,26 @@ export default function AdminGroupDetailsPage() {
           </button>
         </div>
 
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
+            <div className="space-y-1 text-sm text-white/80">
+              <p>
+                Expire le:{' '}
+                <span className="font-semibold text-white">{group.paid_until ? new Date(group.paid_until).toLocaleString('fr-FR') : 'Jamais'}</span>
+              </p>
+              <p>
+                Temps restant: <span className="font-semibold text-cyan-100">{formatAccessRemaining(group.paid_until)}</span>
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button disabled={busy} onClick={() => void addDays()} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">+ Jours</button>
+              <button disabled={busy} onClick={() => void savePatch({ paid_until: null })} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Illimité</button>
+            </div>
+          </div>
+        </div>
+
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            disabled={busy}
-            onClick={() => {
-              const generated = generatePassword({ avoidAmbiguous: true })
-              setPasswordDraft(generated)
-              void savePatch({ password: generated })
-            }}
-            className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]"
-          >
-            Générer MDP
-          </button>
-          <button disabled={busy} onClick={() => void copyToClipboard(passwordDraft)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">Copier MDP</button>
           <button disabled={busy} onClick={() => void savePatch({ active: !group.active })} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">{group.active ? 'Désactiver' : 'Activer'}</button>
-          <button disabled={busy} onClick={() => void addDays()} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">+ jours</button>
-          <button disabled={busy} onClick={() => void savePatch({ paid_until: null })} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm hover:bg-white/[0.12]">Illimité</button>
           <button disabled={busy} onClick={() => void resetGroupData()} className="h-10 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 text-sm text-amber-100 hover:bg-amber-500/20">Reset groupe</button>
           <button disabled={busy} onClick={() => void deleteGroup()} className="h-10 rounded-2xl border border-rose-300/30 bg-rose-500/12 px-4 text-sm text-rose-100 hover:bg-rose-500/22">Supprimer groupe</button>
         </div>

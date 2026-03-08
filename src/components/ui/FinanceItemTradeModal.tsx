@@ -348,7 +348,7 @@ export function FinanceItemTradeModal({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
-                    Prix {tradeMode === 'buy' ? 'achat' : 'vente'}
+                    Prix
                   </span>
                   <Input
                     value={entry.line.unitPrice}

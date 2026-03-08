@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { getFinanceListImage } from '@/lib/financeVisuals'
 
 type FilterType = 'all' | FinanceMovementType
-type FilterCategory = 'all' | FinanceCategory
+type FilterCategory = 'all' | 'multi' | FinanceCategory
 
 type EditableExpense = {
   id: string
@@ -101,7 +101,7 @@ export default function FinanceClient() {
   useEffect(() => {
     const categoryParam = searchParams.get('category')
     const typeParam = searchParams.get('type')
-    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) {
+    if (categoryParam && ['multi', 'objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) {
       setCategory(categoryParam as FilterCategory)
     }
     if (typeParam && ['expense', 'purchase', 'sale'].includes(typeParam)) {
@@ -113,7 +113,8 @@ export default function FinanceClient() {
     const query = q.trim().toLowerCase()
     return entries.filter((entry) => {
       if (type !== 'all' && entry.movement_type !== type) return false
-      if (category !== 'all' && entry.category !== category) return false
+      if (category === 'multi' && !entry.is_multi) return false
+      if (category !== 'all' && category !== 'multi' && entry.category !== category) return false
       if (!query) return true
       return `${entry.item_label} ${entry.member_name || ''} ${entry.notes || ''}`.toLowerCase().includes(query)
     })
@@ -174,6 +175,7 @@ export default function FinanceClient() {
 
       <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
         <TabPill active={category === 'all'} onClick={() => setCategory('all')}>Toutes catégories</TabPill>
+        <TabPill active={category === 'multi'} onClick={() => setCategory('multi')}>Multiple</TabPill>
         <TabPill active={category === 'objects'} onClick={() => setCategory('objects')}>Objets</TabPill>
         <TabPill active={category === 'weapons'} onClick={() => setCategory('weapons')}>Armes</TabPill>
         <TabPill active={category === 'equipment'} onClick={() => setCategory('equipment')}>Équipement</TabPill>
