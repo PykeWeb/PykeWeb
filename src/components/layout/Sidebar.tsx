@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone } from 'lucide-react'
+import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
@@ -40,7 +40,7 @@ export function Sidebar() {
   const [groupBadge, setGroupBadge] = useState('GROUPE')
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
-  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items'])
+  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'logs'])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -91,6 +91,7 @@ export function Sidebar() {
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
+    { id: 'logs', href: '/logs', label: 'Logs', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/logs') },
   ]
 
   return (
@@ -142,6 +143,7 @@ export function Sidebar() {
             <NavItem href="/admin/support" label="Support" icon={<LifeBuoy className="h-5 w-5" />} active={pathname.startsWith('/admin/support')} />
             <NavItem href="/admin/tablette" label="Tablette" icon={<Smartphone className="h-5 w-5" />} active={pathname.startsWith('/admin/tablette')} />
             <NavItem href="/admin/patch-notes" label="Patch notes" icon={<ScrollText className="h-5 w-5" />} active={pathname.startsWith('/admin/patch-notes')} />
+            <NavItem href="/admin/logs" label="Logs" icon={<ClipboardList className="h-5 w-5" />} active={pathname.startsWith('/admin/logs')} />
           </>
         ) : (
           <LongPressReorderableRow

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Settings2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
+import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
 
 const STORAGE_KEY = 'pykeweb:text-overrides:v1'
 
@@ -245,6 +246,18 @@ export function SiteTextModWidget() {
 
   return (
     <>
+      <button
+        data-mod-widget="true"
+        type="button"
+        onClick={() => {
+          const session = getTenantSession()
+          window.location.href = isAdminTenantSession(session) ? '/admin/logs' : '/logs'
+        }}
+        className="fixed bottom-3 right-16 z-[100] inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/70 px-2 py-1 text-[10px] text-white/80 hover:bg-black/90"
+      >
+        Logs
+      </button>
+
       <button
         data-mod-widget="true"
         type="button"

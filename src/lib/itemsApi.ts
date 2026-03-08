@@ -4,6 +4,7 @@ import { getTenantSession } from '@/lib/tenantSession'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { toNonNegative, toPositiveInt, calcTotal } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
+import { createAppLog } from '@/lib/logsApi'
 import { getSuggestedInternalId } from '@/lib/itemId'
 import type { CatalogItem, FinancePaymentMode, FinanceTransaction, ItemCategory, ItemRarity, ItemType } from '@/lib/types/itemsFinance'
 import { normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
@@ -1094,5 +1095,13 @@ export async function createFinanceTransaction(args: {
     .single<FinanceTransaction>()
 
   if (error) throw error
+  void createAppLog({
+    area: 'finance.transactions',
+    action: args.mode,
+    message: `${args.mode === 'buy' ? 'Achat' : 'Vente'}: ${item.name} x${qty} (${calcTotal(qty, unit).toFixed(2)} $)`,
+    entity_type: 'finance_transaction',
+    entity_id: data.id,
+    payload: { item_id: resolvedItemId, item_name: item.name, quantity: qty, unit_price: unit, total: calcTotal(qty, unit) },
+  })
   return data
 }

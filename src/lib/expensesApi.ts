@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
+import { createAppLog } from '@/lib/logsApi'
 
 export type ExpenseStatus = 'pending' | 'paid'
 
@@ -139,10 +140,27 @@ export async function createExpense(args: {
       .single<ExpenseRow>()
     if (updateError) throw updateError
     if (!updated) throw new Error('Update failed')
-    return normalizeExpenseRow(updated)
+    const normalized = normalizeExpenseRow(updated)
+    void createAppLog({
+      area: 'finance.expenses',
+      action: 'create',
+      message: `Nouvelle dépense: ${normalized.item_label} (${normalized.total.toFixed(2)} $)`,
+      entity_type: 'expense',
+      entity_id: normalized.id,
+      payload: { quantity: normalized.quantity, unit_price: normalized.unit_price, total: normalized.total },
+    })
+    return normalized
   }
-
-  return normalizeExpenseRow(inserted)
+  const normalized = normalizeExpenseRow(inserted)
+  void createAppLog({
+    area: 'finance.expenses',
+    action: 'create',
+    message: `Nouvelle dépense: ${normalized.item_label} (${normalized.total.toFixed(2)} $)`,
+    entity_type: 'expense',
+    entity_id: normalized.id,
+    payload: { quantity: normalized.quantity, unit_price: normalized.unit_price, total: normalized.total },
+  })
+  return normalized
 }
 
 export async function updateExpense(args: {
@@ -171,6 +189,14 @@ export async function updateExpense(args: {
     .eq('group_id', currentGroupId())
 
   if (error) throw error
+  void createAppLog({
+    area: 'finance.expenses',
+    action: 'update',
+    message: `Dépense modifiée: ${args.item_label.trim()} (${total.toFixed(2)} $)`,
+    entity_type: 'expense',
+    entity_id: args.expenseId,
+    payload: { quantity, unit_price, total },
+  })
 }
 
 export async function setExpenseStatus(args: { expenseId: string; status: ExpenseStatus }) {
@@ -181,9 +207,24 @@ export async function setExpenseStatus(args: { expenseId: string; status: Expens
 
   const { error } = await supabase.from('expenses').update(patch).eq('id', args.expenseId).eq('group_id', currentGroupId())
   if (error) throw error
+  void createAppLog({
+    area: 'finance.expenses',
+    action: 'status',
+    message: `Statut dépense: ${args.status === 'paid' ? 'Remboursé' : 'En attente'}`,
+    entity_type: 'expense',
+    entity_id: args.expenseId,
+    payload: { status: args.status },
+  })
 }
 
 export async function deleteExpense(expenseId: string) {
   const { error } = await supabase.from('expenses').delete().eq('id', expenseId).eq('group_id', currentGroupId())
   if (error) throw error
+  void createAppLog({
+    area: 'finance.expenses',
+    action: 'delete',
+    message: 'Dépense supprimée',
+    entity_type: 'expense',
+    entity_id: expenseId,
+  })
 }
