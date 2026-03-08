@@ -18,6 +18,24 @@ import { toast } from 'sonner'
 
 type EditableExportItem = ExportableGroupItem & { selected: boolean }
 
+function formatAccessRemaining(paidUntil: string | null) {
+  if (!paidUntil) return 'Accès illimité'
+  const paidUntilDate = new Date(paidUntil)
+  if (Number.isNaN(paidUntilDate.getTime())) return 'Expiration invalide'
+
+  const remainingMs = paidUntilDate.getTime() - Date.now()
+  if (remainingMs <= 0) return 'Accès expiré'
+
+  const totalMinutes = Math.floor(remainingMs / (1000 * 60))
+  const days = Math.floor(totalMinutes / (60 * 24))
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
+  const minutes = totalMinutes % 60
+
+  if (days > 0) return `${days}j ${hours}h restantes`
+  if (hours > 0) return `${hours}h ${minutes}m restantes`
+  return `${minutes}m restantes`
+}
+
 function downloadJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -142,6 +160,14 @@ export default function AdminGroupDetailsPage() {
           <div>
             <h1 className="text-3xl font-semibold">Gestion : {group.name} {group.badge ? `(${group.badge})` : ''}</h1>
             <p className="mt-1 text-sm text-white/70">Modifier, sécurité, activation et reset sans suppression.</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-white/80">
+                Expire le: {group.paid_until ? new Date(group.paid_until).toLocaleString('fr-FR') : 'Jamais'}
+              </span>
+              <span className="inline-flex rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-cyan-100">
+                Temps restant: {formatAccessRemaining(group.paid_until)}
+              </span>
+            </div>
           </div>
           <Link href="/admin/groupes" className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Retour</Link>
         </div>

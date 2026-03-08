@@ -27,10 +27,14 @@ export default function DepensesClient({
   newExpenseHref = '/depenses/nouveau',
   backHref,
   title,
+  detailsBaseHref,
+  hideInlineActions = false,
 }: {
   newExpenseHref?: string
   backHref?: string
   title?: string
+  detailsBaseHref?: string
+  hideInlineActions?: boolean
 } = {}) {
   const [items, setItems] = useState<DbExpense[]>([])
   const [query, setQuery] = useState('')
@@ -63,6 +67,13 @@ export default function DepensesClient({
 
   const pendingSum = useMemo(() => filtered.filter((e) => e.status !== 'paid').reduce((s, e) => s + (e.total || 0), 0), [filtered])
   const paidSum = useMemo(() => filtered.filter((e) => e.status === 'paid').reduce((s, e) => s + (e.total || 0), 0), [filtered])
+
+  function shouldShowDescription(expense: DbExpense) {
+    const description = expense.description?.trim()
+    if (!description) return false
+    if (description.includes('__ITEMS_JSON__:')) return false
+    return expense.item_label.toLowerCase() !== 'multiple'
+  }
 
   async function onDeleteExpense() {
     if (!pendingDelete) return
@@ -98,10 +109,10 @@ export default function DepensesClient({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-          <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} className="w-[300px]" placeholder="Rechercher (membre / item)…" />
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} className="w-[320px] max-w-full" placeholder="Rechercher (membre / item)…" />
           <div className="text-sm text-white/60">{filtered.length} dépense(s)</div>
-          <div className="ml-auto flex items-center gap-4 text-sm text-white/70">
+          <div className="ml-auto flex flex-wrap items-center gap-4 text-sm text-white/70">
             <span>
               En attente : <span className="font-semibold">{pendingSum.toFixed(2)} $</span>
             </span>
@@ -138,16 +149,28 @@ export default function DepensesClient({
                 </tr>
               ) : (
                 filtered.map((e) => (
-                  <tr key={e.id} className="hover:bg-white/[0.02]">
+                  <tr
+                    key={e.id}
+                    className={`hover:bg-white/[0.02] ${detailsBaseHref ? 'cursor-pointer' : ''}`}
+                    onClick={() => {
+                      if (!detailsBaseHref) return
+                      window.location.href = `${detailsBaseHref}/${e.id}`
+                    }}
+                  >
                     <td className="px-4 py-3">
                       <div className="font-semibold">{e.member_name}</div>
                       <div className="text-xs text-white/50">{new Date(e.created_at).toLocaleString()}</div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-semibold">{e.item_label}</div>
-                      {e.description ? <div className="text-xs text-white/60 line-clamp-1">{e.description}</div> : null}
+                      {shouldShowDescription(e) ? <div className="text-xs text-white/60 line-clamp-1">{e.description}</div> : null}
                       {e.proof_image_url ? (
-                        <a href={e.proof_image_url} target="_blank" className="text-xs text-white/60 underline underline-offset-2">
+                        <a
+                          href={e.proof_image_url}
+                          target="_blank"
+                          className="text-xs text-white/60 underline underline-offset-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           Voir preuve
                         </a>
                       ) : null}
@@ -156,28 +179,30 @@ export default function DepensesClient({
                     <td className="px-4 py-3">{Number(e.total).toFixed(2)} $</td>
                     <td className="px-4 py-3">{badge(e.status)}</td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <SecondaryButton
-                          disabled={busyId === e.id}
-                          onClick={async () => {
-                            setBusyId(e.id)
-                            setError(null)
-                            try {
-                              await setExpenseStatus({ expenseId: e.id, status: e.status === 'paid' ? 'pending' : 'paid' })
-                              await refresh()
-                            } catch (err: any) {
-                              setError(err?.message || 'Erreur')
-                            } finally {
-                              setBusyId(null)
-                            }
-                          }}
-                        >
-                          {e.status === 'paid' ? 'Remettre en attente' : 'Rembourser'}
-                        </SecondaryButton>
-                        <SecondaryButton type="button" disabled={busyId === e.id} onClick={() => setPendingDelete(e)} icon={<Trash2 className="h-4 w-4" />}>
-                          Supprimer
-                        </SecondaryButton>
-                      </div>
+                      {hideInlineActions ? null : (
+                        <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
+                          <SecondaryButton
+                            disabled={busyId === e.id}
+                            onClick={async () => {
+                              setBusyId(e.id)
+                              setError(null)
+                              try {
+                                await setExpenseStatus({ expenseId: e.id, status: e.status === 'paid' ? 'pending' : 'paid' })
+                                await refresh()
+                              } catch (err: unknown) {
+                                setError(err instanceof Error ? err.message : 'Erreur')
+                              } finally {
+                                setBusyId(null)
+                              }
+                            }}
+                          >
+                            {e.status === 'paid' ? 'Remettre en attente' : 'Rembourser'}
+                          </SecondaryButton>
+                          <SecondaryButton type="button" disabled={busyId === e.id} onClick={() => setPendingDelete(e)} icon={<Trash2 className="h-4 w-4" />}>
+                            Supprimer
+                          </SecondaryButton>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

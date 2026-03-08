@@ -159,6 +159,19 @@ export function NouvelleDepenseForm({
     })
   }
 
+  function updateSelectedItemUnitPrice(selectionKey: string, rawPrice: string) {
+    setSelectedItems((prev) =>
+      prev.map((row) => {
+        if (row.selectionKey !== selectionKey) return row
+        const parsed = Number(rawPrice)
+        return {
+          ...row,
+          unitPrice: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
+        }
+      })
+    )
+  }
+
   return (
     <CenteredFormLayout
       title={title}
@@ -317,6 +330,17 @@ export function NouvelleDepenseForm({
                   <div className="min-w-[160px] flex-1">
                     <p className="truncate text-sm font-medium">{item.name}</p>
                     <p className="text-xs text-white/60">{item.unitPrice.toFixed(2)} $ / unité</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
+                      Prix item
+                    </span>
+                    <Input
+                      value={String(item.unitPrice)}
+                      onChange={(event) => updateSelectedItemUnitPrice(item.selectionKey, event.target.value)}
+                      inputMode="decimal"
+                      className="w-[120px]"
+                    />
                   </div>
                   <div className="w-[170px]">
                     <QuantityStepper
