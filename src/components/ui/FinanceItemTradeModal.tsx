@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Box, Image as ImageIcon, Pill, Search, Shapes, Shield, Swords, Plus, Minus } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Box, Image as ImageIcon, Pill, Search, Shapes, Shield, Swords, Minus } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
@@ -271,7 +271,12 @@ export function FinanceItemTradeModal({
               <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
                 {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
                 {filtered.map((it) => (
-                  <div key={it.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                  <button
+                    key={it.id}
+                    type="button"
+                    onClick={() => addItemToLines(it)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-left transition hover:bg-white/[0.06]"
+                  >
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
                         {it.image_url ? (
@@ -288,18 +293,11 @@ export function FinanceItemTradeModal({
                         <p className="truncate text-xs text-white/60">{getTypeLabel(it.item_type, it.category)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 text-right">
                       <span className="text-xs text-white/65">Stock: {it.stock}</span>
                       <span className="text-xs text-white/65">Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $</span>
-                      <button
-                        type="button"
-                        onClick={() => addItemToLines(it)}
-                        className="rounded-lg border border-white/20 bg-white/10 p-1.5 text-white hover:bg-white/20"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
                     </div>
-                  </div>
+                  </button>
                 ))}
                 {filtered.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item pour ces filtres.</p> : null}
               </div>
@@ -330,6 +328,17 @@ export function FinanceItemTradeModal({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
+                    Prix
+                  </span>
+                  <Input
+                    value={entry.line.unitPrice}
+                    onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                    inputMode="decimal"
+                    className="md:w-[140px]"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => updateLine(entry.item.id, { quantity: Math.max(1, entry.line.quantity - 1) })}
@@ -345,17 +354,6 @@ export function FinanceItemTradeModal({
                       max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
                     />
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
-                    Prix
-                  </span>
-                  <Input
-                    value={entry.line.unitPrice}
-                    onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
-                    inputMode="decimal"
-                    className="md:w-[140px]"
-                  />
                 </div>
                 <button
                   type="button"

@@ -34,7 +34,7 @@ type ExpenseActionEntry = FinanceEntry & {
 }
 
 const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', sale: 'Vente/Sortie' }
-const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Autres', other: 'Autre' }
+const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Autres', other: 'Autres' }
 
 function toPositiveInt(value: string, fallback = 1) {
   const parsed = Number(value)
@@ -102,7 +102,7 @@ export default function FinanceClient() {
     const categoryParam = searchParams.get('category')
     const typeParam = searchParams.get('type')
     if (categoryParam && ['multi', 'objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) {
-      setCategory(categoryParam as FilterCategory)
+      setCategory(categoryParam === 'custom' ? 'other' : (categoryParam as FilterCategory))
     }
     if (typeParam && ['expense', 'purchase', 'sale'].includes(typeParam)) {
       setType(typeParam as FilterType)
@@ -114,7 +114,8 @@ export default function FinanceClient() {
     return entries.filter((entry) => {
       if (type !== 'all' && entry.movement_type !== type) return false
       if (category === 'multi' && !entry.is_multi) return false
-      if (category !== 'all' && category !== 'multi' && entry.category !== category) return false
+      if (category === 'other' && !['other', 'custom'].includes(entry.category)) return false
+      if (category !== 'all' && category !== 'multi' && category !== 'other' && entry.category !== category) return false
       if (!query) return true
       return `${entry.item_label} ${entry.member_name || ''} ${entry.notes || ''}`.toLowerCase().includes(query)
     })
@@ -180,7 +181,6 @@ export default function FinanceClient() {
         <TabPill active={category === 'weapons'} onClick={() => setCategory('weapons')}>Armes</TabPill>
         <TabPill active={category === 'equipment'} onClick={() => setCategory('equipment')}>Équipement</TabPill>
         <TabPill active={category === 'drugs'} onClick={() => setCategory('drugs')}>Drogues</TabPill>
-        <TabPill active={category === 'custom'} onClick={() => setCategory('custom')}>Custom</TabPill>
         <TabPill active={category === 'other'} onClick={() => setCategory('other')}>Autres</TabPill>
       </div>
 
