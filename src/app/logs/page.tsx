@@ -14,11 +14,21 @@ function formatDate(value: string) {
   return date.toLocaleString('fr-FR')
 }
 
+function formatPayload(value: Record<string, unknown> | null) {
+  if (!value) return '—'
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return 'Payload invalide'
+  }
+}
+
 export default function LogsPage() {
   const [rows, setRows] = useState<AppLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null)
 
   useEffect(() => {
     const session = getTenantSession()
@@ -42,8 +52,10 @@ export default function LogsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return rows
-    return rows.filter((log) => `${log.area} ${log.action} ${log.message} ${log.actor_name || ''}`.toLowerCase().includes(q))
+    return rows.filter((log) => `${log.area} ${log.action} ${log.message} ${log.actor_name || ''} ${log.entity_type || ''} ${log.entity_id || ''}`.toLowerCase().includes(q))
   }, [rows, query])
+
+  const selectedLog = useMemo(() => filtered.find((entry) => entry.id === selectedLogId) || null, [filtered, selectedLogId])
 
   return (
     <Panel>
@@ -78,7 +90,11 @@ export default function LogsPage() {
               <tr><td colSpan={5} className="px-4 py-8 text-center text-white/60">Aucun log.</td></tr>
             ) : (
               filtered.map((log) => (
-                <tr key={log.id}>
+                <tr
+                  key={log.id}
+                  className={`cursor-pointer hover:bg-white/[0.04] ${selectedLogId === log.id ? 'bg-white/[0.03]' : ''}`}
+                  onClick={() => setSelectedLogId(log.id)}
+                >
                   <td className="px-4 py-3 text-white/70">{formatDate(log.created_at)}</td>
                   <td className="px-4 py-3">{log.actor_name || '—'}</td>
                   <td className="px-4 py-3">{log.area}</td>
@@ -90,6 +106,29 @@ export default function LogsPage() {
           </tbody>
         </table>
       </div>
+
+      {selectedLog ? (
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold">Détail du log</h2>
+            <span className="text-xs text-white/60">ID: {selectedLog.id}</span>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+            <p><span className="text-white/60">Date:</span> {formatDate(selectedLog.created_at)}</p>
+            <p><span className="text-white/60">Source acteur:</span> {selectedLog.actor_source}</p>
+            <p><span className="text-white/60">Acteur:</span> {selectedLog.actor_name || '—'}</p>
+            <p><span className="text-white/60">Zone:</span> {selectedLog.area}</p>
+            <p><span className="text-white/60">Action:</span> {selectedLog.action}</p>
+            <p><span className="text-white/60">Type entité:</span> {selectedLog.entity_type || '—'}</p>
+            <p className="md:col-span-2"><span className="text-white/60">ID entité:</span> {selectedLog.entity_id || '—'}</p>
+            <p className="md:col-span-2"><span className="text-white/60">Message:</span> {selectedLog.message}</p>
+          </div>
+          <div className="mt-3">
+            <p className="mb-1 text-xs text-white/60">Payload JSON</p>
+            <pre className="max-h-56 overflow-auto rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-white/80">{formatPayload(selectedLog.payload)}</pre>
+          </div>
+        </div>
+      ) : null}
 
       {error ? <p className="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
     </Panel>

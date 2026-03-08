@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Settings2 } from 'lucide-react'
+import { ClipboardList, Settings2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
@@ -255,6 +255,7 @@ export function SiteTextModWidget() {
         }}
         className="fixed bottom-3 right-16 z-[100] inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/70 px-2 py-1 text-[10px] text-white/80 hover:bg-black/90"
       >
+        <ClipboardList className="h-3 w-3" />
         Logs
       </button>
 
