@@ -311,11 +311,23 @@ export function FinanceItemTradeModal({
             {linesWithItems.length === 0 ? <p className="text-sm text-white/60">Ajoute des items à la liste pour continuer.</p> : null}
             {linesWithItems.map((entry) => (
               <div key={entry.item.id} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{entry.item.name}</p>
-                  <p className="text-xs text-white/60">
-                    {getTypeLabel(entry.item.item_type, entry.item.category)} · Stock: {entry.item.stock}
-                  </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                    {entry.item.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={entry.item.image_url} alt={entry.item.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-white/40">
+                        <ImageIcon className="h-3.5 w-3.5" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{entry.item.name}</p>
+                    <p className="text-xs text-white/60">
+                      {getTypeLabel(entry.item.item_type, entry.item.category)} · Stock: {entry.item.stock}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -334,12 +346,15 @@ export function FinanceItemTradeModal({
                     />
                   </div>
                 </div>
-                <Input
-                  value={entry.line.unitPrice}
-                  onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
-                  inputMode="decimal"
-                  className="md:w-[140px]"
-                />
+                <div>
+                  <label className="mb-1 block text-[11px] text-white/60">Prix {tradeMode === 'buy' ? 'achat' : 'vente'}</label>
+                  <Input
+                    value={entry.line.unitPrice}
+                    onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                    inputMode="decimal"
+                    className="md:w-[140px]"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => removeLine(entry.item.id)}

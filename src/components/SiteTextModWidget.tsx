@@ -145,6 +145,8 @@ export function SiteTextModWidget() {
   const [dbStatus, setDbStatus] = useState<string>('Sauvegarde en ligne active')
   const [dbCount, setDbCount] = useState<number>(0)
   const [adminCreds, setAdminCreds] = useState<AdminCreds | null>(null)
+  const [editingSourceText, setEditingSourceText] = useState<string | null>(null)
+  const [editingDraft, setEditingDraft] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -180,23 +182,30 @@ export function SiteTextModWidget() {
       const current = editable.value
       const originalEntry = Object.entries(overrides).find(([, replacement]) => replacement === current)
       const sourceText = originalEntry?.[0] ?? current
-      const nextValue = window.prompt('Modifier ce texte :', current)
-      if (!nextValue || nextValue === current) return
-
-      const nextOverrides = { ...overrides, [sourceText]: nextValue }
-      setOverrides(nextOverrides)
-      writeOverrides(nextOverrides)
-      void upsertOverrideOnline(sourceText, nextValue, adminCreds)
-        .then((count) => {
-          setDbStatus('Sauvegarde en ligne active')
-          setDbCount(count)
-        })
-        .catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
+      setEditingSourceText(sourceText)
+      setEditingDraft(current)
     }
 
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
   }, [modMode, overrides, adminCreds])
+
+  const saveEdit = () => {
+    if (!editingSourceText || !adminCreds) return
+    const nextValue = editingDraft.trim()
+    if (!nextValue) return
+    const nextOverrides = { ...overrides, [editingSourceText]: nextValue }
+    setOverrides(nextOverrides)
+    writeOverrides(nextOverrides)
+    setEditingSourceText(null)
+    setEditingDraft('')
+    void upsertOverrideOnline(editingSourceText, nextValue, adminCreds)
+      .then((count) => {
+        setDbStatus('Sauvegarde en ligne active')
+        setDbCount(count)
+      })
+      .catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
+  }
 
   const overrideCount = useMemo(() => dbCount || Object.keys(overrides).length, [dbCount, overrides])
 
@@ -270,6 +279,23 @@ export function SiteTextModWidget() {
               <p className="text-[11px] text-white/60">Astuce: active le mode puis clique sur un texte pour le modifier.</p>
             </div>
           )}
+        </div>
+      ) : null}
+      {editingSourceText ? (
+        <div data-mod-widget="true" className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4" onClick={() => { setEditingSourceText(null); setEditingDraft('') }}>
+          <div className="w-full max-w-xl rounded-xl border border-white/20 bg-slate-950/95 p-3 text-xs text-white" onClick={(event) => event.stopPropagation()}>
+            <p className="mb-2 font-semibold">Modifier ce texte</p>
+            <p className="mb-2 rounded-md border border-white/10 bg-white/5 p-2 text-[11px] text-white/70">Original: {editingSourceText}</p>
+            <textarea
+              value={editingDraft}
+              onChange={(event) => setEditingDraft(event.target.value)}
+              className="min-h-[120px] w-full rounded-md border border-white/20 bg-black/50 px-2 py-1.5 text-sm"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button type="button" onClick={() => { setEditingSourceText(null); setEditingDraft('') }} className="rounded-md border border-white/20 bg-white/10 px-3 py-1">Annuler</button>
+              <button type="button" onClick={saveEdit} disabled={!editingDraft.trim()} className="rounded-md border border-emerald-400/40 bg-emerald-600/20 px-3 py-1 disabled:opacity-50">Enregistrer</button>
+            </div>
+          </div>
         </div>
       ) : null}
       <ConfirmDialog

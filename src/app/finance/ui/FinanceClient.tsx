@@ -221,7 +221,7 @@ export default function FinanceClient() {
                       <span>{entry.item_label}</span>
                       {entry.is_multi ? <Layers3 className="h-3.5 w-3.5 text-cyan-200" /> : null}
                     </div>
-                    {entry.notes ? <div className="text-xs text-white/50 line-clamp-1">{entry.notes}</div> : null}
+                    {entry.notes && !(entry.movement_type === 'expense' && entry.is_multi) ? <div className="text-xs text-white/50 line-clamp-1">{entry.notes}</div> : null}
                   </td>
                   <td className="px-4 py-3">{entry.quantity}</td>
                   <td className="px-4 py-3">{entry.amount == null ? '—' : `${Number(entry.amount).toFixed(2)} $`}</td>

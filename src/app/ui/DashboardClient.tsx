@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -28,7 +28,7 @@ type Tx = {
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
 type ActivityView = 'summary' | 'transactions' | 'expenses' | 'finance'
 
-type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items'
+type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items' | 'calculator' | 'plantations'
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
 type DashboardMetrics = {
@@ -46,6 +46,8 @@ const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'itemTrade', title: 'Achat/Vente items', subtitle: 'Achat et sortie de stock', href: '/items/achat-vente', icon: Receipt },
   { key: 'finance', title: 'Espace Finance', subtitle: 'Voir toutes les opérations', href: '/finance', icon: Wallet },
   { key: 'items', title: 'Espace Items', subtitle: 'Voir le catalogue items', href: '/items', icon: Box },
+  { key: 'calculator', title: 'Calculateur', subtitle: 'Outils de calcul', href: '/items?view=tools', icon: Shapes },
+  { key: 'plantations', title: 'Plantations', subtitle: 'Drogues & plantations', href: '/drogues/plantations', icon: Pill },
 ]
 const CARD_OPTIONS: CardOption[] = [
   { key: 'catObjects', title: 'Objets', href: '/items?category=objects', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.objects)) },
