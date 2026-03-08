@@ -22,7 +22,7 @@ export type FinanceEntry = {
   created_at: string
 }
 
-type TxJoinItem = { name_snapshot: string | null; quantity: number | null }
+type TxJoinItem = { name_snapshot: string | null; quantity: number | null; image_url_snapshot?: string | null }
 type FinanceTransactionJoinItem = { name: string | null; category: string | null; image_url: string | null }
 type FinanceTransactionRow = {
   id: string
@@ -49,7 +49,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       .limit(500),
     supabase
       .from('transactions')
-      .select('id,type,counterparty,total,notes,created_at,transaction_items(name_snapshot,quantity)')
+      .select('id,type,counterparty,total,notes,created_at,transaction_items(name_snapshot,quantity,image_url_snapshot)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
@@ -119,13 +119,14 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       : false
     const itemName = txItems.length > 1 && !sameName ? 'Multiple' : (firstItem?.name_snapshot || 'Transaction')
     const qty = txItems.reduce((sum, item) => sum + Math.max(0, Number(item.quantity ?? 0) || 0), 0) || 1
+    const firstImage = txItems.find((item) => typeof item.image_url_snapshot === 'string' && item.image_url_snapshot)?.image_url_snapshot || null
     entries.push({
       id: tx.id,
       source: 'transactions',
       movement_type: tx.type === 'purchase' ? 'purchase' : 'sale',
       category: 'objects',
       item_label: itemName,
-      item_image_url: null,
+      item_image_url: txItems.length > 1 ? null : firstImage,
       is_multi: txItems.length > 1,
       member_name: tx.counterparty,
       quantity: qty,

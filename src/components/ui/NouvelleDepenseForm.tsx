@@ -38,6 +38,23 @@ const catalogTypeOptions: Array<{ value: Exclude<ExpenseItemType, 'custom'>; lab
   { value: 'drugs', label: 'Drogues' },
 ]
 
+async function enrichMissingImagesByName(category: Exclude<ExpenseItemType, 'custom'>, baseItems: PickItem[]) {
+  const missing = baseItems.filter((item) => !item.image_url).length
+  if (missing === 0) return baseItems
+
+  try {
+    const rows = await fetch(`/api/catalog/items?category=${category}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])) as Array<{ name?: string | null; image_url?: string | null }>
+    const byName = new Map(rows.map((row) => [String(row.name || '').trim().toLowerCase(), row.image_url || null]))
+    return baseItems.map((item) => {
+      if (item.image_url) return item
+      const imageUrl = byName.get(item.name.trim().toLowerCase())
+      return imageUrl ? { ...item, image_url: imageUrl } : item
+    })
+  } catch {
+    return baseItems
+  }
+}
+
 export function NouvelleDepenseForm({
   backHref = '/depenses',
   successHref = '/depenses',
@@ -95,21 +112,25 @@ export function NouvelleDepenseForm({
       try {
         if (itemType === 'objects') {
           const data = await listObjects()
-          setItems(data.map((o: DbObject) => ({ type: 'objects', id: o.id, name: o.name, price: o.price, image_url: o.image_url })))
+          const mapped: PickItem[] = data.map((o: DbObject) => ({ type: 'objects', id: o.id, name: o.name, price: o.price, image_url: o.image_url }))
+          setItems(await enrichMissingImagesByName('objects', mapped))
           return
         }
         if (itemType === 'weapons') {
           const data = await listWeapons()
-          setItems(data.map((w: DbWeapon) => ({ type: 'weapons', id: w.id, name: w.name || w.weapon_id || 'Arme', price: 0, image_url: w.image_url })))
+          const mapped: PickItem[] = data.map((w: DbWeapon) => ({ type: 'weapons', id: w.id, name: w.name || w.weapon_id || 'Arme', price: 0, image_url: w.image_url }))
+          setItems(await enrichMissingImagesByName('weapons', mapped))
           return
         }
         if (itemType === 'equipment') {
           const data = await listEquipment()
-          setItems(data.map((e: DbEquipment) => ({ type: 'equipment', id: e.id, name: e.name, price: e.price, image_url: e.image_url })))
+          const mapped: PickItem[] = data.map((e: DbEquipment) => ({ type: 'equipment', id: e.id, name: e.name, price: e.price, image_url: e.image_url }))
+          setItems(await enrichMissingImagesByName('equipment', mapped))
           return
         }
         const data = await listDrugItems()
-        setItems(data.map((d: DbDrugItem) => ({ type: 'drugs', id: d.id, name: d.name, price: d.price, image_url: d.image_url })))
+        const mapped: PickItem[] = data.map((d: DbDrugItem) => ({ type: 'drugs', id: d.id, name: d.name, price: d.price, image_url: d.image_url }))
+        setItems(await enrichMissingImagesByName('drugs', mapped))
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Erreur')
       }

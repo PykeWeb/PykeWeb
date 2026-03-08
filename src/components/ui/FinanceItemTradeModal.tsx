@@ -346,8 +346,10 @@ export function FinanceItemTradeModal({
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-[11px] text-white/60">Prix {tradeMode === 'buy' ? 'achat' : 'vente'}</label>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
+                    Prix {tradeMode === 'buy' ? 'achat' : 'vente'}
+                  </span>
                   <Input
                     value={entry.line.unitPrice}
                     onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
