@@ -7,6 +7,7 @@ import type { AppLogEntry } from '@/lib/types/logs'
 import { getTenantSession } from '@/lib/tenantSession'
 import { SearchInput, SecondaryButton } from '@/components/ui/design-system'
 import { Panel } from '@/components/ui/Panel'
+import { getLogActorDetails } from '@/lib/logActor'
 
 function formatDate(value: string) {
   const date = new Date(value)
@@ -52,10 +53,16 @@ export default function LogsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return rows
-    return rows.filter((log) => `${log.area} ${log.action} ${log.message} ${log.actor_name || ''} ${log.entity_type || ''} ${log.entity_id || ''}`.toLowerCase().includes(q))
+    return rows.filter((log) => {
+      const actor = getLogActorDetails(log)
+      return `${log.area} ${log.action} ${log.message} ${actor.displayName} ${actor.characterName || ''} ${actor.steamAccount || ''} ${log.entity_type || ''} ${log.entity_id || ''}`
+        .toLowerCase()
+        .includes(q)
+    })
   }, [rows, query])
 
   const selectedLog = useMemo(() => filtered.find((entry) => entry.id === selectedLogId) || null, [filtered, selectedLogId])
+  const selectedActor = selectedLog ? getLogActorDetails(selectedLog) : null
 
   return (
     <Panel>
@@ -89,25 +96,28 @@ export default function LogsPage() {
             ) : filtered.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-white/60">Aucun log.</td></tr>
             ) : (
-              filtered.map((log) => (
+              filtered.map((log) => {
+                const actor = getLogActorDetails(log)
+                return (
                 <tr
                   key={log.id}
                   className={`cursor-pointer hover:bg-white/[0.04] ${selectedLogId === log.id ? 'bg-white/[0.03]' : ''}`}
                   onClick={() => setSelectedLogId(log.id)}
                 >
                   <td className="px-4 py-3 text-white/70">{formatDate(log.created_at)}</td>
-                  <td className="px-4 py-3">{log.actor_name || '—'}</td>
+                  <td className="px-4 py-3">{actor.displayName}</td>
                   <td className="px-4 py-3">{log.area}</td>
                   <td className="px-4 py-3">{log.action}</td>
                   <td className="px-4 py-3">{log.message}</td>
                 </tr>
-              ))
+                )
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {selectedLog ? (
+      {selectedLog && selectedActor ? (
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold">Détail du log</h2>
@@ -116,10 +126,12 @@ export default function LogsPage() {
           <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
             <p><span className="text-white/60">Date:</span> {formatDate(selectedLog.created_at)}</p>
             <p><span className="text-white/60">Source acteur:</span> {selectedLog.actor_source}</p>
-            <p><span className="text-white/60">Acteur:</span> {selectedLog.actor_name || '—'}</p>
+            <p><span className="text-white/60">Acteur:</span> {selectedActor.displayName}</p>
+            <p><span className="text-white/60">Nom perso:</span> {selectedActor.characterName || '—'}</p>
             <p><span className="text-white/60">Zone:</span> {selectedLog.area}</p>
             <p><span className="text-white/60">Action:</span> {selectedLog.action}</p>
             <p><span className="text-white/60">Type entité:</span> {selectedLog.entity_type || '—'}</p>
+            <p><span className="text-white/60">Compte Steam:</span> {selectedActor.steamAccount || '—'}</p>
             <p className="md:col-span-2"><span className="text-white/60">ID entité:</span> {selectedLog.entity_id || '—'}</p>
             <p className="md:col-span-2"><span className="text-white/60">Message:</span> {selectedLog.message}</p>
           </div>

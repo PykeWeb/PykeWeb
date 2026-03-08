@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Box, Image as ImageIcon, Pill, Search, Shapes, Shield, Swords, Minus } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Box, Image as ImageIcon, Pill, Search, Shapes, Shield, Swords } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
@@ -338,22 +338,13 @@ export function FinanceItemTradeModal({
                     className="md:w-[140px]"
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateLine(entry.item.id, { quantity: Math.max(1, entry.line.quantity - 1) })}
-                    className="rounded-md border border-white/10 bg-white/5 p-1"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <div className="w-[160px]">
-                    <QuantityStepper
-                      value={entry.line.quantity}
-                      onChange={(value) => updateLine(entry.item.id, { quantity: value })}
-                      min={1}
-                      max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
-                    />
-                  </div>
+                <div className="w-[220px]">
+                  <QuantityStepper
+                    value={entry.line.quantity}
+                    onChange={(value) => updateLine(entry.item.id, { quantity: value })}
+                    min={1}
+                    max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
+                  />
                 </div>
                 <button
                   type="button"

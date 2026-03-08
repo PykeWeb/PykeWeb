@@ -14,6 +14,7 @@ import { listObjects, type DbObject } from '@/lib/objectsApi'
 import { listWeapons, type DbWeapon } from '@/lib/weaponsApi'
 import { listEquipment, type DbEquipment } from '@/lib/equipmentApi'
 import { listDrugItems, type DbDrugItem } from '@/lib/drugsApi'
+import { listCatalogItemsUnified } from '@/lib/itemsApi'
 
 type PickItem = {
   type: Exclude<ExpenseItemType, 'custom'>
@@ -43,10 +44,22 @@ async function enrichMissingImagesByName(category: Exclude<ExpenseItemType, 'cus
   if (missing === 0) return baseItems
 
   try {
-    const rows = await fetch(`/api/catalog/items?category=${category}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])) as Array<{ name?: string | null; image_url?: string | null }>
-    const byName = new Map(rows.map((row) => [String(row.name || '').trim().toLowerCase(), row.image_url || null]))
+    const catalogItems = await listCatalogItemsUnified()
+    const byLegacyId = new Map(
+      catalogItems
+        .filter((row) => row.category === category && row.id.startsWith(`legacy:${category}:`) && !!row.image_url)
+        .map((row) => [row.id.slice(`legacy:${category}:`.length), row.image_url || null])
+    )
+    const byName = new Map(
+      catalogItems
+        .filter((row) => row.category === category && !!row.image_url)
+        .map((row) => [String(row.name || '').trim().toLowerCase(), row.image_url || null])
+    )
+
     return baseItems.map((item) => {
       if (item.image_url) return item
+      const imageByLegacyId = byLegacyId.get(item.id)
+      if (imageByLegacyId) return { ...item, image_url: imageByLegacyId }
       const imageUrl = byName.get(item.name.trim().toLowerCase())
       return imageUrl ? { ...item, image_url: imageUrl } : item
     })
@@ -342,7 +355,7 @@ export function NouvelleDepenseForm({
                       className="w-[120px]"
                     />
                   </div>
-                  <div className="w-[170px]">
+                  <div className="w-[220px]">
                     <QuantityStepper
                       value={item.quantity}
                       min={1}
