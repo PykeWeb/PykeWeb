@@ -37,6 +37,37 @@ type FinanceTransactionRow = {
   catalog_items: FinanceTransactionJoinItem[] | FinanceTransactionJoinItem | null
 }
 
+function isMissingImageSnapshotColumn(errorMessage: string | null | undefined) {
+  const msg = String(errorMessage || '').toLowerCase()
+  return msg.includes('image_url_snapshot') || msg.includes('column')
+}
+
+async function listTransactionsWithOptionalImageSnapshot(groupId: string) {
+  const withSnapshot = await supabase
+    .from('transactions')
+    .select('id,type,counterparty,total,notes,created_at,transaction_items(name_snapshot,quantity,image_url_snapshot)')
+    .eq('group_id', groupId)
+    .order('created_at', { ascending: false })
+    .limit(500)
+
+  if (!withSnapshot.error) {
+    return withSnapshot
+  }
+
+  if (!isMissingImageSnapshotColumn(withSnapshot.error.message)) {
+    return withSnapshot
+  }
+
+  const fallback = await supabase
+    .from('transactions')
+    .select('id,type,counterparty,total,notes,created_at,transaction_items(name_snapshot,quantity)')
+    .eq('group_id', groupId)
+    .order('created_at', { ascending: false })
+    .limit(500)
+
+  return fallback
+}
+
 export async function listFinanceEntries(): Promise<FinanceEntry[]> {
   const groupId = currentGroupId()
 
@@ -47,12 +78,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(500),
-    supabase
-      .from('transactions')
-      .select('id,type,counterparty,total,notes,created_at,transaction_items(name_snapshot,quantity,image_url_snapshot)')
-      .eq('group_id', groupId)
-      .order('created_at', { ascending: false })
-      .limit(500),
+    listTransactionsWithOptionalImageSnapshot(groupId),
     supabase
       .from('finance_transactions')
       .select('id,mode,quantity,unit_price,total,counterparty,payment_mode,notes,created_at,catalog_items(name,category,image_url)')
