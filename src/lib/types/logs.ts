@@ -24,4 +24,8 @@ export type CreateAppLogInput = {
   actor_name?: string | null
   actor_source?: AppLogSource
   payload?: Record<string, unknown> | null
+  character_name?: string | null
+  steam_name?: string | null
+  steam_identifier?: string | null
+  fivem_license?: string | null
 }

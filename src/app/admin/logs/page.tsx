@@ -63,7 +63,7 @@ export default function AdminLogsPage() {
       const actor = getLogActorDetails(log)
       if (groupFilter !== 'all' && groupName !== groupFilter) return false
       if (!q) return true
-      return `${groupName} ${log.area} ${log.action} ${log.message} ${actor.displayName} ${actor.characterName || ''} ${actor.steamAccount || ''} ${log.entity_type || ''} ${log.entity_id || ''}`
+      return `${groupName} ${log.area} ${log.action} ${log.message} ${actor.displayName} ${actor.characterName || ''} ${actor.steamAccount || ''} ${actor.fivemLicense || ''} ${log.entity_type || ''} ${log.entity_id || ''}`
         .toLowerCase()
         .includes(q)
     })
@@ -150,6 +150,7 @@ export default function AdminLogsPage() {
             <p><span className="text-white/60">Action:</span> {selectedLog.action}</p>
             <p><span className="text-white/60">Type entité:</span> {selectedLog.entity_type || '—'}</p>
             <p><span className="text-white/60">Compte Steam:</span> {selectedActor.steamAccount || '—'}</p>
+            <p><span className="text-white/60">License FiveM:</span> {selectedActor.fivemLicense || '—'}</p>
             <p><span className="text-white/60">ID entité:</span> {selectedLog.entity_id || '—'}</p>
             <p className="md:col-span-2"><span className="text-white/60">Message:</span> {selectedLog.message}</p>
           </div>
