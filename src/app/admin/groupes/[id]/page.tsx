@@ -54,15 +54,22 @@ export default function AdminGroupDetailsPage() {
     if (!groupId) return
     setLoading(true)
     try {
-      const [groupRow, catalogRows] = await Promise.all([
-        getTenantGroup(groupId),
-        exportGroupCatalogItems(groupId),
-      ])
+      const groupRow = await getTenantGroup(groupId)
       setGroup(groupRow)
       setPasswordDraft(groupRow.password || '')
-      setExportItems(catalogRows.map((row) => ({ ...row, selected: true })))
       setError(null)
+
+      try {
+        const catalogRows = await exportGroupCatalogItems(groupId)
+        setExportItems(catalogRows.map((row) => ({ ...row, selected: true })))
+      } catch (catalogError: unknown) {
+        setExportItems([])
+        const message = catalogError instanceof Error ? catalogError.message : 'Impossible de charger les items du groupe.'
+        setError(message)
+      }
     } catch (e: unknown) {
+      setGroup(null)
+      setExportItems([])
       setError(e instanceof Error ? e.message : 'Impossible de charger le groupe.')
     } finally {
       setLoading(false)
@@ -173,7 +180,11 @@ export default function AdminGroupDetailsPage() {
   }
 
   if (!group) {
-    return <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">Groupe introuvable.</div>
+    return (
+      <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">
+        {error || 'Groupe introuvable.'}
+      </div>
+    )
   }
 
   return (

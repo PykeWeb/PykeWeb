@@ -3,16 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
-import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { PrimaryButton, SecondaryButton, SegmentedTabs } from '@/components/ui/design-system'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Input } from '@/components/ui/Input'
+import { GlassSelect } from '@/components/ui/GlassSelect'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import type { TabletRentalTicket } from '@/lib/tabletRental'
 import type { AdminTabletAtelierStatsResponse, TabletCatalogItemConfig } from '@/lib/types/tablette'
 
 type AdminRentalTicket = TabletRentalTicket & { group_name?: string | null; group_badge?: string | null }
+type AdminTabletteView = 'service' | 'items'
 
 export default function AdminTablettePage() {
+  const [view, setView] = useState<AdminTabletteView>('items')
   const [rows, setRows] = useState<AdminRentalTicket[]>([])
   const [stats, setStats] = useState<AdminTabletAtelierStatsResponse | null>(null)
   const [items, setItems] = useState<TabletCatalogItemConfig[]>([])
@@ -176,156 +179,165 @@ export default function AdminTablettePage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">Admin • Tablette</h1>
-            <p className="mt-1 text-sm text-white/70">Stats, configuration globale des items, reset global et validation des preuves.</p>
+            <p className="mt-1 text-sm text-white/70">Gestion séparée du service tablette et des items tablette journaliers.</p>
           </div>
-          <PrimaryButton onClick={() => setResetOpen(true)}>Reset tablettes (tous groupes)</PrimaryButton>
+          <SegmentedTabs
+            options={[
+              { value: 'items', label: 'Tablette items / jour' },
+              { value: 'service', label: 'Achat service tablette' },
+            ]}
+            value={view}
+            onChange={(value) => setView(value as AdminTabletteView)}
+          />
         </div>
       </Panel>
 
-      <Panel>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Items tablette (global)</h2>
-          <div className="flex gap-2">
-            <SecondaryButton onClick={addItem}>Ajouter item</SecondaryButton>
-            <PrimaryButton onClick={() => void saveItems()}>Enregistrer items</PrimaryButton>
-          </div>
-        </div>
-
-        <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-          <p className="mb-2 text-sm font-semibold">Upload image (copier/coller PNG/JPEG/WebP)</p>
-          <div className="grid gap-3 md:grid-cols-[240px_1fr_auto] md:items-end">
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Item cible</label>
-              <select
-                value={selectedItemKey}
-                onChange={(e) => setSelectedItemKey(e.target.value)}
-                className="h-10 w-full rounded-xl border border-white/12 bg-slate-900/90 px-3 text-sm text-white outline-none focus:border-white/30"
-              >
-                <option value="" className="bg-slate-900 text-white">Choisir...</option>
-                {items.map((item) => (
-                  <option key={item.key} value={item.key} className="bg-slate-900 text-white">{item.name} ({item.key})</option>
-                ))}
-              </select>
+      {view === 'items' ? (
+        <>
+          <Panel>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">Items tablette (global)</h2>
+              <div className="flex flex-wrap gap-2">
+                <SecondaryButton onClick={addItem}>Ajouter item</SecondaryButton>
+                <PrimaryButton onClick={() => void saveItems()}>Enregistrer items</PrimaryButton>
+                <PrimaryButton onClick={() => setResetOpen(true)}>Reset tablettes (tous groupes)</PrimaryButton>
+              </div>
             </div>
-            <ImageDropzone label="Image" onChange={setUploadFile} />
-            <PrimaryButton disabled={!selectedItemExists || !uploadFile || uploadingImage} onClick={() => void uploadImageToSelectedItem()}>
-              {uploadingImage ? 'Upload…' : 'Uploader image'}
-            </PrimaryButton>
-          </div>
-        </div>
-        {uploadNotice ? <p className="mt-2 text-sm text-emerald-200">{uploadNotice}</p> : null}
 
-        <div className="space-y-2">
-          {items.map((item, index) => (
-            <div key={item.key} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_1fr_140px_140px_auto]">
-              <Input value={item.name} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, name: e.target.value } : row)))} placeholder="Nom" />
-              <button
-                type="button"
-                className="flex h-10 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.04] px-3 text-left text-sm text-white/80"
-                onClick={() => item.image_url && setPreviewImageUrl(item.image_url)}
-              >
-                {item.image_url ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.image_url} alt={item.name} className="h-7 w-7 rounded-md object-cover" />
-                    <span className="truncate">Image enregistrée (cliquer pour voir)</span>
-                  </>
-                ) : (
-                  <span className="text-white/50">Aucune image (utiliser l’upload ci-dessus)</span>
-                )}
-              </button>
-              <Input value={String(item.unit_price)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, unit_price: Math.max(0, Number(e.target.value) || 0) } : row)))} inputMode="decimal" />
-              <Input value={String(item.max_per_day)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, max_per_day: Math.max(0, Math.floor(Number(e.target.value) || 0)) } : row)))} inputMode="numeric" />
-              <SecondaryButton onClick={() => void deleteItem(item.key)}>Supprimer</SecondaryButton>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="mb-2 text-sm font-semibold">Image item (copier/coller ou import PNG/JPEG/WebP)</p>
+              <div className="grid gap-3 md:grid-cols-[260px_1fr_auto] md:items-end">
+                <GlassSelect
+                  value={selectedItemKey}
+                  onChange={setSelectedItemKey}
+                  options={items.map((item) => ({ value: item.key, label: `${item.name} (${item.key})` }))}
+                  placeholder="Item cible"
+                />
+                <ImageDropzone label="Image" onChange={setUploadFile} />
+                <PrimaryButton disabled={!selectedItemExists || !uploadFile || uploadingImage} onClick={() => void uploadImageToSelectedItem()}>
+                  {uploadingImage ? 'Upload…' : 'Uploader image'}
+                </PrimaryButton>
+              </div>
+              {uploadNotice ? <p className="mt-2 text-sm text-emerald-200">{uploadNotice}</p> : null}
             </div>
-          ))}
-        </div>
-      </Panel>
 
-      {stats ? (
+            <div className="mt-3 space-y-2">
+              {items.map((item, index) => (
+                <div key={item.key} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="grid gap-2 md:grid-cols-[minmax(200px,1fr)_180px_130px_130px_auto]">
+                    <Input value={item.name} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, name: e.target.value } : row)))} placeholder="Nom" />
+                    <button
+                      type="button"
+                      className="flex h-10 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.04] px-3 text-left text-sm text-white/80"
+                      onClick={() => item.image_url && setPreviewImageUrl(item.image_url)}
+                    >
+                      {item.image_url ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={item.image_url} alt={item.name} className="h-7 w-7 rounded-md object-cover" />
+                          <span className="truncate">Image enregistrée</span>
+                        </>
+                      ) : (
+                        <span className="text-white/50">Sans image</span>
+                      )}
+                    </button>
+                    <Input value={String(item.unit_price)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, unit_price: Math.max(0, Number(e.target.value) || 0) } : row)))} inputMode="decimal" />
+                    <Input value={String(item.max_per_day)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, max_per_day: Math.max(0, Math.floor(Number(e.target.value) || 0)) } : row)))} inputMode="numeric" />
+                    <SecondaryButton onClick={() => void deleteItem(item.key)}>Supprimer</SecondaryButton>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          {stats ? (
+            <Panel>
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold">Stats items tablette</h2>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <p className="text-xs text-white/60">Aujourd’hui ({stats.today})</p>
+                    <p className="text-sm">Passages: <span className="font-semibold">{stats.totals.runs_today}</span></p>
+                    <p className="text-sm">Items: <span className="font-semibold">{stats.totals.items_today}</span></p>
+                    <p className="text-sm">Coût: <span className="font-semibold">{stats.totals.cost_today.toFixed(2)} $</span></p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <p className="text-xs text-white/60">Semaine en cours</p>
+                    <p className="text-sm">Passages: <span className="font-semibold">{stats.totals.runs_week}</span></p>
+                    <p className="text-sm">Items: <span className="font-semibold">{stats.totals.items_week}</span></p>
+                    <p className="text-sm">Coût: <span className="font-semibold">{stats.totals.cost_week.toFixed(2)} $</span></p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <p className="text-xs text-white/60">Membres observés</p>
+                    <p className="text-sm">Total: <span className="font-semibold">{stats.by_member.length}</span></p>
+                    <p className="text-sm">Ont fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => m.did_today).length}</span></p>
+                    <p className="text-sm">N’ont pas fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => !m.did_today).length}</span></p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <p className="mb-2 text-sm font-semibold">Items achetés par jour</p>
+                    <div className="max-h-64 space-y-2 overflow-auto text-xs text-white/80">
+                      {stats.by_day_items.map((row) => (
+                        <div key={row.day_key} className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
+                          <p className="mb-1 font-semibold">{row.day_key}</p>
+                          {row.items.map((item) => <p key={`${row.day_key}-${item.name}`}>{item.name}: {item.quantity}</p>)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <p className="mb-2 text-sm font-semibold">Items achetés par semaine</p>
+                    <div className="max-h-64 space-y-2 overflow-auto text-xs text-white/80">
+                      {stats.by_week_items.map((row) => (
+                        <div key={row.week_key} className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
+                          <p className="mb-1 font-semibold">{row.week_key}</p>
+                          {row.items.map((item) => <p key={`${row.week_key}-${item.name}`}>{item.name}: {item.quantity}</p>)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          ) : null}
+        </>
+      ) : (
         <Panel>
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Stats atelier tablette</h2>
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-xs text-white/60">Aujourd’hui ({stats.today})</p>
-                <p className="text-sm">Passages: <span className="font-semibold">{stats.totals.runs_today}</span></p>
-                <p className="text-sm">Items: <span className="font-semibold">{stats.totals.items_today}</span></p>
-                <p className="text-sm">Coût: <span className="font-semibold">{stats.totals.cost_today.toFixed(2)} $</span></p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-xs text-white/60">Semaine en cours</p>
-                <p className="text-sm">Passages: <span className="font-semibold">{stats.totals.runs_week}</span></p>
-                <p className="text-sm">Items: <span className="font-semibold">{stats.totals.items_week}</span></p>
-                <p className="text-sm">Coût: <span className="font-semibold">{stats.totals.cost_week.toFixed(2)} $</span></p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-xs text-white/60">Membres observés</p>
-                <p className="text-sm">Total: <span className="font-semibold">{stats.by_member.length}</span></p>
-                <p className="text-sm">Ont fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => m.did_today).length}</span></p>
-                <p className="text-sm">N’ont pas fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => !m.did_today).length}</span></p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="mb-2 text-sm font-semibold">Items achetés par jour</p>
-                <div className="max-h-64 space-y-2 overflow-auto text-xs text-white/80">
-                  {stats.by_day_items.map((row) => (
-                    <div key={row.day_key} className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
-                      <p className="mb-1 font-semibold">{row.day_key}</p>
-                      {row.items.map((item) => <p key={`${row.day_key}-${item.name}`}>{item.name}: {item.quantity}</p>)}
-                    </div>
-                  ))}
+          <h2 className="text-lg font-semibold">Achat service tablette</h2>
+          <p className="mt-1 text-sm text-white/70">Validation des preuves d’achat pour le service tablette.</p>
+          <div className="mt-3 space-y-3">
+            {rows.map((row) => (
+              <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">{row.group_name || row.group_id} {row.group_badge ? `(${row.group_badge})` : ''}</p>
+                    <p className="text-xs text-white/60">{row.weeks} semaine(s) · {row.amount.toFixed(2)} $</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {row.status !== 'resolved' ? (
+                      <PrimaryButton disabled={validatingId === row.id} onClick={() => void validateRow(row)}>Valider</PrimaryButton>
+                    ) : (
+                      <SecondaryButton disabled>Déjà validé</SecondaryButton>
+                    )}
+                  </div>
                 </div>
+                {row.image_url ? (
+                  <button type="button" className="mt-2" onClick={() => setPreviewImageUrl(row.image_url || null)}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={row.image_url} alt="Preuve" className="h-28 w-auto rounded-lg border border-white/10 object-cover transition hover:opacity-90" />
+                  </button>
+                ) : null}
               </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="mb-2 text-sm font-semibold">Items achetés par semaine</p>
-                <div className="max-h-64 space-y-2 overflow-auto text-xs text-white/80">
-                  {stats.by_week_items.map((row) => (
-                    <div key={row.week_key} className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
-                      <p className="mb-1 font-semibold">{row.week_key}</p>
-                      {row.items.map((item) => <p key={`${row.week_key}-${item.name}`}>{item.name}: {item.quantity}</p>)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            ))}
+            {rows.length === 0 ? <p className="text-sm text-white/60">Aucune preuve reçue.</p> : null}
           </div>
         </Panel>
-      ) : null}
+      )}
 
-      <Panel>
-        <h2 className="text-lg font-semibold">Preuves d’achat tablette</h2>
-        <div className="mt-3 space-y-3">
-          {rows.map((row) => (
-            <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="font-semibold">{row.group_name || row.group_id} {row.group_badge ? `(${row.group_badge})` : ''}</p>
-                  <p className="text-xs text-white/60">{row.weeks} semaine(s) · {row.amount.toFixed(2)} $</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {row.status !== 'resolved' ? (
-                    <PrimaryButton disabled={validatingId === row.id} onClick={() => void validateRow(row)}>Valider</PrimaryButton>
-                  ) : (
-                    <SecondaryButton disabled>Déjà validé</SecondaryButton>
-                  )}
-                </div>
-              </div>
-              {row.image_url ? (
-                <button type="button" className="mt-2" onClick={() => setPreviewImageUrl(row.image_url || null)}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={row.image_url} alt="Preuve" className="h-28 w-auto rounded-lg border border-white/10 object-cover transition hover:opacity-90" />
-                </button>
-              ) : null}
-            </div>
-          ))}
-          {rows.length === 0 ? <p className="text-sm text-white/60">Aucune preuve reçue.</p> : null}
-        </div>
-        {error ? <p className="mt-3 rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
-      </Panel>
+      {error ? <p className="mt-3 rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
 
       {previewImageUrl ? (
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setPreviewImageUrl(null)}>
@@ -342,7 +354,7 @@ export default function AdminTablettePage() {
       <ConfirmDialog
         open={resetOpen}
         title="Réinitialiser toutes les tablettes ?"
-        description="Cette action supprime l’historique tablette (tous groupes) pour repartir à zéro."
+        description="Cette action supprime l’historique tablette items (tous groupes) pour repartir à zéro."
         confirmLabel="Réinitialiser"
         loading={resetting}
         onCancel={() => setResetOpen(false)}
