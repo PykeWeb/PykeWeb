@@ -1,18 +1,21 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { PrimaryButton, SecondaryButton, SegmentedTabs } from '@/components/ui/design-system'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
-import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import type { TabletRentalTicket } from '@/lib/tabletRental'
 import type { AdminTabletAtelierStatsResponse, TabletCatalogItemConfig } from '@/lib/types/tablette'
 
 type AdminRentalTicket = TabletRentalTicket & { group_name?: string | null; group_badge?: string | null }
 type AdminTabletteView = 'service' | 'items'
+
+function isSupportedImage(file: File) {
+  return ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)
+}
 
 export default function AdminTablettePage() {
   const [view, setView] = useState<AdminTabletteView>('items')
@@ -24,18 +27,15 @@ export default function AdminTablettePage() {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
-  const [selectedItemKey, setSelectedItemKey] = useState('')
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadingImage, setUploadingImage] = useState(false)
-  const [uploadNotice, setUploadNotice] = useState<string | null>(null)
+  const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null)
+  const [imageDrafts, setImageDrafts] = useState<Record<string, File | null>>({})
   const [serviceCategory, setServiceCategory] = useState<'all' | 'pending' | 'resolved'>('all')
+  const imageInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
-  const selectedItemExists = useMemo(() => items.some((item) => item.key === selectedItemKey), [items, selectedItemKey])
   const filteredServiceRows = useMemo(() => {
     if (serviceCategory === 'all') return rows
     return rows.filter((row) => (serviceCategory === 'pending' ? row.status !== 'resolved' : row.status === 'resolved'))
   }, [rows, serviceCategory])
-
 
   const refresh = useCallback(async () => {
     const [rentalsRes, statsRes, itemsRes] = await Promise.all([
@@ -64,11 +64,8 @@ export default function AdminTablettePage() {
     setRows(rentalsJson)
     setStats(statsJson)
     setItems(itemsJson)
-    if (!itemsJson.some((item) => item.key === selectedItemKey)) {
-      setSelectedItemKey(itemsJson[0]?.key ?? '')
-    }
     setError(null)
-  }, [selectedItemKey])
+  }, [])
 
   useEffect(() => {
     void refresh()
@@ -109,7 +106,7 @@ export default function AdminTablettePage() {
   function addItem() {
     const key = `item_${Date.now().toString(36).slice(-6)}`
     setItems((prev) => [...prev, { key, name: 'Nouvel item', unit_price: 0, max_per_day: 2, image_url: null }])
-    setSelectedItemKey(key)
+    setImageDrafts((prev) => ({ ...prev, [key]: null }))
   }
 
   async function deleteItem(key: string) {
@@ -120,45 +117,52 @@ export default function AdminTablettePage() {
       })
       if (!res.ok) throw new Error(await res.text())
       setItems((prev) => prev.filter((item) => item.key !== key))
-      if (selectedItemKey === key) setSelectedItemKey('')
+      setImageDrafts((prev) => ({ ...prev, [key]: null }))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Suppression item impossible')
     }
   }
 
-  async function uploadImageToSelectedItem() {
-    if (!selectedItemExists || !uploadFile) return
+  function setRowImageDraft(key: string, file: File | null) {
+    if (file && !isSupportedImage(file)) {
+      setError('Format non supporté (PNG/JPEG/WebP).')
+      return
+    }
+    setError(null)
+    setImageDrafts((prev) => ({ ...prev, [key]: file }))
+  }
+
+  async function uploadImageForItem(item: TabletCatalogItemConfig) {
+    const file = imageDrafts[item.key]
+    if (!file) return
+
     try {
-      setUploadingImage(true)
+      setUploadingImageKey(item.key)
       setError(null)
-      setUploadNotice(null)
-      const target = items.find((item) => item.key === selectedItemKey)
-      if (!target) throw new Error('Item cible introuvable.')
 
       const formData = new FormData()
-      formData.append('file', uploadFile)
-      const res = await fetch('/api/admin/tablette/items/upload-image', {
+      formData.append('file', file)
+      const uploadRes = await fetch('/api/admin/tablette/items/upload-image', {
         ...withTenantSessionHeader(),
         method: 'POST',
         body: formData,
       })
-      if (!res.ok) throw new Error(await res.text())
-      const json = (await res.json()) as { publicUrl: string }
+      if (!uploadRes.ok) throw new Error(await uploadRes.text())
+      const uploadJson = (await uploadRes.json()) as { publicUrl: string }
 
       const persistRes = await fetch('/api/admin/tablette/items', {
         ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
         method: 'POST',
-        body: JSON.stringify({ ...target, image_url: json.publicUrl }),
+        body: JSON.stringify({ ...item, image_url: uploadJson.publicUrl }),
       })
       if (!persistRes.ok) throw new Error(await persistRes.text())
 
-      setUploadFile(null)
-      setUploadNotice('Image enregistrée sur l’item.')
+      setImageDrafts((prev) => ({ ...prev, [item.key]: null }))
       await refresh()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Upload image impossible')
     } finally {
-      setUploadingImage(false)
+      setUploadingImageKey(null)
     }
   }
 
@@ -210,49 +214,63 @@ export default function AdminTablettePage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <p className="mb-2 text-sm font-semibold">Image item (copier/coller ou import PNG/JPEG/WebP)</p>
-              <div className="grid gap-3 md:grid-cols-[260px_1fr_auto] md:items-end">
-                <GlassSelect
-                  value={selectedItemKey}
-                  onChange={setSelectedItemKey}
-                  options={items.map((item) => ({ value: item.key, label: `${item.name} (${item.key})` }))}
-                  placeholder="Item cible"
-                />
-                <ImageDropzone label="Image" onChange={setUploadFile} />
-                <PrimaryButton disabled={!selectedItemExists || !uploadFile || uploadingImage} onClick={() => void uploadImageToSelectedItem()}>
-                  {uploadingImage ? 'Upload…' : 'Uploader image'}
-                </PrimaryButton>
-              </div>
-              {uploadNotice ? <p className="mt-2 text-sm text-emerald-200">{uploadNotice}</p> : null}
-            </div>
-
             <div className="mt-3 space-y-2">
-              {items.map((item, index) => (
-                <div key={item.key} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="grid gap-2 md:grid-cols-[minmax(200px,1fr)_180px_130px_130px_auto]">
-                    <Input value={item.name} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, name: e.target.value } : row)))} placeholder="Nom" />
-                    <button
-                      type="button"
-                      className="h-10 overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04]"
-                      onClick={() => item.image_url && setPreviewImageUrl(item.image_url)}
-                      aria-label={item.image_url ? `Aperçu image ${item.name}` : `Aucune image ${item.name}`}
-                    >
-                      {item.image_url ? (
-                        <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
+              {items.map((item, index) => {
+                const draft = imageDrafts[item.key]
+                const uploading = uploadingImageKey === item.key
+                return (
+                  <div key={item.key} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="grid gap-2 md:grid-cols-[minmax(180px,1fr)_170px_130px_120px_auto_auto] md:items-center">
+                      <Input value={item.name} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, name: e.target.value } : row)))} placeholder="Nom" />
+
+                      <div
+                        tabIndex={0}
+                        onPaste={(event) => {
+                          const clipboardItems = event.clipboardData?.items
+                          if (!clipboardItems) return
+                          for (const clipboardItem of clipboardItems) {
+                            if (clipboardItem.kind !== 'file') continue
+                            const pastedFile = clipboardItem.getAsFile()
+                            if (!pastedFile) continue
+                            setRowImageDraft(item.key, pastedFile)
+                            event.preventDefault()
+                            return
+                          }
+                        }}
+                        className="h-10 overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04] outline-none focus:border-white/30"
+                        onClick={() => imageInputRefs.current[item.key]?.click()}
+                      >
+                        <input
+                          ref={(el) => {
+                            imageInputRefs.current[item.key] = el
+                          }}
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          className="hidden"
+                          onChange={(event) => setRowImageDraft(item.key, event.target.files?.[0] ?? null)}
+                        />
+                        {draft ? (
+                          <span className="inline-flex h-full w-full items-center justify-center text-xs text-emerald-200">Nouvelle image prête</span>
+                        ) : item.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
-                        </>
-                      ) : (
-                        <span className="inline-flex h-full w-full items-center justify-center text-xs text-white/50">Sans image</span>
-                      )}
-                    </button>
-                    <Input value={String(item.unit_price)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, unit_price: Math.max(0, Number(e.target.value) || 0) } : row)))} inputMode="decimal" />
-                    <Input value={String(item.max_per_day)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, max_per_day: Math.max(0, Math.floor(Number(e.target.value) || 0)) } : row)))} inputMode="numeric" />
-                    <SecondaryButton onClick={() => void deleteItem(item.key)}>Supprimer</SecondaryButton>
+                        ) : (
+                          <span className="inline-flex h-full w-full items-center justify-center text-xs text-white/50">Coller / choisir image</span>
+                        )}
+                      </div>
+
+                      <Input value={String(item.unit_price)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, unit_price: Math.max(0, Number(e.target.value) || 0) } : row)))} inputMode="decimal" />
+                      <Input value={String(item.max_per_day)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, max_per_day: Math.max(0, Math.floor(Number(e.target.value) || 0)) } : row)))} inputMode="numeric" />
+
+                      <PrimaryButton disabled={!draft || uploading} onClick={() => void uploadImageForItem(item)}>
+                        {uploading ? 'Upload…' : 'Uploader image'}
+                      </PrimaryButton>
+
+                      <SecondaryButton onClick={() => void deleteItem(item.key)}>Supprimer</SecondaryButton>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </Panel>
 
@@ -288,7 +306,7 @@ export default function AdminTablettePage() {
                       {stats.by_day_items.map((row) => (
                         <div key={row.day_key} className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
                           <p className="mb-1 font-semibold">{row.day_key}</p>
-                          {row.items.map((item) => <p key={`${row.day_key}-${item.name}`}>{item.name}: {item.quantity}</p>)}
+                          {row.items.map((entry) => <p key={`${row.day_key}-${entry.name}`}>{entry.name}: {entry.quantity}</p>)}
                         </div>
                       ))}
                     </div>
@@ -300,7 +318,7 @@ export default function AdminTablettePage() {
                       {stats.by_week_items.map((row) => (
                         <div key={row.week_key} className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
                           <p className="mb-1 font-semibold">{row.week_key}</p>
-                          {row.items.map((item) => <p key={`${row.week_key}-${item.name}`}>{item.name}: {item.quantity}</p>)}
+                          {row.items.map((entry) => <p key={`${row.week_key}-${entry.name}`}>{entry.name}: {entry.quantity}</p>)}
                         </div>
                       ))}
                     </div>
@@ -314,6 +332,7 @@ export default function AdminTablettePage() {
         <Panel>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/60">Catégorie Service</p>
               <h2 className="text-lg font-semibold">Achat service tablette</h2>
               <p className="mt-1 text-sm text-white/70">Validation des preuves d’achat pour le service tablette.</p>
             </div>

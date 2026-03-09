@@ -73,15 +73,31 @@ async function selectRows<T>(query: PromiseLike<{ data: T[] | null; error: { mes
   return result.data ?? []
 }
 
+
+
+async function resolveAdminGroupId(): Promise<string> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('tenant_groups')
+    .select('id')
+    .eq('login', 'admin')
+    .maybeSingle<{ id: string }>()
+
+  if (error) throw new Error(error.message)
+  if (!data?.id) throw new Error('Groupe admin introuvable.')
+  return data.id
+}
+
 async function listGroupItems(groupId: string): Promise<ExportableGroupItem[]> {
   const supabase = getSupabaseAdmin()
+  const adminGroupId = await resolveAdminGroupId()
   const [catalogRows, objectRows, weaponRows, equipmentRows, drugRows, adminObjectRows] = await Promise.all([
     selectRows<CatalogItemRow>(supabase.from('catalog_items').select('id,name,category,item_type,buy_price,stock,image_url,description').eq('group_id', groupId).eq('is_active', true), true),
     selectRows<LegacyObjectRow>(supabase.from('objects').select('id,name,price,stock,image_url,description').eq('group_id', groupId), true),
     selectRows<LegacyWeaponRow>(supabase.from('weapons').select('id,name,weapon_id,stock,image_url,description').eq('group_id', groupId), true),
     selectRows<LegacyObjectRow>(supabase.from('equipment').select('id,name,price,stock,image_url,description').eq('group_id', groupId), true),
     selectRows<LegacyDrugRow>(supabase.from('drug_items').select('id,name,type,price,stock,image_url,description').eq('group_id', groupId), true),
-    selectRows<{ name: string }>(supabase.from('objects').select('name').eq('group_id', 'admin'), true),
+    selectRows<{ name: string }>(supabase.from('objects').select('name').eq('group_id', adminGroupId), true),
   ])
 
   const adminObjectNames = new Set(adminObjectRows.map((row) => String(row.name || '').trim().toLowerCase()).filter(Boolean))
@@ -192,6 +208,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdmin()
+    const adminGroupId = await resolveAdminGroupId()
     let inserted = 0
     let updated = 0
 
@@ -202,7 +219,7 @@ export async function POST(request: Request) {
       const { data: existing, error: existingError } = await supabase
         .from('objects')
         .select('id,stock,image_url,description,price')
-        .eq('group_id', 'admin')
+        .eq('group_id', adminGroupId)
         .ilike('name', safeName)
         .order('created_at', { ascending: true })
         .limit(1)
@@ -225,7 +242,7 @@ export async function POST(request: Request) {
             description: existing.description || nextDescription,
             image_url: existing.image_url || nextImageUrl,
           })
-          .eq('group_id', 'admin')
+          .eq('group_id', adminGroupId)
           .eq('id', existing.id)
 
         if (updateError) throw updateError
@@ -234,7 +251,7 @@ export async function POST(request: Request) {
       }
 
       const { error: insertError } = await supabase.from('objects').insert({
-        group_id: 'admin',
+        group_id: adminGroupId,
         name: safeName,
         price: nextPrice,
         stock: nextStock,
