@@ -28,8 +28,14 @@ export default function AdminTablettePage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadNotice, setUploadNotice] = useState<string | null>(null)
+  const [serviceCategory, setServiceCategory] = useState<'all' | 'pending' | 'resolved'>('all')
 
   const selectedItemExists = useMemo(() => items.some((item) => item.key === selectedItemKey), [items, selectedItemKey])
+  const filteredServiceRows = useMemo(() => {
+    if (serviceCategory === 'all') return rows
+    return rows.filter((row) => (serviceCategory === 'pending' ? row.status !== 'resolved' : row.status === 'resolved'))
+  }, [rows, serviceCategory])
+
 
   const refresh = useCallback(async () => {
     const [rentalsRes, statsRes, itemsRes] = await Promise.all([
@@ -228,17 +234,17 @@ export default function AdminTablettePage() {
                     <Input value={item.name} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, name: e.target.value } : row)))} placeholder="Nom" />
                     <button
                       type="button"
-                      className="flex h-10 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.04] px-3 text-left text-sm text-white/80"
+                      className="h-10 overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04]"
                       onClick={() => item.image_url && setPreviewImageUrl(item.image_url)}
+                      aria-label={item.image_url ? `Aperçu image ${item.name}` : `Aucune image ${item.name}`}
                     >
                       {item.image_url ? (
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={item.image_url} alt={item.name} className="h-7 w-7 rounded-md object-cover" />
-                          <span className="truncate">Image enregistrée</span>
+                          <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
                         </>
                       ) : (
-                        <span className="text-white/50">Sans image</span>
+                        <span className="inline-flex h-full w-full items-center justify-center text-xs text-white/50">Sans image</span>
                       )}
                     </button>
                     <Input value={String(item.unit_price)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, unit_price: Math.max(0, Number(e.target.value) || 0) } : row)))} inputMode="decimal" />
@@ -306,10 +312,24 @@ export default function AdminTablettePage() {
         </>
       ) : (
         <Panel>
-          <h2 className="text-lg font-semibold">Achat service tablette</h2>
-          <p className="mt-1 text-sm text-white/70">Validation des preuves d’achat pour le service tablette.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Achat service tablette</h2>
+              <p className="mt-1 text-sm text-white/70">Validation des preuves d’achat pour le service tablette.</p>
+            </div>
+            <GlassSelect
+              value={serviceCategory}
+              onChange={(value) => setServiceCategory((value as 'all' | 'pending' | 'resolved'))}
+              options={[
+                { value: 'all', label: `Catégorie: Tous (${rows.length})` },
+                { value: 'pending', label: `Catégorie: En attente (${rows.filter((row) => row.status !== 'resolved').length})` },
+                { value: 'resolved', label: `Catégorie: Validés (${rows.filter((row) => row.status === 'resolved').length})` },
+              ]}
+              className="w-full md:w-[320px]"
+            />
+          </div>
           <div className="mt-3 space-y-3">
-            {rows.map((row) => (
+            {filteredServiceRows.map((row) => (
               <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -332,7 +352,7 @@ export default function AdminTablettePage() {
                 ) : null}
               </div>
             ))}
-            {rows.length === 0 ? <p className="text-sm text-white/60">Aucune preuve reçue.</p> : null}
+            {filteredServiceRows.length === 0 ? <p className="text-sm text-white/60">Aucune preuve dans cette catégorie.</p> : null}
           </div>
         </Panel>
       )}

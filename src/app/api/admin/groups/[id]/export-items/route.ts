@@ -57,27 +57,36 @@ function normalizeKey(category: string, name: string): string {
   return `${category}:${name.trim().toLowerCase()}`
 }
 
+
+function isMissingTableError(error: { message?: string; code?: string } | null | undefined): boolean {
+  if (!error) return false
+  const message = String(error.message || '').toLowerCase()
+  return message.includes('does not exist') || message.includes('relation') || message.includes('not found')
+}
+
+async function selectRows<T>(query: PromiseLike<{ data: T[] | null; error: { message?: string; code?: string } | null }>, fallbackWhenMissing = false): Promise<T[]> {
+  const result = await query
+  if (result.error) {
+    if (fallbackWhenMissing && isMissingTableError(result.error)) return []
+    throw new Error(result.error.message || 'Erreur de lecture des items groupe')
+  }
+  return result.data ?? []
+}
+
 async function listGroupItems(groupId: string): Promise<ExportableGroupItem[]> {
   const supabase = getSupabaseAdmin()
-  const [catalogRes, objectsRes, weaponsRes, equipmentRes, drugsRes, adminObjectsRes] = await Promise.all([
-    supabase.from('catalog_items').select('id,name,category,item_type,buy_price,stock,image_url,description').eq('group_id', groupId).eq('is_active', true),
-    supabase.from('objects').select('id,name,price,stock,image_url,description').eq('group_id', groupId),
-    supabase.from('weapons').select('id,name,weapon_id,stock,image_url,description').eq('group_id', groupId),
-    supabase.from('equipment').select('id,name,price,stock,image_url,description').eq('group_id', groupId),
-    supabase.from('drug_items').select('id,name,type,price,stock,image_url,description').eq('group_id', groupId),
-    supabase.from('objects').select('name').eq('group_id', 'admin'),
+  const [catalogRows, objectRows, weaponRows, equipmentRows, drugRows, adminObjectRows] = await Promise.all([
+    selectRows<CatalogItemRow>(supabase.from('catalog_items').select('id,name,category,item_type,buy_price,stock,image_url,description').eq('group_id', groupId).eq('is_active', true), true),
+    selectRows<LegacyObjectRow>(supabase.from('objects').select('id,name,price,stock,image_url,description').eq('group_id', groupId), true),
+    selectRows<LegacyWeaponRow>(supabase.from('weapons').select('id,name,weapon_id,stock,image_url,description').eq('group_id', groupId), true),
+    selectRows<LegacyObjectRow>(supabase.from('equipment').select('id,name,price,stock,image_url,description').eq('group_id', groupId), true),
+    selectRows<LegacyDrugRow>(supabase.from('drug_items').select('id,name,type,price,stock,image_url,description').eq('group_id', groupId), true),
+    selectRows<{ name: string }>(supabase.from('objects').select('name').eq('group_id', 'admin'), true),
   ])
 
-  if (catalogRes.error) throw catalogRes.error
-  if (objectsRes.error) throw objectsRes.error
-  if (weaponsRes.error) throw weaponsRes.error
-  if (equipmentRes.error) throw equipmentRes.error
-  if (drugsRes.error) throw drugsRes.error
-  if (adminObjectsRes.error) throw adminObjectsRes.error
+  const adminObjectNames = new Set(adminObjectRows.map((row) => String(row.name || '').trim().toLowerCase()).filter(Boolean))
 
-  const adminObjectNames = new Set(((adminObjectsRes.data ?? []) as { name: string }[]).map((row) => String(row.name || '').trim().toLowerCase()).filter(Boolean))
-
-  const items: ExportableGroupItem[] = ((catalogRes.data ?? []) as CatalogItemRow[]).map((row) => ({
+  const items: ExportableGroupItem[] = catalogRows.map((row) => ({
     id: row.id,
     name: row.name,
     category: row.category,
@@ -90,7 +99,7 @@ async function listGroupItems(groupId: string): Promise<ExportableGroupItem[]> {
 
   const seen = new Set(items.map((item) => normalizeKey(item.category, item.name)))
 
-  for (const row of (objectsRes.data ?? []) as LegacyObjectRow[]) {
+  for (const row of objectRows) {
     const key = normalizeKey('objects', row.name)
     if (seen.has(key)) continue
     items.push({
@@ -106,7 +115,7 @@ async function listGroupItems(groupId: string): Promise<ExportableGroupItem[]> {
     seen.add(key)
   }
 
-  for (const row of (weaponsRes.data ?? []) as LegacyWeaponRow[]) {
+  for (const row of weaponRows) {
     const name = row.name?.trim() || row.weapon_id?.trim() || 'Arme'
     const key = normalizeKey('weapons', name)
     if (seen.has(key)) continue
@@ -123,7 +132,7 @@ async function listGroupItems(groupId: string): Promise<ExportableGroupItem[]> {
     seen.add(key)
   }
 
-  for (const row of (equipmentRes.data ?? []) as LegacyObjectRow[]) {
+  for (const row of equipmentRows) {
     const key = normalizeKey('equipment', row.name)
     if (seen.has(key)) continue
     items.push({
@@ -139,7 +148,7 @@ async function listGroupItems(groupId: string): Promise<ExportableGroupItem[]> {
     seen.add(key)
   }
 
-  for (const row of (drugsRes.data ?? []) as LegacyDrugRow[]) {
+  for (const row of drugRows) {
     const itemType = row.type === 'pouch' ? 'pouch' : row.type === 'seed' || row.type === 'planting' ? 'seed' : 'drug'
     const key = normalizeKey('drugs', row.name)
     if (seen.has(key)) continue
@@ -167,7 +176,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json(await listGroupItems(params.id))
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Non autorisé'
-    return NextResponse.json({ error: message }, { status: 401 })
+    const status = message.toLowerCase().includes('autorisé') || message.toLowerCase().includes('session') ? 401 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }
 
@@ -239,6 +249,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, inserted, updated })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Non autorisé'
-    return NextResponse.json({ error: message }, { status: 401 })
+    const status = message.toLowerCase().includes('autorisé') || message.toLowerCase().includes('session') ? 401 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }
