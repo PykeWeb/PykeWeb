@@ -17,6 +17,14 @@ type TabletDailyRunRow = {
   created_at: string
 }
 
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'object' && error && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+    return (error as { message: string }).message
+  }
+  return 'Erreur serveur.'
+}
+
 function toSafeQty(value: unknown, max = 2): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return 0
@@ -114,7 +122,7 @@ export async function GET(request: Request) {
       runs: (data ?? []) as TabletDailyRun[],
     })
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erreur serveur.' }, { status: 400 })
+    return NextResponse.json({ error: toErrorMessage(error) }, { status: 400 })
   }
 }
 
@@ -177,6 +185,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(inserted)
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erreur serveur.' }, { status: 400 })
+    return NextResponse.json({ error: toErrorMessage(error) }, { status: 400 })
   }
 }

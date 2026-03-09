@@ -57,8 +57,8 @@ export default function TablettePage() {
     try {
       const res = await fetch('/api/tablette/atelier', withTenantSessionHeader({ cache: 'no-store' }))
       if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || 'Impossible de charger la tablette.')
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error || 'Impossible de charger la tablette.')
       }
       const data = (await res.json()) as AtelierResponse
       setItems(data.items)
