@@ -80,10 +80,10 @@ async function getTabletItemsWithImages(groupId: string): Promise<TabletCatalogI
   return TABLET_DAILY_ITEM_OPTIONS.map((item) => {
     const normalized = normalizeCatalogName(item.name)
     if (item.key === 'kit_cambus') {
-      const kitImage = imageByName.get(normalized) ?? imageByName.get(normalizeCatalogName('Kit de Cambus')) ?? null
+      const kitImage = imageByName.get(normalized) ?? imageByName.get(normalizeCatalogName('Kit de Cambus')) ?? item.image_url ?? null
       return { ...item, image_url: kitImage }
     }
-    return { ...item, image_url: imageByName.get(normalized) ?? null }
+    return { ...item, image_url: imageByName.get(normalized) ?? item.image_url ?? null }
   })
 }
 

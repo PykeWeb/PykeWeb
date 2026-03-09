@@ -4,24 +4,42 @@ import { useEffect, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { TabletRentalTicket } from '@/lib/tabletRental'
+import type { AdminTabletAtelierStatsResponse } from '@/lib/types/tablette'
 
 type AdminRentalTicket = TabletRentalTicket & { group_name?: string | null; group_badge?: string | null }
 
 export default function AdminTablettePage() {
   const [rows, setRows] = useState<AdminRentalTicket[]>([])
+  const [stats, setStats] = useState<AdminTabletAtelierStatsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [validatingId, setValidatingId] = useState<string | null>(null)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetting, setResetting] = useState(false)
 
   async function refresh() {
-    const res = await fetch('/api/admin/tablette/rentals', withTenantSessionHeader({ cache: 'no-store' }))
-    if (!res.ok) {
-      setError(await res.text())
+    const [rentalsRes, statsRes] = await Promise.all([
+      fetch('/api/admin/tablette/rentals', withTenantSessionHeader({ cache: 'no-store' })),
+      fetch('/api/admin/tablette/atelier', withTenantSessionHeader({ cache: 'no-store' })),
+    ])
+
+    if (!rentalsRes.ok) {
+      setError(await rentalsRes.text())
       return
     }
-    const json = (await res.json()) as AdminRentalTicket[]
-    setRows(json)
+
+    if (!statsRes.ok) {
+      setError(await statsRes.text())
+      return
+    }
+
+    const rentalsJson = (await rentalsRes.json()) as AdminRentalTicket[]
+    const statsJson = (await statsRes.json()) as AdminTabletAtelierStatsResponse
+
+    setRows(rentalsJson)
+    setStats(statsJson)
     setError(null)
   }
 
@@ -46,15 +64,119 @@ export default function AdminTablettePage() {
     }
   }
 
+  async function resetAllTabletRuns() {
+    try {
+      setResetting(true)
+      const res = await fetch('/api/admin/tablette/atelier', {
+        ...withTenantSessionHeader(),
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setResetOpen(false)
+      await refresh()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Reset tablette impossible')
+    } finally {
+      setResetting(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Panel>
-        <h1 className="text-2xl font-semibold">Admin • Preuves d’achat tablette</h1>
-        <p className="mt-1 text-sm text-white/70">Validation des virements et ajout automatique de durée d’accès.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">Admin • Tablette</h1>
+            <p className="mt-1 text-sm text-white/70">Stats d’utilisation, reset global et validation des preuves d’achat.</p>
+          </div>
+          <PrimaryButton onClick={() => setResetOpen(true)}>Reset tablettes (tous groupes)</PrimaryButton>
+        </div>
       </Panel>
 
+      {stats ? (
+        <Panel>
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Stats atelier tablette</h2>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs text-white/60">Aujourd’hui ({stats.today})</p>
+                <p className="text-sm">Passages: <span className="font-semibold">{stats.totals.runs_today}</span></p>
+                <p className="text-sm">Items: <span className="font-semibold">{stats.totals.items_today}</span></p>
+                <p className="text-sm">Coût: <span className="font-semibold">{stats.totals.cost_today.toFixed(2)} $</span></p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs text-white/60">Semaine en cours</p>
+                <p className="text-sm">Passages: <span className="font-semibold">{stats.totals.runs_week}</span></p>
+                <p className="text-sm">Items: <span className="font-semibold">{stats.totals.items_week}</span></p>
+                <p className="text-sm">Coût: <span className="font-semibold">{stats.totals.cost_week.toFixed(2)} $</span></p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs text-white/60">Membres observés</p>
+                <p className="text-sm">Total: <span className="font-semibold">{stats.by_member.length}</span></p>
+                <p className="text-sm">Ont fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => m.did_today).length}</span></p>
+                <p className="text-sm">N’ont pas fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => !m.did_today).length}</span></p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="mb-2 text-sm font-semibold">Par jour (14 derniers jours)</p>
+                <div className="space-y-1 text-xs text-white/80">
+                  {stats.by_day.map((row) => (
+                    <div key={row.day_key} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                      <span>{row.day_key}</span>
+                      <span>{row.runs} passages · {row.total_items} items · {row.total_cost.toFixed(2)} $</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="mb-2 text-sm font-semibold">Par semaine (8 dernières semaines)</p>
+                <div className="space-y-1 text-xs text-white/80">
+                  {stats.by_week.map((row) => (
+                    <div key={row.week_key} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                      <span>{row.week_key}</span>
+                      <span>{row.runs} passages · {row.total_items} items · {row.total_cost.toFixed(2)} $</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="mb-2 text-sm font-semibold">Qui l’a fait / pas fait aujourd’hui</p>
+                <div className="max-h-64 space-y-1 overflow-auto text-xs text-white/80">
+                  {stats.by_member.map((row) => (
+                    <div key={row.member_name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                      <span className="font-medium">{row.member_name}</span>
+                      <span className={row.did_today ? 'text-emerald-200' : 'text-amber-200'}>{row.did_today ? 'fait aujourd’hui' : 'pas fait aujourd’hui'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="mb-2 text-sm font-semibold">Par groupe (aujourd’hui)</p>
+                <div className="max-h-64 space-y-1 overflow-auto text-xs text-white/80">
+                  {stats.by_group_today.map((row) => (
+                    <div key={row.group_id} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                      <span className="font-medium">{row.group_name}</span>
+                      <span>{row.runs_today} passages · {row.items_today} items</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Panel>
+      ) : null}
+
       <Panel>
-        <div className="space-y-3">
+        <h2 className="text-lg font-semibold">Preuves d’achat tablette</h2>
+        <p className="mt-1 text-sm text-white/70">Validation des virements et ajout automatique de durée d’accès.</p>
+        <div className="mt-3 space-y-3">
           {rows.map((row) => (
             <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -99,6 +221,16 @@ export default function AdminTablettePage() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={resetOpen}
+        title="Réinitialiser toutes les tablettes ?"
+        description="Cette action supprime l’historique tablette (tous groupes) pour repartir à zéro."
+        confirmLabel="Réinitialiser"
+        loading={resetting}
+        onCancel={() => setResetOpen(false)}
+        onConfirm={resetAllTabletRuns}
+      />
     </div>
   )
 }
