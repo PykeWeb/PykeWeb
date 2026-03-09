@@ -93,13 +93,14 @@ export function FinanceItemTradeModal({
   const filtered = useMemo(() => {
     const search = itemSearch.trim().toLowerCase()
     return items
+      .filter((it) => (hideUnitPrice && tradeMode === 'sell' ? Math.max(0, Number(it.stock) || 0) > 0 : true))
       .filter((it) => (category === 'all' ? true : it.category === category))
       .filter((it) => (type === 'all' ? true : it.item_type === type))
       .filter((it) => {
         if (!search) return true
         return `${it.name} ${it.internal_id}`.toLowerCase().includes(search)
       })
-  }, [items, category, type, itemSearch])
+  }, [items, category, type, itemSearch, hideUnitPrice, tradeMode])
 
   const linesWithItems = useMemo(() => {
     return lines
