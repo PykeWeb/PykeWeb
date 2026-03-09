@@ -220,7 +220,7 @@ export default function AdminTablettePage() {
                 const uploading = uploadingImageKey === item.key
                 return (
                   <div key={item.key} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                    <div className="grid gap-2 md:grid-cols-[minmax(180px,1fr)_170px_130px_120px_auto_auto] md:items-center">
+                    <div className="grid gap-2 md:grid-cols-[minmax(180px,1fr)_190px_130px_120px_auto_auto] md:items-center">
                       <Input value={item.name} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, name: e.target.value } : row)))} placeholder="Nom" />
 
                       <div
@@ -237,7 +237,7 @@ export default function AdminTablettePage() {
                             return
                           }
                         }}
-                        className="h-10 overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04] outline-none focus:border-white/30"
+                        className="h-12 overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04] outline-none focus:border-white/30"
                         onClick={() => imageInputRefs.current[item.key]?.click()}
                       >
                         <input
@@ -253,7 +253,7 @@ export default function AdminTablettePage() {
                           <span className="inline-flex h-full w-full items-center justify-center text-xs text-emerald-200">Nouvelle image prête</span>
                         ) : item.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                          <img src={item.image_url} alt={item.name} className="h-full w-full bg-black/10 object-contain p-1" />
                         ) : (
                           <span className="inline-flex h-full w-full items-center justify-center text-xs text-white/50">Coller / choisir image</span>
                         )}
@@ -352,6 +352,7 @@ export default function AdminTablettePage() {
               <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
+                    <p className="mb-1 inline-flex rounded-full border border-cyan-300/30 bg-cyan-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-100">Service</p>
                     <p className="font-semibold">{row.group_name || row.group_id} {row.group_badge ? `(${row.group_badge})` : ''}</p>
                     <p className="text-xs text-white/60">{row.weeks} semaine(s) · {row.amount.toFixed(2)} $</p>
                   </div>
