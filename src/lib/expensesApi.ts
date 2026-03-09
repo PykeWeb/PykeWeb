@@ -218,8 +218,18 @@ export async function setExpenseStatus(args: { expenseId: string; status: Expens
 }
 
 export async function deleteExpense(expenseId: string) {
-  const { error } = await supabase.from('expenses').delete().eq('id', expenseId).eq('group_id', currentGroupId())
-  if (error) throw error
+  const groupId = currentGroupId()
+  const scopedDelete = await supabase.from('expenses').delete().eq('id', expenseId).eq('group_id', groupId).select('id')
+  if (scopedDelete.error) throw scopedDelete.error
+
+  if (!scopedDelete.data || scopedDelete.data.length === 0) {
+    const legacyFallback = await supabase.from('expenses').delete().eq('id', expenseId).is('group_id', null).select('id')
+    if (legacyFallback.error) throw legacyFallback.error
+    if (!legacyFallback.data || legacyFallback.data.length === 0) {
+      throw new Error('Dépense introuvable ou déjà supprimée.')
+    }
+  }
+
   void createAppLog({
     area: 'finance.expenses',
     action: 'delete',

@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { Image as ImageIcon, Layers3, Pencil, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import type { FinanceEntryDetailResponse, FinanceEntrySource } from '@/lib/types/financeDetail'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
-import { deleteExpense, setExpenseStatus, updateExpense, type ExpenseStatus } from '@/lib/expensesApi'
+import type { ExpenseStatus } from '@/lib/expensesApi'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { toast } from 'sonner'
@@ -31,6 +31,7 @@ function movementLabel(source: FinanceEntrySource, movement: 'expense' | 'purcha
 
 export default function FinanceTransactionDetailPage() {
   const params = useParams<{ source: FinanceEntrySource; id: string }>()
+  const router = useRouter()
   const [detail, setDetail] = useState<FinanceEntryDetailResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -42,35 +43,40 @@ export default function FinanceTransactionDetailPage() {
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<ExpenseStatus>('pending')
 
+  const reloadDetail = useCallback(async () => {
+    const res = await fetch(`/api/finance/entries/${params.source}/${params.id}`, withTenantSessionHeader({ cache: 'no-store' }))
+    if (!res.ok) throw new Error(await res.text())
+    const json = (await res.json()) as FinanceEntryDetailResponse
+    setDetail(json)
+    const current = json.entry
+
+    setMemberName(current.counterparty || '')
+    setItemLabel(current.display_name || '')
+    setQuantity(String(Math.max(1, Math.floor(Number(current.quantity) || 1))))
+    const lineUnit = current.lines[0]?.unit_price ?? 0
+    setUnitPrice(String(Math.max(0, Number.isFinite(lineUnit) ? lineUnit : 0)))
+    setNotes(current.notes || '')
+
+    if (current.source === 'expenses') {
+      setStatus(current.expense_status === 'paid' ? 'paid' : 'pending')
+    }
+  }, [params.id, params.source])
+
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(
-          `/api/finance/entries/${params.source}/${params.id}`,
-          withTenantSessionHeader({ cache: 'no-store' })
-        )
-        if (!res.ok) throw new Error(await res.text())
-        const json = (await res.json()) as FinanceEntryDetailResponse
-        setDetail(json)
-        const current = json.entry
-        if (current.source === 'expenses') {
-          setMemberName(current.counterparty || '')
-          setItemLabel(current.display_name || '')
-          setQuantity(String(Math.max(1, Math.floor(Number(current.quantity) || 1))))
-          const lineUnit = current.lines[0]?.unit_price ?? 0
-          setUnitPrice(String(Math.max(0, Number.isFinite(lineUnit) ? lineUnit : 0)))
-          setNotes(current.notes || '')
-          setStatus(current.expense_status === 'paid' ? 'paid' : 'pending')
-        }
+        await reloadDetail()
       } catch (loadError: unknown) {
         setError(loadError instanceof Error ? loadError.message : 'Impossible de charger la transaction.')
       }
     }
     void load()
-  }, [params.id, params.source])
+  }, [reloadDetail])
 
   const entry = detail?.entry
   const isExpense = entry?.source === 'expenses'
+  const isFinanceTransaction = entry?.source === 'finance_transactions'
+  const canEditQuantityAndPrice = isFinanceTransaction && !entry?.is_multi
   const expenseId = entry?.expense_id || entry?.id || null
   const parsedQuantity = Math.max(1, Math.floor(Number(quantity) || 1))
   const parsedUnitPrice = Math.max(0, Number(unitPrice) || 0)
@@ -221,19 +227,22 @@ export default function FinanceTransactionDetailPage() {
                       setBusy(true)
                       setError(null)
                       try {
-                        await updateExpense({
-                          expenseId,
-                          member_name: memberName,
-                          item_label: itemLabel,
-                          quantity: parsedQuantity,
-                          unit_price: parsedUnitPrice,
-                          description: notes,
+                        const res = await fetch(`/api/finance/entries/expenses/${encodeURIComponent(expenseId)}`, {
+                          ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+                          method: 'PATCH',
+                          body: JSON.stringify({
+                            member_name: memberName,
+                            item_label: itemLabel,
+                            quantity: parsedQuantity,
+                            unit_price: parsedUnitPrice,
+                            description: notes,
+                            status,
+                          }),
                         })
-                        await setExpenseStatus({ expenseId, status })
+                        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Mise à jour impossible.')
                         toast.success('Dépense mise à jour.')
                         setEditing(false)
-                        const res = await fetch(`/api/finance/entries/${params.source}/${params.id}`, withTenantSessionHeader({ cache: 'no-store' }))
-                        if (res.ok) setDetail((await res.json()) as FinanceEntryDetailResponse)
+                        await reloadDetail()
                       } catch (actionError: unknown) {
                         setError(actionError instanceof Error ? actionError.message : 'Impossible de mettre à jour la dépense.')
                       } finally {
@@ -251,11 +260,109 @@ export default function FinanceTransactionDetailPage() {
                       if (!window.confirm('Supprimer cette dépense ?')) return
                       setBusy(true)
                       try {
-                        await deleteExpense(expenseId)
+                        const res = await fetch(`/api/finance/entries/expenses/${encodeURIComponent(expenseId)}`, {
+                          ...withTenantSessionHeader(),
+                          method: 'DELETE',
+                        })
+                        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Suppression impossible.')
                         toast.success('Dépense supprimée.')
-                        window.location.href = '/finance'
+                        router.push('/finance')
+                        router.refresh()
                       } catch (actionError: unknown) {
                         setError(actionError instanceof Error ? actionError.message : 'Impossible de supprimer la dépense.')
+                      } finally {
+                        setBusy(false)
+                      }
+                    }}
+                  >
+                    Supprimer
+                  </SecondaryButton>
+                </div>
+              </div>
+            ) : null}
+
+            {!isExpense ? (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="mb-3 text-sm font-semibold">Gestion de la transaction</p>
+
+                {editing ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs text-white/60">Interlocuteur</label>
+                      <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/60">Notes</label>
+                      <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/60">Quantité</label>
+                      <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="numeric" disabled={!canEditQuantityAndPrice} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/60">Prix unitaire</label>
+                      <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} inputMode="decimal" disabled={!canEditQuantityAndPrice} />
+                    </div>
+                    {!canEditQuantityAndPrice ? (
+                      <p className="md:col-span-2 text-xs text-white/60">Pour les transactions legacy ou multiples, seule la note/interlocuteur est modifiable ici.</p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <SecondaryButton onClick={() => setEditing((prev) => !prev)} icon={<Pencil className="h-4 w-4" />}>{editing ? 'Fermer édition' : 'Modifier'}</SecondaryButton>
+                  <PrimaryButton
+                    disabled={busy}
+                    onClick={async () => {
+                      if (!entry) return
+                      setBusy(true)
+                      setError(null)
+                      try {
+                        const payload: Record<string, unknown> = {
+                          counterparty: memberName,
+                          notes,
+                        }
+                        if (canEditQuantityAndPrice) {
+                          payload.quantity = parsedQuantity
+                          payload.unit_price = parsedUnitPrice
+                        }
+
+                        const res = await fetch(`/api/finance/entries/${entry.source}/${encodeURIComponent(entry.id)}`, {
+                          ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+                          method: 'PATCH',
+                          body: JSON.stringify(payload),
+                        })
+                        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Mise à jour impossible.')
+                        toast.success('Transaction mise à jour.')
+                        setEditing(false)
+                        await reloadDetail()
+                      } catch (actionError: unknown) {
+                        setError(actionError instanceof Error ? actionError.message : 'Impossible de modifier la transaction.')
+                      } finally {
+                        setBusy(false)
+                      }
+                    }}
+                  >
+                    Enregistrer changements
+                  </PrimaryButton>
+                  <SecondaryButton
+                    disabled={busy}
+                    icon={<Trash2 className="h-4 w-4" />}
+                    onClick={async () => {
+                      if (!entry) return
+                      if (!window.confirm('Supprimer cette transaction ?')) return
+                      setBusy(true)
+                      try {
+                        const res = await fetch(`/api/finance/entries/${entry.source}/${encodeURIComponent(entry.id)}`, {
+                          ...withTenantSessionHeader(),
+                          method: 'DELETE',
+                        })
+                        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Suppression impossible.')
+                        toast.success('Transaction supprimée.')
+                        router.push('/finance')
+                        router.refresh()
+                      } catch (actionError: unknown) {
+                        setError(actionError instanceof Error ? actionError.message : 'Impossible de supprimer la transaction.')
                       } finally {
                         setBusy(false)
                       }

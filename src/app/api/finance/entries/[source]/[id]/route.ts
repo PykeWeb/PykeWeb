@@ -200,6 +200,29 @@ function parseGroupedFinanceTransactionIds(rawId: string): string[] {
     .filter((id) => UUID_RE.test(id))
 }
 
+type FinanceEntryPatchBody = {
+  counterparty?: string | null
+  notes?: string | null
+  quantity?: number
+  unit_price?: number
+  member_name?: string
+  item_label?: string
+  description?: string | null
+  status?: 'pending' | 'paid'
+}
+
+function toPositiveInt(value: unknown, fallback: number) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(1, Math.floor(parsed))
+}
+
+function toNonNegative(value: unknown, fallback: number) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(0, parsed)
+}
+
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const session = await requireGroupSession(request)
@@ -370,5 +393,253 @@ export async function GET(request: Request, { params }: RouteParams) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Non autorisé'
     return NextResponse.json({ error: message }, { status: 401 })
+  }
+}
+
+export async function PATCH(request: Request, { params }: RouteParams) {
+  try {
+    const session = await requireGroupSession(request)
+    const source = params.source as FinanceEntrySource
+    const id = decodeURIComponent(params.id)
+    const body = (await request.json()) as FinanceEntryPatchBody
+    const supabase = getSupabaseAdmin()
+
+    if (source === 'finance_transactions') {
+      const groupedIds = parseGroupedFinanceTransactionIds(id)
+      if (groupedIds.length > 1) {
+        return NextResponse.json({ error: 'Modification impossible pour une transaction multiple.' }, { status: 400 })
+      }
+
+      const targetId = groupedIds[0] || id
+      const { data: row, error: rowError } = await supabase
+        .from('finance_transactions')
+        .select('id,item_id,mode,quantity,unit_price')
+        .eq('group_id', session.groupId)
+        .eq('id', targetId)
+        .maybeSingle<{ id: string; item_id: string; mode: 'buy' | 'sell'; quantity: number | null; unit_price: number | null }>()
+
+      if (rowError || !row) return NextResponse.json({ error: rowError?.message || 'Transaction introuvable.' }, { status: 404 })
+
+      const oldQty = toPositiveInt(row.quantity, 1)
+      const nextQty = toPositiveInt(body.quantity, oldQty)
+      const nextUnit = toNonNegative(body.unit_price, toNonNegative(row.unit_price, 0))
+
+      const { data: item, error: itemError } = await supabase
+        .from('catalog_items')
+        .select('id,stock')
+        .eq('group_id', session.groupId)
+        .eq('id', row.item_id)
+        .maybeSingle<{ id: string; stock: number | null }>()
+
+      if (itemError || !item) return NextResponse.json({ error: itemError?.message || 'Item introuvable.' }, { status: 404 })
+
+      const currentStock = Math.max(0, Number(item.stock ?? 0))
+      const oldImpact = row.mode === 'buy' ? oldQty : -oldQty
+      const nextImpact = row.mode === 'buy' ? nextQty : -nextQty
+      const nextStock = currentStock + (nextImpact - oldImpact)
+
+      if (nextStock < 0) {
+        return NextResponse.json({ error: 'Stock insuffisant pour cette modification.' }, { status: 400 })
+      }
+
+      const { error: stockError } = await supabase
+        .from('catalog_items')
+        .update({ stock: nextStock, updated_at: new Date().toISOString() })
+        .eq('group_id', session.groupId)
+        .eq('id', item.id)
+      if (stockError) throw stockError
+
+      const { error: updateError } = await supabase
+        .from('finance_transactions')
+        .update({
+          quantity: nextQty,
+          unit_price: nextUnit,
+          total: Math.max(0, nextQty * nextUnit),
+          counterparty: typeof body.counterparty === 'string' ? body.counterparty.trim() || null : undefined,
+          notes: typeof body.notes === 'string' ? body.notes.trim() || null : undefined,
+        })
+        .eq('group_id', session.groupId)
+        .eq('id', targetId)
+
+      if (updateError) throw updateError
+      return NextResponse.json({ ok: true })
+    }
+
+    if (source === 'transactions') {
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({
+          counterparty: typeof body.counterparty === 'string' ? body.counterparty.trim() || null : undefined,
+          notes: typeof body.notes === 'string' ? body.notes.trim() || null : undefined,
+        })
+        .eq('group_id', session.groupId)
+        .eq('id', id)
+
+      if (updateError) throw updateError
+      return NextResponse.json({ ok: true })
+    }
+
+    if (source === 'expenses') {
+      const quantity = toPositiveInt(body.quantity, 1)
+      const unitPrice = toNonNegative(body.unit_price, 0)
+      const nextStatus = body.status === 'paid' ? 'paid' : body.status === 'pending' ? 'pending' : null
+
+      const baseUpdate = {
+        member_name: typeof body.member_name === 'string' ? body.member_name.trim() : undefined,
+        item_label: typeof body.item_label === 'string' ? body.item_label.trim() : undefined,
+        quantity,
+        unit_price: unitPrice,
+        total: quantity * unitPrice,
+        description: typeof body.description === 'string' ? body.description.trim() || null : undefined,
+        status: nextStatus || undefined,
+        paid_at: nextStatus === 'paid' ? new Date().toISOString() : nextStatus === 'pending' ? null : undefined,
+      }
+
+      const scopedQuery = supabase.from('expenses').update(baseUpdate).eq('id', id).eq('group_id', session.groupId).select('id')
+      const { data: updatedRows, error: updateError } = await scopedQuery
+      if (updateError) throw updateError
+
+      if (!updatedRows || updatedRows.length === 0) {
+        const fallback = await supabase.from('expenses').update(baseUpdate).eq('id', id).is('group_id', null).select('id')
+        if (fallback.error) throw fallback.error
+        if (!fallback.data || fallback.data.length === 0) {
+          return NextResponse.json({ error: 'Dépense introuvable.' }, { status: 404 })
+        }
+      }
+
+      return NextResponse.json({ ok: true })
+    }
+
+    return NextResponse.json({ error: 'Source invalide' }, { status: 400 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Impossible de modifier cette entrée.' }, { status: 400 })
+  }
+}
+
+export async function DELETE(request: Request, { params }: RouteParams) {
+  try {
+    const session = await requireGroupSession(request)
+    const source = params.source as FinanceEntrySource
+    const id = decodeURIComponent(params.id)
+    const supabase = getSupabaseAdmin()
+
+    if (source === 'finance_transactions') {
+      const groupedIds = parseGroupedFinanceTransactionIds(id)
+      const targetIds = groupedIds.length > 0 ? groupedIds : [id]
+
+      const { data: rows, error: loadError } = await supabase
+        .from('finance_transactions')
+        .select('id,item_id,mode,quantity')
+        .eq('group_id', session.groupId)
+        .in('id', targetIds)
+
+      if (loadError) throw loadError
+      if (!rows || rows.length === 0) return NextResponse.json({ error: 'Transaction introuvable.' }, { status: 404 })
+
+      const itemIds = Array.from(new Set(rows.map((row) => String((row as { item_id: string }).item_id))))
+      const { data: items, error: itemError } = await supabase
+        .from('catalog_items')
+        .select('id,stock')
+        .eq('group_id', session.groupId)
+        .in('id', itemIds)
+      if (itemError) throw itemError
+
+      const stockMap = new Map((items ?? []).map((item) => [String((item as { id: string }).id), Math.max(0, Number((item as { stock: number | null }).stock ?? 0))]))
+      const nextStockMap = new Map(stockMap)
+
+      for (const row of rows as Array<{ item_id: string; mode: 'buy' | 'sell' | null; quantity: number | null }>) {
+        const qty = toPositiveInt(row.quantity, 1)
+        const currentStock = nextStockMap.get(row.item_id) ?? 0
+        const nextStock = row.mode === 'sell' ? currentStock + qty : currentStock - qty
+        if (nextStock < 0) return NextResponse.json({ error: 'Stock insuffisant pour supprimer cette transaction.' }, { status: 400 })
+        nextStockMap.set(row.item_id, nextStock)
+      }
+
+      for (const [itemId, stock] of nextStockMap.entries()) {
+        if ((stockMap.get(itemId) ?? 0) === stock) continue
+        const { error: stockError } = await supabase
+          .from('catalog_items')
+          .update({ stock, updated_at: new Date().toISOString() })
+          .eq('group_id', session.groupId)
+          .eq('id', itemId)
+        if (stockError) throw stockError
+      }
+
+      const { error: deleteError } = await supabase
+        .from('finance_transactions')
+        .delete()
+        .eq('group_id', session.groupId)
+        .in('id', targetIds)
+      if (deleteError) throw deleteError
+      return NextResponse.json({ ok: true })
+    }
+
+    if (source === 'transactions') {
+      const { data: tx, error: txError } = await supabase
+        .from('transactions')
+        .select('id,type')
+        .eq('group_id', session.groupId)
+        .eq('id', id)
+        .maybeSingle<{ id: string; type: 'purchase' | 'sale' | null }>()
+      if (txError || !tx) return NextResponse.json({ error: txError?.message || 'Transaction introuvable.' }, { status: 404 })
+
+      const { data: items, error: itemsError } = await supabase
+        .from('transaction_items')
+        .select('object_id,quantity')
+        .eq('group_id', session.groupId)
+        .eq('transaction_id', tx.id)
+      if (itemsError) throw itemsError
+
+      const objectIds = Array.from(new Set((items ?? []).map((item) => String((item as { object_id: string }).object_id)).filter(Boolean)))
+      if (objectIds.length > 0) {
+        const { data: stocks, error: stockLoadError } = await supabase
+          .from('objects')
+          .select('id,stock')
+          .eq('group_id', session.groupId)
+          .in('id', objectIds)
+        if (stockLoadError) throw stockLoadError
+
+        const stockMap = new Map((stocks ?? []).map((row) => [String((row as { id: string }).id), Math.max(0, Number((row as { stock: number | null }).stock ?? 0))]))
+        for (const item of items as Array<{ object_id: string; quantity: number | null }>) {
+          const qty = toPositiveInt(item.quantity, 1)
+          const current = stockMap.get(item.object_id) ?? 0
+          const next = tx.type === 'sale' ? current + qty : current - qty
+          if (next < 0) return NextResponse.json({ error: 'Stock insuffisant pour supprimer cette transaction.' }, { status: 400 })
+          stockMap.set(item.object_id, next)
+        }
+
+        for (const [objectId, stock] of stockMap.entries()) {
+          const { error: stockUpdateError } = await supabase
+            .from('objects')
+            .update({ stock })
+            .eq('group_id', session.groupId)
+            .eq('id', objectId)
+          if (stockUpdateError) throw stockUpdateError
+        }
+      }
+
+      const { error: deleteError } = await supabase.from('transactions').delete().eq('group_id', session.groupId).eq('id', tx.id)
+      if (deleteError) throw deleteError
+      return NextResponse.json({ ok: true })
+    }
+
+    if (source === 'expenses') {
+      const scopedDelete = await supabase.from('expenses').delete().eq('id', id).eq('group_id', session.groupId).select('id')
+      if (scopedDelete.error) throw scopedDelete.error
+
+      if (!scopedDelete.data || scopedDelete.data.length === 0) {
+        const fallback = await supabase.from('expenses').delete().eq('id', id).is('group_id', null).select('id')
+        if (fallback.error) throw fallback.error
+        if (!fallback.data || fallback.data.length === 0) {
+          return NextResponse.json({ error: 'Dépense introuvable.' }, { status: 404 })
+        }
+      }
+
+      return NextResponse.json({ ok: true })
+    }
+
+    return NextResponse.json({ error: 'Source invalide' }, { status: 400 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Impossible de supprimer cette entrée.' }, { status: 400 })
   }
 }

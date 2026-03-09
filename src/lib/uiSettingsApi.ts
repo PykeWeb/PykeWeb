@@ -22,6 +22,7 @@ export const DEFAULT_LABELS: UiLabels = {
   nav_drogues: 'Drogues',
   nav_depenses: 'Dépenses',
   nav_finance: 'Finance',
+  nav_tablette: 'Tablette',
 }
 
 export const DEFAULT_LAYOUTS: UiLayouts = {

@@ -40,7 +40,7 @@ export function Sidebar() {
   const [groupBadge, setGroupBadge] = useState('GROUPE')
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
-  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items'])
+  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'tablette'])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -91,6 +91,7 @@ export function Sidebar() {
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
+    { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
   ]
 
   return (
