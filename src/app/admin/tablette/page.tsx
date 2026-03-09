@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Input } from '@/components/ui/Input'
+import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import type { TabletRentalTicket } from '@/lib/tabletRental'
 import type { AdminTabletAtelierStatsResponse, TabletCatalogItemConfig } from '@/lib/types/tablette'
 
@@ -20,8 +21,13 @@ export default function AdminTablettePage() {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [selectedItemKey, setSelectedItemKey] = useState('')
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
-  async function refresh() {
+  const selectedItemExists = useMemo(() => items.some((item) => item.key === selectedItemKey), [items, selectedItemKey])
+
+  const refresh = useCallback(async () => {
     const [rentalsRes, statsRes, itemsRes] = await Promise.all([
       fetch('/api/admin/tablette/rentals', withTenantSessionHeader({ cache: 'no-store' })),
       fetch('/api/admin/tablette/atelier', withTenantSessionHeader({ cache: 'no-store' })),
@@ -48,12 +54,13 @@ export default function AdminTablettePage() {
     setRows(rentalsJson)
     setStats(statsJson)
     setItems(itemsJson)
+    if (!selectedItemKey && itemsJson[0]?.key) setSelectedItemKey(itemsJson[0].key)
     setError(null)
-  }
+  }, [selectedItemKey])
 
   useEffect(() => {
     void refresh()
-  }, [])
+  }, [refresh])
 
   async function validateRow(row: AdminRentalTicket) {
     try {
@@ -87,9 +94,10 @@ export default function AdminTablettePage() {
     }
   }
 
-  async function addItem() {
+  function addItem() {
     const key = `item_${Date.now().toString(36).slice(-6)}`
     setItems((prev) => [...prev, { key, name: 'Nouvel item', unit_price: 0, max_per_day: 2, image_url: null }])
+    setSelectedItemKey(key)
   }
 
   async function deleteItem(key: string) {
@@ -100,8 +108,32 @@ export default function AdminTablettePage() {
       })
       if (!res.ok) throw new Error(await res.text())
       setItems((prev) => prev.filter((item) => item.key !== key))
+      if (selectedItemKey === key) setSelectedItemKey('')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Suppression item impossible')
+    }
+  }
+
+  async function uploadImageToSelectedItem() {
+    if (!selectedItemExists || !uploadFile) return
+    try {
+      setUploadingImage(true)
+      setError(null)
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      const res = await fetch('/api/admin/tablette/items/upload-image', {
+        ...withTenantSessionHeader(),
+        method: 'POST',
+        body: formData,
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const json = (await res.json()) as { publicUrl: string }
+      setItems((prev) => prev.map((item) => (item.key === selectedItemKey ? { ...item, image_url: json.publicUrl } : item)))
+      setUploadFile(null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Upload image impossible')
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -138,10 +170,34 @@ export default function AdminTablettePage() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Items tablette (global)</h2>
           <div className="flex gap-2">
-            <SecondaryButton onClick={() => void addItem()}>Ajouter item</SecondaryButton>
+            <SecondaryButton onClick={addItem}>Ajouter item</SecondaryButton>
             <PrimaryButton onClick={() => void saveItems()}>Enregistrer items</PrimaryButton>
           </div>
         </div>
+
+        <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <p className="mb-2 text-sm font-semibold">Upload image (copier/coller PNG/JPEG/WebP)</p>
+          <div className="grid gap-3 md:grid-cols-[240px_1fr_auto] md:items-end">
+            <div>
+              <label className="mb-1 block text-xs text-white/60">Item cible</label>
+              <select
+                value={selectedItemKey}
+                onChange={(e) => setSelectedItemKey(e.target.value)}
+                className="h-10 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm"
+              >
+                <option value="">Choisir...</option>
+                {items.map((item) => (
+                  <option key={item.key} value={item.key}>{item.name} ({item.key})</option>
+                ))}
+              </select>
+            </div>
+            <ImageDropzone label="Image" onChange={setUploadFile} />
+            <PrimaryButton disabled={!selectedItemExists || !uploadFile || uploadingImage} onClick={() => void uploadImageToSelectedItem()}>
+              {uploadingImage ? 'Upload…' : 'Uploader image'}
+            </PrimaryButton>
+          </div>
+        </div>
+
         <div className="space-y-2">
           {items.map((item, index) => (
             <div key={item.key} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_1fr_140px_140px_auto]">
@@ -177,6 +233,32 @@ export default function AdminTablettePage() {
                 <p className="text-sm">Total: <span className="font-semibold">{stats.by_member.length}</span></p>
                 <p className="text-sm">Ont fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => m.did_today).length}</span></p>
                 <p className="text-sm">N’ont pas fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => !m.did_today).length}</span></p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="mb-2 text-sm font-semibold">Items achetés par jour</p>
+                <div className="max-h-64 space-y-2 overflow-auto text-xs text-white/80">
+                  {stats.by_day_items.map((row) => (
+                    <div key={row.day_key} className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
+                      <p className="mb-1 font-semibold">{row.day_key}</p>
+                      {row.items.map((item) => <p key={`${row.day_key}-${item.name}`}>{item.name}: {item.quantity}</p>)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="mb-2 text-sm font-semibold">Items achetés par semaine</p>
+                <div className="max-h-64 space-y-2 overflow-auto text-xs text-white/80">
+                  {stats.by_week_items.map((row) => (
+                    <div key={row.week_key} className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
+                      <p className="mb-1 font-semibold">{row.week_key}</p>
+                      {row.items.map((item) => <p key={`${row.week_key}-${item.name}`}>{item.name}: {item.quantity}</p>)}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

@@ -80,6 +80,8 @@ export type AdminTabletAtelierStatsResponse = {
   by_week: TabletWeeklyAggregate[]
   by_member: TabletMemberAggregate[]
   by_group_today: TabletGroupTodayStatus[]
+  by_day_items: TabletDailyItemsAggregate[]
+  by_week_items: TabletWeeklyItemsAggregate[]
 }
 
 
@@ -104,4 +106,19 @@ export type GroupTabletStats = {
     did_today: boolean
     last_day_key: string
   }>
+}
+
+export type TabletAggregateItemEntry = {
+  name: string
+  quantity: number
+}
+
+export type TabletDailyItemsAggregate = {
+  day_key: string
+  items: TabletAggregateItemEntry[]
+}
+
+export type TabletWeeklyItemsAggregate = {
+  week_key: string
+  items: TabletAggregateItemEntry[]
 }
