@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation'
 import {
   deleteTenantGroup,
   exportGroupCatalogItems,
+  importGroupItemsToAdminObjects,
   getTenantGroup,
   resetTenantGroupData,
   updateTenantGroup,
@@ -36,15 +37,6 @@ function formatAccessRemaining(paidUntil: string | null) {
   return `${minutes}m restantes`
 }
 
-function downloadJson(filename: string, payload: unknown) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
 
 export default function AdminGroupDetailsPage() {
   const params = useParams<{ id: string }>()
@@ -138,6 +130,37 @@ export default function AdminGroupDetailsPage() {
       window.location.href = '/admin/groupes'
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Suppression impossible.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+
+  async function importToAdminObjects() {
+    if (!group) return
+    const selectedItems = exportItems.filter((item) => item.selected).map((item) => ({
+      id: item.id,
+      name: item.name.trim(),
+      category: item.category.trim(),
+      item_type: item.item_type,
+      buy_price: Math.max(0, Number(item.buy_price) || 0),
+      stock: Math.max(0, Math.floor(Number(item.stock) || 0)),
+      image_url: item.image_url || null,
+      description: item.description || null,
+    })).filter((item) => item.name.length > 0)
+
+    if (selectedItems.length === 0) {
+      setError('Sélectionne au moins un item à ajouter dans Objets admin.')
+      return
+    }
+
+    try {
+      setBusy(true)
+      setError(null)
+      const result = await importGroupItemsToAdminObjects(group.id, selectedItems)
+      toast.success(`Objets admin mis à jour: ${result.inserted} ajoutés, ${result.updated} fusionnés.`)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Import vers Objets admin impossible.')
     } finally {
       setBusy(false)
     }
@@ -239,14 +262,14 @@ export default function AdminGroupDetailsPage() {
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-semibold">Export items du groupe</h2>
-            <p className="text-sm text-white/70">Sélectionnez et modifiez les champs avant export JSON.</p>
+            <h2 className="text-2xl font-semibold">Ajouter items du groupe vers Objets admin</h2>
+            <p className="text-sm text-white/70">Sélectionnez et modifiez les champs avant ajout direct dans Objets (admin).</p>
           </div>
           <button
-            onClick={() => downloadJson(`items-${group.login}.json`, exportItems.filter((x) => x.selected))}
+            onClick={() => void importToAdminObjects()}
             className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"
           >
-            Exporter ({selectedCount})
+            Ajouter dans Objets admin ({selectedCount})
           </button>
         </div>
 
@@ -258,6 +281,8 @@ export default function AdminGroupDetailsPage() {
                 <th className="px-3 py-2">Nom</th>
                 <th className="px-3 py-2">Catégorie</th>
                 <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Image URL</th>
+                <th className="px-3 py-2">Description</th>
                 <th className="px-3 py-2">Prix</th>
                 <th className="px-3 py-2">Stock</th>
               </tr>
@@ -280,6 +305,12 @@ export default function AdminGroupDetailsPage() {
                   </td>
                   <td className="px-3 py-2">
                     <input value={row.item_type ?? ''} onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, item_type: e.target.value || null } : it)))} className="h-9 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input value={row.image_url ?? ''} onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, image_url: e.target.value || null } : it)))} className="h-9 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3" placeholder="https://..." />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input value={row.description ?? ''} onChange={(e) => setExportItems((prev) => prev.map((it, i) => (i === index ? { ...it, description: e.target.value || null } : it)))} className="h-9 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3" />
                   </td>
                   <td className="px-3 py-2">
                     <input

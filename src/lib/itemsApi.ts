@@ -259,7 +259,10 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
           .catch((error: unknown) => ({ data: [] as GlobalCatalogRow[], error: error instanceof Error ? error : new Error('global catalog unavailable') })),
     groupId === 'admin'
       ? Promise.resolve({ data: [], error: null })
-      : Promise.resolve({ data: [], error: null }),
+      : supabase
+          .from('catalog_items_group_overrides')
+          .select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id')
+          .eq('group_id', groupId),
     groupId === 'admin'
       ? Promise.resolve({ data: [], error: null } as { data: CatalogItemRow[]; error: null })
       : fetchAdminSharedCatalogItems()
@@ -408,7 +411,40 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
     })
     .filter((item): item is CatalogItem => Boolean(item))
 
-  return [...catalogItems, ...mergedLegacy, ...globalItems, ...adminSharedItems].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const allItems = [
+    ...catalogItems,
+    ...mergedLegacy,
+    ...globalItems,
+    ...adminSharedItems,
+  ]
+
+  const mergedByKey = new Map<string, CatalogItem>()
+  for (const item of allItems) {
+    const key = `${item.category}:${item.name.trim().toLowerCase()}`
+    const existing = mergedByKey.get(key)
+    if (!existing) {
+      mergedByKey.set(key, item)
+      continue
+    }
+
+    const existingIsLocal = !existing.id.startsWith('global:') && !existing.id.startsWith('admin:')
+    const currentIsLocal = !item.id.startsWith('global:') && !item.id.startsWith('admin:')
+
+    if (!existingIsLocal && currentIsLocal) {
+      mergedByKey.set(key, item)
+      continue
+    }
+
+    if (existingIsLocal === currentIsLocal) {
+      const existingDate = new Date(existing.created_at).getTime()
+      const currentDate = new Date(item.created_at).getTime()
+      if (Number.isFinite(currentDate) && (!Number.isFinite(existingDate) || currentDate > existingDate)) {
+        mergedByKey.set(key, item)
+      }
+    }
+  }
+
+  return [...mergedByKey.values()].sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 export async function makeUniqueInternalId(name: string, current?: string) {
   const base = getSuggestedInternalId(name)
