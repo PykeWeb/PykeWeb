@@ -24,6 +24,7 @@ export default function AdminTablettePage() {
   const [selectedItemKey, setSelectedItemKey] = useState('')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null)
 
   const selectedItemExists = useMemo(() => items.some((item) => item.key === selectedItemKey), [items, selectedItemKey])
 
@@ -54,7 +55,9 @@ export default function AdminTablettePage() {
     setRows(rentalsJson)
     setStats(statsJson)
     setItems(itemsJson)
-    if (!selectedItemKey && itemsJson[0]?.key) setSelectedItemKey(itemsJson[0].key)
+    if (!itemsJson.some((item) => item.key === selectedItemKey)) {
+      setSelectedItemKey(itemsJson[0]?.key ?? '')
+    }
     setError(null)
   }, [selectedItemKey])
 
@@ -119,6 +122,10 @@ export default function AdminTablettePage() {
     try {
       setUploadingImage(true)
       setError(null)
+      setUploadNotice(null)
+      const target = items.find((item) => item.key === selectedItemKey)
+      if (!target) throw new Error('Item cible introuvable.')
+
       const formData = new FormData()
       formData.append('file', uploadFile)
       const res = await fetch('/api/admin/tablette/items/upload-image', {
@@ -128,8 +135,17 @@ export default function AdminTablettePage() {
       })
       if (!res.ok) throw new Error(await res.text())
       const json = (await res.json()) as { publicUrl: string }
-      setItems((prev) => prev.map((item) => (item.key === selectedItemKey ? { ...item, image_url: json.publicUrl } : item)))
+
+      const persistRes = await fetch('/api/admin/tablette/items', {
+        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+        method: 'POST',
+        body: JSON.stringify({ ...target, image_url: json.publicUrl }),
+      })
+      if (!persistRes.ok) throw new Error(await persistRes.text())
+
       setUploadFile(null)
+      setUploadNotice('Image enregistrée sur l’item.')
+      await refresh()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Upload image impossible')
     } finally {
@@ -183,11 +199,11 @@ export default function AdminTablettePage() {
               <select
                 value={selectedItemKey}
                 onChange={(e) => setSelectedItemKey(e.target.value)}
-                className="h-10 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm"
+                className="h-10 w-full rounded-xl border border-white/12 bg-slate-900/90 px-3 text-sm text-white outline-none focus:border-white/30"
               >
-                <option value="">Choisir...</option>
+                <option value="" className="bg-slate-900 text-white">Choisir...</option>
                 {items.map((item) => (
-                  <option key={item.key} value={item.key}>{item.name} ({item.key})</option>
+                  <option key={item.key} value={item.key} className="bg-slate-900 text-white">{item.name} ({item.key})</option>
                 ))}
               </select>
             </div>
@@ -197,12 +213,27 @@ export default function AdminTablettePage() {
             </PrimaryButton>
           </div>
         </div>
+        {uploadNotice ? <p className="mt-2 text-sm text-emerald-200">{uploadNotice}</p> : null}
 
         <div className="space-y-2">
           {items.map((item, index) => (
             <div key={item.key} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_1fr_140px_140px_auto]">
               <Input value={item.name} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, name: e.target.value } : row)))} placeholder="Nom" />
-              <Input value={item.image_url || ''} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, image_url: e.target.value || null } : row)))} placeholder="Image URL" />
+              <button
+                type="button"
+                className="flex h-10 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.04] px-3 text-left text-sm text-white/80"
+                onClick={() => item.image_url && setPreviewImageUrl(item.image_url)}
+              >
+                {item.image_url ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.image_url} alt={item.name} className="h-7 w-7 rounded-md object-cover" />
+                    <span className="truncate">Image enregistrée (cliquer pour voir)</span>
+                  </>
+                ) : (
+                  <span className="text-white/50">Aucune image (utiliser l’upload ci-dessus)</span>
+                )}
+              </button>
               <Input value={String(item.unit_price)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, unit_price: Math.max(0, Number(e.target.value) || 0) } : row)))} inputMode="decimal" />
               <Input value={String(item.max_per_day)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, max_per_day: Math.max(0, Math.floor(Number(e.target.value) || 0)) } : row)))} inputMode="numeric" />
               <SecondaryButton onClick={() => void deleteItem(item.key)}>Supprimer</SecondaryButton>

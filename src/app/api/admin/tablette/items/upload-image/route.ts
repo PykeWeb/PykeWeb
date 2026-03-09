@@ -4,6 +4,9 @@ import { assertAdminSession } from '@/server/auth/admin'
 
 const BUCKET = 'tablette-item-images'
 
+const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
+const MAX_FILE_SIZE = 5 * 1024 * 1024
+
 async function ensureBucket() {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase.storage.listBuckets()
@@ -28,6 +31,12 @@ export async function POST(request: Request) {
     const file = form.get('file')
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'Fichier manquant.' }, { status: 400 })
+    }
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return NextResponse.json({ error: 'Format non supporté (PNG/JPEG/WebP).' }, { status: 400 })
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'Image trop lourde (max 5 Mo).' }, { status: 400 })
     }
 
     const ext = file.type.includes('png') ? 'png' : file.type.includes('webp') ? 'webp' : 'jpg'
