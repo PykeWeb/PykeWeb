@@ -38,6 +38,7 @@ export function FinanceItemTradeModal({
   inline = false,
   initialItems = [],
   hideTitle = false,
+  hideUnitPrice = false,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -47,6 +48,7 @@ export function FinanceItemTradeModal({
   inline?: boolean
   initialItems?: CatalogItem[]
   hideTitle?: boolean
+  hideUnitPrice?: boolean
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
@@ -59,8 +61,6 @@ export function FinanceItemTradeModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingItems, setLoadingItems] = useState(false)
-
-  void enableModeSelect
 
   useEffect(() => {
     setTradeMode(mode)
@@ -119,11 +119,11 @@ export function FinanceItemTradeModal({
         const item = items.find((entry) => entry.id === line.itemId)
         if (!item) return line
         const quantity = tradeMode === 'sell' ? Math.min(toPositiveInt(line.quantity), Math.max(1, item.stock)) : toPositiveInt(line.quantity)
-        const nextUnit = tradeMode === 'buy' ? item.buy_price : item.sell_price
+        const nextUnit = hideUnitPrice ? 0 : (tradeMode === 'buy' ? item.buy_price : item.sell_price)
         return { ...line, quantity, unitPrice: String(toNonNegative(nextUnit)) }
       })
     )
-  }, [items, tradeMode])
+  }, [items, tradeMode, hideUnitPrice])
 
   const total = useMemo(() => linesWithItems.reduce((sum, entry) => sum + entry.subtotal, 0), [linesWithItems])
 
@@ -133,7 +133,7 @@ export function FinanceItemTradeModal({
       if (exists) {
         return current.map((line) => (line.itemId === item.id ? { ...line, quantity: line.quantity + 1 } : line))
       }
-      const defaultPrice = tradeMode === 'buy' ? item.buy_price : item.sell_price
+      const defaultPrice = hideUnitPrice ? 0 : (tradeMode === 'buy' ? item.buy_price : item.sell_price)
       return [...current, { itemId: item.id, quantity: 1, unitPrice: String(defaultPrice) }]
     })
   }
@@ -191,16 +191,22 @@ export function FinanceItemTradeModal({
       >
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
-                <ArrowDownRight className="h-4 w-4" />
-                {copy.finance.trade.modeBuy}
-              </TabPill>
-              <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
-                <ArrowUpRight className="h-4 w-4" />
-                {copy.finance.trade.modeSell}
-              </TabPill>
-            </div>
+            {enableModeSelect ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
+                  <ArrowDownRight className="h-4 w-4" />
+                  {copy.finance.trade.modeBuy}
+                </TabPill>
+                <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
+                  <ArrowUpRight className="h-4 w-4" />
+                  {copy.finance.trade.modeSell}
+                </TabPill>
+              </div>
+            ) : (
+              <div className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs text-white/70">
+                {tradeMode === 'buy' ? copy.finance.trade.modeBuy : copy.finance.trade.modeSell}
+              </div>
+            )}
           </div>
 
           <div>
@@ -302,7 +308,7 @@ export function FinanceItemTradeModal({
                     </div>
                     <div className="flex items-center gap-2 text-right">
                       <span className="text-xs text-white/65">Stock: {it.stock}</span>
-                      <span className="text-xs text-white/65">Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $</span>
+                      {hideUnitPrice ? null : <span className="text-xs text-white/65">Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $</span>}
                     </div>
                   </button>
                 ))}
@@ -334,17 +340,21 @@ export function FinanceItemTradeModal({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
-                    Prix
-                  </span>
-                  <Input
-                    value={entry.line.unitPrice}
-                    onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
-                    inputMode="decimal"
-                    className="md:w-[140px]"
-                  />
-                </div>
+                {hideUnitPrice ? (
+                  <div className="text-sm text-white/60">Sortie stock</div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
+                      Prix
+                    </span>
+                    <Input
+                      value={entry.line.unitPrice}
+                      onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                      inputMode="decimal"
+                      className="md:w-[140px]"
+                    />
+                  </div>
+                )}
                 <div className="w-[220px]">
                   <QuantityStepper
                     value={entry.line.quantity}

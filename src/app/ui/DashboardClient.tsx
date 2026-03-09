@@ -18,7 +18,7 @@ type Tx = {
   id: string
   source: string
   entry_id: string
-  type: 'purchase' | 'sale'
+  type: 'purchase' | 'sale' | 'stock_out'
   total: number | null
   counterparty: string | null
   created_at: string
@@ -78,7 +78,7 @@ function createEmptyCategoryCounts(): Record<FinanceCategory, number> {
 }
 
 function createEmptyMovementCounts(): Record<FinanceMovementType, number> {
-  return { expense: 0, purchase: 0, sale: 0 }
+  return { expense: 0, purchase: 0, sale: 0, stock_out: 0 }
 }
 
 export function DashboardClient() {
@@ -208,14 +208,14 @@ export function DashboardClient() {
         }
 
         const recentFinanceTransactions: Tx[] = financeEntries
-          .filter((entry) => entry.movement_type === 'purchase' || entry.movement_type === 'sale')
+          .filter((entry) => entry.movement_type === 'purchase' || entry.movement_type === 'sale' || entry.movement_type === 'stock_out')
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 8)
           .map((entry) => ({
             id: `${entry.source}-${entry.id}`,
             source: entry.source,
             entry_id: entry.id,
-            type: entry.movement_type === 'purchase' ? 'purchase' : 'sale',
+            type: entry.movement_type === 'purchase' ? 'purchase' : entry.movement_type === 'stock_out' ? 'stock_out' : 'sale',
             total: entry.amount ?? null,
             counterparty: entry.member_name || null,
             created_at: entry.created_at,
@@ -311,7 +311,7 @@ export function DashboardClient() {
   }
 
   const financeActivitySummary = useMemo(() => {
-    const totalOps = financeMovementCounts.expense + financeMovementCounts.purchase + financeMovementCounts.sale
+    const totalOps = financeMovementCounts.expense + financeMovementCounts.purchase + financeMovementCounts.sale + financeMovementCounts.stock_out
     const totalAmountTx = recentTx.reduce((sum, tx) => sum + (Number(tx.total ?? 0) || 0), 0)
     const totalAmountExpenses = recentExpenses.reduce((sum, expense) => sum + (Number(expense.total ?? 0) || 0), 0)
     return {
@@ -325,7 +325,7 @@ export function DashboardClient() {
   const mergedFinanceActivity = useMemo(() => {
     const txRows = recentTx.map((tx) => ({
       id: `tx-${tx.id}`,
-      label: tx.type === 'purchase' ? 'Transaction achat' : 'Transaction vente',
+      label: tx.type === 'purchase' ? 'Transaction achat' : tx.type === 'stock_out' ? 'Sortie stock' : 'Transaction vente',
       detail: tx.counterparty || 'Interlocuteur non renseigné',
       amount: tx.total,
       href: `/finance/transactions/${tx.source}/${encodeURIComponent(tx.entry_id)}`,

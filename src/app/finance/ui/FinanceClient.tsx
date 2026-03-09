@@ -33,7 +33,7 @@ type ExpenseActionEntry = FinanceEntry & {
   movement_type: 'expense'
 }
 
-const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', sale: 'Vente/Sortie' }
+const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', sale: 'Vente', stock_out: 'Sortie' }
 const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Autres', other: 'Autres' }
 
 function toPositiveInt(value: string, fallback = 1) {
@@ -104,7 +104,7 @@ export default function FinanceClient() {
     if (categoryParam && ['multi', 'objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) {
       setCategory(categoryParam === 'custom' ? 'other' : (categoryParam as FilterCategory))
     }
-    if (typeParam && ['expense', 'purchase', 'sale'].includes(typeParam)) {
+    if (typeParam && ['expense', 'purchase', 'sale', 'stock_out'].includes(typeParam)) {
       setType(typeParam as FilterType)
     }
   }, [searchParams])
@@ -125,6 +125,7 @@ export default function FinanceClient() {
   const paidExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status === 'paid').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
+  const stockOuts = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_out').length, [filtered])
 
   const editingTotal = useMemo(() => toPositiveInt(editingQuantity) * toNonNegativeNumber(editingUnitPrice), [editingQuantity, editingUnitPrice])
 
@@ -145,11 +146,12 @@ export default function FinanceClient() {
 
   return (
     <Panel>
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-5">
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses en attente</p><p className="mt-1 text-xl font-semibold">{pendingExpenses.toFixed(2)} $</p></div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses remboursées</p><p className="mt-1 text-xl font-semibold">{paidExpenses.toFixed(2)} $</p></div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Achats</p><p className="mt-1 text-xl font-semibold">{purchases.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes / Sorties</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Sorties</p><p className="mt-1 text-xl font-semibold">{stockOuts}</p></div>
       </div>
 
       <div className="mt-4 mb-3 flex flex-wrap items-center gap-2">
@@ -172,6 +174,7 @@ export default function FinanceClient() {
         <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
         <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
         <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
+        <TabPill active={type === 'stock_out'} onClick={() => setType('stock_out')}>Sortie</TabPill>
       </div>
 
       <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">

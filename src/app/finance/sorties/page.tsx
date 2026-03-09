@@ -23,6 +23,7 @@ export default function FinanceSortiesPage() {
         inline
         open
         mode="sell"
+        hideUnitPrice
         initialItems={initialItems}
         onClose={() => router.push('/finance')}
         onSubmit={async (payload) => {
@@ -35,9 +36,10 @@ export default function FinanceSortiesPage() {
             item_id: payload.item.id,
             mode: 'sell',
             quantity: payload.quantity,
-            unit_price: payload.unitPrice,
+            unit_price: 0,
             counterparty: payload.counterparty,
             notes: reason,
+            payment_mode: 'stock_out',
           })
           toast.success('Sortie de stock enregistrée.')
           router.push('/finance')

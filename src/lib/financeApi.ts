@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 
-export type FinanceMovementType = 'expense' | 'purchase' | 'sale'
+export type FinanceMovementType = 'expense' | 'purchase' | 'sale' | 'stock_out'
 export type FinanceCategory = 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom' | 'other'
 
 export type FinanceEntry = {
@@ -225,7 +225,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
     entries.push({
       id: groupedId,
       source: 'finance_transactions',
-      movement_type: group.mode === 'buy' ? 'purchase' : 'sale',
+      movement_type: group.mode === 'buy' ? 'purchase' : group.payment_mode === 'stock_out' ? 'stock_out' : 'sale',
       category: (first.item?.category as FinanceCategory) || 'other',
       item_label: itemLabel,
       item_image_url: isMulti ? null : (first.item?.image_url || null),
