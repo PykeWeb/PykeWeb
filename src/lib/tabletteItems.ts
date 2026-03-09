@@ -15,3 +15,23 @@ export function toDayKey(date = new Date()): string {
     day: '2-digit',
   }).format(date)
 }
+
+export function normalizeTabletOptions(options: TabletCatalogItemConfig[] | null | undefined): TabletCatalogItemConfig[] {
+  const rows = Array.isArray(options) ? options : []
+  const cleaned = rows
+    .map((row, index) => ({
+      key: String(row.key || '').trim(),
+      name: String(row.name || '').trim(),
+      unit_price: Math.max(0, Number(row.unit_price) || 0),
+      max_per_day: Math.max(0, Math.min(100, Math.floor(Number(row.max_per_day) || 0))),
+      image_url: row.image_url || null,
+      sort_order: index,
+    }))
+    .filter((row) => row.key.length > 0 && row.name.length > 0)
+
+  if (cleaned.length > 0) {
+    return cleaned.sort((a, b) => a.sort_order - b.sort_order).map(({ sort_order, ...row }) => row)
+  }
+
+  return TABLET_DAILY_ITEM_OPTIONS
+}

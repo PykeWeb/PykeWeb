@@ -1,4 +1,4 @@
-export type TabletCatalogItemKey = 'disqueuse' | 'kit_cambus'
+export type TabletCatalogItemKey = string
 
 export type TabletCatalogItemConfig = {
   key: TabletCatalogItemKey
@@ -6,6 +6,14 @@ export type TabletCatalogItemConfig = {
   unit_price: number
   max_per_day: number
   image_url?: string | null
+}
+
+export type TabletRunItemLine = {
+  key: string
+  name: string
+  quantity: number
+  unit_price: number
+  subtotal: number
 }
 
 export type TabletDailyRun = {
@@ -16,13 +24,13 @@ export type TabletDailyRun = {
   kit_cambus_qty: number
   total_items: number
   total_cost: number
+  items_json?: TabletRunItemLine[]
   created_at: string
 }
 
 export type TabletSubmitPayload = {
   member_name: string
-  disqueuse_qty: number
-  kit_cambus_qty: number
+  quantities: Record<string, number>
 }
 
 export type TabletDailyAggregate = {
@@ -74,3 +82,26 @@ export type AdminTabletAtelierStatsResponse = {
   by_group_today: TabletGroupTodayStatus[]
 }
 
+
+export type GroupTabletStats = {
+  today: {
+    runs: number
+    items: number
+    cost: number
+    unique_members: number
+  }
+  week: {
+    runs: number
+    items: number
+    cost: number
+    unique_members: number
+  }
+  members: Array<{
+    member_name: string
+    total_runs: number
+    total_items: number
+    total_cost: number
+    did_today: boolean
+    last_day_key: string
+  }>
+}

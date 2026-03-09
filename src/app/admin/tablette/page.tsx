@@ -5,14 +5,16 @@ import { Panel } from '@/components/ui/Panel'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Input } from '@/components/ui/Input'
 import type { TabletRentalTicket } from '@/lib/tabletRental'
-import type { AdminTabletAtelierStatsResponse } from '@/lib/types/tablette'
+import type { AdminTabletAtelierStatsResponse, TabletCatalogItemConfig } from '@/lib/types/tablette'
 
 type AdminRentalTicket = TabletRentalTicket & { group_name?: string | null; group_badge?: string | null }
 
 export default function AdminTablettePage() {
   const [rows, setRows] = useState<AdminRentalTicket[]>([])
   const [stats, setStats] = useState<AdminTabletAtelierStatsResponse | null>(null)
+  const [items, setItems] = useState<TabletCatalogItemConfig[]>([])
   const [error, setError] = useState<string | null>(null)
   const [validatingId, setValidatingId] = useState<string | null>(null)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
@@ -20,26 +22,32 @@ export default function AdminTablettePage() {
   const [resetting, setResetting] = useState(false)
 
   async function refresh() {
-    const [rentalsRes, statsRes] = await Promise.all([
+    const [rentalsRes, statsRes, itemsRes] = await Promise.all([
       fetch('/api/admin/tablette/rentals', withTenantSessionHeader({ cache: 'no-store' })),
       fetch('/api/admin/tablette/atelier', withTenantSessionHeader({ cache: 'no-store' })),
+      fetch('/api/admin/tablette/items', withTenantSessionHeader({ cache: 'no-store' })),
     ])
 
     if (!rentalsRes.ok) {
       setError(await rentalsRes.text())
       return
     }
-
     if (!statsRes.ok) {
       setError(await statsRes.text())
+      return
+    }
+    if (!itemsRes.ok) {
+      setError(await itemsRes.text())
       return
     }
 
     const rentalsJson = (await rentalsRes.json()) as AdminRentalTicket[]
     const statsJson = (await statsRes.json()) as AdminTabletAtelierStatsResponse
+    const itemsJson = (await itemsRes.json()) as TabletCatalogItemConfig[]
 
     setRows(rentalsJson)
     setStats(statsJson)
+    setItems(itemsJson)
     setError(null)
   }
 
@@ -61,6 +69,39 @@ export default function AdminTablettePage() {
       setError(e instanceof Error ? e.message : 'Validation impossible')
     } finally {
       setValidatingId(null)
+    }
+  }
+
+  async function saveItems() {
+    try {
+      setError(null)
+      const res = await fetch('/api/admin/tablette/items', {
+        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+        method: 'PATCH',
+        body: JSON.stringify({ items }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      await refresh()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Sauvegarde items impossible')
+    }
+  }
+
+  async function addItem() {
+    const key = `item_${Date.now().toString(36).slice(-6)}`
+    setItems((prev) => [...prev, { key, name: 'Nouvel item', unit_price: 0, max_per_day: 2, image_url: null }])
+  }
+
+  async function deleteItem(key: string) {
+    try {
+      const res = await fetch(`/api/admin/tablette/items?key=${encodeURIComponent(key)}`, {
+        ...withTenantSessionHeader(),
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setItems((prev) => prev.filter((item) => item.key !== key))
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Suppression item impossible')
     }
   }
 
@@ -87,9 +128,30 @@ export default function AdminTablettePage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">Admin • Tablette</h1>
-            <p className="mt-1 text-sm text-white/70">Stats d’utilisation, reset global et validation des preuves d’achat.</p>
+            <p className="mt-1 text-sm text-white/70">Stats, configuration globale des items, reset global et validation des preuves.</p>
           </div>
           <PrimaryButton onClick={() => setResetOpen(true)}>Reset tablettes (tous groupes)</PrimaryButton>
+        </div>
+      </Panel>
+
+      <Panel>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Items tablette (global)</h2>
+          <div className="flex gap-2">
+            <SecondaryButton onClick={() => void addItem()}>Ajouter item</SecondaryButton>
+            <PrimaryButton onClick={() => void saveItems()}>Enregistrer items</PrimaryButton>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {items.map((item, index) => (
+            <div key={item.key} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_1fr_140px_140px_auto]">
+              <Input value={item.name} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, name: e.target.value } : row)))} placeholder="Nom" />
+              <Input value={item.image_url || ''} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, image_url: e.target.value || null } : row)))} placeholder="Image URL" />
+              <Input value={String(item.unit_price)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, unit_price: Math.max(0, Number(e.target.value) || 0) } : row)))} inputMode="decimal" />
+              <Input value={String(item.max_per_day)} onChange={(e) => setItems((prev) => prev.map((row, i) => (i === index ? { ...row, max_per_day: Math.max(0, Math.floor(Number(e.target.value) || 0)) } : row)))} inputMode="numeric" />
+              <SecondaryButton onClick={() => void deleteItem(item.key)}>Supprimer</SecondaryButton>
+            </div>
+          ))}
         </div>
       </Panel>
 
@@ -117,65 +179,12 @@ export default function AdminTablettePage() {
                 <p className="text-sm">N’ont pas fait aujourd’hui: <span className="font-semibold">{stats.by_member.filter((m) => !m.did_today).length}</span></p>
               </div>
             </div>
-
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="mb-2 text-sm font-semibold">Par jour (14 derniers jours)</p>
-                <div className="space-y-1 text-xs text-white/80">
-                  {stats.by_day.map((row) => (
-                    <div key={row.day_key} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                      <span>{row.day_key}</span>
-                      <span>{row.runs} passages · {row.total_items} items · {row.total_cost.toFixed(2)} $</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="mb-2 text-sm font-semibold">Par semaine (8 dernières semaines)</p>
-                <div className="space-y-1 text-xs text-white/80">
-                  {stats.by_week.map((row) => (
-                    <div key={row.week_key} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                      <span>{row.week_key}</span>
-                      <span>{row.runs} passages · {row.total_items} items · {row.total_cost.toFixed(2)} $</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="mb-2 text-sm font-semibold">Qui l’a fait / pas fait aujourd’hui</p>
-                <div className="max-h-64 space-y-1 overflow-auto text-xs text-white/80">
-                  {stats.by_member.map((row) => (
-                    <div key={row.member_name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                      <span className="font-medium">{row.member_name}</span>
-                      <span className={row.did_today ? 'text-emerald-200' : 'text-amber-200'}>{row.did_today ? 'fait aujourd’hui' : 'pas fait aujourd’hui'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="mb-2 text-sm font-semibold">Par groupe (aujourd’hui)</p>
-                <div className="max-h-64 space-y-1 overflow-auto text-xs text-white/80">
-                  {stats.by_group_today.map((row) => (
-                    <div key={row.group_id} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                      <span className="font-medium">{row.group_name}</span>
-                      <span>{row.runs_today} passages · {row.items_today} items</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </Panel>
       ) : null}
 
       <Panel>
         <h2 className="text-lg font-semibold">Preuves d’achat tablette</h2>
-        <p className="mt-1 text-sm text-white/70">Validation des virements et ajout automatique de durée d’accès.</p>
         <div className="mt-3 space-y-3">
           {rows.map((row) => (
             <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -185,13 +194,8 @@ export default function AdminTablettePage() {
                   <p className="text-xs text-white/60">{row.weeks} semaine(s) · {row.amount.toFixed(2)} $</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full border px-2 py-0.5 text-xs ${row.status === 'resolved' ? 'border-emerald-300/35 bg-emerald-500/20 text-emerald-100' : 'border-amber-300/35 bg-amber-500/20 text-amber-100'}`}>
-                    {row.status === 'resolved' ? 'Validé' : 'Pris en compte'}
-                  </span>
                   {row.status !== 'resolved' ? (
-                    <PrimaryButton disabled={validatingId === row.id} onClick={() => void validateRow(row)}>
-                      Valider
-                    </PrimaryButton>
+                    <PrimaryButton disabled={validatingId === row.id} onClick={() => void validateRow(row)}>Valider</PrimaryButton>
                   ) : (
                     <SecondaryButton disabled>Déjà validé</SecondaryButton>
                   )}

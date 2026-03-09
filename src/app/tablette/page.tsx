@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/Input'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
-import type { TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
+import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
 
 type AtelierResponse = {
   today: string
   items: TabletCatalogItemConfig[]
   runs: TabletDailyRun[]
+  stats: GroupTabletStats
 }
 
 function formatDay(value: string) {
@@ -29,22 +30,25 @@ function formatDateTime(value: string) {
 
 export default function TablettePage() {
   const [memberName, setMemberName] = useState('')
-  const [disqueuseQty, setDisqueuseQty] = useState(0)
-  const [kitCambriolageQty, setKitCambriolageQty] = useState(0)
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [items, setItems] = useState<TabletCatalogItemConfig[]>([])
   const [runs, setRuns] = useState<TabletDailyRun[]>([])
+  const [stats, setStats] = useState<GroupTabletStats | null>(null)
   const [today, setToday] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const disqueuseItem = items.find((item) => item.key === 'disqueuse')
-  const kitCambriolageItem = items.find((item) => item.key === 'kit_cambus')
-  const disqueusePrice = disqueuseItem?.unit_price ?? 150
-  const kitCambriolagePrice = kitCambriolageItem?.unit_price ?? 50
-  const totalQty = disqueuseQty + kitCambriolageQty
-  const totalCost = totalQty > 0 ? disqueuseQty * disqueusePrice + kitCambriolageQty * kitCambriolagePrice : 0
+  const totalQty = useMemo(() => Object.values(quantities).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0), [quantities])
+  const totalCost = useMemo(
+    () =>
+      items.reduce((sum, item) => {
+        const qty = Math.max(0, Number(quantities[item.key]) || 0)
+        return sum + qty * Math.max(0, Number(item.unit_price) || 0)
+      }, 0),
+    [items, quantities]
+  )
 
   const canSubmit = memberName.trim().length > 0 && totalQty > 0 && !saving
 
@@ -67,6 +71,14 @@ export default function TablettePage() {
       setItems(data.items)
       setRuns(data.runs)
       setToday(data.today)
+      setStats(data.stats)
+      setQuantities((prev) => {
+        const next: Record<string, number> = {}
+        for (const item of data.items) {
+          next[item.key] = Math.max(0, Number(prev[item.key]) || 0)
+        }
+        return next
+      })
     } catch (loadError: unknown) {
       setError(loadError instanceof Error ? loadError.message : 'Impossible de charger la tablette.')
     } finally {
@@ -78,6 +90,13 @@ export default function TablettePage() {
     void load()
   }, [])
 
+  function resetForm() {
+    setMemberName('')
+    setError(null)
+    setSuccess(null)
+    setQuantities(Object.fromEntries(items.map((item) => [item.key, 0])))
+  }
+
   return (
     <Panel>
       <div className="space-y-4">
@@ -85,6 +104,15 @@ export default function TablettePage() {
           <h1 className="text-2xl font-semibold">Tablette</h1>
           <p className="text-sm text-white/60">Quota journalier par membre (00:00 → 00:00). Un membre ne peut valider qu’une fois par jour.</p>
         </div>
+
+        {stats ? (
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Aujourd’hui: <span className="font-semibold">{stats.today.runs} passages</span></div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Items aujourd’hui: <span className="font-semibold">{stats.today.items}</span></div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Semaine: <span className="font-semibold">{stats.week.runs} passages</span></div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Pas fait aujourd’hui: <span className="font-semibold">{stats.members.filter((m) => !m.did_today).length}</span></div>
+          </div>
+        ) : null}
 
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="grid gap-3 md:grid-cols-2">
@@ -94,45 +122,32 @@ export default function TablettePage() {
               {doneTodayByMember ? <p className="mt-1 text-xs text-amber-200">Ce membre a déjà validé aujourd’hui.</p> : null}
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/15 bg-white/[0.04]">
-                  {disqueuseItem?.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={disqueuseItem?.image_url || ''} alt="Disqueuse" className="h-full w-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
-                  )}
+            {items.map((item) => (
+              <div key={item.key} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/15 bg-white/[0.04]">
+                    {item.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{item.name}</p>
+                    <p className="text-xs text-white/60">{item.unit_price.toFixed(2)} $ · max {item.max_per_day} / jour</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">Disqueuse</p>
-                  <p className="text-xs text-white/60">{disqueusePrice.toFixed(2)} $ · max 2 / jour</p>
-                </div>
-              </div>
-              <div className="mt-3">
-                <QuantityStepper value={disqueuseQty} onChange={setDisqueuseQty} min={0} max={2} />
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/15 bg-white/[0.04]">
-                  {kitCambriolageItem?.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={kitCambriolageItem?.image_url || ''} alt="Kit de Cambriolage" className="h-full w-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Kit de Cambriolage</p>
-                  <p className="text-xs text-white/60">{kitCambriolagePrice.toFixed(2)} $ · max 2 / jour</p>
+                <div className="mt-3">
+                  <QuantityStepper
+                    value={Math.max(0, Number(quantities[item.key]) || 0)}
+                    onChange={(value) => setQuantities((prev) => ({ ...prev, [item.key]: Math.max(0, value) }))}
+                    min={0}
+                    max={Math.max(0, item.max_per_day)}
+                  />
                 </div>
               </div>
-              <div className="mt-3">
-                <QuantityStepper value={kitCambriolageQty} onChange={setKitCambriolageQty} min={0} max={2} />
-              </div>
-            </div>
+            ))}
           </div>
 
           <div className="mt-3 grid gap-2 text-sm md:grid-cols-3">
@@ -152,7 +167,7 @@ export default function TablettePage() {
                   const res = await fetch('/api/tablette/atelier', {
                     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
                     method: 'POST',
-                    body: JSON.stringify({ member_name: memberName, disqueuse_qty: disqueuseQty, kit_cambus_qty: kitCambriolageQty }),
+                    body: JSON.stringify({ member_name: memberName, quantities }),
                   })
 
                   if (!res.ok) {
@@ -160,8 +175,7 @@ export default function TablettePage() {
                     throw new Error(payload?.error || 'Validation impossible.')
                   }
 
-                  setDisqueuseQty(0)
-                  setKitCambriolageQty(0)
+                  resetForm()
                   setSuccess('Tablette validée et items ajoutés au catalogue.')
                   await load()
                 } catch (submitError: unknown) {
@@ -173,7 +187,7 @@ export default function TablettePage() {
             >
               {saving ? 'Validation…' : 'Valider la tablette'}
             </PrimaryButton>
-            <SecondaryButton onClick={() => { setDisqueuseQty(0); setKitCambriolageQty(0); setMemberName(''); setError(null); setSuccess(null) }}>Réinitialiser</SecondaryButton>
+            <SecondaryButton onClick={resetForm}>Réinitialiser</SecondaryButton>
           </div>
 
           {error ? <p className="mt-3 rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
@@ -189,23 +203,21 @@ export default function TablettePage() {
                 <tr>
                   <th className="px-3 py-2 text-left">Date</th>
                   <th className="px-3 py-2 text-left">Membre</th>
-                  <th className="px-3 py-2 text-left">Disqueuse</th>
-                  <th className="px-3 py-2 text-left">Kit de Cambriolage</th>
+                  <th className="px-3 py-2 text-left">Items</th>
                   <th className="px-3 py-2 text-left">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {loading ? (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
+                  <tr><td colSpan={4} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
                 ) : runs.length === 0 ? (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
+                  <tr><td colSpan={4} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
                 ) : (
                   runs.map((row) => (
                     <tr key={row.id}>
                       <td className="px-3 py-2 text-white/70">{formatDateTime(row.created_at)}</td>
                       <td className="px-3 py-2 font-medium">{row.member_name}</td>
-                      <td className="px-3 py-2">{row.disqueuse_qty}</td>
-                      <td className="px-3 py-2">{row.kit_cambus_qty}</td>
+                      <td className="px-3 py-2">{row.total_items}</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
                     </tr>
                   ))
