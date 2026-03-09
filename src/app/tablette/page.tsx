@@ -29,7 +29,7 @@ function formatDateTime(value: string) {
 export default function TablettePage() {
   const [memberName, setMemberName] = useState('')
   const [disqueuseQty, setDisqueuseQty] = useState(0)
-  const [kitCambusQty, setKitCambusQty] = useState(0)
+  const [kitCambriolageQty, setKitCambriolageQty] = useState(0)
   const [items, setItems] = useState<TabletCatalogItemConfig[]>([])
   const [runs, setRuns] = useState<TabletDailyRun[]>([])
   const [today, setToday] = useState('')
@@ -39,9 +39,9 @@ export default function TablettePage() {
   const [success, setSuccess] = useState<string | null>(null)
 
   const disqueusePrice = items.find((item) => item.key === 'disqueuse')?.unit_price ?? 150
-  const kitCambusPrice = items.find((item) => item.key === 'kit_cambus')?.unit_price ?? 50
-  const totalQty = disqueuseQty + kitCambusQty
-  const totalCost = totalQty > 0 ? disqueuseQty * disqueusePrice + kitCambusQty * kitCambusPrice : 0
+  const kitCambriolagePrice = items.find((item) => item.key === 'kit_cambus')?.unit_price ?? 50
+  const totalQty = disqueuseQty + kitCambriolageQty
+  const totalCost = totalQty > 0 ? disqueuseQty * disqueusePrice + kitCambriolageQty * kitCambriolagePrice : 0
 
   const canSubmit = memberName.trim().length > 0 && totalQty > 0 && !saving
 
@@ -100,10 +100,10 @@ export default function TablettePage() {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-              <p className="text-sm font-semibold">Kit de Cambus</p>
-              <p className="text-xs text-white/60">{kitCambusPrice.toFixed(2)} $ · max 2 / jour</p>
+              <p className="text-sm font-semibold">Kit de Cambriolage</p>
+              <p className="text-xs text-white/60">{kitCambriolagePrice.toFixed(2)} $ · max 2 / jour</p>
               <div className="mt-3">
-                <QuantityStepper value={kitCambusQty} onChange={setKitCambusQty} min={0} max={2} />
+                <QuantityStepper value={kitCambriolageQty} onChange={setKitCambriolageQty} min={0} max={2} />
               </div>
             </div>
           </div>
@@ -125,7 +125,7 @@ export default function TablettePage() {
                   const res = await fetch('/api/tablette/atelier', {
                     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
                     method: 'POST',
-                    body: JSON.stringify({ member_name: memberName, disqueuse_qty: disqueuseQty, kit_cambus_qty: kitCambusQty }),
+                    body: JSON.stringify({ member_name: memberName, disqueuse_qty: disqueuseQty, kit_cambus_qty: kitCambriolageQty }),
                   })
 
                   if (!res.ok) {
@@ -134,7 +134,7 @@ export default function TablettePage() {
                   }
 
                   setDisqueuseQty(0)
-                  setKitCambusQty(0)
+                  setKitCambriolageQty(0)
                   setSuccess('Tablette validée et items ajoutés au catalogue.')
                   await load()
                 } catch (submitError: unknown) {
@@ -146,7 +146,7 @@ export default function TablettePage() {
             >
               {saving ? 'Validation…' : 'Valider la tablette'}
             </PrimaryButton>
-            <SecondaryButton onClick={() => { setDisqueuseQty(0); setKitCambusQty(0) }}>Réinitialiser</SecondaryButton>
+            <SecondaryButton onClick={() => { setDisqueuseQty(0); setKitCambriolageQty(0); setMemberName(''); setError(null); setSuccess(null) }}>Réinitialiser</SecondaryButton>
           </div>
 
           {error ? <p className="mt-3 rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
@@ -163,7 +163,7 @@ export default function TablettePage() {
                   <th className="px-3 py-2 text-left">Date</th>
                   <th className="px-3 py-2 text-left">Membre</th>
                   <th className="px-3 py-2 text-left">Disqueuse</th>
-                  <th className="px-3 py-2 text-left">Kit de Cambus</th>
+                  <th className="px-3 py-2 text-left">Kit de Cambriolage</th>
                   <th className="px-3 py-2 text-left">Total</th>
                 </tr>
               </thead>

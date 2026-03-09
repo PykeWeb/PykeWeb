@@ -134,15 +134,15 @@ export async function POST(request: Request) {
     if (!member.raw) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
 
     const disqueuseQty = toSafeQty(body.disqueuse_qty)
-    const kitCambusQty = toSafeQty(body.kit_cambus_qty)
-    const totalItems = disqueuseQty + kitCambusQty
+    const kitCambriolageQty = toSafeQty(body.kit_cambus_qty)
+    const totalItems = disqueuseQty + kitCambriolageQty
     if (totalItems <= 0) {
       return NextResponse.json({ error: 'Ajoute au moins un item (max 2 par item).' }, { status: 400 })
     }
 
     const disqueusePrice = TABLET_DAILY_ITEM_OPTIONS.find((item) => item.key === 'disqueuse')?.unit_price ?? 150
-    const kitCambusPrice = TABLET_DAILY_ITEM_OPTIONS.find((item) => item.key === 'kit_cambus')?.unit_price ?? 50
-    const totalCost = disqueuseQty * disqueusePrice + kitCambusQty * kitCambusPrice
+    const kitCambriolagePrice = TABLET_DAILY_ITEM_OPTIONS.find((item) => item.key === 'kit_cambus')?.unit_price ?? 50
+    const totalCost = disqueuseQty * disqueusePrice + kitCambriolageQty * kitCambriolagePrice
     const dayKey = toDayKey()
 
     const supabase = getSupabaseAdmin()
@@ -166,7 +166,7 @@ export async function POST(request: Request) {
         member_name_normalized: member.normalized,
         day_key: dayKey,
         disqueuse_qty: disqueuseQty,
-        kit_cambus_qty: kitCambusQty,
+        kit_cambus_qty: kitCambriolageQty,
         total_items: totalItems,
         total_cost: totalCost,
       })
@@ -177,7 +177,7 @@ export async function POST(request: Request) {
 
     try {
       await addToCatalog(session.groupId, 'Disqueuse', disqueusePrice, disqueuseQty)
-      await addToCatalog(session.groupId, 'Kit de Cambus', kitCambusPrice, kitCambusQty)
+      await addToCatalog(session.groupId, 'Kit de Cambriolage', kitCambriolagePrice, kitCambriolageQty)
     } catch (catalogError: unknown) {
       await supabase.from('tablet_daily_runs').delete().eq('id', inserted.id).eq('group_id', session.groupId)
       throw catalogError
