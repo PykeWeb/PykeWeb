@@ -1,8 +1,8 @@
 import type { TabletCatalogItemConfig } from '@/lib/types/tablette'
 
 export const TABLET_DAILY_ITEM_OPTIONS: TabletCatalogItemConfig[] = [
-  { key: 'disqueuse', name: 'Disqueuse', unit_price: 150, max_per_day: 2 },
-  { key: 'kit_cambus', name: 'Kit de Cambriolage', unit_price: 50, max_per_day: 2 },
+  { key: 'disqueuse', name: 'Disqueuse', unit_price: 150, max_per_day: 2, image_url: null },
+  { key: 'kit_cambus', name: 'Kit de Cambriolage', unit_price: 50, max_per_day: 2, image_url: null },
 ]
 
 export const TABLET_TIMEZONE = 'Europe/Paris'

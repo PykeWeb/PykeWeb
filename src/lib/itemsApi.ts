@@ -733,6 +733,25 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
   if (error) throw error
   if (!data || data.length === 0) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
 
+  if (args.imageFile) {
+    const ext = getExt(args.imageFile)
+    const path = `catalog/${resolved}.${ext}`
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, args.imageFile, {
+      upsert: true,
+      contentType: args.imageFile.type || undefined,
+    })
+    if (uploadError) throw uploadError
+
+    const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path)
+    const { error: imageUpdateError } = await supabase
+      .from('catalog_items')
+      .update({ image_url: publicData.publicUrl, updated_at: new Date().toISOString() })
+      .eq('group_id', currentGroupId())
+      .eq('id', resolved)
+
+    if (imageUpdateError) throw imageUpdateError
+  }
+
   await upsertLegacyMirror({
     category: args.category,
     name: args.name,

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { requireGroupSession } from '@/server/auth/requireSession'
 import { TABLET_DAILY_ITEM_OPTIONS, toDayKey } from '@/lib/tabletteItems'
-import type { TabletDailyRun, TabletSubmitPayload } from '@/lib/types/tablette'
+import type { TabletCatalogItemConfig, TabletDailyRun, TabletSubmitPayload } from '@/lib/types/tablette'
 
 type TabletDailyRunRow = {
   id: string
@@ -46,6 +46,45 @@ function makeInternalId(name: string): string {
     .replace(/(^-|-$)/g, '')
     .slice(0, 24) || 'item'
   return `tablette-${slug}-${Date.now().toString(36).slice(-6)}`
+}
+
+
+function normalizeCatalogName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+async function getTabletItemsWithImages(groupId: string): Promise<TabletCatalogItemConfig[]> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('catalog_items')
+    .select('name,image_url,created_at')
+    .eq('group_id', groupId)
+    .eq('is_active', true)
+    .in('name', ['Disqueuse', 'Kit de Cambriolage', 'Kit de Cambus'])
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  const imageByName = new Map<string, string | null>()
+  for (const row of data ?? []) {
+    const normalized = normalizeCatalogName(String(row.name || ''))
+    if (!normalized || imageByName.has(normalized)) continue
+    imageByName.set(normalized, typeof row.image_url === 'string' ? row.image_url : null)
+  }
+
+  return TABLET_DAILY_ITEM_OPTIONS.map((item) => {
+    const normalized = normalizeCatalogName(item.name)
+    if (item.key === 'kit_cambus') {
+      const kitImage = imageByName.get(normalized) ?? imageByName.get(normalizeCatalogName('Kit de Cambus')) ?? null
+      return { ...item, image_url: kitImage }
+    }
+    return { ...item, image_url: imageByName.get(normalized) ?? null }
+  })
 }
 
 async function addToCatalog(groupId: string, name: string, unitPrice: number, qty: number) {
@@ -118,7 +157,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       today,
-      items: TABLET_DAILY_ITEM_OPTIONS,
+      items: await getTabletItemsWithImages(session.groupId),
       runs: (data ?? []) as TabletDailyRun[],
     })
   } catch (error: unknown) {

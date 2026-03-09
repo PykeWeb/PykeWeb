@@ -5,6 +5,7 @@ export type TabletCatalogItemConfig = {
   name: string
   unit_price: number
   max_per_day: number
+  image_url?: string | null
 }
 
 export type TabletDailyRun = {

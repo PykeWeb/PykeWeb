@@ -1,5 +1,6 @@
 'use client'
 
+import { Image as ImageIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
@@ -38,8 +39,10 @@ export default function TablettePage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const disqueusePrice = items.find((item) => item.key === 'disqueuse')?.unit_price ?? 150
-  const kitCambriolagePrice = items.find((item) => item.key === 'kit_cambus')?.unit_price ?? 50
+  const disqueuseItem = items.find((item) => item.key === 'disqueuse')
+  const kitCambriolageItem = items.find((item) => item.key === 'kit_cambus')
+  const disqueusePrice = disqueuseItem?.unit_price ?? 150
+  const kitCambriolagePrice = kitCambriolageItem?.unit_price ?? 50
   const totalQty = disqueuseQty + kitCambriolageQty
   const totalCost = totalQty > 0 ? disqueuseQty * disqueusePrice + kitCambriolageQty * kitCambriolagePrice : 0
 
@@ -92,16 +95,40 @@ export default function TablettePage() {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-              <p className="text-sm font-semibold">Disqueuse</p>
-              <p className="text-xs text-white/60">{disqueusePrice.toFixed(2)} $ · max 2 / jour</p>
+              <div className="mb-2 flex items-center gap-2">
+                <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/15 bg-white/[0.04]">
+                  {disqueuseItem?.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={disqueuseItem?.image_url || ''} alt="Disqueuse" className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Disqueuse</p>
+                  <p className="text-xs text-white/60">{disqueusePrice.toFixed(2)} $ · max 2 / jour</p>
+                </div>
+              </div>
               <div className="mt-3">
                 <QuantityStepper value={disqueuseQty} onChange={setDisqueuseQty} min={0} max={2} />
               </div>
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-              <p className="text-sm font-semibold">Kit de Cambriolage</p>
-              <p className="text-xs text-white/60">{kitCambriolagePrice.toFixed(2)} $ · max 2 / jour</p>
+              <div className="mb-2 flex items-center gap-2">
+                <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/15 bg-white/[0.04]">
+                  {kitCambriolageItem?.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={kitCambriolageItem?.image_url || ''} alt="Kit de Cambriolage" className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Kit de Cambriolage</p>
+                  <p className="text-xs text-white/60">{kitCambriolagePrice.toFixed(2)} $ · max 2 / jour</p>
+                </div>
+              </div>
               <div className="mt-3">
                 <QuantityStepper value={kitCambriolageQty} onChange={setKitCambriolageQty} min={0} max={2} />
               </div>
