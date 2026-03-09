@@ -141,7 +141,10 @@ export function Sidebar() {
             <NavItem href="/admin/groupes" label="Admin groupes" icon={<LayoutGrid className="h-5 w-5" />} active={pathname.startsWith('/admin/groupes')} />
             <NavItem href="/admin/catalogue-global" label="Objets" icon={<Boxes className="h-5 w-5" />} active={pathname.startsWith('/admin/catalogue-global')} />
             <NavItem href="/admin/support" label="Support" icon={<LifeBuoy className="h-5 w-5" />} active={pathname.startsWith('/admin/support')} />
-            <NavItem href="/admin/tablette" label="Tablette" icon={<Smartphone className="h-5 w-5" />} active={pathname.startsWith('/admin/tablette')} />
+            <p className="mt-1 px-1 text-xs font-semibold uppercase tracking-wide text-white/50">Catégorie • Tablette</p>
+            <NavItem href="/admin/tablette" label="Items tablette" icon={<Smartphone className="h-5 w-5" />} active={pathname.startsWith('/admin/tablette')} />
+            <p className="mt-1 px-1 text-xs font-semibold uppercase tracking-wide text-white/50">Catégorie • Service</p>
+            <NavItem href="/admin/service/achat-service-tablette" label="Achat service tablette" icon={<Wallet className="h-5 w-5" />} active={pathname.startsWith('/admin/service/achat-service-tablette')} />
             <NavItem href="/admin/patch-notes" label="Patch notes" icon={<ScrollText className="h-5 w-5" />} active={pathname.startsWith('/admin/patch-notes')} />
             <NavItem href="/admin/logs" label="Logs" icon={<ClipboardList className="h-5 w-5" />} active={pathname.startsWith('/admin/logs')} />
           </>
