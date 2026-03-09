@@ -136,12 +136,19 @@ export default function ItemsClient() {
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
   const categoryCounts = useMemo(() => {
+    const sumStock = (predicate: (category: string) => boolean) =>
+      items.reduce((total, item) => {
+        if (!predicate(item.category)) return total
+        return total + Math.max(0, Number(item.stock) || 0)
+      }, 0)
+
     return {
-      objects: items.filter((it) => it.category === 'objects').length,
-      weapons: items.filter((it) => it.category === 'weapons').length,
-      equipment: items.filter((it) => it.category === 'equipment').length,
-      drugs: items.filter((it) => it.category === 'drugs').length,
-      other: items.filter((it) => it.category === 'custom').length,
+      objects: sumStock((category) => category === 'objects'),
+      weapons: sumStock((category) => category === 'weapons'),
+      equipment: sumStock((category) => category === 'equipment'),
+      drugs: sumStock((category) => category === 'drugs'),
+      other: sumStock((category) => category === 'custom'),
+      all: sumStock(() => true),
     }
   }, [items])
 
@@ -170,7 +177,7 @@ export default function ItemsClient() {
         <>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {[
-              { key: 'all', label: 'Tous', value: items.length, icon: Shapes },
+              { key: 'all', label: 'Tous', value: categoryCounts.all, icon: Shapes },
               { key: 'objects', label: 'Objets', value: categoryCounts.objects, icon: Box },
               { key: 'weapons', label: 'Armes', value: categoryCounts.weapons, icon: Swords },
               { key: 'equipment', label: 'Équipement', value: categoryCounts.equipment, icon: Shield },

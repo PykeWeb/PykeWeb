@@ -55,6 +55,7 @@ export function FinanceItemTradeModal({
   const [itemSearch, setItemSearch] = useState('')
   const [lines, setLines] = useState<TradeLine[]>([])
   const [counterparty, setCounterparty] = useState('')
+  const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingItems, setLoadingItems] = useState(false)
@@ -70,6 +71,7 @@ export function FinanceItemTradeModal({
 
     setItems(initialItems)
     setLines([])
+    setNotes('')
     setLoadingItems(true)
 
     ;(async () => {
@@ -170,7 +172,7 @@ export function FinanceItemTradeModal({
                       quantity: entry.qty,
                       unitPrice: entry.unit,
                       counterparty,
-                      notes: '',
+                      notes,
                     })
                   }
                   onClose()
@@ -187,7 +189,7 @@ export function FinanceItemTradeModal({
         }
         actionsPlacement="top-right"
       >
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
@@ -206,7 +208,12 @@ export function FinanceItemTradeModal({
             <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
           </div>
 
-          <div className="md:col-span-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div>
+            <label className="mb-1 block text-xs text-white/60">Raison / note</label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Pourquoi cette opération ?" />
+          </div>
+
+          <div className="md:col-span-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {[
               { key: 'all', label: copy.common.allCategories, icon: Shapes },
               { key: 'objects', label: 'Objets', icon: Box },
@@ -242,7 +249,7 @@ export function FinanceItemTradeModal({
             })}
           </div>
 
-          <div className="md:col-span-2 flex flex-wrap items-start gap-2">
+          <div className="md:col-span-3 flex flex-wrap items-start gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {typeOptions.map((option) => (
                 <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)}>
@@ -256,7 +263,7 @@ export function FinanceItemTradeModal({
             </div>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
             <div className="rounded-2xl p-0">
               <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">

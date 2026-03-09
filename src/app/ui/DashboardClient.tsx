@@ -195,10 +195,11 @@ export function DashboardClient() {
         const movementCounts = createEmptyMovementCounts()
 
         for (const item of catalogItems) {
+          const stockValue = Math.max(0, Number(item.stock) || 0)
           if (item.category === 'objects' || item.category === 'weapons' || item.category === 'equipment' || item.category === 'drugs' || item.category === 'custom') {
-            categoryCounts[item.category] += 1
+            categoryCounts[item.category] += stockValue
           } else {
-            categoryCounts.other += 1
+            categoryCounts.other += stockValue
           }
         }
 

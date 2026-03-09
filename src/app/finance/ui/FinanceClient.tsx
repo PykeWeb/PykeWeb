@@ -157,6 +157,7 @@ export default function FinanceClient() {
           <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
           <Link href="/finance/achat-vente"><SecondaryButton>Achat / Vente</SecondaryButton></Link>
           <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
+          <Link href="/finance/sorties"><SecondaryButton>Sorties</SecondaryButton></Link>
         </div>
         <SearchInput
           value={q}
