@@ -24,6 +24,9 @@ export default function FinanceSortiesPage() {
         open
         mode="sell"
         hideUnitPrice
+        titleOverride="Sortie du stock"
+        subtitleOverride="Sortie des Item du stock par les membre pour des raisons divers"
+        showModeBadge={false}
         initialItems={initialItems}
         onClose={() => router.push('/finance')}
         onSubmit={async (payload) => {

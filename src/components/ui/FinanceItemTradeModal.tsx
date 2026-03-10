@@ -39,6 +39,9 @@ export function FinanceItemTradeModal({
   initialItems = [],
   hideTitle = false,
   hideUnitPrice = false,
+  titleOverride,
+  subtitleOverride,
+  showModeBadge = true,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -49,6 +52,9 @@ export function FinanceItemTradeModal({
   initialItems?: CatalogItem[]
   hideTitle?: boolean
   hideUnitPrice?: boolean
+  titleOverride?: string
+  subtitleOverride?: string
+  showModeBadge?: boolean
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
@@ -156,7 +162,8 @@ export function FinanceItemTradeModal({
     >
       <CenteredFormLayout
         panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
-        title={hideTitle ? undefined : copy.finance.trade.title}
+        title={hideTitle ? undefined : (titleOverride || copy.finance.trade.title)}
+        subtitle={subtitleOverride}
         actions={
           <>
             <SecondaryButton onClick={onClose}>Fermer</SecondaryButton>
@@ -203,11 +210,11 @@ export function FinanceItemTradeModal({
                   {copy.finance.trade.modeSell}
                 </TabPill>
               </div>
-            ) : (
+            ) : showModeBadge ? (
               <div className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs text-white/70">
                 {tradeMode === 'buy' ? copy.finance.trade.modeBuy : copy.finance.trade.modeSell}
               </div>
-            )}
+            ) : null}
           </div>
 
           <div>
@@ -229,6 +236,10 @@ export function FinanceItemTradeModal({
               { key: 'drugs', label: 'Drogues', icon: Pill },
               { key: 'custom', label: 'Autres', icon: Shapes },
             ].map((option) => {
+              const cardQty = items.reduce((total, item) => {
+                if (option.key !== 'all' && item.category !== option.key) return total
+                return total + Math.max(0, Number(item.stock) || 0)
+              }, 0)
               const Icon = option.icon
               return (
                 <button
@@ -249,7 +260,7 @@ export function FinanceItemTradeModal({
                     </span>
                   </div>
                   <p className="mt-5 text-xl font-semibold leading-none">
-                    {option.key === 'all' ? items.length : items.filter((it) => it.category === option.key).length}
+                    {cardQty}
                   </p>
                 </button>
               )
