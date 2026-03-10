@@ -249,17 +249,17 @@ export function FinanceItemTradeModal({
                     setCategory(option.key as CategoryFilter)
                     setType('all')
                   }}
-                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[96px] ${
+                  className={`rounded-xl border px-2.5 py-2.5 text-left transition min-h-[82px] ${
                     category === option.key ? 'border-white/25 bg-white/[0.12]' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs text-white/70">{option.label}</p>
-                    <span className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80">
-                      <Icon className="h-3.5 w-3.5" />
+                    <p className="text-[11px] text-white/70">{option.label}</p>
+                    <span className="rounded-md border border-white/10 bg-white/[0.06] p-1 text-white/80">
+                      <Icon className="h-3 w-3" />
                     </span>
                   </div>
-                  <p className="mt-5 text-xl font-semibold leading-none">
+                  <p className="mt-3 text-lg font-semibold leading-none">
                     {cardQty}
                   </p>
                 </button>
@@ -270,7 +270,7 @@ export function FinanceItemTradeModal({
           <div className="md:col-span-3 flex flex-wrap items-start gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {typeOptions.map((option) => (
-                <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)}>
+                <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)} className="h-8 rounded-xl px-3 text-xs">
                   {option.label}
                 </TabPill>
               ))}
