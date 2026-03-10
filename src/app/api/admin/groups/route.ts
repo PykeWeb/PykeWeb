@@ -4,9 +4,30 @@ import { assertAdminSession } from '@/server/auth/admin'
 
 const TABLE = 'tenant_groups'
 
+
+async function ensurePwrGroup() {
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase
+    .from(TABLE)
+    .upsert(
+      {
+        name: 'PWR',
+        badge: 'PWR',
+        login: 'pwr',
+        password: 'pwr',
+        active: true,
+        paid_until: null,
+      },
+      { onConflict: 'login', ignoreDuplicates: true },
+    )
+
+  if (error) throw new Error(error.message)
+}
+
 export async function GET(request: Request) {
   try {
     await assertAdminSession(request)
+    await ensurePwrGroup()
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from(TABLE)
@@ -23,6 +44,7 @@ export async function POST(request: Request) {
   try {
     await assertAdminSession(request)
     const body = await request.json()
+    await ensurePwrGroup()
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from(TABLE)
@@ -40,6 +62,7 @@ export async function PUT(request: Request) {
   try {
     await assertAdminSession(request)
     const body = await request.json()
+    await ensurePwrGroup()
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from(TABLE)
