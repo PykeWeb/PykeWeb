@@ -38,6 +38,10 @@ export function FinanceItemTradeModal({
   inline = false,
   initialItems = [],
   hideTitle = false,
+  hideUnitPrice = false,
+  titleOverride,
+  subtitleOverride,
+  showModeBadge = true,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -47,6 +51,10 @@ export function FinanceItemTradeModal({
   inline?: boolean
   initialItems?: CatalogItem[]
   hideTitle?: boolean
+  hideUnitPrice?: boolean
+  titleOverride?: string
+  subtitleOverride?: string
+  showModeBadge?: boolean
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
@@ -55,11 +63,10 @@ export function FinanceItemTradeModal({
   const [itemSearch, setItemSearch] = useState('')
   const [lines, setLines] = useState<TradeLine[]>([])
   const [counterparty, setCounterparty] = useState('')
+  const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingItems, setLoadingItems] = useState(false)
-
-  void enableModeSelect
 
   useEffect(() => {
     setTradeMode(mode)
@@ -70,6 +77,7 @@ export function FinanceItemTradeModal({
 
     setItems(initialItems)
     setLines([])
+    setNotes('')
     setLoadingItems(true)
 
     ;(async () => {
@@ -91,13 +99,14 @@ export function FinanceItemTradeModal({
   const filtered = useMemo(() => {
     const search = itemSearch.trim().toLowerCase()
     return items
+      .filter((it) => (hideUnitPrice && tradeMode === 'sell' ? Math.max(0, Number(it.stock) || 0) > 0 : true))
       .filter((it) => (category === 'all' ? true : it.category === category))
       .filter((it) => (type === 'all' ? true : it.item_type === type))
       .filter((it) => {
         if (!search) return true
         return `${it.name} ${it.internal_id}`.toLowerCase().includes(search)
       })
-  }, [items, category, type, itemSearch])
+  }, [items, category, type, itemSearch, hideUnitPrice, tradeMode])
 
   const linesWithItems = useMemo(() => {
     return lines
@@ -117,11 +126,11 @@ export function FinanceItemTradeModal({
         const item = items.find((entry) => entry.id === line.itemId)
         if (!item) return line
         const quantity = tradeMode === 'sell' ? Math.min(toPositiveInt(line.quantity), Math.max(1, item.stock)) : toPositiveInt(line.quantity)
-        const nextUnit = tradeMode === 'buy' ? item.buy_price : item.sell_price
+        const nextUnit = hideUnitPrice ? 0 : (tradeMode === 'buy' ? item.buy_price : item.sell_price)
         return { ...line, quantity, unitPrice: String(toNonNegative(nextUnit)) }
       })
     )
-  }, [items, tradeMode])
+  }, [items, tradeMode, hideUnitPrice])
 
   const total = useMemo(() => linesWithItems.reduce((sum, entry) => sum + entry.subtotal, 0), [linesWithItems])
 
@@ -131,7 +140,7 @@ export function FinanceItemTradeModal({
       if (exists) {
         return current.map((line) => (line.itemId === item.id ? { ...line, quantity: line.quantity + 1 } : line))
       }
-      const defaultPrice = tradeMode === 'buy' ? item.buy_price : item.sell_price
+      const defaultPrice = hideUnitPrice ? 0 : (tradeMode === 'buy' ? item.buy_price : item.sell_price)
       return [...current, { itemId: item.id, quantity: 1, unitPrice: String(defaultPrice) }]
     })
   }
@@ -153,7 +162,8 @@ export function FinanceItemTradeModal({
     >
       <CenteredFormLayout
         panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
-        title={hideTitle ? undefined : copy.finance.trade.title}
+        title={hideTitle ? undefined : (titleOverride || copy.finance.trade.title)}
+        subtitle={subtitleOverride}
         actions={
           <>
             <SecondaryButton onClick={onClose}>Fermer</SecondaryButton>
@@ -170,7 +180,7 @@ export function FinanceItemTradeModal({
                       quantity: entry.qty,
                       unitPrice: entry.unit,
                       counterparty,
-                      notes: '',
+                      notes,
                     })
                   }
                   onClose()
@@ -187,18 +197,24 @@ export function FinanceItemTradeModal({
         }
         actionsPlacement="top-right"
       >
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
-                <ArrowDownRight className="h-4 w-4" />
-                {copy.finance.trade.modeBuy}
-              </TabPill>
-              <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
-                <ArrowUpRight className="h-4 w-4" />
-                {copy.finance.trade.modeSell}
-              </TabPill>
-            </div>
+            {enableModeSelect ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
+                  <ArrowDownRight className="h-4 w-4" />
+                  {copy.finance.trade.modeBuy}
+                </TabPill>
+                <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
+                  <ArrowUpRight className="h-4 w-4" />
+                  {copy.finance.trade.modeSell}
+                </TabPill>
+              </div>
+            ) : showModeBadge ? (
+              <div className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs text-white/70">
+                {tradeMode === 'buy' ? copy.finance.trade.modeBuy : copy.finance.trade.modeSell}
+              </div>
+            ) : null}
           </div>
 
           <div>
@@ -206,7 +222,12 @@ export function FinanceItemTradeModal({
             <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société / membre" />
           </div>
 
-          <div className="md:col-span-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div>
+            <label className="mb-1 block text-xs text-white/60">Raison / note</label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Pourquoi cette opération ?" />
+          </div>
+
+          <div className="md:col-span-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {[
               { key: 'all', label: copy.common.allCategories, icon: Shapes },
               { key: 'objects', label: 'Objets', icon: Box },
@@ -215,6 +236,10 @@ export function FinanceItemTradeModal({
               { key: 'drugs', label: 'Drogues', icon: Pill },
               { key: 'custom', label: 'Autres', icon: Shapes },
             ].map((option) => {
+              const cardQty = items.reduce((total, item) => {
+                if (option.key !== 'all' && item.category !== option.key) return total
+                return total + Math.max(0, Number(item.stock) || 0)
+              }, 0)
               const Icon = option.icon
               return (
                 <button
@@ -224,28 +249,28 @@ export function FinanceItemTradeModal({
                     setCategory(option.key as CategoryFilter)
                     setType('all')
                   }}
-                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[96px] ${
+                  className={`rounded-xl border px-2.5 py-2.5 text-left transition min-h-[82px] ${
                     category === option.key ? 'border-white/25 bg-white/[0.12]' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs text-white/70">{option.label}</p>
-                    <span className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80">
-                      <Icon className="h-3.5 w-3.5" />
+                    <p className="text-[11px] text-white/70">{option.label}</p>
+                    <span className="rounded-md border border-white/10 bg-white/[0.06] p-1 text-white/80">
+                      <Icon className="h-3 w-3" />
                     </span>
                   </div>
-                  <p className="mt-5 text-xl font-semibold leading-none">
-                    {option.key === 'all' ? items.length : items.filter((it) => it.category === option.key).length}
+                  <p className="mt-3 text-lg font-semibold leading-none">
+                    {cardQty}
                   </p>
                 </button>
               )
             })}
           </div>
 
-          <div className="md:col-span-2 flex flex-wrap items-start gap-2">
+          <div className="md:col-span-3 flex flex-wrap items-start gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {typeOptions.map((option) => (
-                <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)}>
+                <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)} className="h-8 rounded-xl px-3 text-xs">
                   {option.label}
                 </TabPill>
               ))}
@@ -256,50 +281,112 @@ export function FinanceItemTradeModal({
             </div>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
-            <div className="rounded-2xl p-0">
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                <Search className="h-4 w-4 text-white/50" />
-                <input
-                  value={itemSearch}
-                  onChange={(event) => setItemSearch(event.target.value)}
-                  placeholder="Rechercher un item"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
-                />
+            <div className="grid gap-3 lg:grid-cols-[1fr_340px]">
+              <div className="rounded-2xl p-0">
+                <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <Search className="h-4 w-4 text-white/50" />
+                  <input
+                    value={itemSearch}
+                    onChange={(event) => setItemSearch(event.target.value)}
+                    placeholder="Rechercher un item"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
+                  />
+                </div>
+                <div className="h-[26rem] space-y-1 overflow-y-auto pr-1">
+                  {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
+                  {filtered.map((it) => (
+                    <button
+                      key={it.id}
+                      type="button"
+                      onClick={() => addItemToLines(it)}
+                      className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-left transition hover:bg-white/[0.06]"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                          {it.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-white/40">
+                              <ImageIcon className="h-3.5 w-3.5" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-white">{it.name}</p>
+                          <p className="truncate text-xs text-white/60">{getTypeLabel(it.item_type, it.category)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-right">
+                        <span className="text-xs text-white/65">Stock: {it.stock}</span>
+                        {hideUnitPrice ? null : <span className="text-xs text-white/65">Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $</span>}
+                      </div>
+                    </button>
+                  ))}
+                  {filtered.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item pour ces filtres.</p> : null}
+                </div>
               </div>
-              <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
-                {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
-                {filtered.map((it) => (
-                  <button
-                    key={it.id}
-                    type="button"
-                    onClick={() => addItemToLines(it)}
-                    className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-left transition hover:bg-white/[0.06]"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-                        {it.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center text-white/40">
-                            <ImageIcon className="h-3.5 w-3.5" />
-                          </div>
-                        )}
+
+              <div className="hidden rounded-xl border border-white/10 bg-white/[0.02] p-3 lg:block">
+                <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée (aperçu)</p>
+                {linesWithItems.length === 0 ? <p className="mt-2 text-sm text-white/60">Ajoute des items pour voir la liste.</p> : null}
+                <div className="mt-2 h-[26rem] space-y-2 overflow-y-auto pr-1">
+                  {linesWithItems.map((entry) => (
+                    <div key={`preview-${entry.item.id}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="h-9 w-9 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
+                          {entry.item.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={entry.item.image_url} alt={entry.item.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-white/40">
+                              <ImageIcon className="h-3.5 w-3.5" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-white">{entry.item.name}</p>
+                          <p className="truncate text-[11px] text-white/65">{getTypeLabel(entry.item.item_type, entry.item.category)}</p>
+                        </div>
+                        <SecondaryButton
+                          type="button"
+                          className="h-6 rounded-md border-rose-300/35 bg-rose-500/10 px-1.5 text-[10px] text-rose-100 hover:bg-rose-500/20"
+                          onClick={() => removeLine(entry.item.id)}
+                        >
+                          Retirer
+                        </SecondaryButton>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-white">{it.name}</p>
-                        <p className="truncate text-xs text-white/60">{getTypeLabel(it.item_type, it.category)}</p>
+
+                      <div className="mt-2">
+                        <QuantityStepper
+                          size="sm"
+                          value={entry.line.quantity}
+                          onChange={(value) => updateLine(entry.item.id, { quantity: value })}
+                          min={1}
+                          max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
+                        />
                       </div>
+
+                      {hideUnitPrice ? (
+                        <p className="mt-2 text-[11px] text-white/60">Sortie stock</p>
+                      ) : (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="inline-flex h-6 items-center rounded-full border border-white/15 bg-white/[0.05] px-1.5 text-[10px] text-white/75">
+                            Prix
+                          </span>
+                          <Input
+                            value={entry.line.unitPrice}
+                            onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                            inputMode="decimal"
+                            className="h-7 text-[11px]"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 text-right">
-                      <span className="text-xs text-white/65">Stock: {it.stock}</span>
-                      <span className="text-xs text-white/65">Prix {tradeMode === 'buy' ? 'achat' : 'vente'}: {(tradeMode === 'buy' ? it.buy_price : it.sell_price).toFixed(2)} $</span>
-                    </div>
-                  </button>
-                ))}
-                {filtered.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item pour ces filtres.</p> : null}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -327,17 +414,21 @@ export function FinanceItemTradeModal({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
-                    Prix
-                  </span>
-                  <Input
-                    value={entry.line.unitPrice}
-                    onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
-                    inputMode="decimal"
-                    className="md:w-[140px]"
-                  />
-                </div>
+                {hideUnitPrice ? (
+                  <div className="text-sm text-white/60">Sortie stock</div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
+                      Prix
+                    </span>
+                    <Input
+                      value={entry.line.unitPrice}
+                      onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                      inputMode="decimal"
+                      className="md:w-[140px]"
+                    />
+                  </div>
+                )}
                 <div className="w-[220px]">
                   <QuantityStepper
                     value={entry.line.quantity}

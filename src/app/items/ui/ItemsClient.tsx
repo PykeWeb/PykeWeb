@@ -6,9 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Box, Calculator, Factory, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
+import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs, TabPill } from '@/components/ui/design-system'
-import { deleteCatalogItem, listCatalogItemsUnified } from '@/lib/itemsApi'
+import { createFinanceTransaction, deleteCatalogItem, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
@@ -23,7 +24,8 @@ type PlantationRecipe = {
   title: string
   subtitle: string
   requirements: { name: string; qty: number }[]
-  output: string
+  output_name: string
+  default_output_per_run: number
 }
 
 const plantationRecipes: PlantationRecipe[] = [
@@ -37,7 +39,8 @@ const plantationRecipes: PlantationRecipe[] = [
       { name: 'Engrais', qty: 1 },
       { name: 'Eau', qty: 3 },
     ],
-    output: 'Feuille de coke ×1',
+    output_name: 'Feuille de coke',
+    default_output_per_run: 1,
   },
   {
     key: 'meth',
@@ -50,9 +53,21 @@ const plantationRecipes: PlantationRecipe[] = [
       { name: 'Ammoniaque', qty: 16 },
       { name: 'Methylamine', qty: 15 },
     ],
-    output: 'Meth brut (10 à 30)',
+    output_name: 'Meth brut',
+    default_output_per_run: 10,
   },
 ]
+
+const plantationDefaultRuns = plantationRecipes.reduce<Record<string, string>>((acc, recipe) => {
+  acc[recipe.key] = '1'
+  return acc
+}, {})
+
+const plantationDefaultOutputPerRun = plantationRecipes.reduce<Record<string, string>>((acc, recipe) => {
+  acc[recipe.key] = String(Math.max(1, recipe.default_output_per_run))
+  return acc
+}, {})
+
 
 export default function ItemsClient() {
   const [items, setItems] = useState<CatalogItem[]>([])
@@ -64,6 +79,9 @@ export default function ItemsClient() {
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
   const [calcQuantity, setCalcQuantity] = useState(1)
+  const [plantationRuns, setPlantationRuns] = useState<Record<string, string>>(plantationDefaultRuns)
+  const [plantationOutputPerRun, setPlantationOutputPerRun] = useState<Record<string, string>>(plantationDefaultOutputPerRun)
+  const [realizingRecipeKey, setRealizingRecipeKey] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const refreshInFlightRef = useRef(false)
@@ -135,13 +153,104 @@ export default function ItemsClient() {
 
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
+
+  const findItemByName = useCallback((name: string) => {
+    const normalize = (value: string) => value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    const needle = normalize(name)
+    return items.find((item) => normalize(item.name) === needle) || null
+  }, [items])
+
+  const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
+    const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
+    const outputPerRun = Math.max(0, Math.floor(Number(plantationOutputPerRun[recipe.key] || recipe.default_output_per_run) || recipe.default_output_per_run))
+
+    if (runs <= 0) {
+      toast.error('Indique un nombre de plantations supérieur à 0.')
+      return
+    }
+
+    const required = recipe.requirements.map((req) => ({ ...req, total: req.qty * runs, item: findItemByName(req.name) }))
+    const missingRequired = required.filter((req) => !req.item).map((req) => req.name)
+    if (missingRequired.length > 0) {
+      toast.error(`Items manquants dans le catalogue: ${missingRequired.join(', ')}`)
+      return
+    }
+
+    const stockMissing = required
+      .filter((req) => (req.item?.stock || 0) < req.total)
+      .map((req) => `${req.name} (stock ${req.item?.stock || 0}, besoin ${req.total})`)
+    if (stockMissing.length > 0) {
+      toast.error(`Stock insuffisant: ${stockMissing.join(' · ')}`)
+      return
+    }
+
+    const outputItem = findItemByName(recipe.output_name)
+    if (!outputItem) {
+      toast.error(`Item de production introuvable: ${recipe.output_name}`)
+      return
+    }
+
+    setRealizingRecipeKey(recipe.key)
+    try {
+      for (const req of required) {
+        await createFinanceTransaction({
+          item_id: req.item!.id,
+          mode: 'sell',
+          quantity: req.total,
+          unit_price: 0,
+          counterparty: 'Plantation',
+          notes: `${recipe.title} x${runs}`,
+          payment_mode: 'stock_out',
+        })
+      }
+
+      await createFinanceTransaction({
+        item_id: outputItem.id,
+        mode: 'buy',
+        quantity: outputPerRun * runs,
+        unit_price: 0,
+        counterparty: 'Plantation',
+        notes: `${recipe.title} x${runs}`,
+        payment_mode: 'other',
+      })
+
+      await refresh()
+      toast.success(`Plantation réalisée: +${outputPerRun * runs} ${recipe.output_name}`)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Impossible de réaliser la plantation.')
+    } finally {
+      setRealizingRecipeKey(null)
+    }
+  }, [findItemByName, plantationOutputPerRun, plantationRuns, refresh])
+
+
+  const adjustPlantationField = useCallback((
+    key: string,
+    field: 'runs' | 'output',
+    delta: number,
+    fallback: number,
+  ) => {
+    const source = field === 'runs' ? plantationRuns : plantationOutputPerRun
+    const setter = field === 'runs' ? setPlantationRuns : setPlantationOutputPerRun
+    const current = Math.max(0, Math.floor(Number(source[key] ?? fallback) || fallback))
+    const next = Math.max(0, current + delta)
+    setter((prev) => ({ ...prev, [key]: String(next) }))
+  }, [plantationOutputPerRun, plantationRuns])
+
   const categoryCounts = useMemo(() => {
+    const sumStock = (predicate: (category: string) => boolean) =>
+      items.reduce((total, item) => {
+        if (!predicate(item.category)) return total
+        return total + Math.max(0, Number(item.stock) || 0)
+      }, 0)
+
     return {
-      objects: items.filter((it) => it.category === 'objects').length,
-      weapons: items.filter((it) => it.category === 'weapons').length,
-      equipment: items.filter((it) => it.category === 'equipment').length,
-      drugs: items.filter((it) => it.category === 'drugs').length,
-      other: items.filter((it) => it.category === 'custom').length,
+      objects: sumStock((category) => category === 'objects'),
+      weapons: sumStock((category) => category === 'weapons'),
+      equipment: sumStock((category) => category === 'equipment'),
+      drugs: sumStock((category) => category === 'drugs'),
+      other: sumStock((category) => category === 'custom'),
+      all: sumStock(() => true),
     }
   }, [items])
 
@@ -170,7 +279,7 @@ export default function ItemsClient() {
         <>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {[
-              { key: 'all', label: 'Tous', value: items.length, icon: Shapes },
+              { key: 'all', label: 'Tous', value: categoryCounts.all, icon: Shapes },
               { key: 'objects', label: 'Objets', value: categoryCounts.objects, icon: Box },
               { key: 'weapons', label: 'Armes', value: categoryCounts.weapons, icon: Swords },
               { key: 'equipment', label: 'Équipement', value: categoryCounts.equipment, icon: Shield },
@@ -304,7 +413,42 @@ export default function ItemsClient() {
                       </div>
                     ))}
                   </div>
-                  <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">Production : {recipe.output === 'Feuille de coke' ? 'Feuille de Coke' : recipe.output === 'Meth brut' ? 'Meth Brut' : recipe.output}</p>
+                  <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">Production : {recipe.output_name}</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <label className="text-xs text-white/65">
+                      Nb plantations
+                      <div className="mt-1 flex items-center gap-1">
+                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'runs', -1, 0)}>-</SecondaryButton>
+                        <Input
+                          value={plantationRuns[recipe.key] || '0'}
+                          onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
+                          inputMode="numeric"
+                          className="h-9 rounded-lg px-2 text-sm"
+                        />
+                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'runs', 1, 0)}>+</SecondaryButton>
+                      </div>
+                    </label>
+                    <label className="text-xs text-white/65">
+                      Production reçue / plantation
+                      <div className="mt-1 flex items-center gap-1">
+                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'output', -1, recipe.default_output_per_run)}>-</SecondaryButton>
+                        <Input
+                          value={plantationOutputPerRun[recipe.key] || String(recipe.default_output_per_run)}
+                          onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
+                          inputMode="numeric"
+                          className="h-9 rounded-lg px-2 text-sm"
+                        />
+                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'output', 1, recipe.default_output_per_run)}>+</SecondaryButton>
+                      </div>
+                    </label>
+                  </div>
+                  <PrimaryButton
+                    className="mt-3 w-full"
+                    disabled={realizingRecipeKey === recipe.key}
+                    onClick={() => { void realizePlantation(recipe) }}
+                  >
+                    {realizingRecipeKey === recipe.key ? 'Validation...' : 'Plantation réalisée'}
+                  </PrimaryButton>
                 </div>
               ))}
             </div>

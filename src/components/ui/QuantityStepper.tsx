@@ -8,9 +8,10 @@ type Props = {
   onChange: (value: number) => void
   min?: number
   max?: number
+  size?: 'default' | 'sm'
 }
 
-export function QuantityStepper({ value, onChange, min = 1, max }: Props) {
+export function QuantityStepper({ value, onChange, min = 1, max, size = 'default' }: Props) {
   const [draft, setDraft] = useState(String(value))
 
   useEffect(() => {
@@ -35,9 +36,13 @@ export function QuantityStepper({ value, onChange, min = 1, max }: Props) {
     setDraft(String(nextValue))
   }
 
+  const buttonClassName = size === 'sm' ? 'h-8 px-2.5' : undefined
+  const iconClassName = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'
+  const inputClassName = size === 'sm' ? 'h-8 w-20 text-xs' : 'w-24'
+
   return (
     <div className="flex items-center gap-2">
-      <SecondaryButton type="button" onClick={() => onChange(clamp(value - 1))} icon={<Minus className="h-4 w-4" />} />
+      <SecondaryButton type="button" className={buttonClassName} onClick={() => onChange(clamp(value - 1))} icon={<Minus className={iconClassName} />} />
       <Input
         value={draft}
         onChange={(e) => {
@@ -50,10 +55,10 @@ export function QuantityStepper({ value, onChange, min = 1, max }: Props) {
             commitDraft()
           }
         }}
-        className="w-24"
+        className={inputClassName}
         inputMode="numeric"
       />
-      <SecondaryButton type="button" onClick={() => onChange(clamp(value + 1))} icon={<Plus className="h-4 w-4" />} />
+      <SecondaryButton type="button" className={buttonClassName} onClick={() => onChange(clamp(value + 1))} icon={<Plus className={iconClassName} />} />
     </div>
   )
 }

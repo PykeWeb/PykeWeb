@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { requireGroupSession } from '@/server/auth/requireSession'
-import { TABLET_DAILY_ITEM_OPTIONS, toDayKey } from '@/lib/tabletteItems'
-import type { TabletDailyRun, TabletSubmitPayload } from '@/lib/types/tablette'
+import { normalizeTabletOptions, TABLET_DAILY_ITEM_OPTIONS, toDayKey } from '@/lib/tabletteItems'
+import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun, TabletRunItemLine, TabletSubmitPayload } from '@/lib/types/tablette'
 
 type TabletDailyRunRow = {
   id: string
@@ -14,7 +14,17 @@ type TabletDailyRunRow = {
   kit_cambus_qty: number
   total_items: number
   total_cost: number
+  items_json: TabletRunItemLine[] | null
   created_at: string
+}
+
+type TabletOptionRow = {
+  key: string
+  name: string
+  unit_price: number | null
+  max_per_day: number | null
+  image_url: string | null
+  sort_order: number | null
 }
 
 function toErrorMessage(error: unknown): string {
@@ -28,7 +38,7 @@ function toErrorMessage(error: unknown): string {
 function toSafeQty(value: unknown, max = 2): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return 0
-  return Math.max(0, Math.min(max, Math.floor(parsed)))
+  return Math.max(0, Math.min(Math.max(0, max), Math.floor(parsed)))
 }
 
 function normalizeMemberName(value: unknown): { raw: string; normalized: string } {
@@ -48,7 +58,29 @@ function makeInternalId(name: string): string {
   return `tablette-${slug}-${Date.now().toString(36).slice(-6)}`
 }
 
-async function addToCatalog(groupId: string, name: string, unitPrice: number, qty: number) {
+async function getGlobalTabletOptions(): Promise<TabletCatalogItemConfig[]> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('tablet_daily_item_options')
+    .select('key,name,unit_price,max_per_day,image_url,sort_order')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+    .order('key', { ascending: true })
+
+  if (error) return TABLET_DAILY_ITEM_OPTIONS
+
+  const options = ((data ?? []) as TabletOptionRow[]).map((row) => ({
+    key: row.key,
+    name: row.name,
+    unit_price: Math.max(0, Number(row.unit_price) || 0),
+    max_per_day: Math.max(0, Math.floor(Number(row.max_per_day) || 0)),
+    image_url: row.image_url || null,
+  }))
+
+  return normalizeTabletOptions(options)
+}
+
+async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qty: number) {
   if (qty <= 0) return
 
   const supabase = getSupabaseAdmin()
@@ -56,7 +88,7 @@ async function addToCatalog(groupId: string, name: string, unitPrice: number, qt
     .from('catalog_items')
     .select('id,stock')
     .eq('group_id', groupId)
-    .ilike('name', name)
+    .ilike('name', option.name)
     .eq('is_active', true)
     .order('created_at', { ascending: true })
     .limit(1)
@@ -68,7 +100,7 @@ async function addToCatalog(groupId: string, name: string, unitPrice: number, qt
     const nextStock = Math.max(0, Number(existing.stock ?? 0) + qty)
     const { error: updateError } = await supabase
       .from('catalog_items')
-      .update({ stock: nextStock, updated_at: new Date().toISOString() })
+      .update({ stock: nextStock, updated_at: new Date().toISOString(), image_url: option.image_url || null })
       .eq('group_id', groupId)
       .eq('id', existing.id)
     if (updateError) throw updateError
@@ -77,14 +109,14 @@ async function addToCatalog(groupId: string, name: string, unitPrice: number, qt
 
   const { error: insertError } = await supabase.from('catalog_items').insert({
     group_id: groupId,
-    internal_id: makeInternalId(name),
-    name,
+    internal_id: makeInternalId(option.name),
+    name: option.name,
     category: 'equipment',
     item_type: 'tool',
     description: 'Ajout automatique via Tablette',
-    image_url: null,
-    buy_price: unitPrice,
-    sell_price: unitPrice,
+    image_url: option.image_url || null,
+    buy_price: option.unit_price,
+    sell_price: option.unit_price,
     internal_value: 0,
     show_in_finance: true,
     is_active: true,
@@ -101,6 +133,51 @@ async function addToCatalog(groupId: string, name: string, unitPrice: number, qt
   if (insertError) throw insertError
 }
 
+function buildGroupStats(runs: TabletDailyRun[]): GroupTabletStats {
+  const today = toDayKey()
+  const weekPrefix = today.slice(0, 8)
+
+  const todayRuns = runs.filter((run) => run.day_key === today)
+  const weekRuns = runs.filter((run) => run.day_key.startsWith(weekPrefix))
+
+  const memberMap = new Map<string, { total_runs: number; total_items: number; total_cost: number; did_today: boolean; last_day_key: string }>()
+  for (const run of runs) {
+    const key = run.member_name.trim().toLowerCase()
+    const entry = memberMap.get(key) ?? { total_runs: 0, total_items: 0, total_cost: 0, did_today: false, last_day_key: run.day_key }
+    entry.total_runs += 1
+    entry.total_items += Math.max(0, Number(run.total_items) || 0)
+    entry.total_cost += Math.max(0, Number(run.total_cost) || 0)
+    entry.did_today = entry.did_today || run.day_key === today
+    if (run.day_key > entry.last_day_key) entry.last_day_key = run.day_key
+    memberMap.set(key, entry)
+  }
+
+  return {
+    today: {
+      runs: todayRuns.length,
+      items: todayRuns.reduce((sum, run) => sum + Math.max(0, Number(run.total_items) || 0), 0),
+      cost: Number(todayRuns.reduce((sum, run) => sum + Math.max(0, Number(run.total_cost) || 0), 0).toFixed(2)),
+      unique_members: new Set(todayRuns.map((run) => run.member_name.trim().toLowerCase())).size,
+    },
+    week: {
+      runs: weekRuns.length,
+      items: weekRuns.reduce((sum, run) => sum + Math.max(0, Number(run.total_items) || 0), 0),
+      cost: Number(weekRuns.reduce((sum, run) => sum + Math.max(0, Number(run.total_cost) || 0), 0).toFixed(2)),
+      unique_members: new Set(weekRuns.map((run) => run.member_name.trim().toLowerCase())).size,
+    },
+    members: [...memberMap.entries()]
+      .map(([member_name, value]) => ({
+        member_name,
+        total_runs: value.total_runs,
+        total_items: value.total_items,
+        total_cost: Number(value.total_cost.toFixed(2)),
+        did_today: value.did_today,
+        last_day_key: value.last_day_key,
+      }))
+      .sort((a, b) => b.total_runs - a.total_runs),
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const session = await requireGroupSession(request)
@@ -109,17 +186,20 @@ export async function GET(request: Request) {
 
     const { data, error } = await supabase
       .from('tablet_daily_runs')
-      .select('id,group_id,member_name,member_name_normalized,day_key,disqueuse_qty,kit_cambus_qty,total_items,total_cost,created_at')
+      .select('id,group_id,member_name,member_name_normalized,day_key,disqueuse_qty,kit_cambus_qty,total_items,total_cost,items_json,created_at')
       .eq('group_id', session.groupId)
       .order('created_at', { ascending: false })
       .limit(250)
 
     if (error) throw error
 
+    const runs = (data ?? []) as TabletDailyRun[]
+
     return NextResponse.json({
       today,
-      items: TABLET_DAILY_ITEM_OPTIONS,
-      runs: (data ?? []) as TabletDailyRun[],
+      items: await getGlobalTabletOptions(),
+      runs,
+      stats: buildGroupStats(runs),
     })
   } catch (error: unknown) {
     return NextResponse.json({ error: toErrorMessage(error) }, { status: 400 })
@@ -133,17 +213,32 @@ export async function POST(request: Request) {
     const member = normalizeMemberName(body.member_name)
     if (!member.raw) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
 
-    const disqueuseQty = toSafeQty(body.disqueuse_qty)
-    const kitCambusQty = toSafeQty(body.kit_cambus_qty)
-    const totalItems = disqueuseQty + kitCambusQty
+    const options = await getGlobalTabletOptions()
+    const quantities = body.quantities || {}
+
+    const lines: TabletRunItemLine[] = options
+      .map((option) => {
+        const qty = toSafeQty(quantities[option.key], option.max_per_day)
+        return {
+          key: option.key,
+          name: option.name,
+          quantity: qty,
+          unit_price: option.unit_price,
+          subtotal: Number((qty * option.unit_price).toFixed(2)),
+        }
+      })
+      .filter((line) => line.quantity > 0)
+
+    const totalItems = lines.reduce((sum, line) => sum + line.quantity, 0)
     if (totalItems <= 0) {
-      return NextResponse.json({ error: 'Ajoute au moins un item (max 2 par item).' }, { status: 400 })
+      return NextResponse.json({ error: 'Ajoute au moins un item.' }, { status: 400 })
     }
 
-    const disqueusePrice = TABLET_DAILY_ITEM_OPTIONS.find((item) => item.key === 'disqueuse')?.unit_price ?? 150
-    const kitCambusPrice = TABLET_DAILY_ITEM_OPTIONS.find((item) => item.key === 'kit_cambus')?.unit_price ?? 50
-    const totalCost = disqueuseQty * disqueusePrice + kitCambusQty * kitCambusPrice
+    const totalCost = Number(lines.reduce((sum, line) => sum + line.subtotal, 0).toFixed(2))
     const dayKey = toDayKey()
+
+    const legacyDisqueuseQty = lines.find((line) => line.key === 'disqueuse')?.quantity ?? 0
+    const legacyKitQty = lines.find((line) => line.key === 'kit_cambus')?.quantity ?? 0
 
     const supabase = getSupabaseAdmin()
     const { data: exists } = await supabase
@@ -165,19 +260,23 @@ export async function POST(request: Request) {
         member_name: member.raw,
         member_name_normalized: member.normalized,
         day_key: dayKey,
-        disqueuse_qty: disqueuseQty,
-        kit_cambus_qty: kitCambusQty,
+        disqueuse_qty: legacyDisqueuseQty,
+        kit_cambus_qty: legacyKitQty,
         total_items: totalItems,
         total_cost: totalCost,
+        items_json: lines,
       })
-      .select('id,group_id,member_name,member_name_normalized,day_key,disqueuse_qty,kit_cambus_qty,total_items,total_cost,created_at')
+      .select('id,group_id,member_name,member_name_normalized,day_key,disqueuse_qty,kit_cambus_qty,total_items,total_cost,items_json,created_at')
       .single<TabletDailyRunRow>()
 
     if (insertError) throw insertError
 
     try {
-      await addToCatalog(session.groupId, 'Disqueuse', disqueusePrice, disqueuseQty)
-      await addToCatalog(session.groupId, 'Kit de Cambus', kitCambusPrice, kitCambusQty)
+      for (const line of lines) {
+        const option = options.find((item) => item.key === line.key)
+        if (!option) continue
+        await addToCatalog(session.groupId, option, line.quantity)
+      }
     } catch (catalogError: unknown) {
       await supabase.from('tablet_daily_runs').delete().eq('id', inserted.id).eq('group_id', session.groupId)
       throw catalogError

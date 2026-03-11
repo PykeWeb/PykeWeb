@@ -17,6 +17,7 @@ type CounterpartyAggregate = {
   totalCount: number
   purchases: number
   sales: number
+  stockOuts: number
   expenses: number
   lastAt: string | null
 }
@@ -25,12 +26,14 @@ const typeIcon: Record<FinanceMovementType, JSX.Element> = {
   expense: <Receipt className="h-3.5 w-3.5" />,
   purchase: <ArrowDownRight className="h-3.5 w-3.5" />,
   sale: <ArrowUpRight className="h-3.5 w-3.5" />,
+  stock_out: <ArrowUpRight className="h-3.5 w-3.5" />,
 }
 
 const typeLabel: Record<FinanceMovementType, string> = {
   expense: 'Dépense',
   purchase: 'Achat',
   sale: 'Vente',
+  stock_out: 'Sortie',
 }
 
 function buildCounterpartyStats(entries: FinanceEntry[]): CounterpartyAggregate[] {
@@ -45,6 +48,7 @@ function buildCounterpartyStats(entries: FinanceEntry[]): CounterpartyAggregate[
       totalCount: 0,
       purchases: 0,
       sales: 0,
+      stockOuts: 0,
       expenses: 0,
       lastAt: null,
     }
@@ -55,6 +59,7 @@ function buildCounterpartyStats(entries: FinanceEntry[]): CounterpartyAggregate[
 
     if (entry.movement_type === 'purchase') current.purchases += 1
     if (entry.movement_type === 'sale') current.sales += 1
+    if (entry.movement_type === 'stock_out') current.stockOuts += 1
     if (entry.movement_type === 'expense') current.expenses += 1
 
     if (!current.lastAt || new Date(entry.created_at).getTime() > new Date(current.lastAt).getTime()) {
@@ -126,6 +131,7 @@ export default function CounterpartyStatsClient() {
           <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépenses</TabPill>
           <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achats</TabPill>
           <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Ventes</TabPill>
+          <TabPill active={type === 'stock_out'} onClick={() => setType('stock_out')}>Sorties</TabPill>
           <SearchInput
             value={q}
             onChange={(event) => setQ(event.target.value)}
@@ -173,7 +179,7 @@ export default function CounterpartyStatsClient() {
                   <div>
                     <p className="text-sm font-semibold">{row.name}</p>
                     <p className="text-xs text-white/60">
-                      {row.totalCount} mouvement(s) · Achats {row.purchases} · Ventes {row.sales} · Dépenses {row.expenses}
+                      {row.totalCount} mouvement(s) · Achats {row.purchases} · Ventes {row.sales} · Sorties {row.stockOuts} · Dépenses {row.expenses}
                     </p>
                   </div>
                   <div className="text-right">

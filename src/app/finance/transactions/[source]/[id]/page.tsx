@@ -11,6 +11,7 @@ import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import type { ExpenseStatus } from '@/lib/expensesApi'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from 'sonner'
 
 function formatMoney(value: number) {
@@ -42,6 +43,7 @@ export default function FinanceTransactionDetailPage() {
   const [unitPrice, setUnitPrice] = useState('0')
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<ExpenseStatus>('pending')
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   const reloadDetail = useCallback(async () => {
     const res = await fetch(`/api/finance/entries/${params.source}/${params.id}`, withTenantSessionHeader({ cache: 'no-store' }))
@@ -255,24 +257,9 @@ export default function FinanceTransactionDetailPage() {
                   <SecondaryButton
                     disabled={busy || !expenseId}
                     icon={<Trash2 className="h-4 w-4" />}
-                    onClick={async () => {
+                    onClick={() => {
                       if (!expenseId) return
-                      if (!window.confirm('Supprimer cette dépense ?')) return
-                      setBusy(true)
-                      try {
-                        const res = await fetch(`/api/finance/entries/expenses/${encodeURIComponent(expenseId)}`, {
-                          ...withTenantSessionHeader(),
-                          method: 'DELETE',
-                        })
-                        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Suppression impossible.')
-                        toast.success('Dépense supprimée.')
-                        router.push('/finance')
-                        router.refresh()
-                      } catch (actionError: unknown) {
-                        setError(actionError instanceof Error ? actionError.message : 'Impossible de supprimer la dépense.')
-                      } finally {
-                        setBusy(false)
-                      }
+                      setConfirmDeleteOpen(true)
                     }}
                   >
                     Supprimer
@@ -348,24 +335,9 @@ export default function FinanceTransactionDetailPage() {
                   <SecondaryButton
                     disabled={busy}
                     icon={<Trash2 className="h-4 w-4" />}
-                    onClick={async () => {
+                    onClick={() => {
                       if (!entry) return
-                      if (!window.confirm('Supprimer cette transaction ?')) return
-                      setBusy(true)
-                      try {
-                        const res = await fetch(`/api/finance/entries/${entry.source}/${encodeURIComponent(entry.id)}`, {
-                          ...withTenantSessionHeader(),
-                          method: 'DELETE',
-                        })
-                        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Suppression impossible.')
-                        toast.success('Transaction supprimée.')
-                        router.push('/finance')
-                        router.refresh()
-                      } catch (actionError: unknown) {
-                        setError(actionError instanceof Error ? actionError.message : 'Impossible de supprimer la transaction.')
-                      } finally {
-                        setBusy(false)
-                      }
+                      setConfirmDeleteOpen(true)
                     }}
                   >
                     Supprimer
@@ -375,6 +347,45 @@ export default function FinanceTransactionDetailPage() {
             ) : null}
           </div>
         )}
+
+        <ConfirmDialog
+          open={confirmDeleteOpen}
+          title="Confirmer la suppression"
+          description={isExpense ? 'Supprimer cette dépense ?' : 'Supprimer cette transaction ?'}
+          confirmLabel="Supprimer"
+          loading={busy}
+          onCancel={() => setConfirmDeleteOpen(false)}
+          onConfirm={async () => {
+            if (!entry) return
+            setBusy(true)
+            setError(null)
+            try {
+              if (isExpense) {
+                if (!expenseId) return
+                const expenseRes = await fetch(`/api/finance/entries/expenses/${encodeURIComponent(expenseId)}`, {
+                  ...withTenantSessionHeader(),
+                  method: 'DELETE',
+                })
+                if (!expenseRes.ok) throw new Error((await expenseRes.json().catch(() => null))?.error || 'Suppression impossible.')
+                toast.success('Dépense supprimée.')
+              } else {
+                const transactionRes = await fetch(`/api/finance/entries/${entry.source}/${encodeURIComponent(entry.id)}`, {
+                  ...withTenantSessionHeader(),
+                  method: 'DELETE',
+                })
+                if (!transactionRes.ok) throw new Error((await transactionRes.json().catch(() => null))?.error || 'Suppression impossible.')
+                toast.success('Transaction supprimée.')
+              }
+              setConfirmDeleteOpen(false)
+              router.push('/finance')
+              router.refresh()
+            } catch (actionError: unknown) {
+              setError(actionError instanceof Error ? actionError.message : 'Impossible de supprimer cette entrée.')
+            } finally {
+              setBusy(false)
+            }
+          }}
+        />
       </Panel>
     </div>
   )
