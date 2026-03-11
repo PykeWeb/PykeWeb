@@ -334,9 +334,55 @@ export function FinanceItemTradeModal({
                 {linesWithItems.length === 0 ? <p className="mt-2 text-sm text-white/60">Ajoute des items pour voir la liste.</p> : null}
                 <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
                   {linesWithItems.map((entry) => (
-                    <div key={`preview-${entry.item.id}`} className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2 text-xs">
-                      <p className="truncate font-semibold text-white">{entry.item.name}</p>
-                      <p className="text-white/65">Qté: {entry.line.quantity}</p>
+                    <div key={`preview-${entry.item.id}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="h-9 w-9 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
+                          {entry.item.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={entry.item.image_url} alt={entry.item.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-white/40">
+                              <ImageIcon className="h-3.5 w-3.5" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-white">{entry.item.name}</p>
+                          <p className="truncate text-[11px] text-white/65">{getTypeLabel(entry.item.item_type, entry.item.category)}</p>
+                        </div>
+                        <SecondaryButton
+                          type="button"
+                          className="h-7 rounded-md border-rose-300/40 bg-rose-500/10 px-2 text-[11px] text-rose-100 hover:bg-rose-500/20"
+                          onClick={() => removeLine(entry.item.id)}
+                        >
+                          Retirer
+                        </SecondaryButton>
+                      </div>
+
+                      <div className="mt-2">
+                        <QuantityStepper
+                          value={entry.line.quantity}
+                          onChange={(value) => updateLine(entry.item.id, { quantity: value })}
+                          min={1}
+                          max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
+                        />
+                      </div>
+
+                      {hideUnitPrice ? (
+                        <p className="mt-2 text-[11px] text-white/60">Sortie stock</p>
+                      ) : (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="inline-flex h-7 items-center rounded-full border border-white/15 bg-white/[0.05] px-2 text-[11px] text-white/75">
+                            Prix
+                          </span>
+                          <Input
+                            value={entry.line.unitPrice}
+                            onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                            inputMode="decimal"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
