@@ -352,7 +352,7 @@ export function FinanceItemTradeModal({
                         </div>
                         <SecondaryButton
                           type="button"
-                          className="h-7 rounded-md border-rose-300/40 bg-rose-500/10 px-2 text-[11px] text-rose-100 hover:bg-rose-500/20"
+                          className="h-6 rounded-md border-rose-300/35 bg-rose-500/10 px-1.5 text-[10px] text-rose-100 hover:bg-rose-500/20"
                           onClick={() => removeLine(entry.item.id)}
                         >
                           Retirer
@@ -361,6 +361,7 @@ export function FinanceItemTradeModal({
 
                       <div className="mt-2">
                         <QuantityStepper
+                          size="sm"
                           value={entry.line.quantity}
                           onChange={(value) => updateLine(entry.item.id, { quantity: value })}
                           min={1}
@@ -372,14 +373,14 @@ export function FinanceItemTradeModal({
                         <p className="mt-2 text-[11px] text-white/60">Sortie stock</p>
                       ) : (
                         <div className="mt-2 flex items-center gap-2">
-                          <span className="inline-flex h-7 items-center rounded-full border border-white/15 bg-white/[0.05] px-2 text-[11px] text-white/75">
+                          <span className="inline-flex h-6 items-center rounded-full border border-white/15 bg-white/[0.05] px-1.5 text-[10px] text-white/75">
                             Prix
                           </span>
                           <Input
                             value={entry.line.unitPrice}
                             onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
                             inputMode="decimal"
-                            className="h-8 text-xs"
+                            className="h-7 text-[11px]"
                           />
                         </div>
                       )}
