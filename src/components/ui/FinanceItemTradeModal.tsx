@@ -267,7 +267,7 @@ export function FinanceItemTradeModal({
             })}
           </div>
 
-          <div className="md:col-span-3 flex flex-wrap items-start gap-2">
+          <div className="md:col-span-3 flex flex-wrap items-center gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {typeOptions.map((option) => (
                 <TabPill key={option.value} active={type === option.value} onClick={() => setType(option.value as TypeFilter)} className="h-8 rounded-xl px-3 text-xs">
@@ -275,14 +275,13 @@ export function FinanceItemTradeModal({
                 </TabPill>
               ))}
             </div>
-            <div className="ml-auto rounded-2xl border border-white/20 bg-white/[0.05] px-4 py-3 text-right text-sm">
-              {copy.finance.labels.total}:{' '}
-              <span className="text-lg font-semibold text-white">{total.toFixed(2)} $</span>
+            <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">
+              {copy.finance.labels.total} :{' '}
+              <span className="text-sm font-semibold text-white">{total.toFixed(2)} $</span>
             </div>
           </div>
 
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.item}</label>
             <div className="grid gap-3 lg:grid-cols-[1fr_340px]">
               <div className="rounded-2xl p-0">
                 <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
@@ -294,7 +293,7 @@ export function FinanceItemTradeModal({
                     className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
                   />
                 </div>
-                <div className="h-[26rem] space-y-1 overflow-y-auto pr-1">
+                <div className="h-[30rem] space-y-1 overflow-y-auto pr-1">
                   {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
                   {filtered.map((it) => (
                     <button
@@ -329,14 +328,13 @@ export function FinanceItemTradeModal({
                 </div>
               </div>
 
-              <div className="hidden rounded-xl border border-white/10 bg-white/[0.02] p-3 lg:block">
-                <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée (aperçu)</p>
-                {linesWithItems.length === 0 ? <p className="mt-2 text-sm text-white/60">Ajoute des items pour voir la liste.</p> : null}
-                <div className="mt-2 h-[26rem] space-y-2 overflow-y-auto pr-1">
+              <div className="hidden rounded-xl border border-white/10 bg-white/[0.02] p-2 lg:block">
+                {linesWithItems.length === 0 ? <p className="px-1 py-2 text-sm text-white/60">Ajoute des items pour voir la liste.</p> : null}
+                <div className="h-[30rem] space-y-2 overflow-y-auto pr-1">
                   {linesWithItems.map((entry) => (
-                    <div key={`preview-${entry.item.id}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-xs">
+                    <div key={`preview-${entry.item.id}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-[11px]">
                       <div className="flex items-center gap-2">
-                        <div className="h-9 w-9 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
+                        <div className="h-8 w-8 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
                           {entry.item.image_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={entry.item.image_url} alt={entry.item.name} className="h-full w-full object-cover" />
@@ -348,42 +346,42 @@ export function FinanceItemTradeModal({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-semibold text-white">{entry.item.name}</p>
-                          <p className="truncate text-[11px] text-white/65">{getTypeLabel(entry.item.item_type, entry.item.category)}</p>
+                          <p className="truncate text-[10px] text-white/65">{getTypeLabel(entry.item.item_type, entry.item.category)}</p>
                         </div>
                         <SecondaryButton
                           type="button"
-                          className="h-6 rounded-md border-rose-300/35 bg-rose-500/10 px-1.5 text-[10px] text-rose-100 hover:bg-rose-500/20"
+                          className="h-7 rounded-md border-rose-300/35 bg-rose-500/10 px-2 text-[10px] text-rose-100 hover:bg-rose-500/20"
                           onClick={() => removeLine(entry.item.id)}
                         >
                           Retirer
                         </SecondaryButton>
                       </div>
 
-                      <div className="mt-2">
+                      <div className="mt-1.5 flex items-center justify-between gap-2">
                         <QuantityStepper
                           size="sm"
+                          fitContent
                           value={entry.line.quantity}
                           onChange={(value) => updateLine(entry.item.id, { quantity: value })}
                           min={1}
                           max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
                         />
-                      </div>
 
-                      {hideUnitPrice ? (
-                        <p className="mt-2 text-[11px] text-white/60">Sortie stock</p>
-                      ) : (
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="inline-flex h-6 items-center rounded-full border border-white/15 bg-white/[0.05] px-1.5 text-[10px] text-white/75">
-                            Prix
-                          </span>
-                          <Input
-                            value={entry.line.unitPrice}
-                            onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
-                            inputMode="decimal"
-                            className="h-7 text-[11px]"
-                          />
-                        </div>
-                      )}
+                        {hideUnitPrice ? (
+                          <p className="text-[11px] text-white/60">Sortie stock</p>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              value={entry.line.unitPrice}
+                              onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                              inputMode="decimal"
+                              style={{ width: `${Math.max(8, entry.line.unitPrice.trim().length + 3)}ch` }}
+                              className="h-7 px-2 text-center text-sm"
+                            />
+                            <span className="text-sm font-semibold text-white/85">$</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -391,62 +389,6 @@ export function FinanceItemTradeModal({
             </div>
           </div>
 
-          <div className="md:col-span-2 space-y-2">
-            <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée</p>
-            {linesWithItems.length === 0 ? <p className="text-sm text-white/60">Ajoute des items à la liste pour continuer.</p> : null}
-            {linesWithItems.map((entry) => (
-              <div key={entry.item.id} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-                    {entry.item.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={entry.item.image_url} alt={entry.item.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-white/40">
-                        <ImageIcon className="h-3.5 w-3.5" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{entry.item.name}</p>
-                    <p className="text-xs text-white/60">
-                      {getTypeLabel(entry.item.item_type, entry.item.category)} · Stock: {entry.item.stock}
-                    </p>
-                  </div>
-                </div>
-                {hideUnitPrice ? (
-                  <div className="text-sm text-white/60">Sortie stock</div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
-                      Prix
-                    </span>
-                    <Input
-                      value={entry.line.unitPrice}
-                      onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
-                      inputMode="decimal"
-                      className="md:w-[140px]"
-                    />
-                  </div>
-                )}
-                <div className="w-[220px]">
-                  <QuantityStepper
-                    value={entry.line.quantity}
-                    onChange={(value) => updateLine(entry.item.id, { quantity: value })}
-                    min={1}
-                    max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeLine(entry.item.id)}
-                  className="rounded-md border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-xs text-rose-100"
-                >
-                  Retirer
-                </button>
-              </div>
-            ))}
-          </div>
         </div>
 
         {error ? (
