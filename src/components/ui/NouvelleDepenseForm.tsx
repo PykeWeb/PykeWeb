@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { PrimaryButton, SecondaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
@@ -244,13 +243,17 @@ export function NouvelleDepenseForm({
       actionsPlacement={actionsPlacement}
     >
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="md:col-span-2">
+        <div>
           <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
           <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" />
         </div>
 
-        <div className="md:col-span-2">
-          <label className="mb-2 block text-xs text-white/60">Catégorie</label>
+        <div>
+          <label className="mb-1 block text-xs text-white/60">Raison / note</label>
+          <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Pourquoi cette dépense ?" />
+        </div>
+
+        <div className="md:col-span-2 flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-2">
             {catalogTypeOptions.map((option) => (
               <TabPill
@@ -267,6 +270,9 @@ export function NouvelleDepenseForm({
             <TabPill active={useTemporaryItem} onClick={() => setUseTemporaryItem(true)}>
               Autres
             </TabPill>
+          </div>
+          <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">
+            <span className="text-sm font-semibold text-white">{`Total : ${Number.isFinite(total) ? total.toFixed(2) : '0.00'} $`}</span>
           </div>
         </div>
 
@@ -313,7 +319,6 @@ export function NouvelleDepenseForm({
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <p className="mb-2 text-xs text-white/60">Items sélectionnés</p>
               <div className="h-[clamp(19rem,50dvh,30rem)] space-y-2 overflow-y-auto pr-1">
                 {selectedItems.map((item) => (
                   <div key={item.selectionKey} className="rounded-xl border border-white/10 bg-white/[0.02] p-2">
@@ -333,16 +338,7 @@ export function NouvelleDepenseForm({
                       <SecondaryButton onClick={() => setSelectedItems((prev) => prev.filter((row) => row.selectionKey !== item.selectionKey))}>Retirer</SecondaryButton>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
-                        Prix item
-                      </span>
-                      <Input
-                        value={String(item.unitPrice)}
-                        onChange={(event) => updateSelectedItemUnitPrice(item.selectionKey, event.target.value)}
-                        inputMode="decimal"
-                        className="h-8 w-[100px]"
-                      />
+                    <div className="mt-2 flex items-center justify-between gap-2">
                       <QuantityStepper
                         size="sm"
                         fitContent
@@ -350,6 +346,15 @@ export function NouvelleDepenseForm({
                         min={1}
                         onChange={(nextQty) => setSelectedItems((prev) => prev.map((row) => row.selectionKey === item.selectionKey ? { ...row, quantity: nextQty } : row))}
                       />
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={String(item.unitPrice)}
+                          onChange={(event) => updateSelectedItemUnitPrice(item.selectionKey, event.target.value)}
+                          inputMode="decimal"
+                          className="h-8 w-[92px] px-2 text-center"
+                        />
+                        <span className="text-sm font-semibold text-white/85">$</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -374,16 +379,6 @@ export function NouvelleDepenseForm({
         ) : null}
 
         <ImageDropzone label="Preuve (image optionnelle)" onChange={setProofFile} />
-
-        <div className="md:col-span-2">
-          <label className="mb-1 block text-xs text-white/60">Description (optionnelle)</label>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[120px]" />
-        </div>
-
-        <div className="md:col-span-2 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-          <div className="text-sm text-white/70">Total :</div>
-          <div className="text-lg font-semibold">{Number.isFinite(total) ? total.toFixed(2) : '0.00'} $</div>
-        </div>
 
         {error ? <div className="md:col-span-2 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
         {pickedItem?.image_url && !useTemporaryItem && selectedItems.length === 1 ? (
