@@ -294,7 +294,7 @@ export function FinanceItemTradeModal({
                     className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
                   />
                 </div>
-                <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+                <div className="h-[26rem] space-y-1 overflow-y-auto pr-1">
                   {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
                   {filtered.map((it) => (
                     <button
@@ -332,7 +332,7 @@ export function FinanceItemTradeModal({
               <div className="hidden rounded-xl border border-white/10 bg-white/[0.02] p-3 lg:block">
                 <p className="text-xs uppercase tracking-wide text-white/55">Liste sélectionnée (aperçu)</p>
                 {linesWithItems.length === 0 ? <p className="mt-2 text-sm text-white/60">Ajoute des items pour voir la liste.</p> : null}
-                <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
+                <div className="mt-2 h-[26rem] space-y-2 overflow-y-auto pr-1">
                   {linesWithItems.map((entry) => (
                     <div key={`preview-${entry.item.id}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-xs">
                       <div className="flex items-center gap-2">
