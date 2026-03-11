@@ -186,6 +186,8 @@ export function NouvelleDepenseForm({
 
   return (
     <CenteredFormLayout
+      className="max-h-[calc(100dvh-8.75rem)]"
+      panelClassName="h-full overflow-hidden"
       title={title}
       actions={
         <>
@@ -242,7 +244,7 @@ export function NouvelleDepenseForm({
       }
       actionsPlacement={actionsPlacement}
     >
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid h-full gap-3 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
           <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" />
@@ -287,7 +289,7 @@ export function NouvelleDepenseForm({
               <label className="mb-1 block text-xs text-white/60">Rechercher dans le catalogue</label>
               <SearchInput value={itemQuery} onChange={(e) => setItemQuery(e.target.value)} placeholder="Chercher un item..." />
               <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2">
-                <div className="h-[clamp(19rem,50dvh,30rem)] space-y-1 overflow-y-auto pr-1">
+                <div className="h-[clamp(14rem,34dvh,20rem)] space-y-1 overflow-y-auto pr-1">
                   {filteredItems.map((item) => (
                     <button
                       key={item.id}
@@ -319,7 +321,7 @@ export function NouvelleDepenseForm({
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="h-[clamp(19rem,50dvh,30rem)] space-y-2 overflow-y-auto pr-1">
+              <div className="h-[clamp(14rem,34dvh,20rem)] space-y-2 overflow-y-auto pr-1">
                 {selectedItems.map((item) => (
                   <div key={item.selectionKey} className="rounded-xl border border-white/10 bg-white/[0.02] p-2">
                     <div className="flex items-center gap-2">
@@ -378,21 +380,9 @@ export function NouvelleDepenseForm({
           </>
         ) : null}
 
-        <ImageDropzone label="Preuve (image optionnelle)" onChange={setProofFile} />
+        <ImageDropzone label="Preuve (image optionnelle)" onChange={setProofFile} compact />
 
         {error ? <div className="md:col-span-2 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
-        {pickedItem?.image_url && !useTemporaryItem && selectedItems.length === 1 ? (
-          <div className="md:col-span-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="h-12 w-12 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={pickedItem.image_url} alt="" className="h-full w-full object-cover" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{pickedItem.name}</p>
-              <p className="text-xs text-white/60">Prix catalogue: {Number(pickedItem.price || 0).toFixed(2)} $</p>
-            </div>
-          </div>
-        ) : null}
       </div>
     </CenteredFormLayout>
   )

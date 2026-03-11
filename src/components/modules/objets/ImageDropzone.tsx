@@ -7,13 +7,14 @@ import { Image as ImageIcon, Upload, X } from 'lucide-react'
 type Props = {
   label?: string
   onChange?: (file: File | null) => void
+  compact?: boolean
 }
 
 function isImageFile(file: File) {
   return ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)
 }
 
-export function ImageDropzone({ label = 'Image', onChange }: Props) {
+export function ImageDropzone({ label = 'Image', onChange, compact = false }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -87,7 +88,7 @@ export function ImageDropzone({ label = 'Image', onChange }: Props) {
           onFiles(e.dataTransfer.files)
         }}
         className={
-          'mt-2 rounded-2xl border border-dashed bg-white/[0.03] p-4 outline-none transition ' +
+          `mt-2 rounded-2xl border border-dashed bg-white/[0.03] ${compact ? 'p-2.5' : 'p-4'} outline-none transition ` +
           (dragOver ? 'border-white/35' : 'border-white/15') +
           ' focus:border-white/35'
         }
@@ -101,14 +102,14 @@ export function ImageDropzone({ label = 'Image', onChange }: Props) {
         />
 
         {!previewUrl ? (
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className={`flex flex-col ${compact ? 'gap-2' : 'gap-3'} md:flex-row md:items-center md:justify-between`}>
             <div className="flex items-start gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-white/80">
+              <span className={`grid ${compact ? 'h-8 w-8 rounded-lg' : 'h-10 w-10 rounded-xl'} place-items-center bg-white/10 text-white/80`}>
                 <ImageIcon className="h-5 w-5" />
               </span>
               <div>
-                <p className="text-sm font-medium">Ajoute une image (PNG/JPEG)</p>
-                <p className="mt-1 text-xs text-white/60">
+                <p className={`${compact ? 'text-xs' : 'text-sm'} font-medium`}>Ajoute une image (PNG/JPEG)</p>
+                <p className={`mt-1 ${compact ? 'text-[11px]' : 'text-xs'} text-white/60`}>
                   Glisse-dépose, clique pour upload, ou colle depuis le presse-papiers (Ctrl+V).
                 </p>
               </div>
@@ -117,20 +118,20 @@ export function ImageDropzone({ label = 'Image', onChange }: Props) {
             <button
               type="button"
               onClick={pick}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium shadow-glow transition hover:bg-white/10"
+              className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 ${compact ? 'px-3 py-2 text-xs' : 'px-4 py-2.5 text-sm'} font-medium shadow-glow transition hover:bg-white/10`}
             >
               <Upload className="h-4 w-4" />
               Choisir un fichier
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className={`flex flex-col ${compact ? 'gap-2' : 'gap-3'} md:flex-row md:items-center md:justify-between`}>
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
                 alt="Aperçu"
-                className="h-16 w-16 rounded-xl border border-white/10 object-cover"
+                className={`${compact ? 'h-12 w-12 rounded-lg' : 'h-16 w-16 rounded-xl'} border border-white/10 object-cover`}
               />
               <div>
                 <p className="text-sm font-medium">{file?.name}</p>
@@ -144,14 +145,14 @@ export function ImageDropzone({ label = 'Image', onChange }: Props) {
               <button
                 type="button"
                 onClick={pick}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium shadow-glow transition hover:bg-white/10"
+                className={`rounded-xl border border-white/10 bg-white/5 ${compact ? 'px-3 py-2 text-xs' : 'px-4 py-2.5 text-sm'} font-medium shadow-glow transition hover:bg-white/10`}
               >
                 Remplacer
               </button>
               <button
                 type="button"
                 onClick={() => commit(null)}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white/80 transition hover:bg-white/10"
+                className={`inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] ${compact ? 'px-3 py-2 text-xs' : 'px-4 py-2.5 text-sm'} font-medium text-white/80 transition hover:bg-white/10`}
               >
                 <X className="h-4 w-4" />
                 Retirer
