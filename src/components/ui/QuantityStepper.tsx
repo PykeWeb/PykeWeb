@@ -36,9 +36,9 @@ export function QuantityStepper({ value, onChange, min = 1, max, size = 'default
     setDraft(String(nextValue))
   }
 
-  const buttonClassName = size === 'sm' ? 'h-8 px-2.5' : undefined
-  const iconClassName = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'
-  const inputClassName = size === 'sm' ? 'h-8 w-20 text-xs' : 'w-24'
+  const buttonClassName = size === 'sm' ? 'h-7 px-2' : undefined
+  const iconClassName = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'
+  const inputClassName = size === 'sm' ? 'h-7 w-16 text-[11px]' : 'w-24'
 
   return (
     <div className="flex items-center gap-2">
