@@ -357,31 +357,34 @@ export function FinanceItemTradeModal({
                         </SecondaryButton>
                       </div>
 
-                      <div className="mt-1.5 flex items-center justify-center">
-                        <QuantityStepper
-                          size="sm"
-                          fitContent
-                          value={entry.line.quantity}
-                          onChange={(value) => updateLine(entry.item.id, { quantity: value })}
-                          min={1}
-                          max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
-                        />
-                      </div>
-
-                      {hideUnitPrice ? (
-                        <p className="mt-1.5 text-center text-[11px] text-white/60">Sortie stock</p>
-                      ) : (
-                        <div className="mt-1.5 flex items-center justify-center gap-1.5">
-                          <span className="inline-flex h-6 items-center rounded-full border border-white/15 bg-white/[0.05] px-2 text-[9px] text-white/75">Prix</span>
-                          <Input
-                            value={entry.line.unitPrice}
-                            onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
-                            inputMode="decimal"
-                            style={{ width: `${Math.max(5, entry.line.unitPrice.trim().length + 2)}ch` }}
-                            className="h-7 px-2 text-center text-[10px]"
+                      <div className="mt-1.5 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] text-white/70">Qté</span>
+                          <QuantityStepper
+                            size="sm"
+                            fitContent
+                            value={entry.line.quantity}
+                            onChange={(value) => updateLine(entry.item.id, { quantity: value })}
+                            min={1}
+                            max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
                           />
                         </div>
-                      )}
+
+                        {hideUnitPrice ? (
+                          <p className="text-[11px] text-white/60">Sortie stock</p>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex h-6 items-center rounded-full border border-white/15 bg-white/[0.05] px-2 text-[9px] text-white/75">Prix</span>
+                            <Input
+                              value={entry.line.unitPrice}
+                              onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
+                              inputMode="decimal"
+                              style={{ width: `${Math.max(6, entry.line.unitPrice.trim().length + 2)}ch` }}
+                              className="h-7 px-2 text-center text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

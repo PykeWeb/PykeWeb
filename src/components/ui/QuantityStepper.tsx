@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Minus, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { SecondaryButton } from '@/components/ui/design-system'
 
@@ -38,14 +37,15 @@ export function QuantityStepper({ value, onChange, min = 1, max, size = 'default
   }
 
   const wrapperClassName = size === 'sm' ? 'gap-1.5' : 'gap-2'
-  const buttonClassName = size === 'sm' ? 'h-7 w-7 min-w-7 rounded-lg px-0' : undefined
-  const iconClassName = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'
+  const buttonClassName = size === 'sm' ? 'h-7 w-7 min-w-7 rounded-lg px-0 text-sm font-semibold leading-none' : undefined
   const inputClassName = size === 'sm' ? 'h-7 px-2 text-center text-[10px]' : 'w-24'
-  const fitWidthStyle = fitContent ? { width: `${Math.max(3, draft.length + 1)}ch` } : undefined
+  const fitWidthStyle = fitContent ? { width: `${Math.max(size === 'sm' ? 4 : 3, draft.length + (size === 'sm' ? 2 : 1))}ch` } : undefined
 
   return (
     <div className={`flex items-center ${wrapperClassName}`}>
-      <SecondaryButton type="button" className={buttonClassName} onClick={() => onChange(clamp(value - 1))} icon={<Minus className={iconClassName} />} />
+      <SecondaryButton type="button" className={buttonClassName} onClick={() => onChange(clamp(value - 1))}>
+        −
+      </SecondaryButton>
       <Input
         value={draft}
         onChange={(e) => {
@@ -62,7 +62,9 @@ export function QuantityStepper({ value, onChange, min = 1, max, size = 'default
         style={fitWidthStyle}
         inputMode="numeric"
       />
-      <SecondaryButton type="button" className={buttonClassName} onClick={() => onChange(clamp(value + 1))} icon={<Plus className={iconClassName} />} />
+      <SecondaryButton type="button" className={buttonClassName} onClick={() => onChange(clamp(value + 1))}>
+        +
+      </SecondaryButton>
     </div>
   )
 }
