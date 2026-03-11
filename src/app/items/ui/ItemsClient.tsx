@@ -161,8 +161,13 @@ export default function ItemsClient() {
   }, [items])
 
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
-    const runs = Math.max(1, Math.floor(Number(plantationRuns[recipe.key] || 1) || 1))
-    const outputPerRun = Math.max(1, Math.floor(Number(plantationOutputPerRun[recipe.key] || recipe.default_output_per_run) || recipe.default_output_per_run))
+    const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
+    const outputPerRun = Math.max(0, Math.floor(Number(plantationOutputPerRun[recipe.key] || recipe.default_output_per_run) || recipe.default_output_per_run))
+
+    if (runs <= 0) {
+      toast.error('Indique un nombre de plantations supérieur à 0.')
+      return
+    }
 
     const required = recipe.requirements.map((req) => ({ ...req, total: req.qty * runs, item: findItemByName(req.name) }))
     const missingRequired = required.filter((req) => !req.item).map((req) => req.name)
@@ -217,6 +222,20 @@ export default function ItemsClient() {
       setRealizingRecipeKey(null)
     }
   }, [findItemByName, plantationOutputPerRun, plantationRuns, refresh])
+
+
+  const adjustPlantationField = useCallback((
+    key: string,
+    field: 'runs' | 'output',
+    delta: number,
+    fallback: number,
+  ) => {
+    const source = field === 'runs' ? plantationRuns : plantationOutputPerRun
+    const setter = field === 'runs' ? setPlantationRuns : setPlantationOutputPerRun
+    const current = Math.max(0, Math.floor(Number(source[key] ?? fallback) || fallback))
+    const next = Math.max(0, current + delta)
+    setter((prev) => ({ ...prev, [key]: String(next) }))
+  }, [plantationOutputPerRun, plantationRuns])
 
   const categoryCounts = useMemo(() => {
     const sumStock = (predicate: (category: string) => boolean) =>
@@ -398,21 +417,29 @@ export default function ItemsClient() {
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <label className="text-xs text-white/65">
                       Nb plantations
-                      <Input
-                        value={plantationRuns[recipe.key] || '1'}
-                        onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
-                        inputMode="numeric"
-                        className="mt-1 h-9 rounded-lg px-2 text-sm"
-                      />
+                      <div className="mt-1 flex items-center gap-1">
+                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'runs', -1, 0)}>-</SecondaryButton>
+                        <Input
+                          value={plantationRuns[recipe.key] || '0'}
+                          onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
+                          inputMode="numeric"
+                          className="h-9 rounded-lg px-2 text-sm"
+                        />
+                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'runs', 1, 0)}>+</SecondaryButton>
+                      </div>
                     </label>
                     <label className="text-xs text-white/65">
                       Production reçue / plantation
-                      <Input
-                        value={plantationOutputPerRun[recipe.key] || String(recipe.default_output_per_run)}
-                        onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
-                        inputMode="numeric"
-                        className="mt-1 h-9 rounded-lg px-2 text-sm"
-                      />
+                      <div className="mt-1 flex items-center gap-1">
+                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'output', -1, recipe.default_output_per_run)}>-</SecondaryButton>
+                        <Input
+                          value={plantationOutputPerRun[recipe.key] || String(recipe.default_output_per_run)}
+                          onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
+                          inputMode="numeric"
+                          className="h-9 rounded-lg px-2 text-sm"
+                        />
+                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'output', 1, recipe.default_output_per_run)}>+</SecondaryButton>
+                      </div>
                     </label>
                   </div>
                   <PrimaryButton
