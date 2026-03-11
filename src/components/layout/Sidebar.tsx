@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList } from 'lucide-react'
+import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
@@ -41,12 +41,17 @@ export function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'tablette'])
+  const [isPwrGroup, setIsPwrGroup] = useState(false)
 
   useEffect(() => {
     const session = getTenantSession()
-    setGroupName(session?.groupName || 'Groupe')
-    setGroupBadge(session?.groupBadge || 'GROUPE')
+    const nextGroupName = session?.groupName || 'Groupe'
+    const nextGroupBadge = session?.groupBadge || 'GROUPE'
+    setGroupName(nextGroupName)
+    setGroupBadge(nextGroupBadge)
     setIsAdmin(isAdminTenantSession(session))
+    const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
+    setIsPwrGroup(scope.includes('pwr'))
   }, [])
 
   useEffect(() => {
@@ -92,6 +97,7 @@ export function Sidebar() {
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
     { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
+    ...(isPwrGroup ? [{ id: 'pwr-commandes', href: '/pwr/commandes', label: 'PWR commandes', icon: <Truck className="h-5 w-5" />, active: pathname.startsWith('/pwr/commandes') }] : []),
   ]
 
   return (
