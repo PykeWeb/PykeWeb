@@ -157,7 +157,7 @@ export function FinanceItemTradeModal({
 
   const content = (
     <div
-      className={inline ? 'mx-auto w-full max-w-6xl h-[calc(100dvh-10.25rem)]' : 'mx-auto w-full max-w-6xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain'}
+      className={inline ? 'mx-auto w-full max-w-6xl h-[calc(100dvh-12.5rem)]' : 'mx-auto w-full max-w-6xl max-h-[calc(100dvh-1.25rem)] overflow-y-auto pr-1 overscroll-contain'}
       onClick={(e) => e.stopPropagation()}
     >
       <CenteredFormLayout
@@ -276,8 +276,7 @@ export function FinanceItemTradeModal({
               ))}
             </div>
             <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">
-              {`${copy.finance.labels.total} : `}
-              <span className="text-sm font-semibold text-white">{total.toFixed(2)} $</span>
+              <span className="text-sm font-semibold text-white">{`${copy.finance.labels.total} : ${total.toFixed(2)} $`}</span>
             </div>
           </div>
 
@@ -293,7 +292,7 @@ export function FinanceItemTradeModal({
                     className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
                   />
                 </div>
-                <div className="h-[clamp(22rem,56dvh,36rem)] space-y-1 overflow-y-auto pr-1">
+                <div className="h-[clamp(19rem,50dvh,30rem)] space-y-1 overflow-y-auto pr-1">
                   {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
                   {filtered.map((it) => (
                     <button
@@ -330,7 +329,7 @@ export function FinanceItemTradeModal({
 
               <div className="hidden rounded-xl border border-white/10 bg-white/[0.02] p-2 lg:block">
                 {linesWithItems.length === 0 ? <p className="px-1 py-2 text-sm text-white/60">Ajoute des items pour voir la liste.</p> : null}
-                <div className="h-[clamp(22rem,56dvh,36rem)] space-y-2 overflow-y-auto pr-1">
+                <div className="h-[clamp(19rem,50dvh,30rem)] space-y-2 overflow-y-auto pr-1">
                   {linesWithItems.map((entry) => (
                     <div key={`preview-${entry.item.id}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-[11px]">
                       <div className="flex items-center gap-2">
