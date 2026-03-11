@@ -13,11 +13,26 @@ function sanitizeUnitLabel(value: unknown) {
   return raw || 'bidons'
 }
 
+async function assertPwrGroup(groupId: string) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('tenant_groups')
+    .select('login,name,badge')
+    .eq('id', groupId)
+    .maybeSingle<{ login: string | null; name: string | null; badge: string | null }>()
+
+  if (error) throw new Error(error.message)
+
+  const scope = `${data?.login || ''} ${data?.name || ''} ${data?.badge || ''}`.toLowerCase()
+  if (!scope.includes('pwr')) throw new Error('Accès réservé au groupe PWR.')
+}
+
 export async function GET(request: Request) {
   try {
     const session = await requireGroupSession(request)
-    const supabase = getSupabaseAdmin()
+    await assertPwrGroup(session.groupId)
 
+    const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from('pwr_orders')
       .select('id,group_id,title,target_qty,truck_capacity,delivered_qty,unit_label,created_at,updated_at')
@@ -35,6 +50,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await requireGroupSession(request)
+    await assertPwrGroup(session.groupId)
+
     const body = await request.json() as {
       title?: string
       targetQty?: number

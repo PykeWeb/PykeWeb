@@ -31,9 +31,9 @@ export async function listPwrCheckpoints(orderId: string) {
   return parseOrThrow<PwrOrderCheckpoint[]>(res, 'Impossible de charger les points de suivi.')
 }
 
-export async function createPwrCheckpoint(payload: { orderId: string; deliveredQty: number; note: string; photo?: File | null }) {
+export async function createPwrCheckpoint(payload: { orderId: string; addedQty: number; note: string; photo?: File | null }) {
   const form = new FormData()
-  form.set('deliveredQty', String(payload.deliveredQty))
+  form.set('addedQty', String(payload.addedQty))
   form.set('note', payload.note)
   if (payload.photo) form.set('photo', payload.photo)
 

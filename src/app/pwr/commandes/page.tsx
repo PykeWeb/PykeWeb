@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
-import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { createPwrCheckpoint, createPwrOrder, listPwrCheckpoints, listPwrOrders, toErrorMessage } from '@/lib/pwrApi'
 import { getTenantSession } from '@/lib/tenantSession'
 import type { PwrOrder, PwrOrderCheckpoint } from '@/lib/types/pwr'
@@ -26,7 +26,7 @@ export default function PwrCommandesPage() {
   const [newTarget, setNewTarget] = useState('3000')
   const [newTruck, setNewTruck] = useState('475')
 
-  const [deliveredQty, setDeliveredQty] = useState('0')
+  const [addedQty, setAddedQty] = useState('475')
   const [note, setNote] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
@@ -84,8 +84,8 @@ export default function PwrCommandesPage() {
 
   return (
     <Panel>
-      <h1 className="text-2xl font-semibold">PWR • Suivi commandes</h1>
-      <p className="mt-1 text-sm text-white/65">Suis tes livraisons de bidons, ajoute des photos de preuve et garde un historique des allers/retours.</p>
+      <h1 className="text-2xl font-semibold">PWR • Commandes</h1>
+      <p className="mt-1 text-sm text-white/65">Catégorie unique: Commande. Tu crées un total, puis tu ajoutes des passages (475 par défaut) avec photo et note.</p>
 
       {!isPwr ? (
         <p className="mt-4 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">Cette page est réservée au groupe PWR.</p>
@@ -95,11 +95,14 @@ export default function PwrCommandesPage() {
         <div className="mt-4 grid gap-4 lg:grid-cols-[380px_1fr]">
           <div className="space-y-4">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <p className="text-sm font-semibold">Nouvelle commande</p>
+              <p className="text-sm font-semibold">Créer une commande</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <TabPill active>Commande</TabPill>
+              </div>
               <div className="mt-2 space-y-2">
-                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Titre" />
-                <Input value={newTarget} onChange={(e) => setNewTarget(e.target.value)} inputMode="numeric" placeholder="Quantité cible" />
-                <Input value={newTruck} onChange={(e) => setNewTruck(e.target.value)} inputMode="numeric" placeholder="Capacité camion" />
+                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Nom commande" />
+                <Input value={newTarget} onChange={(e) => setNewTarget(e.target.value)} inputMode="numeric" placeholder="Montant total (ex: 3000)" />
+                <Input value={newTruck} onChange={(e) => setNewTruck(e.target.value)} inputMode="numeric" placeholder="Ajout standard (camion) ex: 475" />
                 <PrimaryButton
                   onClick={async () => {
                     setSaving(true)
@@ -111,6 +114,7 @@ export default function PwrCommandesPage() {
                         unitLabel: 'bidons',
                       })
                       toast.success('Commande créée.')
+                      setAddedQty(String(toPositiveInt(newTruck, 475)))
                       await refreshOrders()
                     } catch (error: unknown) {
                       toast.error(toErrorMessage(error, 'Impossible de créer la commande.'))
@@ -121,13 +125,13 @@ export default function PwrCommandesPage() {
                   disabled={saving}
                   className="w-full"
                 >
-                  Créer
+                  Créer la commande
                 </PrimaryButton>
               </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <p className="text-sm font-semibold">Commandes</p>
+              <p className="text-sm font-semibold">Commandes en cours</p>
               {loading ? <p className="mt-2 text-sm text-white/60">Chargement...</p> : null}
               <div className="mt-2 max-h-[330px] space-y-2 overflow-y-auto pr-1">
                 {orders.map((order) => (
@@ -147,65 +151,66 @@ export default function PwrCommandesPage() {
           </div>
 
           <div>
-            {!selectedOrder ? <p className="text-sm text-white/60">Sélectionne une commande pour le suivi.</p> : null}
+            {!selectedOrder ? <p className="text-sm text-white/60">Sélectionne une commande pour suivre les allers-retours.</p> : null}
             {selectedOrder && summary ? (
               <div className="space-y-4">
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Progression</p><p className="text-xl font-semibold">{summary.progress}%</p></div>
+                <div className="grid gap-2 sm:grid-cols-4">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Total</p><p className="text-xl font-semibold">{summary.target}</p></div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Actuel</p><p className="text-xl font-semibold">{summary.delivered}</p></div>
                   <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Restant</p><p className="text-xl font-semibold">{summary.remaining}</p></div>
                   <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Allers restants</p><p className="text-xl font-semibold">{summary.tripsRemaining}</p></div>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                  <p className="text-sm font-semibold">Ajouter un point de suivi</p>
+                  <p className="text-sm font-semibold">Ajouter un passage</p>
                   <div className="mt-2 grid gap-2 md:grid-cols-2">
-                    <Input value={deliveredQty} onChange={(e) => setDeliveredQty(e.target.value)} inputMode="numeric" placeholder="Quantité déposée actuellement" />
+                    <Input value={addedQty} onChange={(e) => setAddedQty(e.target.value)} inputMode="numeric" placeholder="Quantité ajoutée (ex: 475)" />
                     <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
                     <div className="md:col-span-2">
-                      <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (ex: palette déplacée / zone 2 / etc.)" />
+                      <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (où posé, déplacement, etc.)" />
                     </div>
                   </div>
-                  <div className="mt-2 flex gap-2">
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <SecondaryButton onClick={() => setAddedQty(String(selectedOrder.truck_capacity))}>+{selectedOrder.truck_capacity}</SecondaryButton>
                     <PrimaryButton
                       onClick={async () => {
                         setSaving(true)
                         try {
                           await createPwrCheckpoint({
                             orderId: selectedOrder.id,
-                            deliveredQty: Math.max(0, Number(deliveredQty) || 0),
+                            addedQty: Math.max(0, Number(addedQty) || 0),
                             note,
                             photo,
                           })
-                          toast.success('Point de suivi ajouté.')
+                          toast.success('Passage ajouté.')
                           setPhoto(null)
                           setNote('')
+                          setAddedQty(String(selectedOrder.truck_capacity))
                           await refreshOrders()
-                          setLoadingCheckpoints(true)
                           const rows = await listPwrCheckpoints(selectedOrder.id)
                           setCheckpoints(rows)
                         } catch (error: unknown) {
                           toast.error(toErrorMessage(error, 'Impossible d\'ajouter le suivi.'))
                         } finally {
                           setSaving(false)
-                          setLoadingCheckpoints(false)
                         }
                       }}
                       disabled={saving}
                     >
-                      Enregistrer
+                      Ajouter
                     </PrimaryButton>
-                    <SecondaryButton onClick={() => { setDeliveredQty(String(selectedOrder.delivered_qty)); setNote(''); setPhoto(null) }}>Réinitialiser</SecondaryButton>
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                  <p className="text-sm font-semibold">Historique photo / notes</p>
+                  <p className="text-sm font-semibold">Photos & historique</p>
                   {loadingCheckpoints ? <p className="mt-2 text-sm text-white/60">Chargement...</p> : null}
                   <div className="mt-2 max-h-[340px] space-y-2 overflow-y-auto pr-1">
                     {checkpoints.map((entry) => (
                       <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold">{entry.delivered_qty} bidons posés</p>
+                          <p className="text-sm font-semibold">+{entry.delivered_qty} bidons</p>
                           <p className="text-xs text-white/60">{new Date(entry.created_at).toLocaleString('fr-FR')}</p>
                         </div>
                         {entry.note ? <p className="mt-1 text-sm text-white/80">{entry.note}</p> : null}
@@ -215,7 +220,7 @@ export default function PwrCommandesPage() {
                         ) : null}
                       </div>
                     ))}
-                    {!loadingCheckpoints && checkpoints.length === 0 ? <p className="text-sm text-white/60">Aucun point de suivi.</p> : null}
+                    {!loadingCheckpoints && checkpoints.length === 0 ? <p className="text-sm text-white/60">Aucun passage enregistré.</p> : null}
                   </div>
                 </div>
               </div>

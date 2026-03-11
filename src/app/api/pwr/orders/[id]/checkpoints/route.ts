@@ -12,6 +12,20 @@ function toNonNegativeInt(value: unknown) {
   return Math.max(0, Math.floor(num))
 }
 
+async function assertPwrGroup(groupId: string) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('tenant_groups')
+    .select('login,name,badge')
+    .eq('id', groupId)
+    .maybeSingle<{ login: string | null; name: string | null; badge: string | null }>()
+
+  if (error) throw new Error(error.message)
+
+  const scope = `${data?.login || ''} ${data?.name || ''} ${data?.badge || ''}`.toLowerCase()
+  if (!scope.includes('pwr')) throw new Error('Accès réservé au groupe PWR.')
+}
+
 async function ensureBucket() {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase.storage.listBuckets()
@@ -44,6 +58,8 @@ async function loadOrder(groupId: string, orderId: string) {
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireGroupSession(request)
+    await assertPwrGroup(session.groupId)
+
     const { id } = await context.params
     await loadOrder(session.groupId, id)
 
@@ -66,11 +82,15 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireGroupSession(request)
+    await assertPwrGroup(session.groupId)
+
     const { id } = await context.params
     const order = await loadOrder(session.groupId, id)
     const form = await request.formData()
 
-    const deliveredQty = toNonNegativeInt(form.get('deliveredQty'))
+    const addedQty = toNonNegativeInt(form.get('addedQty'))
+    if (addedQty <= 0) return NextResponse.json({ error: 'Quantité ajoutée invalide.' }, { status: 400 })
+
     const note = String(form.get('note') || '').trim()
     const photo = form.get('photo')
 
@@ -98,7 +118,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     const supabase = getSupabaseAdmin()
-    const nextDeliveredQty = Math.max(toNonNegativeInt(order.delivered_qty), deliveredQty)
+    const currentDelivered = toNonNegativeInt(order.delivered_qty)
+    const targetQty = Math.max(1, toNonNegativeInt(order.target_qty))
+    const remaining = Math.max(0, targetQty - currentDelivered)
+    const safeAdded = Math.min(remaining, addedQty)
+    const nextDeliveredQty = currentDelivered + safeAdded
+
+    if (safeAdded <= 0) {
+      return NextResponse.json({ error: 'Commande déjà complète.' }, { status: 400 })
+    }
 
     const [{ data, error }, { error: updateError }] = await Promise.all([
       supabase
@@ -106,7 +134,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         .insert({
           group_id: session.groupId,
           order_id: id,
-          delivered_qty: deliveredQty,
+          delivered_qty: safeAdded,
           note: note || null,
           photo_url: photoUrl,
         })
