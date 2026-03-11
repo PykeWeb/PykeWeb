@@ -293,7 +293,7 @@ export function FinanceItemTradeModal({
                     className="w-full bg-transparent text-sm outline-none placeholder:text-white/45"
                   />
                 </div>
-                <div className="h-[31rem] space-y-1 overflow-y-auto pr-1">
+                <div className="h-[30rem] space-y-1 overflow-y-auto pr-1">
                   {loadingItems ? <p className="px-2 py-2 text-xs text-white/60">Chargement des items…</p> : null}
                   {filtered.map((it) => (
                     <button
@@ -358,30 +358,27 @@ export function FinanceItemTradeModal({
                       </div>
 
                       <div className="mt-1.5 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] text-white/70">Qté</span>
-                          <QuantityStepper
-                            size="sm"
-                            fitContent
-                            value={entry.line.quantity}
-                            onChange={(value) => updateLine(entry.item.id, { quantity: value })}
-                            min={1}
-                            max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
-                          />
-                        </div>
+                        <QuantityStepper
+                          size="sm"
+                          fitContent
+                          value={entry.line.quantity}
+                          onChange={(value) => updateLine(entry.item.id, { quantity: value })}
+                          min={1}
+                          max={tradeMode === 'sell' ? Math.max(1, entry.item.stock) : undefined}
+                        />
 
                         {hideUnitPrice ? (
                           <p className="text-[11px] text-white/60">Sortie stock</p>
                         ) : (
                           <div className="flex items-center gap-1.5">
-                            <span className="inline-flex h-6 items-center rounded-full border border-white/15 bg-white/[0.05] px-2 text-[9px] text-white/75">Prix</span>
                             <Input
                               value={entry.line.unitPrice}
                               onChange={(e) => updateLine(entry.item.id, { unitPrice: e.target.value })}
                               inputMode="decimal"
-                              style={{ width: `${Math.max(6, entry.line.unitPrice.trim().length + 2)}ch` }}
-                              className="h-7 px-2 text-center text-xs"
+                              style={{ width: `${Math.max(8, entry.line.unitPrice.trim().length + 3)}ch` }}
+                              className="h-7 px-2 text-center text-sm"
                             />
+                            <span className="text-sm font-semibold text-white/85">$</span>
                           </div>
                         )}
                       </div>
