@@ -9,9 +9,10 @@ type Props = {
   min?: number
   max?: number
   size?: 'default' | 'sm'
+  fitContent?: boolean
 }
 
-export function QuantityStepper({ value, onChange, min = 1, max, size = 'default' }: Props) {
+export function QuantityStepper({ value, onChange, min = 1, max, size = 'default', fitContent = false }: Props) {
   const [draft, setDraft] = useState(String(value))
 
   useEffect(() => {
@@ -36,10 +37,11 @@ export function QuantityStepper({ value, onChange, min = 1, max, size = 'default
     setDraft(String(nextValue))
   }
 
-  const wrapperClassName = size === 'sm' ? 'gap-1' : 'gap-2'
-  const buttonClassName = size === 'sm' ? 'h-6 w-6 min-w-6 rounded-lg px-0' : undefined
+  const wrapperClassName = size === 'sm' ? 'gap-1.5' : 'gap-2'
+  const buttonClassName = size === 'sm' ? 'h-7 w-7 min-w-7 rounded-lg px-0' : undefined
   const iconClassName = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'
-  const inputClassName = size === 'sm' ? 'h-6 w-14 px-2 text-center text-[10px]' : 'w-24'
+  const inputClassName = size === 'sm' ? 'h-7 px-2 text-center text-[10px]' : 'w-24'
+  const fitWidthStyle = fitContent ? { width: `${Math.max(3, draft.length + 1)}ch` } : undefined
 
   return (
     <div className={`flex items-center ${wrapperClassName}`}>
@@ -57,6 +59,7 @@ export function QuantityStepper({ value, onChange, min = 1, max, size = 'default
           }
         }}
         className={inputClassName}
+        style={fitWidthStyle}
         inputMode="numeric"
       />
       <SecondaryButton type="button" className={buttonClassName} onClick={() => onChange(clamp(value + 1))} icon={<Plus className={iconClassName} />} />
