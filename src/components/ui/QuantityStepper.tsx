@@ -36,12 +36,13 @@ export function QuantityStepper({ value, onChange, min = 1, max, size = 'default
     setDraft(String(nextValue))
   }
 
-  const buttonClassName = size === 'sm' ? 'h-7 px-2' : undefined
+  const wrapperClassName = size === 'sm' ? 'gap-1' : 'gap-2'
+  const buttonClassName = size === 'sm' ? 'h-6 w-6 min-w-6 rounded-lg px-0' : undefined
   const iconClassName = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'
-  const inputClassName = size === 'sm' ? 'h-7 w-16 text-[11px]' : 'w-24'
+  const inputClassName = size === 'sm' ? 'h-6 w-14 px-2 text-center text-[10px]' : 'w-24'
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex items-center ${wrapperClassName}`}>
       <SecondaryButton type="button" className={buttonClassName} onClick={() => onChange(clamp(value - 1))} icon={<Minus className={iconClassName} />} />
       <Input
         value={draft}
