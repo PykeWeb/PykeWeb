@@ -33,7 +33,7 @@ type ExpenseActionEntry = FinanceEntry & {
   movement_type: 'expense'
 }
 
-const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', sale: 'Vente', stock_out: 'Sortie' }
+const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', stock_in: 'Entrée', sale: 'Vente', stock_out: 'Sortie' }
 const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Autres', other: 'Autres' }
 
 function toPositiveInt(value: string, fallback = 1) {
@@ -104,7 +104,7 @@ export default function FinanceClient() {
     if (categoryParam && ['multi', 'objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) {
       setCategory(categoryParam === 'custom' ? 'other' : (categoryParam as FilterCategory))
     }
-    if (typeParam && ['expense', 'purchase', 'sale', 'stock_out'].includes(typeParam)) {
+    if (typeParam && ['expense', 'purchase', 'stock_in', 'sale', 'stock_out'].includes(typeParam)) {
       setType(typeParam as FilterType)
     }
   }, [searchParams])
@@ -124,6 +124,7 @@ export default function FinanceClient() {
   const pendingExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const paidExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status === 'paid').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
+  const stockIns = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_in').length, [filtered])
   const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
   const stockOuts = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_out').length, [filtered])
 
@@ -150,6 +151,7 @@ export default function FinanceClient() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses en attente</p><p className="mt-1 text-xl font-semibold">{pendingExpenses.toFixed(2)} $</p></div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses remboursées</p><p className="mt-1 text-xl font-semibold">{paidExpenses.toFixed(2)} $</p></div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Achats</p><p className="mt-1 text-xl font-semibold">{purchases.toFixed(2)} $</p></div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Entrées</p><p className="mt-1 text-xl font-semibold">{stockIns}</p></div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Sorties</p><p className="mt-1 text-xl font-semibold">{stockOuts}</p></div>
       </div>
@@ -159,8 +161,7 @@ export default function FinanceClient() {
           <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
           <Link href="/finance/achat-vente"><SecondaryButton>Achat / Vente</SecondaryButton></Link>
           <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
-          <Link href="/finance/entrees"><SecondaryButton>Entrées</SecondaryButton></Link>
-          <Link href="/finance/sorties"><SecondaryButton>Sorties</SecondaryButton></Link>
+          <Link href="/finance/entree-sortie"><SecondaryButton>{copy.finance.stockFlow.stockInOutButton}</SecondaryButton></Link>
         </div>
         <SearchInput
           value={q}
@@ -174,6 +175,7 @@ export default function FinanceClient() {
         <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
         <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
         <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
+        <TabPill active={type === 'stock_in'} onClick={() => setType('stock_in')}>Entrée</TabPill>
         <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
         <TabPill active={type === 'stock_out'} onClick={() => setType('stock_out')}>Sortie</TabPill>
       </div>

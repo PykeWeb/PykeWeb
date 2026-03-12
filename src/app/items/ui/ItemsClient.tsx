@@ -36,12 +36,12 @@ const plantationRecipes: PlantationRecipe[] = [
   {
     key: 'coke-leaf',
     title: 'Plantation coke (1 pot)',
-    subtitle: '1 pot + 1 graine + 1 engrais + 3 eau = 1 feuille',
+    subtitle: "1 pot + 1 graine + 1 fertilisant + 3 bouteilles d'eau = 1 feuille",
     requirements: [
       { name: 'Pot', qty: 1 },
       { name: 'Graine de coke', qty: 1 },
-      { name: 'Engrais', qty: 1 },
-      { name: 'Eau', qty: 3 },
+      { name: 'Fertilisant', qty: 1 },
+      { name: "Bouteille d'eau", qty: 3 },
     ],
     output_name: 'Feuille de coke',
     default_output_per_run: 1,
@@ -52,7 +52,7 @@ const plantationRecipes: PlantationRecipe[] = [
     subtitle: 'Table + meth + batteries + chimie = 10 à 30 meth brut',
     requirements: [
       { name: 'Table', qty: 1 },
-      { name: 'Meth', qty: 1 },
+      { name: 'Machine de Meth', qty: 1 },
       { name: 'Batterie', qty: 2 },
       { name: 'Ammoniaque', qty: 16 },
       { name: 'Methylamine', qty: 15 },
@@ -171,23 +171,21 @@ export default function ItemsClient() {
   }, [itemsByNormalizedName])
 
   const findItemForLabel = useCallback((label: string) => {
-    const normalized = normalizeItemName(label)
-    const singular = normalized.endsWith('s') ? normalized.slice(0, -1) : normalized
-    for (const item of items) {
-      const itemName = normalizeItemName(item.name)
-      if (
-        itemName === normalized
-        || itemName === singular
-        || normalized.includes(itemName)
-        || singular.includes(itemName)
-        || itemName.includes(normalized)
-        || itemName.includes(singular)
-      ) {
-        return item
-      }
+    const aliases: Record<string, string[]> = {
+      "bouteille d'eau": ["bouteille d'eau", "eau"],
+      "machine de meth": ["machine de meth", "meth"],
+      fertilisant: ["fertilisant", "engrais"],
     }
+    const normalized = normalizeItemName(label)
+    const candidates = aliases[normalized] || [normalized]
+
+    for (const candidate of candidates) {
+      const exact = itemsByNormalizedName.get(candidate)
+      if (exact) return exact
+    }
+
     return null
-  }, [items])
+  }, [itemsByNormalizedName])
 
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
     const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
@@ -445,7 +443,9 @@ export default function ItemsClient() {
               <h3 className="text-sm font-semibold">Contenu plantations</h3>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
-              {plantationRecipes.map((recipe) => (
+              {plantationRecipes.map((recipe) => {
+                const outputItem = findItemByName(recipe.output_name)
+                return (
                 <div key={recipe.key} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
                   <p className="text-sm font-semibold">{recipe.title}</p>
                   <p className="mt-1 text-xs text-white/65">{recipe.subtitle}</p>
@@ -472,24 +472,19 @@ export default function ItemsClient() {
                       )
                     })}
                   </div>
-                  {(() => {
-                    const outputItem = findItemByName(recipe.output_name)
-                    return (
-                      <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">
-                        <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
-                          {outputItem?.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={outputItem.image_url} alt={recipe.output_name} className="h-full w-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="grid h-full w-full place-items-center text-white/40">
-                              <ImageIcon className="h-3 w-3" />
-                            </div>
-                          )}
+                  <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">
+                    <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
+                      {outputItem?.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={outputItem.image_url} alt={recipe.output_name} className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-white/40">
+                          <ImageIcon className="h-3 w-3" />
                         </div>
-                        <p>Production : {recipe.output_name}</p>
-                      </div>
-                    )
-                  })()}
+                      )}
+                    </div>
+                    <p>Production : {recipe.output_name}</p>
+                  </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <label className="text-xs text-white/65">
                       Nb plantations
@@ -526,7 +521,8 @@ export default function ItemsClient() {
                     {realizingRecipeKey === recipe.key ? 'Validation...' : 'Plantation réalisée'}
                   </PrimaryButton>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>

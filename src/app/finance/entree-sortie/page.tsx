@@ -8,7 +8,7 @@ import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsAp
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 
-export default function FinanceEntreesPage() {
+export default function FinanceEntreeSortiePage() {
   const router = useRouter()
   const [initialItems, setInitialItems] = useState<CatalogItem[]>([])
 
@@ -24,29 +24,36 @@ export default function FinanceEntreesPage() {
         inline
         open
         mode="buy"
+        enableModeSelect
         hideUnitPrice
-        titleOverride={copy.finance.stockFlow.stockInTitle}
+        titleOverride={copy.finance.stockFlow.stockInOutButton}
         subtitleOverride={copy.finance.stockFlow.stockInSubtitle}
-        showModeBadge
+        showModeBadge={false}
         modeBuyLabel={copy.finance.stockFlow.stockInModeLabel}
+        modeSellLabel={copy.finance.stockFlow.stockOutModeLabel}
         initialItems={initialItems}
         onClose={() => router.push('/finance')}
         onSubmit={async (payload) => {
           const reason = payload.notes?.trim() || ''
           if (!reason) {
-            throw new Error(copy.finance.stockFlow.stockInReasonRequired)
+            throw new Error(
+              payload.mode === 'buy'
+                ? copy.finance.stockFlow.stockInReasonRequired
+                : copy.finance.stockFlow.stockOutReasonRequired,
+            )
           }
 
           await createFinanceTransaction({
             item_id: payload.item.id,
-            mode: 'buy',
+            mode: payload.mode,
             quantity: payload.quantity,
             unit_price: 0,
             counterparty: payload.counterparty,
             notes: reason,
-            payment_mode: 'stock_in',
+            payment_mode: payload.mode === 'buy' ? 'stock_in' : 'stock_out',
           })
-          toast.success(copy.finance.stockFlow.stockInSaved)
+
+          toast.success(payload.mode === 'buy' ? copy.finance.stockFlow.stockInSaved : copy.finance.stockFlow.stockOutSaved)
           router.push('/finance')
           router.refresh()
         }}

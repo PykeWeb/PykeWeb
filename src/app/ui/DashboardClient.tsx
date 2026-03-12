@@ -78,7 +78,7 @@ function createEmptyCategoryCounts(): Record<FinanceCategory, number> {
 }
 
 function createEmptyMovementCounts(): Record<FinanceMovementType, number> {
-  return { expense: 0, purchase: 0, sale: 0, stock_out: 0 }
+  return { expense: 0, purchase: 0, stock_in: 0, sale: 0, stock_out: 0 }
 }
 
 export function DashboardClient() {

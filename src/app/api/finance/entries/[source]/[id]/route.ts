@@ -263,7 +263,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         id,
         source: 'finance_transactions',
         display_name: isMulti ? 'Transaction multiple' : lines[0].name,
-        movement_kind: first.mode === 'sell' ? 'sale' : 'purchase',
+        movement_kind: first.mode === 'sell' ? (first.payment_mode === 'stock_out' ? 'stock_out' : 'sale') : (first.payment_mode === 'stock_in' ? 'stock_in' : 'purchase'),
         created_at: first.created_at,
         counterparty: first.counterparty,
         notes: first.notes,

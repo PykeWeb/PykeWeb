@@ -57,10 +57,13 @@ export const copy = {
       stockOutSubtitle: 'Sortie des items du stock par les membres pour des raisons diverses.',
       stockOutReasonRequired: 'Raison obligatoire pour une sortie de stock.',
       stockOutSaved: 'Sortie de stock enregistrée.',
+      stockOutModeLabel: 'Sortie',
       stockInTitle: 'Entrée du stock',
       stockInSubtitle: 'Entrée des items en stock par les membres pour des raisons diverses.',
       stockInReasonRequired: 'Raison obligatoire pour une entrée de stock.',
       stockInSaved: 'Entrée de stock enregistrée.',
+      stockInModeLabel: 'Entrée',
+      stockInOutButton: 'Entrée / Sortie',
     },
 
     trade: {

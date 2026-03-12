@@ -16,6 +16,7 @@ type CounterpartyAggregate = {
   totalAmount: number
   totalCount: number
   purchases: number
+  stockIns: number
   sales: number
   stockOuts: number
   expenses: number
@@ -25,6 +26,7 @@ type CounterpartyAggregate = {
 const typeIcon: Record<FinanceMovementType, JSX.Element> = {
   expense: <Receipt className="h-3.5 w-3.5" />,
   purchase: <ArrowDownRight className="h-3.5 w-3.5" />,
+  stock_in: <ArrowDownRight className="h-3.5 w-3.5" />,
   sale: <ArrowUpRight className="h-3.5 w-3.5" />,
   stock_out: <ArrowUpRight className="h-3.5 w-3.5" />,
 }
@@ -32,6 +34,7 @@ const typeIcon: Record<FinanceMovementType, JSX.Element> = {
 const typeLabel: Record<FinanceMovementType, string> = {
   expense: 'Dépense',
   purchase: 'Achat',
+  stock_in: 'Entrée',
   sale: 'Vente',
   stock_out: 'Sortie',
 }
@@ -47,6 +50,7 @@ function buildCounterpartyStats(entries: FinanceEntry[]): CounterpartyAggregate[
       totalAmount: 0,
       totalCount: 0,
       purchases: 0,
+      stockIns: 0,
       sales: 0,
       stockOuts: 0,
       expenses: 0,
@@ -58,6 +62,7 @@ function buildCounterpartyStats(entries: FinanceEntry[]): CounterpartyAggregate[
     current.totalCount += 1
 
     if (entry.movement_type === 'purchase') current.purchases += 1
+    if (entry.movement_type === 'stock_in') current.stockIns += 1
     if (entry.movement_type === 'sale') current.sales += 1
     if (entry.movement_type === 'stock_out') current.stockOuts += 1
     if (entry.movement_type === 'expense') current.expenses += 1
@@ -130,6 +135,7 @@ export default function CounterpartyStatsClient() {
           <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous</TabPill>
           <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépenses</TabPill>
           <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achats</TabPill>
+          <TabPill active={type === 'stock_in'} onClick={() => setType('stock_in')}>Entrées</TabPill>
           <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Ventes</TabPill>
           <TabPill active={type === 'stock_out'} onClick={() => setType('stock_out')}>Sorties</TabPill>
           <SearchInput
@@ -179,7 +185,7 @@ export default function CounterpartyStatsClient() {
                   <div>
                     <p className="text-sm font-semibold">{row.name}</p>
                     <p className="text-xs text-white/60">
-                      {row.totalCount} mouvement(s) · Achats {row.purchases} · Ventes {row.sales} · Sorties {row.stockOuts} · Dépenses {row.expenses}
+                      {row.totalCount} mouvement(s) · Achats {row.purchases} · Entrées {row.stockIns} · Ventes {row.sales} · Sorties {row.stockOuts} · Dépenses {row.expenses}
                     </p>
                   </div>
                   <div className="text-right">

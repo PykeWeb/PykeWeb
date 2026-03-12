@@ -42,6 +42,8 @@ export function FinanceItemTradeModal({
   titleOverride,
   subtitleOverride,
   showModeBadge = true,
+  modeBuyLabel,
+  modeSellLabel,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -55,6 +57,8 @@ export function FinanceItemTradeModal({
   titleOverride?: string
   subtitleOverride?: string
   showModeBadge?: boolean
+  modeBuyLabel?: string
+  modeSellLabel?: string
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
@@ -67,6 +71,9 @@ export function FinanceItemTradeModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingItems, setLoadingItems] = useState(false)
+
+  const buyModeLabel = modeBuyLabel || copy.finance.trade.modeBuy
+  const sellModeLabel = modeSellLabel || copy.finance.trade.modeSell
 
   useEffect(() => {
     setTradeMode(mode)
@@ -203,16 +210,16 @@ export function FinanceItemTradeModal({
               <div className="flex flex-wrap items-center gap-2">
                 <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
                   <ArrowDownRight className="h-4 w-4" />
-                  {copy.finance.trade.modeBuy}
+                  {buyModeLabel}
                 </TabPill>
                 <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
                   <ArrowUpRight className="h-4 w-4" />
-                  {copy.finance.trade.modeSell}
+                  {sellModeLabel}
                 </TabPill>
               </div>
             ) : showModeBadge ? (
               <div className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs text-white/70">
-                {tradeMode === 'buy' ? copy.finance.trade.modeBuy : copy.finance.trade.modeSell}
+                {tradeMode === 'buy' ? buyModeLabel : sellModeLabel}
               </div>
             ) : null}
           </div>
