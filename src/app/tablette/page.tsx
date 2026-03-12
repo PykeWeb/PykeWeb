@@ -107,10 +107,10 @@ export default function TablettePage() {
 
         {stats ? (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Aujourd’hui: <span className="font-semibold">{stats.today.runs} passages</span></div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Items aujourd’hui: <span className="font-semibold">{stats.today.items}</span></div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Semaine: <span className="font-semibold">{stats.week.runs} passages</span></div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Pas fait aujourd’hui: <span className="font-semibold">{stats.members.filter((m) => !m.did_today).length}</span></div>
+            <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">Aujourd’hui: <span className="font-semibold">{stats.today.runs} passages</span></div>
+            <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">Items aujourd’hui: <span className="font-semibold">{stats.today.items}</span></div>
+            <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm">Semaine: <span className="font-semibold">{stats.week.runs} passages</span></div>
+            <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">Pas fait aujourd’hui: <span className="font-semibold">{stats.members.filter((m) => !m.did_today).length}</span></div>
           </div>
         ) : null}
 

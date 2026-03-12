@@ -121,11 +121,11 @@ export default function FinanceClient() {
     })
   }, [entries, q, type, category])
 
-  const pendingExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
-  const paidExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status === 'paid').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
-  const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
+  const pendingExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').length, [filtered])
+  const paidExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status === 'paid').length, [filtered])
+  const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').length, [filtered])
   const stockIns = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_in').length, [filtered])
-  const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
+  const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').length, [filtered])
   const stockOuts = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_out').length, [filtered])
 
   const editingTotal = useMemo(() => toPositiveInt(editingQuantity) * toNonNegativeNumber(editingUnitPrice), [editingQuantity, editingUnitPrice])
@@ -147,13 +147,13 @@ export default function FinanceClient() {
 
   return (
     <Panel>
-      <div className="grid gap-3 md:grid-cols-5">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses en attente</p><p className="mt-1 text-xl font-semibold">{pendingExpenses.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses remboursées</p><p className="mt-1 text-xl font-semibold">{paidExpenses.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Achats</p><p className="mt-1 text-xl font-semibold">{purchases.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Entrées</p><p className="mt-1 text-xl font-semibold">{stockIns}</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Sorties</p><p className="mt-1 text-xl font-semibold">{stockOuts}</p></div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-500/20 to-orange-500/12 p-4"><p className="text-xs text-amber-100/80">Dépenses en attente</p><p className="mt-1 text-xl font-semibold">{pendingExpenses}</p></div>
+        <div className="rounded-2xl border border-emerald-300/30 bg-gradient-to-br from-emerald-500/20 to-teal-500/12 p-4"><p className="text-xs text-emerald-100/80">Dépenses remboursées</p><p className="mt-1 text-xl font-semibold">{paidExpenses}</p></div>
+        <div className="rounded-2xl border border-cyan-300/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/12 p-4"><p className="text-xs text-cyan-100/80">Achats</p><p className="mt-1 text-xl font-semibold">{purchases}</p></div>
+        <div className="rounded-2xl border border-sky-300/30 bg-gradient-to-br from-sky-500/20 to-indigo-500/12 p-4"><p className="text-xs text-sky-100/80">Entrées</p><p className="mt-1 text-xl font-semibold">{stockIns}</p></div>
+        <div className="rounded-2xl border border-violet-300/30 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/12 p-4"><p className="text-xs text-violet-100/80">Ventes</p><p className="mt-1 text-xl font-semibold">{sales}</p></div>
+        <div className="rounded-2xl border border-rose-300/30 bg-gradient-to-br from-rose-500/20 to-orange-500/12 p-4"><p className="text-xs text-rose-100/80">Sorties</p><p className="mt-1 text-xl font-semibold">{stockOuts}</p></div>
       </div>
 
       <div className="mt-4 mb-3 flex flex-wrap items-center gap-2">
@@ -222,8 +222,8 @@ export default function FinanceClient() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs">{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
-                  <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
+                  <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs ${entry.movement_type === 'expense' ? 'border-amber-300/40 bg-amber-500/15 text-amber-100' : entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' ? 'border-cyan-300/45 bg-cyan-500/15 text-cyan-100' : 'border-rose-300/45 bg-rose-500/15 text-rose-100'}`}>{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
+                  <td className="px-4 py-3"><span className="inline-flex rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs text-white/85">{categoryLabels[entry.category] || 'Autre'}</span></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 font-semibold">
                       <span>{entry.item_label}</span>

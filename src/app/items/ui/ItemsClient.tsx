@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
-import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs, TabPill } from '@/components/ui/design-system'
+import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { createFinanceTransaction, deleteCatalogItem, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
@@ -287,25 +287,6 @@ export default function ItemsClient() {
 
   return (
     <Panel>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SegmentedTabs
-          options={[
-            { value: 'catalog', label: 'Catalogue' },
-            { value: 'tools', label: 'Calculateur & plantations' },
-          ]}
-          value={view}
-          onChange={setView}
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/items/achat-vente">
-            <SecondaryButton>Achat / Vente</SecondaryButton>
-          </Link>
-          <Link href="/items/nouveau">
-            <PrimaryButton>{copy.common.createItem}</PrimaryButton>
-          </Link>
-        </div>
-      </div>
-
       {view === 'catalog' ? (
         <>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -323,7 +304,21 @@ export default function ItemsClient() {
                   key={card.key}
                   type="button"
                   onClick={() => { setCategory(card.key as CategoryFilter); setType('all') }}
-                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${category === card.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'}`}
+                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
+                    category === card.key
+                      ? 'border-cyan-300/55 bg-gradient-to-br from-cyan-500/28 to-blue-500/16 shadow-[0_0_0_1px_rgba(56,189,248,0.22)_inset]'
+                      : card.key === 'objects'
+                        ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
+                        : card.key === 'weapons'
+                          ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+                          : card.key === 'equipment'
+                            ? 'border-violet-300/20 bg-violet-500/[0.06] hover:bg-violet-500/[0.13]'
+                            : card.key === 'drugs'
+                              ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+                              : card.key === 'custom'
+                                ? 'border-amber-300/20 bg-amber-500/[0.06] hover:bg-amber-500/[0.13]'
+                                : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs text-white/70">{card.label}</p>
@@ -345,6 +340,11 @@ export default function ItemsClient() {
                 {opt.label}
               </TabPill>
             ))}
+            <div className="ml-auto">
+              <Link href="/items/nouveau">
+                <PrimaryButton>{copy.common.createItem}</PrimaryButton>
+              </Link>
+            </div>
           </div>
 
           <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
