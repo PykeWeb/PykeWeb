@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import { Box, Pill, Shapes, Shield, Swords } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
@@ -110,7 +109,7 @@ export function ItemForm({
 
           <div>
             <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.description}</label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="h-10 min-h-0" />
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
           </div>
 
           <div className="md:col-span-2">

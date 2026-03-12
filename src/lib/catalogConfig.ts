@@ -54,16 +54,16 @@ export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: U
       { value: 'seed', label: 'Graine' },
       { value: 'pouch', label: 'Pochon' },
       { value: 'drug_material', label: 'Matériels' },
-      { value: 'product', label: 'Production' },
-      { value: 'other', label: 'Autres' },
+      { value: 'product', label: 'Production\u200b' },
+      { value: 'other', label: 'Autres\u200b' },
     ]
   }
 
   if (category === 'objects') return [{ value: 'all', label: 'Tous' }, { value: 'objects', label: 'Objets' }]
   if (category === 'equipment') return [{ value: 'all', label: 'Tous' }, { value: 'equipment', label: 'Équipement' }]
   if (category === 'weapons') return [{ value: 'all', label: 'Tous' }, { value: 'weapon', label: 'Armes' }, { value: 'ammo', label: 'Munitions' }, { value: 'weapon_accessory', label: "Accessoire d’arme" }]
-  if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graine' }, { value: 'pouch', label: 'Pochon' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Production' }]
-  return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres' }]
+  if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graine' }, { value: 'pouch', label: 'Pochon' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Production\u200b' }]
+  return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres\u200b' }]
 }
 
 export function matchesTypeFilter(item: CatalogItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
@@ -150,13 +150,13 @@ export function getTypeLabel(type: ItemType, category?: ItemCategory): string {
     protection: 'Protection',
     seed: 'Graine',
     pouch: 'Pochon',
-    product: 'Production',
+    product: 'Production\u200b',
     recipe: 'Matériels',
     drug_material: 'Matériels',
-    other: 'Autres',
+    other: 'Autres\u200b',
     input: 'Autres',
-    output: 'Production',
-    production: 'Production',
+    output: 'Production\u200b',
+    production: 'Production\u200b',
   }
-  return globalLabels[type] ?? 'Autres'
+  return globalLabels[type] ?? 'Autres\u200b'
 }
