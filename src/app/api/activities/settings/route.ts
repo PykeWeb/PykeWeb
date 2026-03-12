@@ -8,18 +8,20 @@ export async function PATCH(request: Request) {
     if (!session?.groupId) return NextResponse.json({ error: 'Session invalide.' }, { status: 401 })
     if (session.role === 'member') return NextResponse.json({ error: 'Accès réservé au chef.' }, { status: 403 })
 
-    const body = (await request.json()) as { percent_per_object?: number; weekly_base_salary?: number }
-    const percent = Math.max(0, Number(body.percent_per_object) || 0)
-    const weeklySalary = Math.max(0, Number(body.weekly_base_salary) || 0)
+    const body = (await request.json()) as { default_percent_per_object?: number }
+    const percent = Math.max(0, Number(body.default_percent_per_object) || 0)
+    if (percent <= 0) return NextResponse.json({ error: 'Pourcentage invalide.' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
     const { error } = await supabase
       .from('group_activity_settings')
-      .upsert({
-        group_id: session.groupId,
-        percent_per_object: percent,
-        weekly_base_salary: weeklySalary,
-      }, { onConflict: 'group_id' })
+      .upsert(
+        {
+          group_id: session.groupId,
+          default_percent_per_object: percent,
+        },
+        { onConflict: 'group_id' }
+      )
 
     if (error) throw error
     return NextResponse.json({ ok: true })

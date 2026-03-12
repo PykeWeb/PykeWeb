@@ -10,16 +10,17 @@ export type ActivityListResponse = {
 export async function listActivities(weekStartIso?: string): Promise<ActivityListResponse> {
   const query = weekStartIso ? `?weekStart=${encodeURIComponent(weekStartIso)}` : ''
   const res = await fetch(`/api/activities${query}`, withTenantSessionHeader({ cache: 'no-store' }))
-  if (!res.ok) throw new Error(await res.text() || 'Impossible de charger les activités.')
+  if (!res.ok) throw new Error((await res.text()) || 'Impossible de charger les activités.')
   return res.json() as Promise<ActivityListResponse>
 }
 
 export async function createActivity(payload: {
   member_name: string
   activity_type: ActivityType
-  equipment: string | null
-  item_name: string
+  object_item_id: string
+  equipment_item_id: string | null
   quantity: number
+  percent_per_object: number
   proof_image_data: string
 }) {
   const res = await fetch('/api/activities', withTenantSessionHeader({
@@ -27,14 +28,14 @@ export async function createActivity(payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   }))
-  if (!res.ok) throw new Error(await res.text() || 'Impossible d\'ajouter l\'activité.')
+  if (!res.ok) throw new Error((await res.text()) || 'Impossible d\'ajouter l\'activité.')
 }
 
-export async function updateActivitySettings(payload: { percent_per_object: number; weekly_base_salary: number }) {
+export async function updateActivitySettings(payload: { default_percent_per_object: number }) {
   const res = await fetch('/api/activities/settings', withTenantSessionHeader({
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   }))
-  if (!res.ok) throw new Error(await res.text() || 'Impossible de modifier les paramètres.')
+  if (!res.ok) throw new Error((await res.text()) || 'Impossible de modifier les paramètres.')
 }

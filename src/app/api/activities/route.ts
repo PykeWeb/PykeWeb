@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getSessionFromRequest } from '@/server/auth/session'
 import { ACTIVITY_OPTIONS, type ActivityType } from '@/lib/types/activities'
 
+type CatalogItemRow = { id: string; name: string; category: string; buy_price: number | null }
+
 const MAX_PROOF_LENGTH = 3_000_000
 
 function toWeekStart(date = new Date()) {
@@ -42,7 +44,7 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: false }),
       supabase
         .from('group_activity_settings')
-        .select('group_id, percent_per_object, weekly_base_salary')
+        .select('group_id, default_percent_per_object')
         .eq('group_id', session.groupId)
         .maybeSingle(),
     ])
@@ -52,24 +54,23 @@ export async function GET(request: Request) {
 
     const normalizedSettings = {
       group_id: session.groupId,
-      percent_per_object: Math.max(0, Number(settings?.percent_per_object) || 2),
-      weekly_base_salary: Math.max(0, Number(settings?.weekly_base_salary) || 0),
+      default_percent_per_object: Math.max(0, Number(settings?.default_percent_per_object) || 2),
     }
 
-    const byMember = new Map<string, number>()
+    const byMember = new Map<string, { totalObjects: number; totalSalary: number }>()
     for (const entry of entries ?? []) {
       const name = String(entry.member_name || '').trim()
       if (!name) continue
-      byMember.set(name, (byMember.get(name) ?? 0) + Math.max(0, Number(entry.quantity) || 0))
+      const prev = byMember.get(name) ?? { totalObjects: 0, totalSalary: 0 }
+      byMember.set(name, {
+        totalObjects: prev.totalObjects + Math.max(0, Number(entry.quantity) || 0),
+        totalSalary: prev.totalSalary + Math.max(0, Number(entry.salary_amount) || 0),
+      })
     }
 
     const summaries = [...byMember.entries()]
-      .map(([member_name, total_objects]) => {
-        const gain_percent = total_objects * normalizedSettings.percent_per_object
-        const estimated_salary = normalizedSettings.weekly_base_salary * (gain_percent / 100)
-        return { member_name, total_objects, gain_percent, estimated_salary }
-      })
-      .sort((a, b) => b.gain_percent - a.gain_percent)
+      .map(([member_name, stats]) => ({ member_name, total_objects: stats.totalObjects, total_salary: stats.totalSalary }))
+      .sort((a, b) => b.total_salary - a.total_salary)
 
     return NextResponse.json({ entries: entries ?? [], summaries, settings: normalizedSettings })
   } catch (error: unknown) {
@@ -86,37 +87,76 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       member_name?: string
       activity_type?: ActivityType
-      equipment?: string | null
-      item_name?: string
+      object_item_id?: string
+      equipment_item_id?: string | null
       quantity?: number
+      percent_per_object?: number
       proof_image_data?: string
     }
 
     const memberName = String(body.member_name ?? '').trim()
     const activityType = body.activity_type
-    const itemName = String(body.item_name ?? '').trim()
+    const objectItemId = String(body.object_item_id ?? '').trim()
+    const equipmentItemId = body.equipment_item_id ? String(body.equipment_item_id).trim() : null
     const quantity = Math.max(0, Math.floor(Number(body.quantity) || 0))
+    const percent = Math.max(0, Number(body.percent_per_object) || 0)
     const proof = String(body.proof_image_data ?? '').trim()
-    const equipment = body.equipment ? String(body.equipment).trim() : null
 
     if (!memberName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
     if (!activityType || !ACTIVITY_OPTIONS.includes(activityType)) return NextResponse.json({ error: 'Activité invalide.' }, { status: 400 })
-    if (activityType !== 'Boite au lettre' && !equipment) return NextResponse.json({ error: 'Équipement requis pour cette activité.' }, { status: 400 })
-    if (!itemName) return NextResponse.json({ error: 'Objet récupéré requis.' }, { status: 400 })
+    if (!objectItemId) return NextResponse.json({ error: 'Objet requis.' }, { status: 400 })
+    if (activityType !== 'Boite au lettre' && !equipmentItemId) return NextResponse.json({ error: 'Équipement requis pour cette activité.' }, { status: 400 })
     if (quantity <= 0) return NextResponse.json({ error: 'Quantité invalide.' }, { status: 400 })
+    if (percent <= 0) return NextResponse.json({ error: 'Pourcentage invalide.' }, { status: 400 })
     if (!proof.startsWith('data:image/jpeg;base64,') && !proof.startsWith('data:image/png;base64,')) {
       return NextResponse.json({ error: 'Preuve obligatoire (jpeg/png).' }, { status: 400 })
     }
     if (proof.length > MAX_PROOF_LENGTH) return NextResponse.json({ error: 'Image trop volumineuse.' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
+    const { data: objectItem, error: objectError } = await supabase
+      .from('catalog_items')
+      .select('id,name,category,buy_price')
+      .eq('group_id', session.groupId)
+      .eq('id', objectItemId)
+      .eq('is_active', true)
+      .maybeSingle<CatalogItemRow>()
+    if (objectError) throw objectError
+    if (!objectItem || objectItem.category !== 'objects') {
+      return NextResponse.json({ error: 'Objet invalide (catégorie Objets requise).' }, { status: 400 })
+    }
+
+    let equipmentItem: CatalogItemRow | null = null
+    if (activityType !== 'Boite au lettre') {
+      const { data, error } = await supabase
+        .from('catalog_items')
+        .select('id,name,category,buy_price')
+        .eq('group_id', session.groupId)
+        .eq('id', equipmentItemId)
+        .eq('is_active', true)
+        .maybeSingle<CatalogItemRow>()
+      if (error) throw error
+      if (!data || data.category !== 'equipment') {
+        return NextResponse.json({ error: 'Équipement invalide (catégorie Équipement requise).' }, { status: 400 })
+      }
+      equipmentItem = data
+    }
+
+    const objectPrice = Math.max(0, Number(objectItem.buy_price) || 0)
+    const salaryAmount = objectPrice * quantity * (percent / 100)
+
     const { error } = await supabase.from('group_activity_entries').insert({
       group_id: session.groupId,
       member_name: memberName,
       activity_type: activityType,
-      equipment: activityType === 'Boite au lettre' ? null : equipment,
-      item_name: itemName,
+      object_item_id: objectItem.id,
+      object_name: objectItem.name,
+      object_unit_price: objectPrice,
       quantity,
+      percent_per_object: percent,
+      salary_amount: salaryAmount,
+      equipment_item_id: equipmentItem?.id ?? null,
+      equipment_name: equipmentItem?.name ?? null,
       proof_image_data: proof,
     })
 
