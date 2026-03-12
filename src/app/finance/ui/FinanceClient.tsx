@@ -121,11 +121,11 @@ export default function FinanceClient() {
     })
   }, [entries, q, type, category])
 
-  const pendingExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').length, [filtered])
-  const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').length, [filtered])
-  const stockIns = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_in').length, [filtered])
-  const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').length, [filtered])
-  const stockOuts = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_out').length, [filtered])
+  const pendingExpenses = useMemo(() => entries.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').length, [entries])
+  const purchases = useMemo(() => entries.filter((e) => e.movement_type === 'purchase').length, [entries])
+  const stockIns = useMemo(() => entries.filter((e) => e.movement_type === 'stock_in').length, [entries])
+  const sales = useMemo(() => entries.filter((e) => e.movement_type === 'sale').length, [entries])
+  const stockOuts = useMemo(() => entries.filter((e) => e.movement_type === 'stock_out').length, [entries])
 
   const editingTotal = useMemo(() => toPositiveInt(editingQuantity) * toNonNegativeNumber(editingUnitPrice), [editingQuantity, editingUnitPrice])
 
@@ -147,26 +147,26 @@ export default function FinanceClient() {
   return (
     <Panel>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-500/20 to-orange-500/12 p-4">
+        <button type="button" onClick={() => setType('expense')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'expense' ? 'border-amber-200/80 from-amber-500/35 to-orange-500/25' : 'border-amber-300/30 from-amber-500/20 to-orange-500/12 hover:from-amber-500/28 hover:to-orange-500/18'}`}>
           <div className="flex items-center justify-between gap-2 text-amber-100/85"><p className="text-xs">Dépenses en attente</p><Wallet className="h-4 w-4" /></div>
           <p className="mt-1 text-xl font-semibold">{pendingExpenses}</p>
-        </div>
-        <div className="rounded-2xl border border-cyan-300/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/12 p-4">
+        </button>
+        <button type="button" onClick={() => setType('purchase')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'purchase' ? 'border-cyan-200/80 from-cyan-500/35 to-blue-500/25' : 'border-cyan-300/30 from-cyan-500/20 to-blue-500/12 hover:from-cyan-500/28 hover:to-blue-500/18'}`}>
           <div className="flex items-center justify-between gap-2 text-cyan-100/85"><p className="text-xs">Achats</p><ArrowDownRight className="h-4 w-4" /></div>
           <p className="mt-1 text-xl font-semibold">{purchases}</p>
-        </div>
-        <div className="rounded-2xl border border-sky-300/30 bg-gradient-to-br from-sky-500/20 to-indigo-500/12 p-4">
+        </button>
+        <button type="button" onClick={() => setType('stock_in')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'stock_in' ? 'border-sky-200/80 from-sky-500/35 to-indigo-500/25' : 'border-sky-300/30 from-sky-500/20 to-indigo-500/12 hover:from-sky-500/28 hover:to-indigo-500/18'}`}>
           <div className="flex items-center justify-between gap-2 text-sky-100/85"><p className="text-xs">Entrées</p><ArrowDownRight className="h-4 w-4" /></div>
           <p className="mt-1 text-xl font-semibold">{stockIns}</p>
-        </div>
-        <div className="rounded-2xl border border-violet-300/30 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/12 p-4">
+        </button>
+        <button type="button" onClick={() => setType('sale')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'sale' ? 'border-violet-200/80 from-violet-500/35 to-fuchsia-500/25' : 'border-violet-300/30 from-violet-500/20 to-fuchsia-500/12 hover:from-violet-500/28 hover:to-fuchsia-500/18'}`}>
           <div className="flex items-center justify-between gap-2 text-violet-100/85"><p className="text-xs">Ventes</p><ShoppingCart className="h-4 w-4" /></div>
           <p className="mt-1 text-xl font-semibold">{sales}</p>
-        </div>
-        <div className="rounded-2xl border border-rose-300/30 bg-gradient-to-br from-rose-500/20 to-orange-500/12 p-4">
+        </button>
+        <button type="button" onClick={() => setType('stock_out')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'stock_out' ? 'border-rose-200/80 from-rose-500/35 to-orange-500/25' : 'border-rose-300/30 from-rose-500/20 to-orange-500/12 hover:from-rose-500/28 hover:to-orange-500/18'}`}>
           <div className="flex items-center justify-between gap-2 text-rose-100/85"><p className="text-xs">Sorties</p><ArrowUpRight className="h-4 w-4" /></div>
           <p className="mt-1 text-xl font-semibold">{stockOuts}</p>
-        </div>
+        </button>
       </div>
 
       <div className="mt-4 mb-3 flex flex-wrap items-center gap-2">

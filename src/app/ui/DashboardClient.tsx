@@ -27,7 +27,7 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
-type ActivityView = 'summary' | 'transactions' | 'expenses' | 'finance'
+type ActivityView = 'summary' | 'transactions' | 'expenses'
 
 type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items' | 'calculator' | 'plantations'
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
@@ -279,7 +279,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'finance']
+    const views: ActivityView[] = ['summary', 'transactions', 'expenses']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -322,31 +322,6 @@ export function DashboardClient() {
   }, [financeMovementCounts, recentExpenses, recentTx])
 
 
-  const mergedFinanceActivity = useMemo(() => {
-    const txRows = recentTx.map((tx) => ({
-      id: `tx-${tx.id}`,
-      label: tx.type === 'purchase' ? 'Transaction achat' : tx.type === 'stock_in' ? 'Entrée stock' : tx.type === 'stock_out' ? 'Sortie stock' : 'Transaction vente',
-      detail: tx.counterparty || 'Interlocuteur non renseigné',
-      amount: tx.total,
-      href: `/finance/transactions/${tx.source}/${encodeURIComponent(tx.entry_id)}`,
-      createdAt: tx.created_at,
-      imageUrl: tx.item_image_url,
-    }))
-
-    const expenseRows = recentExpenses.map((expense) => ({
-      id: `expense-${expense.id}`,
-      label: 'Dépense',
-      detail: expense.item_label,
-      amount: expense.total,
-      href: '/finance?type=expense',
-      createdAt: expense.created_at,
-      imageUrl: expense.item_image_url,
-    }))
-
-    return [...txRows, ...expenseRows]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8)
-  }, [recentExpenses, recentTx])
 
 
   function addQuickAction(actionKey: QuickActionKey) {
@@ -470,7 +445,6 @@ export function DashboardClient() {
               ['summary', 'Résumé'],
               ['transactions', 'Transactions'],
               ['expenses', 'Dépenses'],
-              ['finance', 'Flux Finance'],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -569,31 +543,6 @@ export function DashboardClient() {
                       </div>
                     </div>
                     <p className="text-sm font-semibold text-white/80">{e.total}$</p>
-                  </Link>
-                ))
-              )
-            ) : null}
-            {activityView === 'finance' ? (
-              mergedFinanceActivity.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité Finance récente.</div>
-              ) : (
-                mergedFinanceActivity.map((entry) => (
-                  <Link href={entry.href} key={entry.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-                        {entry.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={entry.imageUrl} alt={entry.label} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{entry.label} • {entry.detail}</p>
-                        <p className="text-xs text-white/60">{new Date(entry.createdAt).toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm font-semibold text-white/80">{entry.amount ?? '—'}{entry.amount != null ? '$' : ''}</p>
                   </Link>
                 ))
               )

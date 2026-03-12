@@ -73,12 +73,12 @@ const plantationDefaultOutputPerRun = plantationRecipes.reduce<Record<string, st
 }, {})
 
 
-export default function ItemsClient() {
+export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?: ItemsView }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
-  const [view, setView] = useState<ItemsView>('catalog')
+  const [view, setView] = useState<ItemsView>(defaultView)
   const [itemActionEntry, setItemActionEntry] = useState<{ id: string; name: string } | null>(null)
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
@@ -476,6 +476,19 @@ export default function ItemsClient() {
               })}
             </div>
             {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
+            {(() => {
+              const calcRecipe = plantationRecipes.find((recipe) => recipe.key === (calcMode === 'coke' ? 'coke-leaf' : 'meth'))
+              if (!calcRecipe) return null
+              return (
+                <PrimaryButton
+                  className="mt-3 w-full"
+                  disabled={realizingRecipeKey === calcRecipe.key}
+                  onClick={() => { void realizePlantation(calcRecipe) }}
+                >
+                  {realizingRecipeKey === calcRecipe.key ? 'Validation...' : 'Plantation réalisée'}
+                </PrimaryButton>
+              )
+            })()}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
