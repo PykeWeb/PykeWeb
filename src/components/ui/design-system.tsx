@@ -18,7 +18,7 @@ function baseButtonClass(size: 'md' | 'lg' = 'md', fullWidth?: boolean) {
 
 export function PrimaryButton({ className, icon, children, fullWidth, size = 'md', ...props }: BaseButtonProps) {
   return (
-    <button className={clsx(baseButtonClass(size, fullWidth), 'border-white/20 bg-white/14 text-white hover:bg-white/20', className)} {...props}>
+    <button className={clsx(baseButtonClass(size, fullWidth), 'border-cyan-300/35 bg-gradient-to-r from-cyan-500/30 to-indigo-500/30 text-white hover:from-cyan-500/45 hover:to-indigo-500/45', className)} {...props}>
       {icon}
       {children}
     </button>
@@ -27,7 +27,7 @@ export function PrimaryButton({ className, icon, children, fullWidth, size = 'md
 
 export function SecondaryButton({ className, icon, children, fullWidth, size = 'md', ...props }: BaseButtonProps) {
   return (
-    <button className={clsx(baseButtonClass(size, fullWidth), 'border-white/15 bg-white/[0.07] text-white/90 hover:bg-white/[0.12]', className)} {...props}>
+    <button className={clsx(baseButtonClass(size, fullWidth), 'border-sky-300/20 bg-slate-700/45 text-white/90 hover:border-sky-300/35 hover:bg-slate-600/55', className)} {...props}>
       {icon}
       {children}
     </button>
@@ -46,7 +46,7 @@ export function GhostButton({ className, icon, children, fullWidth, size = 'md',
 export function DangerButton({ className, icon, children, fullWidth, size = 'md', ...props }: BaseButtonProps) {
   return (
     <button
-      className={clsx(baseButtonClass(size, fullWidth), 'border-rose-300/30 bg-rose-500/12 text-rose-100 hover:bg-rose-500/20', className)}
+      className={clsx(baseButtonClass(size, fullWidth), 'border-rose-300/60 bg-gradient-to-r from-rose-600/45 to-orange-500/35 text-rose-50 shadow-[0_0_0_1px_rgba(251,113,133,0.22)_inset] hover:from-rose-500/60 hover:to-orange-500/45', className)}
       {...props}
     >
       {icon}
@@ -68,8 +68,10 @@ export function TabPill({ active, className, ...props }: ButtonHTMLAttributes<HT
   return (
     <button
       className={clsx(
-        'inline-flex h-10 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition',
-        active ? 'border-white/30 bg-white/14 text-white' : 'border-white/12 bg-white/[0.04] text-white/75 hover:bg-white/[0.09]',
+        'inline-flex h-10 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-cyan-300/45',
+        active
+          ? 'border-cyan-300/60 bg-gradient-to-r from-cyan-500/40 to-blue-500/35 text-cyan-50 shadow-[0_0_0_1px_rgba(56,189,248,0.28)_inset]'
+          : 'border-white/12 bg-white/[0.04] text-white/75 hover:border-cyan-300/30 hover:bg-cyan-500/[0.08] hover:text-white',
         className
       )}
       {...props}

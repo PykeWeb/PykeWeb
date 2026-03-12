@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Box, Image as ImageIcon, Pill, Search, Shapes, Shield, Swords } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
-import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
+import { DangerButton, PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
@@ -354,13 +354,13 @@ export function FinanceItemTradeModal({
                           <p className="truncate font-semibold text-white">{entry.item.name}</p>
                           <p className="truncate text-[10px] text-white/65">{getTypeLabel(entry.item.item_type, entry.item.category)}</p>
                         </div>
-                        <SecondaryButton
+                        <DangerButton
                           type="button"
-                          className="h-7 rounded-md border-rose-300/35 bg-rose-500/10 px-2 text-[10px] text-rose-100 hover:bg-rose-500/20"
+                          className="h-7 rounded-md px-2 text-[10px]"
                           onClick={() => removeLine(entry.item.id)}
                         >
                           Retirer
-                        </SecondaryButton>
+                        </DangerButton>
                       </div>
 
                       <div className="mt-1.5 flex items-center justify-between gap-2">
