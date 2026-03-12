@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Layers3, Pencil, Receipt, ShoppingCart, Trash2, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Layers3, ListFilter, Pencil, Receipt, ShoppingCart, Trash2, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
@@ -121,6 +121,7 @@ export default function FinanceClient() {
     })
   }, [entries, q, type, category])
 
+  const totalEntries = entries.length
   const pendingExpenses = useMemo(() => entries.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').length, [entries])
   const purchases = useMemo(() => entries.filter((e) => e.movement_type === 'purchase').length, [entries])
   const stockIns = useMemo(() => entries.filter((e) => e.movement_type === 'stock_in').length, [entries])
@@ -146,7 +147,11 @@ export default function FinanceClient() {
 
   return (
     <Panel>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <button type="button" onClick={() => setType('all')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'all' ? 'border-slate-200/70 from-slate-400/35 to-slate-500/25' : 'border-white/15 from-white/10 to-white/5 hover:from-white/15 hover:to-white/8'}`}>
+          <div className="flex items-center justify-between gap-2 text-slate-100/85"><p className="text-xs">Tous</p><ListFilter className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{totalEntries}</p>
+        </button>
         <button type="button" onClick={() => setType('expense')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'expense' ? 'border-amber-200/80 from-amber-500/35 to-orange-500/25' : 'border-amber-300/30 from-amber-500/20 to-orange-500/12 hover:from-amber-500/28 hover:to-orange-500/18'}`}>
           <div className="flex items-center justify-between gap-2 text-amber-100/85"><p className="text-xs">Dépenses en attente</p><Wallet className="h-4 w-4" /></div>
           <p className="mt-1 text-xl font-semibold">{pendingExpenses}</p>

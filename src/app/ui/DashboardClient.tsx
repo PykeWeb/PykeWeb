@@ -442,17 +442,17 @@ export function DashboardClient() {
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
-              ['summary', 'Résumé'],
-              ['transactions', 'Transactions'],
-              ['expenses', 'Dépenses'],
-            ].map(([key, label]) => (
+              { key: 'summary', label: 'Résumé', active: 'border-violet-300/65 bg-gradient-to-r from-violet-500/35 to-fuchsia-500/30 text-violet-50', idle: 'border-violet-300/25 bg-violet-500/10 text-violet-100/85 hover:bg-violet-500/18' },
+              { key: 'transactions', label: 'Transactions', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
+              { key: 'expenses', label: 'Dépenses', active: 'border-amber-300/65 bg-gradient-to-r from-amber-500/35 to-orange-500/30 text-amber-50', idle: 'border-amber-300/25 bg-amber-500/10 text-amber-100/85 hover:bg-amber-500/18' },
+            ].map((tab) => (
               <button
-                key={key}
+                key={tab.key}
                 type="button"
-                onClick={() => selectActivity(key as ActivityView)}
-                className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${activityView === key ? 'border-cyan-300/60 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50' : 'border-white/12 bg-white/5 text-white/70 hover:border-cyan-300/30 hover:bg-cyan-500/10 hover:text-white'}`}
+                onClick={() => selectActivity(tab.key as ActivityView)}
+                className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${activityView === tab.key ? tab.active : tab.idle}`}
               >
-                {label}
+                {tab.label}
               </button>
             ))}
           </div>

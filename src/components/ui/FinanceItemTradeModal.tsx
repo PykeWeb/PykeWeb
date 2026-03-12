@@ -208,11 +208,11 @@ export function FinanceItemTradeModal({
           <div>
             {enableModeSelect ? (
               <div className="flex flex-wrap items-center gap-2">
-                <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
+                <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-emerald-300/60 data-[active=true]:bg-emerald-500/25 data-[active=true]:text-emerald-50" active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
                   <ArrowDownRight className="h-4 w-4" />
                   {buyModeLabel}
                 </TabPill>
-                <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
+                <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-rose-300/60 data-[active=true]:bg-rose-500/25 data-[active=true]:text-rose-50" active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
                   <ArrowUpRight className="h-4 w-4" />
                   {sellModeLabel}
                 </TabPill>
@@ -257,7 +257,29 @@ export function FinanceItemTradeModal({
                     setType('all')
                   }}
                   className={`rounded-xl border px-2.5 py-2.5 text-left transition min-h-[82px] ${
-                    category === option.key ? 'border-white/25 bg-white/[0.12]' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                    category === option.key
+                      ? option.key === 'objects'
+                        ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                        : option.key === 'weapons'
+                          ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-orange-500/25'
+                          : option.key === 'equipment'
+                            ? 'border-violet-200/75 bg-gradient-to-br from-violet-500/35 to-fuchsia-500/25'
+                            : option.key === 'drugs'
+                              ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                              : option.key === 'custom'
+                                ? 'border-amber-200/75 bg-gradient-to-br from-amber-500/35 to-orange-500/25'
+                                : 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22'
+                      : option.key === 'objects'
+                        ? 'border-cyan-300/25 bg-cyan-500/[0.07] hover:bg-cyan-500/[0.14]'
+                        : option.key === 'weapons'
+                          ? 'border-rose-300/25 bg-rose-500/[0.07] hover:bg-rose-500/[0.14]'
+                          : option.key === 'equipment'
+                            ? 'border-violet-300/25 bg-violet-500/[0.07] hover:bg-violet-500/[0.14]'
+                            : option.key === 'drugs'
+                              ? 'border-emerald-300/25 bg-emerald-500/[0.07] hover:bg-emerald-500/[0.14]'
+                              : option.key === 'custom'
+                                ? 'border-amber-300/25 bg-amber-500/[0.07] hover:bg-amber-500/[0.14]'
+                                : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">

@@ -207,6 +207,10 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
     return { totalRequiredItems, withStock, totalMissing }
   }, [drugCalculator, findItemForLabel])
 
+  const selectedCalculatorRecipe = useMemo(() => plantationRecipes.find((recipe) => recipe.key === (calcMode === 'coke' ? 'coke-leaf' : 'meth')) || null, [calcMode])
+  const selectedCalculatorRuns = selectedCalculatorRecipe ? (plantationRuns[selectedCalculatorRecipe.key] || '1') : '1'
+  const selectedCalculatorOutput = selectedCalculatorRecipe ? (plantationOutputPerRun[selectedCalculatorRecipe.key] || String(selectedCalculatorRecipe.default_output_per_run)) : '1'
+
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
     const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
     const outputPerRun = Math.max(0, Math.floor(Number(plantationOutputPerRun[recipe.key] || recipe.default_output_per_run) || recipe.default_output_per_run))
@@ -475,20 +479,46 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                 )
               })}
             </div>
+            {selectedCalculatorRecipe ? (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <label className="text-xs text-white/65">
+                  Nb plantations
+                  <div className="mt-1 flex items-center gap-1">
+                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', -1, 0)}>-</SecondaryButton>
+                    <Input
+                      value={selectedCalculatorRuns}
+                      onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
+                      inputMode="numeric"
+                      className="h-9 rounded-lg px-2 text-sm"
+                    />
+                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', 1, 0)}>+</SecondaryButton>
+                  </div>
+                </label>
+                <label className="text-xs text-white/65">
+                  Production reçue / plantation
+                  <div className="mt-1 flex items-center gap-1">
+                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', -1, selectedCalculatorRecipe.default_output_per_run)}>-</SecondaryButton>
+                    <Input
+                      value={selectedCalculatorOutput}
+                      onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
+                      inputMode="numeric"
+                      className="h-9 rounded-lg px-2 text-sm"
+                    />
+                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', 1, selectedCalculatorRecipe.default_output_per_run)}>+</SecondaryButton>
+                  </div>
+                </label>
+              </div>
+            ) : null}
             {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
-            {(() => {
-              const calcRecipe = plantationRecipes.find((recipe) => recipe.key === (calcMode === 'coke' ? 'coke-leaf' : 'meth'))
-              if (!calcRecipe) return null
-              return (
-                <PrimaryButton
-                  className="mt-3 w-full"
-                  disabled={realizingRecipeKey === calcRecipe.key}
-                  onClick={() => { void realizePlantation(calcRecipe) }}
-                >
-                  {realizingRecipeKey === calcRecipe.key ? 'Validation...' : 'Plantation réalisée'}
-                </PrimaryButton>
-              )
-            })()}
+            {selectedCalculatorRecipe ? (
+              <PrimaryButton
+                className="mt-3 w-full"
+                disabled={realizingRecipeKey === selectedCalculatorRecipe.key}
+                onClick={() => { void realizePlantation(selectedCalculatorRecipe) }}
+              >
+                {realizingRecipeKey === selectedCalculatorRecipe.key ? 'Validation...' : 'Plantation réalisée'}
+              </PrimaryButton>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
