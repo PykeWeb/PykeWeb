@@ -7,14 +7,14 @@ import { DangerButton, PrimaryButton, SecondaryButton, TabPill } from '@/compone
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
-import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
-import { allCategoryTypeOptions, categoryTypeOptions, getTypeLabel } from '@/lib/catalogConfig'
+import { getTypeFilterOptions, getTypeLabel, matchesTypeFilter, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
-type TypeFilter = 'all' | ItemType
+type TypeFilter = UnifiedTypeFilterValue
 
 type TradeLine = {
   itemId: string
@@ -98,8 +98,7 @@ export function FinanceItemTradeModal({
   }, [open, initialItems])
 
   const typeOptions = useMemo(() => {
-    if (category === 'all') return [{ value: 'all', label: copy.common.allTypes }, ...allCategoryTypeOptions]
-    return [{ value: 'all', label: copy.common.allTypes }, ...categoryTypeOptions[category]]
+    return getTypeFilterOptions(category)
   }, [category])
 
   const filtered = useMemo(() => {
@@ -107,7 +106,7 @@ export function FinanceItemTradeModal({
     return items
       .filter((it) => (hideUnitPrice && tradeMode === 'sell' ? Math.max(0, Number(it.stock) || 0) > 0 : true))
       .filter((it) => (category === 'all' ? true : it.category === category))
-      .filter((it) => (type === 'all' ? true : it.item_type === type))
+      .filter((it) => matchesTypeFilter(it, category, type))
       .filter((it) => {
         if (!search) return true
         return `${it.name} ${it.internal_id}`.toLowerCase().includes(search)

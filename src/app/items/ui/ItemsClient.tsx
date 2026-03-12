@@ -10,14 +10,14 @@ import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { createFinanceTransaction, deleteCatalogItem, listCatalogItemsUnified } from '@/lib/itemsApi'
-import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
-import { allCategoryTypeOptions, categoryTypeOptions, getCategoryLabel, getTypeLabel } from '@/lib/catalogConfig'
+import { getCategoryLabel, getTypeFilterOptions, getTypeLabel, matchesTypeFilter, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
-type TypeFilter = 'all' | ItemType
+type TypeFilter = UnifiedTypeFilterValue
 type ItemsView = 'catalog' | 'tools'
 
 type PlantationRecipe = {
@@ -133,15 +133,14 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   }, [refresh, view])
 
   const typeOptions = useMemo(() => {
-    if (category === 'all') return [{ value: 'all', label: copy.common.allTypes }, ...allCategoryTypeOptions]
-    return [{ value: 'all', label: copy.common.allTypes }, ...categoryTypeOptions[category]]
+    return getTypeFilterOptions(category)
   }, [category])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items.filter((it) => {
       if (category !== 'all' && it.category !== category) return false
-      if (type !== 'all' && it.item_type !== type) return false
+      if (!matchesTypeFilter(it, category, type)) return false
       if (!q) return true
       return `${it.name} ${it.internal_id} ${it.description || ''}`.toLowerCase().includes(q)
     })

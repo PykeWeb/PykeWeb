@@ -1,4 +1,4 @@
-import type { ItemCategory, ItemType } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 
 export const itemCategoryOptions: { value: ItemCategory; label: string }[] = [
   { value: 'objects', label: 'Objets' },
@@ -40,6 +40,53 @@ export const allCategoryTypeOptions: { value: ItemType; label: string }[] = [
   { value: 'drug_material', label: 'Matériels' },
   { value: 'product', label: 'Production' },
 ]
+
+export type UnifiedTypeFilterValue =
+  | 'all'
+  | 'objects'
+  | 'equipment'
+  | 'weapon'
+  | 'ammo'
+  | 'weapon_accessory'
+  | 'seed'
+  | 'pouch'
+  | 'drug_material'
+  | 'product'
+  | 'other'
+
+export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: UnifiedTypeFilterValue; label: string }[] {
+  if (category === 'all') {
+    return [
+      { value: 'all', label: 'Tous les types' },
+      { value: 'objects', label: 'Objets' },
+      { value: 'equipment', label: 'Équipement' },
+      { value: 'weapon', label: 'Armes' },
+      { value: 'ammo', label: 'Munitions' },
+      { value: 'weapon_accessory', label: "Accessoire d’arme" },
+      { value: 'seed', label: 'Graine' },
+      { value: 'pouch', label: 'Pochon' },
+      { value: 'drug_material', label: 'Matériels' },
+      { value: 'product', label: 'Production' },
+      { value: 'other', label: 'Autres' },
+    ]
+  }
+
+  if (category === 'objects') return [{ value: 'all', label: 'Tous' }, { value: 'objects', label: 'Objets' }]
+  if (category === 'equipment') return [{ value: 'all', label: 'Tous' }, { value: 'equipment', label: 'Équipement' }]
+  if (category === 'weapons') return [{ value: 'all', label: 'Tous' }, { value: 'weapon', label: 'Armes' }, { value: 'ammo', label: 'Munitions' }, { value: 'weapon_accessory', label: "Accessoire d’arme" }]
+  if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graine' }, { value: 'pouch', label: 'Pochon' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Production' }]
+  return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres' }]
+}
+
+export function matchesTypeFilter(item: CatalogItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
+  if (selectedType === 'all') return true
+  if (selectedCategory === 'all') {
+    if (selectedType === 'objects') return item.category === 'objects'
+    if (selectedType === 'equipment') return item.category === 'equipment'
+    if (selectedType === 'other') return item.category === 'custom'
+  }
+  return normalizeItemType(item.item_type, item.category) === selectedType
+}
 
 export const itemTypeOptions = Object.values(categoryTypeOptions).flatMap((options) => options)
 
