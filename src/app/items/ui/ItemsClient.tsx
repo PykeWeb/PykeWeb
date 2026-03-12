@@ -28,6 +28,10 @@ type PlantationRecipe = {
   default_output_per_run: number
 }
 
+function normalizeItemName(value: string) {
+  return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+}
+
 const plantationRecipes: PlantationRecipe[] = [
   {
     key: 'coke-leaf',
@@ -154,10 +158,35 @@ export default function ItemsClient() {
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
 
+  const itemsByNormalizedName = useMemo(() => {
+    const map = new Map<string, CatalogItem>()
+    for (const item of items) {
+      map.set(normalizeItemName(item.name), item)
+    }
+    return map
+  }, [items])
+
   const findItemByName = useCallback((name: string) => {
-    const normalize = (value: string) => value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
-    const needle = normalize(name)
-    return items.find((item) => normalize(item.name) === needle) || null
+    return itemsByNormalizedName.get(normalizeItemName(name)) || null
+  }, [itemsByNormalizedName])
+
+  const findItemForLabel = useCallback((label: string) => {
+    const normalized = normalizeItemName(label)
+    const singular = normalized.endsWith('s') ? normalized.slice(0, -1) : normalized
+    for (const item of items) {
+      const itemName = normalizeItemName(item.name)
+      if (
+        itemName === normalized
+        || itemName === singular
+        || normalized.includes(itemName)
+        || singular.includes(itemName)
+        || itemName.includes(normalized)
+        || itemName.includes(singular)
+      ) {
+        return item
+      }
+    }
+    return null
   }, [items])
 
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
@@ -384,13 +413,28 @@ export default function ItemsClient() {
               </div>
             </div>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {drugCalculator.requirements.map((req) => (
-                <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
-                  <div className="font-medium">{req.label}</div>
-                  <div className="text-white/70">Qté: {req.qty} · PU : {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
-                  <div className="text-white/80">Sous-total: {req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</div>
-                </div>
-              ))}
+              {drugCalculator.requirements.map((req) => {
+                const requirementItem = findItemForLabel(req.label)
+                return (
+                  <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                        {requirementItem?.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={requirementItem.image_url} alt={req.label} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-white/40">
+                            <ImageIcon className="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="font-medium">{req.label}</div>
+                    </div>
+                    <div className="text-white/70">Qté: {req.qty} · PU : {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
+                    <div className="text-white/80">Sous-total: {req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</div>
+                  </div>
+                )
+              })}
             </div>
             {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
           </div>
@@ -406,14 +450,46 @@ export default function ItemsClient() {
                   <p className="text-sm font-semibold">{recipe.title}</p>
                   <p className="mt-1 text-xs text-white/65">{recipe.subtitle}</p>
                   <div className="mt-3 space-y-2 text-xs text-white/75">
-                    {recipe.requirements.map((req) => (
-                      <div key={req.name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                        <span>{req.name}</span>
-                        <span>× {req.qty}</span>
-                      </div>
-                    ))}
+                    {recipe.requirements.map((req) => {
+                      const requirementItem = findItemByName(req.name)
+                      return (
+                        <div key={req.name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
+                              {requirementItem?.image_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={requirementItem.image_url} alt={req.name} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="grid h-full w-full place-items-center text-white/40">
+                                  <ImageIcon className="h-3 w-3" />
+                                </div>
+                              )}
+                            </div>
+                            <span>{req.name}</span>
+                          </div>
+                          <span>× {req.qty}</span>
+                        </div>
+                      )
+                    })}
                   </div>
-                  <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">Production : {recipe.output_name}</p>
+                  {(() => {
+                    const outputItem = findItemByName(recipe.output_name)
+                    return (
+                      <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">
+                        <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
+                          {outputItem?.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={outputItem.image_url} alt={recipe.output_name} className="h-full w-full object-cover" loading="lazy" />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-white/40">
+                              <ImageIcon className="h-3 w-3" />
+                            </div>
+                          )}
+                        </div>
+                        <p>Production : {recipe.output_name}</p>
+                      </div>
+                    )
+                  })()}
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <label className="text-xs text-white/65">
                       Nb plantations

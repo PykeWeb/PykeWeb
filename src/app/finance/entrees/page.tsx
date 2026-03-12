@@ -8,7 +8,7 @@ import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsAp
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 
-export default function FinanceSortiesPage() {
+export default function FinanceEntreesPage() {
   const router = useRouter()
   const [initialItems, setInitialItems] = useState<CatalogItem[]>([])
 
@@ -23,29 +23,29 @@ export default function FinanceSortiesPage() {
       <FinanceItemTradeModal
         inline
         open
-        mode="sell"
+        mode="buy"
         hideUnitPrice
-        titleOverride={copy.finance.stockFlow.stockOutTitle}
-        subtitleOverride={copy.finance.stockFlow.stockOutSubtitle}
+        titleOverride={copy.finance.stockFlow.stockInTitle}
+        subtitleOverride={copy.finance.stockFlow.stockInSubtitle}
         showModeBadge={false}
         initialItems={initialItems}
         onClose={() => router.push('/finance')}
         onSubmit={async (payload) => {
           const reason = payload.notes?.trim() || ''
           if (!reason) {
-            throw new Error(copy.finance.stockFlow.stockOutReasonRequired)
+            throw new Error(copy.finance.stockFlow.stockInReasonRequired)
           }
 
           await createFinanceTransaction({
             item_id: payload.item.id,
-            mode: 'sell',
+            mode: 'buy',
             quantity: payload.quantity,
             unit_price: 0,
             counterparty: payload.counterparty,
             notes: reason,
-            payment_mode: 'stock_out',
+            payment_mode: 'other',
           })
-          toast.success(copy.finance.stockFlow.stockOutSaved)
+          toast.success(copy.finance.stockFlow.stockInSaved)
           router.push('/finance')
           router.refresh()
         }}
