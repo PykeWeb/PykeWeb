@@ -12,7 +12,7 @@ import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
 
 type Tx = {
   id: string
@@ -52,9 +52,9 @@ const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
 ]
 const CARD_OPTIONS: CardOption[] = [
   { key: 'catObjects', title: 'Objets', href: '/items?category=objects', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.objects)) },
-  { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
-  { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
-  { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
+  { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Swords, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
+  { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Shield, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
+  { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Pill, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
   { key: 'catOther', title: 'Autres', href: '/items?category=custom', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
   { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
   { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },

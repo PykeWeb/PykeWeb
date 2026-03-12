@@ -306,7 +306,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   }, [items])
 
   return (
-    <Panel>
+    <Panel className={view === 'tools' ? 'border-0 bg-transparent p-0 shadow-none' : undefined}>
       {view === 'catalog' ? (
         <>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -407,7 +407,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
           </div>
         </>
       ) : (
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <h3 className="mb-3 text-sm font-semibold">Calculateur drogue (Items)</h3>
             <div className="grid gap-3 md:grid-cols-3">
