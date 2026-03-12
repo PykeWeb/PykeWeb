@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
+import { isStockInNote, stripStockFlowMarker } from '@/lib/financeStockFlow'
 
 export type FinanceMovementType = 'expense' | 'purchase' | 'stock_in' | 'sale' | 'stock_out'
 export type FinanceCategory = 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom' | 'other'
@@ -226,7 +227,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       id: groupedId,
       source: 'finance_transactions',
       movement_type: group.mode === 'buy'
-        ? (group.payment_mode === 'stock_in' ? 'stock_in' : 'purchase')
+        ? ((group.payment_mode === 'stock_in' || isStockInNote(group.notes)) ? 'stock_in' : 'purchase')
         : group.payment_mode === 'stock_out'
           ? 'stock_out'
           : 'sale',
@@ -239,7 +240,7 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       amount,
       expense_status: null,
       payment_mode: group.payment_mode,
-      notes: group.notes,
+      notes: stripStockFlowMarker(group.notes),
       created_at: group.created_at,
       expense_unit_price: null,
     })

@@ -7,6 +7,7 @@ import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
+import { markStockInNote } from '@/lib/financeStockFlow'
 
 export default function FinanceEntreesPage() {
   const router = useRouter()
@@ -43,8 +44,8 @@ export default function FinanceEntreesPage() {
             quantity: payload.quantity,
             unit_price: 0,
             counterparty: payload.counterparty,
-            notes: reason,
-            payment_mode: 'stock_in',
+            notes: markStockInNote(reason),
+            payment_mode: 'other',
           })
           toast.success(copy.finance.stockFlow.stockInSaved)
           router.push('/finance')

@@ -43,7 +43,7 @@ const plantationRecipes: PlantationRecipe[] = [
       { name: 'Fertilisant', qty: 1 },
       { name: "Bouteille d'eau", qty: 3 },
     ],
-    output_name: 'Feuille de coke',
+    output_name: 'Feuille de Cocaïne',
     default_output_per_run: 1,
   },
   {
@@ -175,6 +175,10 @@ export default function ItemsClient() {
       "bouteille d'eau": ["bouteille d'eau", "eau"],
       "machine de meth": ["machine de meth", "meth"],
       fertilisant: ["fertilisant", "engrais"],
+      pot: ["pot", "pots"],
+      lampe: ["lampe", "lampes"],
+      table: ["table", "tables"],
+      batterie: ["batterie", "batteries"],
     }
     const normalized = normalizeItemName(label)
     const candidates = aliases[normalized] || [normalized]
