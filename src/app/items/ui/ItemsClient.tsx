@@ -13,7 +13,7 @@ import { createFinanceTransaction, deleteCatalogItem, listCatalogItemsUnified } 
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
-import { getCategoryLabel, getTypeLabel } from '@/lib/catalogConfig'
+import { allCategoryTypeOptions, categoryTypeOptions, getCategoryLabel, getTypeLabel } from '@/lib/catalogConfig'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
@@ -133,10 +133,9 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   }, [refresh, view])
 
   const typeOptions = useMemo(() => {
-    const pool = items.filter((x) => (category === 'all' ? true : x.category === category))
-    const dynamicTypes = Array.from(new Set(pool.map((x) => x.item_type))).map((value) => ({ value, label: getTypeLabel(value) }))
-    return [{ value: 'all', label: copy.common.allTypes }, ...dynamicTypes]
-  }, [items, category])
+    if (category === 'all') return [{ value: 'all', label: copy.common.allTypes }, ...allCategoryTypeOptions]
+    return [{ value: 'all', label: copy.common.allTypes }, ...categoryTypeOptions[category]]
+  }, [category])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

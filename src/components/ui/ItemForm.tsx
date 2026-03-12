@@ -110,11 +110,10 @@ export function ItemForm({
 
           <div>
             <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.description}</label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[82px]" />
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="h-10 min-h-0" />
           </div>
 
           <div className="md:col-span-2">
-            <label className="mb-2 block text-xs text-white/60">{copy.itemForm.labels.category}</label>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {[
                 { key: 'objects' as const, label: 'Objets', icon: Box },

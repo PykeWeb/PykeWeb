@@ -10,7 +10,7 @@ import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
-import { categoryTypeOptions, getTypeLabel } from '@/lib/catalogConfig'
+import { allCategoryTypeOptions, categoryTypeOptions, getTypeLabel } from '@/lib/catalogConfig'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
@@ -98,12 +98,9 @@ export function FinanceItemTradeModal({
   }, [open, initialItems])
 
   const typeOptions = useMemo(() => {
-    if (category === 'all') {
-      const values = Array.from(new Set(items.map((it) => it.item_type)))
-      return [{ value: 'all', label: copy.common.allTypes }, ...values.map((value) => ({ value, label: getTypeLabel(value) }))]
-    }
+    if (category === 'all') return [{ value: 'all', label: copy.common.allTypes }, ...allCategoryTypeOptions]
     return [{ value: 'all', label: copy.common.allTypes }, ...categoryTypeOptions[category]]
-  }, [category, items])
+  }, [category])
 
   const filtered = useMemo(() => {
     const search = itemSearch.trim().toLowerCase()

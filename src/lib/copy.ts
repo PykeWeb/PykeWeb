@@ -13,7 +13,7 @@ export const copy = {
       category: 'Catégorie',
       type: 'Type',
       weaponId: 'ID (arme)',
-      image: 'Image (copier/coller ou PNG/JPEG)',
+      image: 'Image',
       buyPrice: 'Prix achat',
       sellPrice: 'Prix vente',
       initialStock: 'Stock initial',
