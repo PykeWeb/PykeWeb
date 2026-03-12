@@ -15,6 +15,7 @@ export type ActivityEntry = {
   salary_amount: number
   equipment_item_id: string | null
   equipment_name: string | null
+  equipment_quantity: number
   proof_image_data: string
   created_at: string
 }

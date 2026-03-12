@@ -88,8 +88,9 @@ export async function POST(request: Request) {
       member_name?: string
       activity_type?: ActivityType
       object_item_id?: string
-      equipment_item_id?: string | null
       quantity?: number
+      equipment_item_id?: string | null
+      equipment_quantity?: number
       percent_per_object?: number
       proof_image_data?: string
     }
@@ -97,16 +98,20 @@ export async function POST(request: Request) {
     const memberName = String(body.member_name ?? '').trim()
     const activityType = body.activity_type
     const objectItemId = String(body.object_item_id ?? '').trim()
-    const equipmentItemId = body.equipment_item_id ? String(body.equipment_item_id).trim() : null
     const quantity = Math.max(0, Math.floor(Number(body.quantity) || 0))
+    const equipmentItemId = body.equipment_item_id ? String(body.equipment_item_id).trim() : null
+    const equipmentQuantity = Math.max(0, Math.floor(Number(body.equipment_quantity) || 0))
     const percent = Math.max(0, Number(body.percent_per_object) || 0)
     const proof = String(body.proof_image_data ?? '').trim()
 
     if (!memberName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
     if (!activityType || !ACTIVITY_OPTIONS.includes(activityType)) return NextResponse.json({ error: 'Activité invalide.' }, { status: 400 })
     if (!objectItemId) return NextResponse.json({ error: 'Objet requis.' }, { status: 400 })
-    if (activityType !== 'Boite au lettre' && !equipmentItemId) return NextResponse.json({ error: 'Équipement requis pour cette activité.' }, { status: 400 })
-    if (quantity <= 0) return NextResponse.json({ error: 'Quantité invalide.' }, { status: 400 })
+    if (quantity <= 0) return NextResponse.json({ error: 'Quantité objet invalide.' }, { status: 400 })
+    if (activityType !== 'Boite au lettre') {
+      if (!equipmentItemId) return NextResponse.json({ error: 'Équipement requis pour cette activité.' }, { status: 400 })
+      if (equipmentQuantity <= 0) return NextResponse.json({ error: 'Quantité équipement invalide.' }, { status: 400 })
+    }
     if (percent <= 0) return NextResponse.json({ error: 'Pourcentage invalide.' }, { status: 400 })
     if (!proof.startsWith('data:image/jpeg;base64,') && !proof.startsWith('data:image/png;base64,')) {
       return NextResponse.json({ error: 'Preuve obligatoire (jpeg/png).' }, { status: 400 })
@@ -157,11 +162,11 @@ export async function POST(request: Request) {
       salary_amount: salaryAmount,
       equipment_item_id: equipmentItem?.id ?? null,
       equipment_name: equipmentItem?.name ?? null,
+      equipment_quantity: activityType === 'Boite au lettre' ? 0 : equipmentQuantity,
       proof_image_data: proof,
     })
 
     if (error) throw error
-
     return NextResponse.json({ ok: true })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Impossible d\'enregistrer l\'activité.'

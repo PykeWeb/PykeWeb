@@ -102,6 +102,6 @@ export const copy = {
   },
   activities: {
     title: 'Catégorie Activités',
-    subtitle: 'Choisis tes objets/équipements du groupe et calcule automatiquement le salaire par pourcentage.',
+    subtitle: 'Choisis les objets/équipements du groupe avec image et quantité, puis calcule automatiquement le salaire.',
   }
 } as const

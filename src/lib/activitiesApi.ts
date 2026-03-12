@@ -18,8 +18,9 @@ export async function createActivity(payload: {
   member_name: string
   activity_type: ActivityType
   object_item_id: string
-  equipment_item_id: string | null
   quantity: number
+  equipment_item_id: string | null
+  equipment_quantity: number
   percent_per_object: number
   proof_image_data: string
 }) {
