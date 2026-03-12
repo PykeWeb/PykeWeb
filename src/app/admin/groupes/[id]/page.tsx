@@ -49,6 +49,7 @@ export default function AdminGroupDetailsPage() {
   const [exportItems, setExportItems] = useState<EditableExportItem[]>([])
   const [showPassword, setShowPassword] = useState(false)
   const [passwordDraft, setPasswordDraft] = useState('')
+  const [memberPasswordDraft, setMemberPasswordDraft] = useState('')
 
   const refresh = useCallback(async () => {
     if (!groupId) return
@@ -57,6 +58,7 @@ export default function AdminGroupDetailsPage() {
       const groupRow = await getTenantGroup(groupId)
       setGroup(groupRow)
       setPasswordDraft(groupRow.password || '')
+      setMemberPasswordDraft(groupRow.password_member || '')
       setError(null)
 
       try {
@@ -222,6 +224,13 @@ export default function AdminGroupDetailsPage() {
             className="h-8 min-w-[220px] rounded-lg border border-white/12 bg-white/[0.06] px-3 text-sm"
             placeholder="Nouveau mot de passe"
           />
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={memberPasswordDraft}
+            onChange={(e) => setMemberPasswordDraft(e.target.value)}
+            className="h-8 min-w-[220px] rounded-lg border border-white/12 bg-white/[0.06] px-3 text-sm"
+            placeholder="Mot de passe membre"
+          />
           <button type="button" onClick={() => setShowPassword((v) => !v)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">{showPassword ? 'Masquer' : 'Voir'}</button>
           <button
             type="button"
@@ -234,11 +243,29 @@ export default function AdminGroupDetailsPage() {
           >
             Générer
           </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              const generated = generatePassword({ avoidAmbiguous: true })
+              setMemberPasswordDraft(generated)
+            }}
+            className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Générer membre
+          </button>
           <button type="button" onClick={() => void copyToClipboard(passwordDraft)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
           <button
             type="button"
-            disabled={busy || passwordDraft.trim().length === 0 || passwordDraft === (group.password || '')}
-            onClick={() => void savePatch({ password: passwordDraft.trim() })}
+            disabled={
+              busy
+              || passwordDraft.trim().length === 0
+              || (
+                passwordDraft.trim() === (group.password || '')
+                && memberPasswordDraft.trim() === (group.password_member || '')
+              )
+            }
+            onClick={() => void savePatch({ password: passwordDraft.trim(), password_member: memberPasswordDraft.trim() || null })}
             className="h-8 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 text-xs text-cyan-50 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Enregistrer MDP

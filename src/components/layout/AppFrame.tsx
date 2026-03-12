@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { getTenantSession } from '@/lib/tenantSession'
+import { canAccessPath, getDefaultRouteForSession } from '@/lib/accessControl'
 
 export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -35,9 +36,17 @@ export function AppFrame({ children }: { children: ReactNode }) {
       return
     }
 
-    if (pathname === '/' && session.isAdmin) {
-      window.location.href = '/admin/dashboard'
+    if (!canAccessPath(session, pathname)) {
+      window.location.href = getDefaultRouteForSession(session)
       return
+    }
+
+    if (pathname === '/') {
+      const nextPath = getDefaultRouteForSession(session)
+      if (nextPath !== '/') {
+        window.location.href = nextPath
+        return
+      }
     }
 
     setAuthChecked(true)

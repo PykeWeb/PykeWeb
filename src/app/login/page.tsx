@@ -11,13 +11,6 @@ import { PatchNotesRecapModal } from '@/components/ui/PatchNotesRecapModal'
 
 const APP_VERSION = '1.0.0'
 
-function isAdminGroup(group: { login: string; badge: string | null; name: string }) {
-  const login = group.login.trim().toLowerCase()
-  const badge = (group.badge || '').trim().toLowerCase()
-  const name = group.name.trim().toLowerCase()
-  return login === 'admin' || badge === 'admin' || name === 'administration'
-}
-
 export default function LoginPage() {
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
@@ -45,18 +38,11 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const group = await loginTenant(login, password, rememberMe)
-      const isAdmin = isAdminGroup(group)
-      const session = {
-        groupId: isAdmin ? 'admin' : group.id,
-        groupName: isAdmin ? 'Administration' : group.name,
-        groupBadge: isAdmin ? 'ADMIN' : group.badge,
-        isAdmin,
-      }
+      const { session } = await loginTenant(login, password, rememberMe)
 
       saveTenantSession(session, rememberMe)
       await syncTenantSessionToServer(session, rememberMe).catch(() => undefined)
-      const nextPath = isAdmin ? '/admin/dashboard' : '/'
+      const nextPath = session.isAdmin ? '/admin/dashboard' : session.role === 'member' ? '/tablette' : '/'
       window.location.href = `/auth/bridge?next=${encodeURIComponent(nextPath)}`
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Connexion impossible')

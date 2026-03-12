@@ -11,7 +11,7 @@ type CreateGroupModalProps = {
   open: boolean
   submitting: boolean
   onClose: () => void
-  onCreate: (payload: { name: string; badge: string; login: string; password: string }) => Promise<void>
+  onCreate: (payload: { name: string; badge: string; login: string; password: string; password_member: string }) => Promise<void>
 }
 
 function CreateGroupModal({ open, onClose, onCreate, submitting }: CreateGroupModalProps) {
@@ -20,6 +20,8 @@ function CreateGroupModal({ open, onClose, onCreate, submitting }: CreateGroupMo
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(true)
+  const [memberPassword, setMemberPassword] = useState('')
+  const [showMemberPassword, setShowMemberPassword] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -27,21 +29,25 @@ function CreateGroupModal({ open, onClose, onCreate, submitting }: CreateGroupMo
     setName('')
     setBadge('PF')
     setLogin('')
-    setPassword(generatePassword({ avoidAmbiguous: true }))
+    const generatedChef = generatePassword({ avoidAmbiguous: true })
+    const generatedMember = generatePassword({ avoidAmbiguous: true })
+    setPassword(generatedChef)
+    setMemberPassword(generatedMember)
     setShowPassword(true)
+    setShowMemberPassword(true)
     setError(null)
   }, [open])
 
   if (!open) return null
 
   async function submit() {
-    if (!name.trim() || !login.trim() || !password.trim()) {
-      setError('Nom, identifiant et mot de passe sont obligatoires.')
+    if (!name.trim() || !login.trim() || !password.trim() || !memberPassword.trim()) {
+      setError('Nom, identifiant et mots de passe chef/membre sont obligatoires.')
       return
     }
     try {
       setError(null)
-      await onCreate({ name: name.trim(), badge, login: login.trim(), password })
+      await onCreate({ name: name.trim(), badge, login: login.trim(), password, password_member: memberPassword })
       onClose()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Impossible de créer le groupe.')
@@ -69,6 +75,18 @@ function CreateGroupModal({ open, onClose, onCreate, submitting }: CreateGroupMo
             <button onClick={() => setShowPassword((v) => !v)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">{showPassword ? 'Masquer' : 'Voir'}</button>
             <button onClick={() => setPassword(generatePassword({ avoidAmbiguous: true }))} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Générer</button>
             <button onClick={() => void copyToClipboard(password)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Copier</button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+            <input
+              value={memberPassword}
+              onChange={(e) => setMemberPassword(e.target.value)}
+              type={showMemberPassword ? 'text' : 'password'}
+              placeholder="Mot de passe membre"
+              className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm"
+            />
+            <button onClick={() => setShowMemberPassword((v) => !v)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">{showMemberPassword ? 'Masquer' : 'Voir'}</button>
+            <button onClick={() => setMemberPassword(generatePassword({ avoidAmbiguous: true }))} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Générer</button>
+            <button onClick={() => void copyToClipboard(memberPassword)} className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-sm hover:bg-white/[0.12]">Copier</button>
           </div>
         </div>
 
@@ -112,7 +130,7 @@ export default function AdminGroupsPage() {
     void refresh()
   }, [])
 
-  async function addGroup(payload: { name: string; badge: string; login: string; password: string }) {
+  async function addGroup(payload: { name: string; badge: string; login: string; password: string; password_member: string }) {
     setIsSubmitting(true)
     setError(null)
 
@@ -123,6 +141,7 @@ export default function AdminGroupsPage() {
         badge: payload.badge,
         login: payload.login,
         password: payload.password,
+        password_member: payload.password_member,
         active: true,
         paid_until: paidUntil,
       })
