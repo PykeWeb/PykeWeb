@@ -1,4 +1,4 @@
-import type { ActivityEntry, ActivityMemberSummary, ActivitySettings, ActivityType } from '@/lib/types/activities'
+import type { ActivityEntry, ActivityMemberSummary, ActivityObjectLineInput, ActivitySettings, ActivityType } from '@/lib/types/activities'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 export type ActivityListResponse = {
@@ -17,8 +17,7 @@ export async function listActivities(weekStartIso?: string): Promise<ActivityLis
 export async function createActivity(payload: {
   member_name: string
   activity_type: ActivityType
-  object_item_id: string
-  quantity: number
+  object_lines: ActivityObjectLineInput[]
   equipment_item_id: string | null
   equipment_quantity: number
   percent_per_object: number

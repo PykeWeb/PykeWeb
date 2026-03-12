@@ -2,6 +2,11 @@ export type ActivityType = 'Cambriolage' | 'Conteneur' | 'ATM' | 'Superette' | '
 
 export const ACTIVITY_OPTIONS: ActivityType[] = ['Cambriolage', 'Conteneur', 'ATM', 'Superette', 'Boite au lettre']
 
+export type ActivityObjectLineInput = {
+  object_item_id: string
+  quantity: number
+}
+
 export type ActivityEntry = {
   id: string
   group_id: string

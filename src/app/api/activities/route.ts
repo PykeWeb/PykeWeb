@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getSessionFromRequest } from '@/server/auth/session'
-import { ACTIVITY_OPTIONS, type ActivityType } from '@/lib/types/activities'
+import { ACTIVITY_OPTIONS, type ActivityObjectLineInput, type ActivityType } from '@/lib/types/activities'
 
 type CatalogItemRow = { id: string; name: string; category: string; buy_price: number | null }
 
@@ -87,8 +87,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       member_name?: string
       activity_type?: ActivityType
-      object_item_id?: string
-      quantity?: number
+      object_lines?: ActivityObjectLineInput[]
       equipment_item_id?: string | null
       equipment_quantity?: number
       percent_per_object?: number
@@ -97,8 +96,7 @@ export async function POST(request: Request) {
 
     const memberName = String(body.member_name ?? '').trim()
     const activityType = body.activity_type
-    const objectItemId = String(body.object_item_id ?? '').trim()
-    const quantity = Math.max(0, Math.floor(Number(body.quantity) || 0))
+    const objectLines = Array.isArray(body.object_lines) ? body.object_lines : []
     const equipmentItemId = body.equipment_item_id ? String(body.equipment_item_id).trim() : null
     const equipmentQuantity = Math.max(0, Math.floor(Number(body.equipment_quantity) || 0))
     const percent = Math.max(0, Number(body.percent_per_object) || 0)
@@ -106,8 +104,10 @@ export async function POST(request: Request) {
 
     if (!memberName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
     if (!activityType || !ACTIVITY_OPTIONS.includes(activityType)) return NextResponse.json({ error: 'Activité invalide.' }, { status: 400 })
-    if (!objectItemId) return NextResponse.json({ error: 'Objet requis.' }, { status: 400 })
-    if (quantity <= 0) return NextResponse.json({ error: 'Quantité objet invalide.' }, { status: 400 })
+    if (objectLines.length === 0) return NextResponse.json({ error: 'Ajoute au moins un objet.' }, { status: 400 })
+    if (objectLines.some((line) => !line.object_item_id || Math.max(0, Math.floor(Number(line.quantity) || 0)) <= 0)) {
+      return NextResponse.json({ error: 'Lignes objets invalides.' }, { status: 400 })
+    }
     if (activityType !== 'Boite au lettre') {
       if (!equipmentItemId) return NextResponse.json({ error: 'Équipement requis pour cette activité.' }, { status: 400 })
       if (equipmentQuantity <= 0) return NextResponse.json({ error: 'Quantité équipement invalide.' }, { status: 400 })
@@ -119,16 +119,23 @@ export async function POST(request: Request) {
     if (proof.length > MAX_PROOF_LENGTH) return NextResponse.json({ error: 'Image trop volumineuse.' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
-    const { data: objectItem, error: objectError } = await supabase
+
+    const objectIds = [...new Set(objectLines.map((line) => String(line.object_item_id).trim()).filter(Boolean))]
+    const { data: objectRows, error: objectErr } = await supabase
       .from('catalog_items')
       .select('id,name,category,buy_price')
       .eq('group_id', session.groupId)
-      .eq('id', objectItemId)
       .eq('is_active', true)
-      .maybeSingle<CatalogItemRow>()
-    if (objectError) throw objectError
-    if (!objectItem || objectItem.category !== 'objects') {
-      return NextResponse.json({ error: 'Objet invalide (catégorie Objets requise).' }, { status: 400 })
+      .in('id', objectIds)
+
+    if (objectErr) throw objectErr
+    const objectMap = new Map<string, CatalogItemRow>()
+    for (const row of (objectRows ?? []) as CatalogItemRow[]) {
+      if (row.category === 'objects') objectMap.set(row.id, row)
+    }
+
+    if (objectMap.size !== objectIds.length) {
+      return NextResponse.json({ error: 'Un ou plusieurs objets sont invalides.' }, { status: 400 })
     }
 
     let equipmentItem: CatalogItemRow | null = null
@@ -147,27 +154,32 @@ export async function POST(request: Request) {
       equipmentItem = data
     }
 
-    const objectPrice = Math.max(0, Number(objectItem.buy_price) || 0)
-    const salaryAmount = objectPrice * quantity * (percent / 100)
-
-    const { error } = await supabase.from('group_activity_entries').insert({
-      group_id: session.groupId,
-      member_name: memberName,
-      activity_type: activityType,
-      object_item_id: objectItem.id,
-      object_name: objectItem.name,
-      object_unit_price: objectPrice,
-      quantity,
-      percent_per_object: percent,
-      salary_amount: salaryAmount,
-      equipment_item_id: equipmentItem?.id ?? null,
-      equipment_name: equipmentItem?.name ?? null,
-      equipment_quantity: activityType === 'Boite au lettre' ? 0 : equipmentQuantity,
-      proof_image_data: proof,
+    const rowsToInsert = objectLines.map((line) => {
+      const item = objectMap.get(line.object_item_id) as CatalogItemRow
+      const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+      const objectPrice = Math.max(0, Number(item.buy_price) || 0)
+      const salaryAmount = objectPrice * qty * (percent / 100)
+      return {
+        group_id: session.groupId,
+        member_name: memberName,
+        activity_type: activityType,
+        object_item_id: item.id,
+        object_name: item.name,
+        object_unit_price: objectPrice,
+        quantity: qty,
+        percent_per_object: percent,
+        salary_amount: salaryAmount,
+        equipment_item_id: equipmentItem?.id ?? null,
+        equipment_name: equipmentItem?.name ?? null,
+        equipment_quantity: activityType === 'Boite au lettre' ? 0 : equipmentQuantity,
+        proof_image_data: proof,
+      }
     })
 
+    const { error } = await supabase.from('group_activity_entries').insert(rowsToInsert)
     if (error) throw error
-    return NextResponse.json({ ok: true })
+
+    return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Impossible d\'enregistrer l\'activité.'
     return NextResponse.json({ error: message }, { status: 400 })
