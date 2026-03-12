@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Layers3, Pencil, Receipt, Trash2, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Layers3, ListFilter, Pencil, Receipt, ShoppingCart, Trash2, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
@@ -14,6 +14,7 @@ import { deleteExpense, setExpenseStatus, updateExpense, type ExpenseStatus } fr
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { getFinanceListImage } from '@/lib/financeVisuals'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type FilterType = 'all' | FinanceMovementType
 type FilterCategory = 'all' | 'multi' | FinanceCategory
@@ -33,7 +34,7 @@ type ExpenseActionEntry = FinanceEntry & {
   movement_type: 'expense'
 }
 
-const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', sale: 'Vente', stock_out: 'Sortie' }
+const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', stock_in: 'Entrée', sale: 'Vente', stock_out: 'Sortie' }
 const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Autres', other: 'Autres' }
 
 function toPositiveInt(value: string, fallback = 1) {
@@ -67,6 +68,7 @@ function formatDateOnly(value: string) {
 }
 
 export default function FinanceClient() {
+  const themeConfig = useUiThemeConfig()
   const [entries, setEntries] = useState<FinanceEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -104,7 +106,7 @@ export default function FinanceClient() {
     if (categoryParam && ['multi', 'objects', 'weapons', 'equipment', 'drugs', 'custom', 'other'].includes(categoryParam)) {
       setCategory(categoryParam === 'custom' ? 'other' : (categoryParam as FilterCategory))
     }
-    if (typeParam && ['expense', 'purchase', 'sale', 'stock_out'].includes(typeParam)) {
+    if (typeParam && ['expense', 'purchase', 'stock_in', 'sale', 'stock_out'].includes(typeParam)) {
       setType(typeParam as FilterType)
     }
   }, [searchParams])
@@ -121,13 +123,18 @@ export default function FinanceClient() {
     })
   }, [entries, q, type, category])
 
-  const pendingExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
-  const paidExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status === 'paid').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
-  const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
-  const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').reduce((s, e) => s + (e.amount || 0), 0), [filtered])
-  const stockOuts = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_out').length, [filtered])
+  const totalEntries = entries.length
+  const pendingExpenses = useMemo(() => entries.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').length, [entries])
+  const purchases = useMemo(() => entries.filter((e) => e.movement_type === 'purchase').length, [entries])
+  const stockIns = useMemo(() => entries.filter((e) => e.movement_type === 'stock_in').length, [entries])
+  const sales = useMemo(() => entries.filter((e) => e.movement_type === 'sale').length, [entries])
+  const stockOuts = useMemo(() => entries.filter((e) => e.movement_type === 'stock_out').length, [entries])
 
   const editingTotal = useMemo(() => toPositiveInt(editingQuantity) * toNonNegativeNumber(editingUnitPrice), [editingQuantity, editingUnitPrice])
+
+  function bubble(key: string) {
+    return themeConfig.bubbles[key] || null
+  }
 
   function openEditExpense(entry: ExpenseActionEntry) {
     const unit = Number(entry.expense_unit_price ?? (entry.amount ?? 0) / Math.max(1, entry.quantity))
@@ -146,12 +153,31 @@ export default function FinanceClient() {
 
   return (
     <Panel>
-      <div className="grid gap-3 md:grid-cols-5">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses en attente</p><p className="mt-1 text-xl font-semibold">{pendingExpenses.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Dépenses remboursées</p><p className="mt-1 text-xl font-semibold">{paidExpenses.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Achats</p><p className="mt-1 text-xl font-semibold">{purchases.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Ventes</p><p className="mt-1 text-xl font-semibold">{sales.toFixed(2)} $</p></div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs text-white/60">Sorties</p><p className="mt-1 text-xl font-semibold">{stockOuts}</p></div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <button type="button" data-bubble-key="finance.top.all" onClick={() => setType('all')} style={{ background: bubble('finance.top.all')?.bgColor || undefined, borderColor: bubble('finance.top.all')?.borderColor || undefined, color: bubble('finance.top.all')?.textColor || undefined, minWidth: bubble('finance.top.all')?.minWidthPx ? `${bubble('finance.top.all')?.minWidthPx}px` : undefined, minHeight: bubble('finance.top.all')?.minHeightPx ? `${bubble('finance.top.all')?.minHeightPx}px` : undefined }} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'all' ? 'border-slate-200/70 from-slate-400/35 to-slate-500/25' : 'border-white/15 from-white/10 to-white/5 hover:from-white/15 hover:to-white/8'}`}>
+          <div className="flex items-center justify-between gap-2 text-slate-100/85"><p className="text-xs">Tous</p><ListFilter className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{totalEntries}</p>
+        </button>
+        <button type="button" data-bubble-key="finance.top.expense" onClick={() => setType('expense')} style={{ background: bubble('finance.top.expense')?.bgColor || undefined, borderColor: bubble('finance.top.expense')?.borderColor || undefined, color: bubble('finance.top.expense')?.textColor || undefined, minWidth: bubble('finance.top.expense')?.minWidthPx ? `${bubble('finance.top.expense')?.minWidthPx}px` : undefined, minHeight: bubble('finance.top.expense')?.minHeightPx ? `${bubble('finance.top.expense')?.minHeightPx}px` : undefined }} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'expense' ? 'border-amber-200/80 from-amber-500/35 to-orange-500/25' : 'border-amber-300/30 from-amber-500/20 to-orange-500/12 hover:from-amber-500/28 hover:to-orange-500/18'}`}>
+          <div className="flex items-center justify-between gap-2 text-amber-100/85"><p className="text-xs">Dépenses en attente</p><Wallet className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{pendingExpenses}</p>
+        </button>
+        <button type="button" data-bubble-key="finance.top.purchase" onClick={() => setType('purchase')} style={{ background: bubble('finance.top.purchase')?.bgColor || undefined, borderColor: bubble('finance.top.purchase')?.borderColor || undefined, color: bubble('finance.top.purchase')?.textColor || undefined, minWidth: bubble('finance.top.purchase')?.minWidthPx ? `${bubble('finance.top.purchase')?.minWidthPx}px` : undefined, minHeight: bubble('finance.top.purchase')?.minHeightPx ? `${bubble('finance.top.purchase')?.minHeightPx}px` : undefined }} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'purchase' ? 'border-cyan-200/80 from-cyan-500/35 to-blue-500/25' : 'border-cyan-300/30 from-cyan-500/20 to-blue-500/12 hover:from-cyan-500/28 hover:to-blue-500/18'}`}>
+          <div className="flex items-center justify-between gap-2 text-cyan-100/85"><p className="text-xs">Achats</p><ArrowDownRight className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{purchases}</p>
+        </button>
+        <button type="button" data-bubble-key="finance.top.stock_in" onClick={() => setType('stock_in')} style={{ background: bubble('finance.top.stock_in')?.bgColor || undefined, borderColor: bubble('finance.top.stock_in')?.borderColor || undefined, color: bubble('finance.top.stock_in')?.textColor || undefined, minWidth: bubble('finance.top.stock_in')?.minWidthPx ? `${bubble('finance.top.stock_in')?.minWidthPx}px` : undefined, minHeight: bubble('finance.top.stock_in')?.minHeightPx ? `${bubble('finance.top.stock_in')?.minHeightPx}px` : undefined }} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'stock_in' ? 'border-sky-200/80 from-sky-500/35 to-indigo-500/25' : 'border-sky-300/30 from-sky-500/20 to-indigo-500/12 hover:from-sky-500/28 hover:to-indigo-500/18'}`}>
+          <div className="flex items-center justify-between gap-2 text-sky-100/85"><p className="text-xs">Entrées</p><ArrowDownRight className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{stockIns}</p>
+        </button>
+        <button type="button" data-bubble-key="finance.top.sale" onClick={() => setType('sale')} style={{ background: bubble('finance.top.sale')?.bgColor || undefined, borderColor: bubble('finance.top.sale')?.borderColor || undefined, color: bubble('finance.top.sale')?.textColor || undefined, minWidth: bubble('finance.top.sale')?.minWidthPx ? `${bubble('finance.top.sale')?.minWidthPx}px` : undefined, minHeight: bubble('finance.top.sale')?.minHeightPx ? `${bubble('finance.top.sale')?.minHeightPx}px` : undefined }} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'sale' ? 'border-violet-200/80 from-violet-500/35 to-fuchsia-500/25' : 'border-violet-300/30 from-violet-500/20 to-fuchsia-500/12 hover:from-violet-500/28 hover:to-fuchsia-500/18'}`}>
+          <div className="flex items-center justify-between gap-2 text-violet-100/85"><p className="text-xs">Ventes</p><ShoppingCart className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{sales}</p>
+        </button>
+        <button type="button" data-bubble-key="finance.top.stock_out" onClick={() => setType('stock_out')} style={{ background: bubble('finance.top.stock_out')?.bgColor || undefined, borderColor: bubble('finance.top.stock_out')?.borderColor || undefined, color: bubble('finance.top.stock_out')?.textColor || undefined, minWidth: bubble('finance.top.stock_out')?.minWidthPx ? `${bubble('finance.top.stock_out')?.minWidthPx}px` : undefined, minHeight: bubble('finance.top.stock_out')?.minHeightPx ? `${bubble('finance.top.stock_out')?.minHeightPx}px` : undefined }} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'stock_out' ? 'border-rose-200/80 from-rose-500/35 to-orange-500/25' : 'border-rose-300/30 from-rose-500/20 to-orange-500/12 hover:from-rose-500/28 hover:to-orange-500/18'}`}>
+          <div className="flex items-center justify-between gap-2 text-rose-100/85"><p className="text-xs">Sorties</p><ArrowUpRight className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{stockOuts}</p>
+        </button>
       </div>
 
       <div className="mt-4 mb-3 flex flex-wrap items-center gap-2">
@@ -159,7 +185,7 @@ export default function FinanceClient() {
           <Link href="/finance/depense/nouveau"><SecondaryButton>Nouvelle dépense</SecondaryButton></Link>
           <Link href="/finance/achat-vente"><SecondaryButton>Achat / Vente</SecondaryButton></Link>
           <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
-          <Link href="/finance/sorties"><SecondaryButton>Sorties</SecondaryButton></Link>
+          <Link href="/finance/entree-sortie"><SecondaryButton>{copy.finance.stockFlow.stockInOutButton}</SecondaryButton></Link>
         </div>
         <SearchInput
           value={q}
@@ -169,22 +195,14 @@ export default function FinanceClient() {
         />
       </div>
 
-      <div className="mb-[10px] mt-1 flex flex-wrap items-center gap-2">
-        <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
-        <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
-        <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
-        <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
-        <TabPill active={type === 'stock_out'} onClick={() => setType('stock_out')}>Sortie</TabPill>
-      </div>
-
       <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
-        <TabPill active={category === 'all'} onClick={() => setCategory('all')}>Toutes catégories</TabPill>
-        <TabPill active={category === 'multi'} onClick={() => setCategory('multi')}>Multiple</TabPill>
-        <TabPill active={category === 'objects'} onClick={() => setCategory('objects')}>Objets</TabPill>
-        <TabPill active={category === 'weapons'} onClick={() => setCategory('weapons')}>Armes</TabPill>
-        <TabPill active={category === 'equipment'} onClick={() => setCategory('equipment')}>Équipement</TabPill>
-        <TabPill active={category === 'drugs'} onClick={() => setCategory('drugs')}>Drogues</TabPill>
-        <TabPill active={category === 'other'} onClick={() => setCategory('other')}>Autres</TabPill>
+        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'all'} onClick={() => setCategory('all')}>Toutes catégories</TabPill>
+        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'multi'} onClick={() => setCategory('multi')}>Multiple</TabPill>
+        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'objects'} onClick={() => setCategory('objects')}>Objets</TabPill>
+        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'weapons'} onClick={() => setCategory('weapons')}>Armes</TabPill>
+        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'equipment'} onClick={() => setCategory('equipment')}>Équipement</TabPill>
+        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'drugs'} onClick={() => setCategory('drugs')}>Drogues</TabPill>
+        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'other'} onClick={() => setCategory('other')}>{'Autres\u200b'}</TabPill>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
@@ -219,8 +237,8 @@ export default function FinanceClient() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs">{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
-                  <td className="px-4 py-3">{categoryLabels[entry.category] || 'Autre'}</td>
+                  <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs ${entry.movement_type === 'expense' ? 'border-amber-300/40 bg-amber-500/15 text-amber-100' : entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' ? 'border-cyan-300/45 bg-cyan-500/15 text-cyan-100' : 'border-rose-300/45 bg-rose-500/15 text-rose-100'}`}>{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
+                  <td className="px-4 py-3"><span className="inline-flex rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs text-white/85">{categoryLabels[entry.category] || 'Autre'}</span></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 font-semibold">
                       <span>{entry.item_label}</span>

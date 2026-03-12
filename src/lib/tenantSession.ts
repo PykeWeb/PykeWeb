@@ -2,6 +2,7 @@ import {
   decodeTenantSession,
   encodeTenantSession,
   isAdminSession,
+  isMemberSession,
   isValidTenantSession,
   TENANT_SESSION_COOKIE_KEY,
   TENANT_SESSION_VERSION,
@@ -14,11 +15,15 @@ export function isAdminTenantSession(session: TenantSession | null | undefined) 
   return isAdminSession(session)
 }
 
+export function isMemberTenantSession(session: TenantSession | null | undefined) {
+  return isMemberSession(session)
+}
+
 const SESSION_VERSION = TENANT_SESSION_VERSION
-const STORAGE_KEY = 'pykeweb:tenant-session:v3'
-const LEGACY_STORAGE_KEYS = ['pykeweb:tenant-session', 'pykeweb:tenant-session:v1', 'pykeweb:tenant-session:v2']
+const STORAGE_KEY = 'pykeweb:tenant-session:v4'
+const LEGACY_STORAGE_KEYS = ['pykeweb:tenant-session', 'pykeweb:tenant-session:v1', 'pykeweb:tenant-session:v2', 'pykeweb:tenant-session:v3']
 const COOKIE_KEY = TENANT_SESSION_COOKIE_KEY
-const LEGACY_COOKIE_KEYS = ['tenant_session', 'tenant_session_v2']
+const LEGACY_COOKIE_KEYS = ['tenant_session', 'tenant_session_v2', 'tenant_session_v3']
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -36,7 +41,7 @@ function safeSetLocalStorage(key: string, value: string) {
   try {
     window.localStorage.setItem(key, value)
   } catch {
-    // ignore storage limitations (CEF private contexts, disabled localStorage, quota)
+    // ignore storage limitations
   }
 }
 

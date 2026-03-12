@@ -13,7 +13,7 @@ export const copy = {
       category: 'Catégorie',
       type: 'Type',
       weaponId: 'ID (arme)',
-      image: 'Image (copier/coller ou PNG/JPEG)',
+      image: 'Image',
       buyPrice: 'Prix achat',
       sellPrice: 'Prix vente',
       initialStock: 'Stock initial',
@@ -51,6 +51,20 @@ export const copy = {
     },
   },
   finance: {
+
+    stockFlow: {
+      stockOutTitle: 'Sortie du stock',
+      stockOutSubtitle: 'Sortie des items du stock par les membres pour des raisons diverses.',
+      stockOutReasonRequired: 'Raison obligatoire pour une sortie de stock.',
+      stockOutSaved: 'Sortie de stock enregistrée.',
+      stockOutModeLabel: 'Sortie',
+      stockInTitle: 'Entrée du stock',
+      stockInSubtitle: 'Entrée des items en stock par les membres pour des raisons diverses.',
+      stockInReasonRequired: 'Raison obligatoire pour une entrée de stock.',
+      stockInSaved: 'Entrée de stock enregistrée.',
+      stockInModeLabel: 'Entrée',
+      stockInOutButton: 'Entrée / Sortie',
+    },
 
     trade: {
       title: 'Achat / Vente (Items)',

@@ -12,13 +12,14 @@ import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type Tx = {
   id: string
   source: string
   entry_id: string
-  type: 'purchase' | 'sale' | 'stock_out'
+  type: 'purchase' | 'stock_in' | 'sale' | 'stock_out'
   total: number | null
   counterparty: string | null
   created_at: string
@@ -27,7 +28,7 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
-type ActivityView = 'summary' | 'transactions' | 'expenses' | 'finance'
+type ActivityView = 'summary' | 'transactions' | 'expenses'
 
 type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items' | 'calculator' | 'plantations'
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
@@ -41,28 +42,47 @@ type DashboardMetrics = {
 type QuickActionOption = { key: QuickActionKey; title: string; subtitle: string; href: string; icon: LucideIcon }
 type CardOption = { key: CardKey; title: string; href: string; icon: LucideIcon; getValue: (metrics: DashboardMetrics) => string }
 
+type BubbleStyle = {
+  bgColor?: string
+  borderColor?: string
+  textColor?: string
+  iconBgColor?: string
+  iconColor?: string
+}
+
 const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'newExpense', title: 'Nouvelle dépense', subtitle: 'Créer une dépense Finance', href: '/finance/depense/nouveau', icon: Wallet },
   { key: 'itemCreate', title: 'Créer un item', subtitle: 'Nouveau dans le catalogue', href: '/items/nouveau', icon: PlusCircle },
   { key: 'itemTrade', title: 'Achat/Vente items', subtitle: 'Achat et sortie de stock', href: '/items/achat-vente', icon: Receipt },
   { key: 'finance', title: 'Espace Finance', subtitle: 'Voir toutes les opérations', href: '/finance', icon: Wallet },
   { key: 'items', title: 'Espace Items', subtitle: 'Voir le catalogue items', href: '/items', icon: Box },
-  { key: 'calculator', title: 'Calculateur', subtitle: 'Outils de calcul', href: '/items?view=tools', icon: Shapes },
-  { key: 'plantations', title: 'Plantations', subtitle: 'Drogues & plantations', href: '/drogues/plantations', icon: Pill },
+  { key: 'calculator', title: 'Calculateur', subtitle: 'Outils de calcul', href: '/drogues', icon: Shapes },
+  { key: 'plantations', title: 'Plantations', subtitle: 'Drogues & plantations', href: '/drogues', icon: Pill },
 ]
 const CARD_OPTIONS: CardOption[] = [
   { key: 'catObjects', title: 'Objets', href: '/items?category=objects', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.objects)) },
-  { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
-  { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
-  { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
-  { key: 'catOther', title: 'Autres', href: '/items?category=custom', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
+  { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Swords, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
+  { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Shield, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
+  { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Pill, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
+  { key: 'catOther', title: 'Autres', href: '/items?category=custom', icon: Shapes, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
   { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
   { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
   { key: 'mvSale', title: 'Ventes', href: '/finance?type=sale', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
-  { key: 'calculator', title: 'Calculateur', href: '/items?view=tools', icon: Receipt, getValue: () => '→' },
+  { key: 'calculator', title: 'Calculateur', href: '/drogues', icon: Receipt, getValue: () => '→' },
 ]
 
 const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs']
+
+
+function quickActionTone(key: QuickActionKey) {
+  if (key === 'newExpense') return { card: 'border-rose-300/30 from-rose-500/14 to-red-500/14 hover:from-rose-500/26 hover:to-red-500/22', icon: 'border-rose-300/45 bg-rose-500/25 text-rose-50' }
+  if (key === 'itemCreate') return { card: 'border-emerald-300/30 from-emerald-500/14 to-teal-500/14 hover:from-emerald-500/26 hover:to-teal-500/22', icon: 'border-emerald-300/45 bg-emerald-500/25 text-emerald-50' }
+  if (key === 'itemTrade') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
+  if (key === 'finance') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
+  if (key === 'items') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
+  if (key === 'calculator') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
+  return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
+}
 
 function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
   const allowed = new Set(CARD_OPTIONS.map((option) => option.key))
@@ -78,10 +98,11 @@ function createEmptyCategoryCounts(): Record<FinanceCategory, number> {
 }
 
 function createEmptyMovementCounts(): Record<FinanceMovementType, number> {
-  return { expense: 0, purchase: 0, sale: 0, stock_out: 0 }
+  return { expense: 0, purchase: 0, stock_in: 0, sale: 0, stock_out: 0 }
 }
 
 export function DashboardClient() {
+  const themeConfig = useUiThemeConfig()
   const [loading, setLoading] = useState(true)
   const [recentTx, setRecentTx] = useState<Tx[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
@@ -106,6 +127,24 @@ export function DashboardClient() {
   const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
+
+  const iconByName: Record<string, LucideIcon> = {
+    Wallet,
+    PlusCircle,
+    Receipt,
+    Box,
+    Shapes,
+    Pill,
+    Swords,
+    Shield,
+    ShoppingCart,
+    ArrowUpRight,
+    ArrowDownRight,
+  }
+
+  function getBubbleOverride(key: string) {
+    return themeConfig.bubbles[key] || null
+  }
 
 
 
@@ -208,14 +247,14 @@ export function DashboardClient() {
         }
 
         const recentFinanceTransactions: Tx[] = financeEntries
-          .filter((entry) => entry.movement_type === 'purchase' || entry.movement_type === 'sale' || entry.movement_type === 'stock_out')
+          .filter((entry) => entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' || entry.movement_type === 'sale' || entry.movement_type === 'stock_out')
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 8)
           .map((entry) => ({
             id: `${entry.source}-${entry.id}`,
             source: entry.source,
             entry_id: entry.id,
-            type: entry.movement_type === 'purchase' ? 'purchase' : entry.movement_type === 'stock_out' ? 'stock_out' : 'sale',
+            type: entry.movement_type === 'purchase' ? 'purchase' : entry.movement_type === 'stock_in' ? 'stock_in' : entry.movement_type === 'stock_out' ? 'stock_out' : 'sale',
             total: entry.amount ?? null,
             counterparty: entry.member_name || null,
             created_at: entry.created_at,
@@ -279,7 +318,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'finance']
+    const views: ActivityView[] = ['summary', 'transactions', 'expenses']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -311,7 +350,7 @@ export function DashboardClient() {
   }
 
   const financeActivitySummary = useMemo(() => {
-    const totalOps = financeMovementCounts.expense + financeMovementCounts.purchase + financeMovementCounts.sale + financeMovementCounts.stock_out
+    const totalOps = financeMovementCounts.expense + financeMovementCounts.purchase + financeMovementCounts.stock_in + financeMovementCounts.sale + financeMovementCounts.stock_out
     const totalAmountTx = recentTx.reduce((sum, tx) => sum + (Number(tx.total ?? 0) || 0), 0)
     const totalAmountExpenses = recentExpenses.reduce((sum, expense) => sum + (Number(expense.total ?? 0) || 0), 0)
     return {
@@ -322,31 +361,6 @@ export function DashboardClient() {
   }, [financeMovementCounts, recentExpenses, recentTx])
 
 
-  const mergedFinanceActivity = useMemo(() => {
-    const txRows = recentTx.map((tx) => ({
-      id: `tx-${tx.id}`,
-      label: tx.type === 'purchase' ? 'Transaction achat' : tx.type === 'stock_out' ? 'Sortie stock' : 'Transaction vente',
-      detail: tx.counterparty || 'Interlocuteur non renseigné',
-      amount: tx.total,
-      href: `/finance/transactions/${tx.source}/${encodeURIComponent(tx.entry_id)}`,
-      createdAt: tx.created_at,
-      imageUrl: tx.item_image_url,
-    }))
-
-    const expenseRows = recentExpenses.map((expense) => ({
-      id: `expense-${expense.id}`,
-      label: 'Dépense',
-      detail: expense.item_label,
-      amount: expense.total,
-      href: '/finance?type=expense',
-      createdAt: expense.created_at,
-      imageUrl: expense.item_image_url,
-    }))
-
-    return [...txRows, ...expenseRows]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8)
-  }, [recentExpenses, recentTx])
 
 
   function addQuickAction(actionKey: QuickActionKey) {
@@ -432,14 +446,64 @@ export function DashboardClient() {
           )) : null}
           {uiLayoutsReady ? dashboardCards.map((cardKey, idx) => {
             const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
-            const Icon = card.icon
+            const override = getBubbleOverride(`dashboard.card.${card.key}`)
+            const Icon = (override?.icon && iconByName[override.icon]) ? iconByName[override.icon] : card.icon
             return (
               <div key={`${card.key}-${idx}`} className="select-none touch-none" onPointerDown={onCardPointerDown} onPointerUp={onCardPointerEnd} onPointerLeave={onCardPointerEnd} onPointerCancel={onCardPointerEnd} onClickCapture={onCardClickCapture}>
-              <StatCard title={card.title} value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })} icon={<Icon className="h-5 w-5" />} href={card.href} />
+              <StatCard
+                title={override?.label || card.title}
+                value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })}
+                icon={<Icon className="h-5 w-5" />}
+                bubbleStyle={{
+                  bgColor: override?.bgColor,
+                  borderColor: override?.borderColor,
+                  textColor: override?.textColor,
+                  iconBgColor: override?.iconBgColor,
+                  iconColor: override?.iconColor,
+                }}
+                tone={
+                  card.key === 'catWeapons' ? 'rose'
+                    : card.key === 'catEquipment' ? 'amber'
+                    : card.key === 'catDrugs' ? 'emerald'
+                    : card.key === 'catObjects' ? 'cyan'
+                    : card.key === 'catOther' ? 'amber'
+                    : card.key === 'mvExpense' ? 'amber'
+                    : card.key === 'mvPurchase' ? 'emerald'
+                    : card.key === 'mvSale' ? 'rose'
+                    : 'slate'
+                }
+                href={card.href}
+              />
               </div>
             )
           }) : null}
         </div>
+
+        {themeConfig.customDashboardBubbles.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {themeConfig.customDashboardBubbles.map((entry) => {
+              const Icon = (entry.icon && iconByName[entry.icon]) ? iconByName[entry.icon] : Shapes
+              const bubbleStyle: BubbleStyle = {
+                bgColor: entry.bgColor,
+                borderColor: entry.borderColor,
+                textColor: entry.textColor,
+                iconBgColor: entry.bgColor,
+                iconColor: entry.textColor,
+              }
+              return (
+                <StatCard
+                  key={entry.id}
+                  title={entry.title}
+                  value={entry.value || '—'}
+                  icon={<Icon className="h-5 w-5" />}
+                  tone="slate"
+                  href={entry.href}
+                  bubbleStyle={bubbleStyle}
+                />
+              )
+            })}
+          </div>
+        ) : null}
 
         <Panel>
           <div className="flex items-center justify-between gap-3">
@@ -451,18 +515,17 @@ export function DashboardClient() {
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
-              ['summary', 'Résumé'],
-              ['transactions', 'Transactions'],
-              ['expenses', 'Dépenses'],
-              ['finance', 'Flux Finance'],
-            ].map(([key, label]) => (
+              { key: 'summary', label: 'Résumé', active: 'border-violet-300/65 bg-gradient-to-r from-violet-500/35 to-fuchsia-500/30 text-violet-50', idle: 'border-violet-300/25 bg-violet-500/10 text-violet-100/85 hover:bg-violet-500/18' },
+              { key: 'transactions', label: 'Transactions', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
+              { key: 'expenses', label: 'Dépenses', active: 'border-amber-300/65 bg-gradient-to-r from-amber-500/35 to-orange-500/30 text-amber-50', idle: 'border-amber-300/25 bg-amber-500/10 text-amber-100/85 hover:bg-amber-500/18' },
+            ].map((tab) => (
               <button
-                key={key}
+                key={tab.key}
                 type="button"
-                onClick={() => selectActivity(key as ActivityView)}
-                className={`rounded-lg border px-2.5 py-1 text-xs ${activityView === key ? 'border-white/30 bg-white/15 text-white' : 'border-white/10 bg-white/5 text-white/70'}`}
+                onClick={() => selectActivity(tab.key as ActivityView)}
+                className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${activityView === tab.key ? tab.active : tab.idle}`}
               >
-                {label}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -514,13 +577,13 @@ export function DashboardClient() {
                     <p className="truncate text-sm font-medium">
                       <span
                         className={`mr-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
-                          t.type === 'purchase'
+                          t.type === 'purchase' || t.type === 'stock_in'
                             ? 'border-emerald-300/40 bg-emerald-500/10 text-emerald-100'
                             : 'border-orange-300/40 bg-orange-500/10 text-orange-100'
                         }`}
                       >
-                        {t.type === 'purchase' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
-                        {t.type === 'purchase' ? 'Entrée' : 'Sortie'}
+                        {t.type === 'purchase' || t.type === 'stock_in' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                        {t.type === 'purchase' || t.type === 'stock_in' ? 'Entrée' : 'Sortie'}
                       </span>
                       {t.counterparty ? `• ${t.counterparty}` : '• Interlocuteur non renseigné'}
                     </p>
@@ -557,31 +620,6 @@ export function DashboardClient() {
                 ))
               )
             ) : null}
-            {activityView === 'finance' ? (
-              mergedFinanceActivity.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité Finance récente.</div>
-              ) : (
-                mergedFinanceActivity.map((entry) => (
-                  <Link href={entry.href} key={entry.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-                        {entry.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={entry.imageUrl} alt={entry.label} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{entry.label} • {entry.detail}</p>
-                        <p className="text-xs text-white/60">{new Date(entry.createdAt).toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm font-semibold text-white/80">{entry.amount ?? '—'}{entry.amount != null ? '$' : ''}</p>
-                  </Link>
-                ))
-              )
-            ) : null}
           </div>
         </Panel>
 
@@ -592,8 +630,8 @@ export function DashboardClient() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">Quick actions</h3>
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setQuickModalOpen(true)} className="rounded-md border border-white/10 bg-white/5 px-2 text-xs">+</button>
-              <button type="button" onClick={() => setQuickRemoveMode((v) => !v)} className={`rounded-md border px-2 text-xs ${quickRemoveMode ? 'border-rose-300/40 bg-rose-500/20' : 'border-white/10 bg-white/5'}`}>−</button>
+              <button type="button" onClick={() => setQuickModalOpen(true)} className="rounded-md border border-sky-300/60 bg-sky-500/25 px-2 text-xs font-semibold text-sky-50">+</button>
+              <button type="button" onClick={() => setQuickRemoveMode((v) => !v)} className="rounded-md border border-rose-300/60 bg-rose-500/30 px-2 text-xs font-semibold text-rose-50">−</button>
             </div>
           </div>
           <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
@@ -604,13 +642,20 @@ export function DashboardClient() {
             {uiLayoutsReady ? quickActions.map((actionKey, idx) => {
               const action = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey) || QUICK_ACTION_OPTIONS[idx]
               if (!action) return null
-              const Icon = action.icon
+              const override = getBubbleOverride(`dashboard.quick.${action.key}`)
+              const Icon = (override?.icon && iconByName[override.icon]) ? iconByName[override.icon] : action.icon
+              const tone = quickActionTone(action.key)
               return (
-                <Link key={`${action.key}-${idx}`} href={action.href} className="group flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]">
+                <Link
+                  key={`${action.key}-${idx}`}
+                  href={action.href}
+                  className={`group flex items-center justify-between rounded-xl border bg-gradient-to-r px-3 py-2.5 transition ${tone.card}`}
+                  style={{ background: override?.bgColor || undefined, borderColor: override?.borderColor || undefined, color: override?.textColor || undefined }}
+                >
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><Icon className="h-4 w-4" /></span>
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${tone.icon}`} style={{ background: override?.iconBgColor || undefined, color: override?.iconColor || undefined, borderColor: override?.borderColor || undefined }}><Icon className="h-4 w-4" /></span>
                     <div>
-                      <p className="text-sm font-medium">{action.title}</p>
+                      <p className="text-sm font-medium">{override?.label || action.title}</p>
                       <p className="text-xs text-white/60">{action.subtitle}</p>
                     </div>
                   </div>
@@ -622,7 +667,7 @@ export function DashboardClient() {
                           e.preventDefault()
                           removeQuickAction(action.key)
                         }}
-                        className="rounded-md border border-rose-300/40 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-100"
+                        className="rounded-md border border-rose-300/60 bg-gradient-to-r from-rose-600/50 to-orange-500/35 px-1.5 py-0.5 text-[10px] text-rose-50"
                       >
                         Retirer
                       </button>

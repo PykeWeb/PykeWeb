@@ -1,6 +1,6 @@
 export type FinanceEntrySource = 'finance_transactions' | 'transactions' | 'expenses'
 
-export type FinanceEntryMovementKind = 'expense' | 'purchase' | 'sale'
+export type FinanceEntryMovementKind = 'expense' | 'purchase' | 'stock_in' | 'sale' | 'stock_out'
 
 export type FinanceEntryDetailLine = {
   name: string

@@ -44,17 +44,17 @@ export function buildDrugCalculatorResult(mode: DrugCalcMode, quantity: number, 
 
   if (mode === 'coke') {
     return normalizeRequirements([
-      { label: 'Pots', qty, unitPrice: 10 },
+      { label: 'Pot', qty, unitPrice: 10 },
       { label: 'Fertilisant', qty, unitPrice: 10 },
-      { label: 'Lampes', qty: Math.ceil(qty / 9), unitPrice: 36 },
-      { label: 'Eau', qty: qty * 3, unitPrice: findPriceByKeywords(items, ['eau', 'water']) },
+      { label: 'Lampe', qty: Math.ceil(qty / 9), unitPrice: 36 },
+      { label: "Bouteille d'eau", qty: qty * 3, unitPrice: findPriceByKeywords(items, ["bouteille d'eau", 'eau', 'water']) },
     ])
   }
 
   return normalizeRequirements([
-    { label: 'Tables', qty, unitPrice: findPriceByKeywords(items, ['table']) },
-    { label: 'Meth', qty, unitPrice: findPriceByKeywords(items, ['meth']) },
-    { label: 'Batteries', qty: qty * 2, unitPrice: findPriceByKeywords(items, ['batterie', 'battery']) },
+    { label: 'Table', qty, unitPrice: findPriceByKeywords(items, ['table']) },
+    { label: 'Machine de Meth', qty, unitPrice: findPriceByKeywords(items, ['machine de meth', 'meth']) },
+    { label: 'Batterie', qty: qty * 2, unitPrice: findPriceByKeywords(items, ['batterie', 'battery']) },
     { label: 'Ammoniaque', qty: qty * 16, unitPrice: findPriceByKeywords(items, ['ammoniaque']) },
     { label: 'Methylamine', qty: qty * 15, unitPrice: findPriceByKeywords(items, ['methylamine']) },
   ])

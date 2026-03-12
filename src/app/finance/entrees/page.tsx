@@ -7,8 +7,9 @@ import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
+import { markStockInNote } from '@/lib/financeStockFlow'
 
-export default function FinanceSortiesPage() {
+export default function FinanceEntreesPage() {
   const router = useRouter()
   const [initialItems, setInitialItems] = useState<CatalogItem[]>([])
 
@@ -23,29 +24,30 @@ export default function FinanceSortiesPage() {
       <FinanceItemTradeModal
         inline
         open
-        mode="sell"
+        mode="buy"
         hideUnitPrice
-        titleOverride={copy.finance.stockFlow.stockOutTitle}
-        subtitleOverride={copy.finance.stockFlow.stockOutSubtitle}
-        showModeBadge={false}
+        titleOverride={copy.finance.stockFlow.stockInTitle}
+        subtitleOverride={copy.finance.stockFlow.stockInSubtitle}
+        showModeBadge
+        modeBuyLabel={copy.finance.stockFlow.stockInModeLabel}
         initialItems={initialItems}
         onClose={() => router.push('/finance')}
         onSubmit={async (payload) => {
           const reason = payload.notes?.trim() || ''
           if (!reason) {
-            throw new Error(copy.finance.stockFlow.stockOutReasonRequired)
+            throw new Error(copy.finance.stockFlow.stockInReasonRequired)
           }
 
           await createFinanceTransaction({
             item_id: payload.item.id,
-            mode: 'sell',
+            mode: 'buy',
             quantity: payload.quantity,
             unit_price: 0,
             counterparty: payload.counterparty,
-            notes: reason,
-            payment_mode: 'stock_out',
+            notes: markStockInNote(reason),
+            payment_mode: 'other',
           })
-          toast.success(copy.finance.stockFlow.stockOutSaved)
+          toast.success(copy.finance.stockFlow.stockInSaved)
           router.push('/finance')
           router.refresh()
         }}

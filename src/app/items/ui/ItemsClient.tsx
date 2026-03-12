@@ -3,20 +3,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Box, Calculator, Factory, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
+import { Box, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
-import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, SegmentedTabs, TabPill } from '@/components/ui/design-system'
+import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { createFinanceTransaction, deleteCatalogItem, listCatalogItemsUnified } from '@/lib/itemsApi'
-import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
-import { getCategoryLabel, getTypeLabel } from '@/lib/catalogConfig'
+import { getCategoryLabel, getTypeFilterOptions, getTypeLabel, matchesTypeFilter, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
-type TypeFilter = 'all' | ItemType
+type TypeFilter = UnifiedTypeFilterValue
 type ItemsView = 'catalog' | 'tools'
 
 type PlantationRecipe = {
@@ -28,18 +29,22 @@ type PlantationRecipe = {
   default_output_per_run: number
 }
 
+function normalizeItemName(value: string) {
+  return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+}
+
 const plantationRecipes: PlantationRecipe[] = [
   {
     key: 'coke-leaf',
     title: 'Plantation coke (1 pot)',
-    subtitle: '1 pot + 1 graine + 1 engrais + 3 eau = 1 feuille',
+    subtitle: "1 pot + 1 graine + 1 fertilisant + 3 bouteilles d'eau = 1 feuille",
     requirements: [
       { name: 'Pot', qty: 1 },
       { name: 'Graine de coke', qty: 1 },
-      { name: 'Engrais', qty: 1 },
-      { name: 'Eau', qty: 3 },
+      { name: 'Fertilisant', qty: 1 },
+      { name: "Bouteille d'eau", qty: 3 },
     ],
-    output_name: 'Feuille de coke',
+    output_name: 'Feuille de Cocaïne',
     default_output_per_run: 1,
   },
   {
@@ -48,7 +53,7 @@ const plantationRecipes: PlantationRecipe[] = [
     subtitle: 'Table + meth + batteries + chimie = 10 à 30 meth brut',
     requirements: [
       { name: 'Table', qty: 1 },
-      { name: 'Meth', qty: 1 },
+      { name: 'Machine de Meth', qty: 1 },
       { name: 'Batterie', qty: 2 },
       { name: 'Ammoniaque', qty: 16 },
       { name: 'Methylamine', qty: 15 },
@@ -69,12 +74,13 @@ const plantationDefaultOutputPerRun = plantationRecipes.reduce<Record<string, st
 }, {})
 
 
-export default function ItemsClient() {
+export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?: ItemsView }) {
+  const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<CatalogItem[]>([])
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [type, setType] = useState<TypeFilter>('all')
-  const [view, setView] = useState<ItemsView>('catalog')
+  const [view, setView] = useState<ItemsView>(defaultView)
   const [itemActionEntry, setItemActionEntry] = useState<{ id: string; name: string } | null>(null)
   const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null)
   const [calcMode, setCalcMode] = useState<DrugCalcMode>('coke')
@@ -127,16 +133,14 @@ export default function ItemsClient() {
   }, [refresh, view])
 
   const typeOptions = useMemo(() => {
-    const pool = items.filter((x) => (category === 'all' ? true : x.category === category))
-    const dynamicTypes = Array.from(new Set(pool.map((x) => x.item_type))).map((value) => ({ value, label: getTypeLabel(value) }))
-    return [{ value: 'all', label: copy.common.allTypes }, ...dynamicTypes]
-  }, [items, category])
+    return getTypeFilterOptions(category)
+  }, [category])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items.filter((it) => {
       if (category !== 'all' && it.category !== category) return false
-      if (type !== 'all' && it.item_type !== type) return false
+      if (!matchesTypeFilter(it, category, type)) return false
       if (!q) return true
       return `${it.name} ${it.internal_id} ${it.description || ''}`.toLowerCase().includes(q)
     })
@@ -154,11 +158,58 @@ export default function ItemsClient() {
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
 
-  const findItemByName = useCallback((name: string) => {
-    const normalize = (value: string) => value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
-    const needle = normalize(name)
-    return items.find((item) => normalize(item.name) === needle) || null
+
+  const itemsByNormalizedName = useMemo(() => {
+    const map = new Map<string, CatalogItem>()
+    for (const item of items) {
+      map.set(normalizeItemName(item.name), item)
+    }
+    return map
   }, [items])
+
+  const findItemByName = useCallback((name: string) => {
+    return itemsByNormalizedName.get(normalizeItemName(name)) || null
+  }, [itemsByNormalizedName])
+
+  const findItemForLabel = useCallback((label: string) => {
+    const aliases: Record<string, string[]> = {
+      "bouteille d'eau": ["bouteille d'eau", "eau"],
+      "machine de meth": ["machine de meth", "meth"],
+      fertilisant: ["fertilisant", "engrais"],
+      pot: ["pot", "pots"],
+      lampe: ["lampe", "lampes"],
+      table: ["table", "tables"],
+      batterie: ["batterie", "batteries"],
+    }
+    const normalized = normalizeItemName(label)
+    const candidates = aliases[normalized] || [normalized]
+
+    for (const candidate of candidates) {
+      const exact = itemsByNormalizedName.get(candidate)
+      if (exact) return exact
+    }
+
+    return null
+  }, [itemsByNormalizedName])
+
+
+  const calculatorTotals = useMemo(() => {
+    const totalRequiredItems = drugCalculator.requirements.reduce((sum, req) => sum + Math.max(0, req.qty || 0), 0)
+    const withStock = drugCalculator.requirements.reduce((sum, req) => {
+      const item = findItemForLabel(req.label)
+      return sum + Math.max(0, Number(item?.stock || 0))
+    }, 0)
+    const totalMissing = drugCalculator.requirements.reduce((sum, req) => {
+      const item = findItemForLabel(req.label)
+      const stock = Math.max(0, Number(item?.stock || 0))
+      return sum + Math.max(0, req.qty - stock)
+    }, 0)
+    return { totalRequiredItems, withStock, totalMissing }
+  }, [drugCalculator, findItemForLabel])
+
+  const selectedCalculatorRecipe = useMemo(() => plantationRecipes.find((recipe) => recipe.key === (calcMode === 'coke' ? 'coke-leaf' : 'meth')) || null, [calcMode])
+  const selectedCalculatorRuns = selectedCalculatorRecipe ? (plantationRuns[selectedCalculatorRecipe.key] || '1') : '1'
+  const selectedCalculatorOutput = selectedCalculatorRecipe ? (plantationOutputPerRun[selectedCalculatorRecipe.key] || String(selectedCalculatorRecipe.default_output_per_run)) : '1'
 
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
     const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
@@ -255,26 +306,7 @@ export default function ItemsClient() {
   }, [items])
 
   return (
-    <Panel>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SegmentedTabs
-          options={[
-            { value: 'catalog', label: 'Catalogue' },
-            { value: 'tools', label: 'Calculateur & plantations' },
-          ]}
-          value={view}
-          onChange={setView}
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/items/achat-vente">
-            <SecondaryButton>Achat / Vente</SecondaryButton>
-          </Link>
-          <Link href="/items/nouveau">
-            <PrimaryButton>{copy.common.createItem}</PrimaryButton>
-          </Link>
-        </div>
-      </div>
-
+    <Panel className={view === 'tools' ? 'border-0 bg-transparent p-0 shadow-none' : undefined}>
       {view === 'catalog' ? (
         <>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -284,15 +316,49 @@ export default function ItemsClient() {
               { key: 'weapons', label: 'Armes', value: categoryCounts.weapons, icon: Swords },
               { key: 'equipment', label: 'Équipement', value: categoryCounts.equipment, icon: Shield },
               { key: 'drugs', label: 'Drogues', value: categoryCounts.drugs, icon: Pill },
-              { key: 'custom', label: 'Autres', value: categoryCounts.other, icon: Shapes },
+              { key: 'custom', label: 'Autres\u200b', value: categoryCounts.other, icon: Shapes },
             ].map((card) => {
               const Icon = card.icon
+              const uiKey = `items.category.${card.key}`
+              const override = themeConfig.bubbles[uiKey]
               return (
                 <button
                   key={card.key}
                   type="button"
+                  data-bubble-key={uiKey}
                   onClick={() => { setCategory(card.key as CategoryFilter); setType('all') }}
-                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${category === card.key ? 'border-cyan-300/40 bg-cyan-500/12' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'}`}
+                  style={{
+                    background: override?.bgColor || undefined,
+                    borderColor: override?.borderColor || undefined,
+                    color: override?.textColor || undefined,
+                    minWidth: override?.minWidthPx ? `${override.minWidthPx}px` : undefined,
+                    minHeight: override?.minHeightPx ? `${override.minHeightPx}px` : undefined,
+                  }}
+                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
+                    category === card.key
+                      ? card.key === 'objects'
+                        ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                        : card.key === 'weapons'
+                          ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
+                          : card.key === 'equipment'
+                            ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
+                            : card.key === 'drugs'
+                              ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                              : card.key === 'custom'
+                                ? 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
+                                : 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22'
+                      : card.key === 'objects'
+                        ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
+                        : card.key === 'weapons'
+                          ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+                          : card.key === 'equipment'
+                            ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+                            : card.key === 'drugs'
+                              ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+                              : card.key === 'custom'
+                                ? 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
+                                : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs text-white/70">{card.label}</p>
@@ -314,6 +380,11 @@ export default function ItemsClient() {
                 {opt.label}
               </TabPill>
             ))}
+            <div className="ml-auto">
+              <Link href="/items/nouveau">
+                <PrimaryButton>{copy.common.createItem}</PrimaryButton>
+              </Link>
+            </div>
           </div>
 
           <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
@@ -356,12 +427,9 @@ export default function ItemsClient() {
           </div>
         </>
       ) : (
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Calculator className="h-4 w-4" />
-              <h3 className="text-sm font-semibold">Calculateur drogue (Items)</h3>
-            </div>
+            <h3 className="mb-3 text-sm font-semibold">Calculateur drogue (Items)</h3>
             <div className="grid gap-3 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs text-white/60">Mode</label>
@@ -383,76 +451,93 @@ export default function ItemsClient() {
                 </div>
               </div>
             </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {drugCalculator.requirements.map((req) => (
-                <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
-                  <div className="font-medium">{req.label}</div>
-                  <div className="text-white/70">Qté: {req.qty} · PU : {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
-                  <div className="text-white/80">Sous-total: {req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</div>
-                </div>
-              ))}
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-cyan-100/80">Items requis (total)</p>
+                <p className="text-xl font-semibold">{calculatorTotals.totalRequiredItems}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-emerald-100/80">Stock cumulé (items liés)</p>
+                <p className="text-xl font-semibold">{calculatorTotals.withStock}</p>
+              </div>
+              <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-rose-100/80">Manque estimé</p>
+                <p className="text-xl font-semibold">{calculatorTotals.totalMissing}</p>
+              </div>
             </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {drugCalculator.requirements.map((req) => {
+                const requirementItem = findItemForLabel(req.label)
+                const stock = Math.max(0, Number(requirementItem?.stock || 0))
+                const missing = Math.max(0, req.qty - stock)
+                return (
+                  <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                        {requirementItem?.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={requirementItem.image_url} alt={req.label} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-white/40">
+                            <ImageIcon className="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="font-medium">{req.label}</div>
+                    </div>
+                    <div className="mt-2 grid gap-1.5 text-xs">
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Besoin total</span><span className="font-semibold">{req.qty}</span></div>
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Stock actuel</span><span className="font-semibold">{stock}</span></div>
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Manque</span><span className={`font-semibold ${missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{missing}</span></div>
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">PU</span><span className="font-semibold">{req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</span></div>
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Sous-total</span><span className="font-semibold">{req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</span></div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {selectedCalculatorRecipe ? (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <label className="text-xs text-white/65">
+                  Nb plantations
+                  <div className="mt-1 flex items-center gap-1">
+                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', -1, 0)}>-</SecondaryButton>
+                    <Input
+                      value={selectedCalculatorRuns}
+                      onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
+                      inputMode="numeric"
+                      className="h-9 rounded-lg px-2 text-sm"
+                    />
+                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', 1, 0)}>+</SecondaryButton>
+                  </div>
+                </label>
+                <label className="text-xs text-white/65">
+                  Production reçue / plantation
+                  <div className="mt-1 flex items-center gap-1">
+                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', -1, selectedCalculatorRecipe.default_output_per_run)}>-</SecondaryButton>
+                    <Input
+                      value={selectedCalculatorOutput}
+                      onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
+                      inputMode="numeric"
+                      className="h-9 rounded-lg px-2 text-sm"
+                    />
+                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', 1, selectedCalculatorRecipe.default_output_per_run)}>+</SecondaryButton>
+                  </div>
+                </label>
+              </div>
+            ) : null}
             {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
+            {selectedCalculatorRecipe ? (
+              <PrimaryButton
+                className="mt-3 w-full"
+                disabled={realizingRecipeKey === selectedCalculatorRecipe.key}
+                onClick={() => { void realizePlantation(selectedCalculatorRecipe) }}
+              >
+                {realizingRecipeKey === selectedCalculatorRecipe.key ? 'Validation...' : 'Plantation réalisée'}
+              </PrimaryButton>
+            ) : null}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Factory className="h-4 w-4" />
-              <h3 className="text-sm font-semibold">Contenu plantations</h3>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {plantationRecipes.map((recipe) => (
-                <div key={recipe.key} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                  <p className="text-sm font-semibold">{recipe.title}</p>
-                  <p className="mt-1 text-xs text-white/65">{recipe.subtitle}</p>
-                  <div className="mt-3 space-y-2 text-xs text-white/75">
-                    {recipe.requirements.map((req) => (
-                      <div key={req.name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                        <span>{req.name}</span>
-                        <span>× {req.qty}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">Production : {recipe.output_name}</p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <label className="text-xs text-white/65">
-                      Nb plantations
-                      <div className="mt-1 flex items-center gap-1">
-                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'runs', -1, 0)}>-</SecondaryButton>
-                        <Input
-                          value={plantationRuns[recipe.key] || '0'}
-                          onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
-                          inputMode="numeric"
-                          className="h-9 rounded-lg px-2 text-sm"
-                        />
-                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'runs', 1, 0)}>+</SecondaryButton>
-                      </div>
-                    </label>
-                    <label className="text-xs text-white/65">
-                      Production reçue / plantation
-                      <div className="mt-1 flex items-center gap-1">
-                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'output', -1, recipe.default_output_per_run)}>-</SecondaryButton>
-                        <Input
-                          value={plantationOutputPerRun[recipe.key] || String(recipe.default_output_per_run)}
-                          onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
-                          inputMode="numeric"
-                          className="h-9 rounded-lg px-2 text-sm"
-                        />
-                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'output', 1, recipe.default_output_per_run)}>+</SecondaryButton>
-                      </div>
-                    </label>
-                  </div>
-                  <PrimaryButton
-                    className="mt-3 w-full"
-                    disabled={realizingRecipeKey === recipe.key}
-                    onClick={() => { void realizePlantation(recipe) }}
-                  >
-                    {realizingRecipeKey === recipe.key ? 'Validation...' : 'Plantation réalisée'}
-                  </PrimaryButton>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 

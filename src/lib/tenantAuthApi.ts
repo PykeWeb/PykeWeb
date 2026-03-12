@@ -15,6 +15,7 @@ export type TenantGroup = {
   badge: string | null
   login: string
   password: string
+  password_member?: string | null
   active: boolean
   paid_until: string | null
   created_at?: string
@@ -104,6 +105,6 @@ export async function loginTenant(login: string, password: string, remember = tr
     body: JSON.stringify({ login, password, remember }),
   })
   if (!res.ok) throw new Error(await readApiError(res))
-  const json = (await res.json()) as { group: TenantGroup }
-  return json.group
+  const json = (await res.json()) as { group: TenantGroup; session: { groupId: string; groupName: string; groupBadge?: string | null; isAdmin?: boolean; role?: 'chef' | 'member' } }
+  return json
 }

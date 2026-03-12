@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import type { FinanceEntryDetail, FinanceEntryDetailLine, FinanceEntryDetailResponse, FinanceEntrySource } from '@/lib/types/financeDetail'
 import { requireGroupSession } from '@/server/auth/requireSession'
+import { isStockInNote, stripStockFlowMarker } from '@/lib/financeStockFlow'
 
 type RouteParams = { params: { source: string; id: string } }
 
@@ -263,10 +264,10 @@ export async function GET(request: Request, { params }: RouteParams) {
         id,
         source: 'finance_transactions',
         display_name: isMulti ? 'Transaction multiple' : lines[0].name,
-        movement_kind: first.mode === 'sell' ? 'sale' : 'purchase',
+        movement_kind: first.mode === 'sell' ? (first.payment_mode === 'stock_out' ? 'stock_out' : 'sale') : ((first.payment_mode === 'stock_in' || isStockInNote(first.notes)) ? 'stock_in' : 'purchase'),
         created_at: first.created_at,
         counterparty: first.counterparty,
-        notes: first.notes,
+        notes: stripStockFlowMarker(first.notes),
         payment_mode: first.payment_mode,
         quantity: sumQuantity(lines),
         total: sumTotal(lines),

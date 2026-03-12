@@ -3,17 +3,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Box, Image as ImageIcon, Pill, Search, Shapes, Shield, Swords } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
-import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
+import { DangerButton, PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
-import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
-import { categoryTypeOptions, getTypeLabel } from '@/lib/catalogConfig'
+import { getTypeFilterOptions, getTypeLabel, matchesTypeFilter, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
-type TypeFilter = 'all' | ItemType
+type TypeFilter = UnifiedTypeFilterValue
 
 type TradeLine = {
   itemId: string
@@ -42,6 +43,8 @@ export function FinanceItemTradeModal({
   titleOverride,
   subtitleOverride,
   showModeBadge = true,
+  modeBuyLabel,
+  modeSellLabel,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -55,7 +58,10 @@ export function FinanceItemTradeModal({
   titleOverride?: string
   subtitleOverride?: string
   showModeBadge?: boolean
+  modeBuyLabel?: string
+  modeSellLabel?: string
 }) {
+  const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
   const [category, setCategory] = useState<CategoryFilter>('all')
@@ -67,6 +73,9 @@ export function FinanceItemTradeModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingItems, setLoadingItems] = useState(false)
+
+  const buyModeLabel = modeBuyLabel || copy.finance.trade.modeBuy
+  const sellModeLabel = modeSellLabel || copy.finance.trade.modeSell
 
   useEffect(() => {
     setTradeMode(mode)
@@ -89,19 +98,15 @@ export function FinanceItemTradeModal({
   }, [open, initialItems])
 
   const typeOptions = useMemo(() => {
-    if (category === 'all') {
-      const values = Array.from(new Set(items.map((it) => it.item_type)))
-      return [{ value: 'all', label: copy.common.allTypes }, ...values.map((value) => ({ value, label: getTypeLabel(value) }))]
-    }
-    return [{ value: 'all', label: copy.common.allTypes }, ...categoryTypeOptions[category]]
-  }, [category, items])
+    return getTypeFilterOptions(category)
+  }, [category])
 
   const filtered = useMemo(() => {
     const search = itemSearch.trim().toLowerCase()
     return items
       .filter((it) => (hideUnitPrice && tradeMode === 'sell' ? Math.max(0, Number(it.stock) || 0) > 0 : true))
       .filter((it) => (category === 'all' ? true : it.category === category))
-      .filter((it) => (type === 'all' ? true : it.item_type === type))
+      .filter((it) => matchesTypeFilter(it, category, type))
       .filter((it) => {
         if (!search) return true
         return `${it.name} ${it.internal_id}`.toLowerCase().includes(search)
@@ -201,18 +206,18 @@ export function FinanceItemTradeModal({
           <div>
             {enableModeSelect ? (
               <div className="flex flex-wrap items-center gap-2">
-                <TabPill active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
+                <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-emerald-300/60 data-[active=true]:bg-emerald-500/25 data-[active=true]:text-emerald-50" active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
                   <ArrowDownRight className="h-4 w-4" />
-                  {copy.finance.trade.modeBuy}
+                  {buyModeLabel}
                 </TabPill>
-                <TabPill active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
+                <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-rose-300/60 data-[active=true]:bg-rose-500/25 data-[active=true]:text-rose-50" active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
                   <ArrowUpRight className="h-4 w-4" />
-                  {copy.finance.trade.modeSell}
+                  {sellModeLabel}
                 </TabPill>
               </div>
             ) : showModeBadge ? (
               <div className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs text-white/70">
-                {tradeMode === 'buy' ? copy.finance.trade.modeBuy : copy.finance.trade.modeSell}
+                {tradeMode === 'buy' ? buyModeLabel : sellModeLabel}
               </div>
             ) : null}
           </div>
@@ -234,23 +239,55 @@ export function FinanceItemTradeModal({
               { key: 'weapons', label: 'Armes', icon: Swords },
               { key: 'equipment', label: 'Équipement', icon: Shield },
               { key: 'drugs', label: 'Drogues', icon: Pill },
-              { key: 'custom', label: 'Autres', icon: Shapes },
+              { key: 'custom', label: 'Autres\u200b', icon: Shapes },
             ].map((option) => {
               const cardQty = items.reduce((total, item) => {
                 if (option.key !== 'all' && item.category !== option.key) return total
                 return total + Math.max(0, Number(item.stock) || 0)
               }, 0)
               const Icon = option.icon
+              const bubbleKey = `finance.trade.category.${option.key}`
+              const bubble = themeConfig.bubbles[bubbleKey]
               return (
                 <button
                   key={option.key}
                   type="button"
+                  data-bubble-key={bubbleKey}
                   onClick={() => {
                     setCategory(option.key as CategoryFilter)
                     setType('all')
                   }}
+                  style={{
+                    background: bubble?.bgColor || undefined,
+                    borderColor: bubble?.borderColor || undefined,
+                    color: bubble?.textColor || undefined,
+                    minWidth: bubble?.minWidthPx ? `${bubble.minWidthPx}px` : undefined,
+                    minHeight: bubble?.minHeightPx ? `${bubble.minHeightPx}px` : undefined,
+                  }}
                   className={`rounded-xl border px-2.5 py-2.5 text-left transition min-h-[82px] ${
-                    category === option.key ? 'border-white/25 bg-white/[0.12]' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                    category === option.key
+                      ? option.key === 'objects'
+                        ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                        : option.key === 'weapons'
+                          ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-orange-500/25'
+                          : option.key === 'equipment'
+                            ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
+                            : option.key === 'drugs'
+                              ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                              : option.key === 'custom'
+                                ? 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
+                                : 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22'
+                      : option.key === 'objects'
+                        ? 'border-cyan-300/25 bg-cyan-500/[0.07] hover:bg-cyan-500/[0.14]'
+                        : option.key === 'weapons'
+                          ? 'border-rose-300/25 bg-rose-500/[0.07] hover:bg-rose-500/[0.14]'
+                            : option.key === 'equipment'
+                              ? 'border-amber-300/25 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+                            : option.key === 'drugs'
+                              ? 'border-emerald-300/25 bg-emerald-500/[0.07] hover:bg-emerald-500/[0.14]'
+                              : option.key === 'custom'
+                                ? 'border-slate-300/25 bg-slate-500/[0.07] hover:bg-slate-500/[0.14]'
+                                : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -347,13 +384,13 @@ export function FinanceItemTradeModal({
                           <p className="truncate font-semibold text-white">{entry.item.name}</p>
                           <p className="truncate text-[10px] text-white/65">{getTypeLabel(entry.item.item_type, entry.item.category)}</p>
                         </div>
-                        <SecondaryButton
+                        <DangerButton
                           type="button"
-                          className="h-7 rounded-md border-rose-300/35 bg-rose-500/10 px-2 text-[10px] text-rose-100 hover:bg-rose-500/20"
+                          className="h-7 rounded-md px-2 text-[10px]"
                           onClick={() => removeLine(entry.item.id)}
                         >
                           Retirer
-                        </SecondaryButton>
+                        </DangerButton>
                       </div>
 
                       <div className="mt-1.5 flex items-center justify-between gap-2">

@@ -1,4 +1,4 @@
-import type { ItemCategory, ItemType } from '@/lib/types/itemsFinance'
+import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 
 export const itemCategoryOptions: { value: ItemCategory; label: string }[] = [
   { value: 'objects', label: 'Objets' },
@@ -10,24 +10,70 @@ export const itemCategoryOptions: { value: ItemCategory; label: string }[] = [
 
 export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label: string }[]> = {
   objects: [
-    { value: 'other', label: 'Divers' },
+    { value: 'other', label: 'Objets' },
   ],
   weapons: [
-    { value: 'weapon', label: 'Arme' },
-    { value: 'ammo', label: 'Munition' },
+    { value: 'weapon', label: 'Armes' },
+    { value: 'ammo', label: 'Munitions' },
     { value: 'weapon_accessory', label: "Accessoire d’arme" },
   ],
   equipment: [
-    { value: 'accessory', label: 'Accessoires' },
-    { value: 'other', label: 'Divers' },
+    { value: 'equipment', label: 'Équipement' },
   ],
   drugs: [
     { value: 'seed', label: 'Graine' },
     { value: 'pouch', label: 'Pochon' },
-    { value: 'accessory', label: 'Accessoires' },
-    { value: 'other', label: 'Divers' },
+    { value: 'drug_material', label: 'Matériels' },
+    { value: 'product', label: 'Production\u200b' },
   ],
-  custom: [{ value: 'other', label: 'Autre' }],
+  custom: [{ value: 'other', label: 'Autres\u200b' }],
+}
+
+export type UnifiedTypeFilterValue =
+  | 'all'
+  | 'objects'
+  | 'equipment'
+  | 'weapon'
+  | 'ammo'
+  | 'weapon_accessory'
+  | 'seed'
+  | 'pouch'
+  | 'drug_material'
+  | 'product'
+  | 'other'
+
+export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: UnifiedTypeFilterValue; label: string }[] {
+  if (category === 'all') {
+    return [
+      { value: 'all', label: 'Tous les types' },
+      { value: 'objects', label: 'Objets' },
+      { value: 'equipment', label: 'Équipement' },
+      { value: 'weapon', label: 'Armes' },
+      { value: 'ammo', label: 'Munitions' },
+      { value: 'weapon_accessory', label: "Accessoire d’arme" },
+      { value: 'seed', label: 'Graine' },
+      { value: 'pouch', label: 'Pochon' },
+      { value: 'drug_material', label: 'Matériels' },
+      { value: 'product', label: 'Production\u200b' },
+      { value: 'other', label: 'Autres\u200b' },
+    ]
+  }
+
+  if (category === 'objects') return [{ value: 'all', label: 'Tous' }, { value: 'objects', label: 'Objets' }]
+  if (category === 'equipment') return [{ value: 'all', label: 'Tous' }, { value: 'equipment', label: 'Équipement' }]
+  if (category === 'weapons') return [{ value: 'all', label: 'Tous' }, { value: 'weapon', label: 'Armes' }, { value: 'ammo', label: 'Munitions' }, { value: 'weapon_accessory', label: "Accessoire d’arme" }]
+  if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graine' }, { value: 'pouch', label: 'Pochon' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Production\u200b' }]
+  return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres\u200b' }]
+}
+
+export function matchesTypeFilter(item: CatalogItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
+  if (selectedType === 'all') return true
+  if (selectedCategory === 'all') {
+    if (selectedType === 'objects') return item.category === 'objects'
+    if (selectedType === 'equipment') return item.category === 'equipment'
+    if (selectedType === 'other') return item.category === 'custom'
+  }
+  return normalizeItemType(item.item_type, item.category) === selectedType
 }
 
 export const itemTypeOptions = Object.values(categoryTypeOptions).flatMap((options) => options)
@@ -45,14 +91,14 @@ const legacyToCanonicalCategory: Record<string, ItemCategory> = {
 
 const legacyTypeMap: Record<string, ItemType> = {
   input: 'other',
-  output: 'pouch',
-  production: 'seed',
+  output: 'product',
+  production: 'product',
   consumable: 'consumable',
   weapon: 'weapon',
   equipment: 'equipment',
-  product: 'other',
-  recipe: 'other',
-  drug_material: 'other',
+  product: 'product',
+  recipe: 'drug_material',
+  drug_material: 'drug_material',
   outfit: 'other',
   protection: 'other',
   accessory: 'accessory',
@@ -67,8 +113,14 @@ export function normalizeCatalogCategory(raw: string | null): ItemCategory | nul
 export function normalizeItemType(raw: string | null, category: ItemCategory): ItemType {
   const value = (raw ?? '').toLowerCase().trim()
   const normalized = legacyTypeMap[value] ?? (value as ItemType)
+  const categoryMapped =
+    category === 'drugs' && normalized === 'accessory'
+      ? 'drug_material'
+      : category === 'equipment' && normalized === 'accessory'
+        ? 'equipment'
+        : normalized
   const allowed = new Set(categoryTypeOptions[category].map((opt) => opt.value))
-  if (allowed.has(normalized)) return normalized
+  if (allowed.has(categoryMapped)) return categoryMapped
   if (allowed.has('other')) return 'other'
   return categoryTypeOptions[category][0].value
 }
@@ -81,6 +133,30 @@ export function getTypeLabel(type: ItemType, category?: ItemCategory): string {
   if (category) {
     const scoped = categoryTypeOptions[category].find((option) => option.value === type)
     if (scoped) return scoped.label
+    const normalized = normalizeItemType(type, category)
+    const normalizedScoped = categoryTypeOptions[category].find((option) => option.value === normalized)
+    if (normalizedScoped) return normalizedScoped.label
   }
-  return itemTypeOptions.find((option) => option.value === type)?.label ?? 'Autre'
+  const globalLabels: Record<ItemType, string> = {
+    accessory: 'Matériels',
+    tool: 'Outils',
+    consumable: 'Consommable',
+    material: 'Matériau',
+    weapon: 'Armes',
+    ammo: 'Munitions',
+    weapon_accessory: "Accessoire d’arme",
+    equipment: 'Équipement',
+    outfit: 'Tenue',
+    protection: 'Protection',
+    seed: 'Graine',
+    pouch: 'Pochon',
+    product: 'Production\u200b',
+    recipe: 'Matériels',
+    drug_material: 'Matériels',
+    other: 'Autres\u200b',
+    input: 'Autres',
+    output: 'Production\u200b',
+    production: 'Production\u200b',
+  }
+  return globalLabels[type] ?? 'Autres\u200b'
 }

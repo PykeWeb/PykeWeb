@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowDownRight, ArrowUpRight, Receipt, UserRound, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
-import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
+import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
 import { listFinanceEntries, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
 
@@ -16,6 +16,7 @@ type CounterpartyAggregate = {
   totalAmount: number
   totalCount: number
   purchases: number
+  stockIns: number
   sales: number
   stockOuts: number
   expenses: number
@@ -25,6 +26,7 @@ type CounterpartyAggregate = {
 const typeIcon: Record<FinanceMovementType, JSX.Element> = {
   expense: <Receipt className="h-3.5 w-3.5" />,
   purchase: <ArrowDownRight className="h-3.5 w-3.5" />,
+  stock_in: <ArrowDownRight className="h-3.5 w-3.5" />,
   sale: <ArrowUpRight className="h-3.5 w-3.5" />,
   stock_out: <ArrowUpRight className="h-3.5 w-3.5" />,
 }
@@ -32,6 +34,7 @@ const typeIcon: Record<FinanceMovementType, JSX.Element> = {
 const typeLabel: Record<FinanceMovementType, string> = {
   expense: 'Dépense',
   purchase: 'Achat',
+  stock_in: 'Entrée',
   sale: 'Vente',
   stock_out: 'Sortie',
 }
@@ -47,6 +50,7 @@ function buildCounterpartyStats(entries: FinanceEntry[]): CounterpartyAggregate[
       totalAmount: 0,
       totalCount: 0,
       purchases: 0,
+      stockIns: 0,
       sales: 0,
       stockOuts: 0,
       expenses: 0,
@@ -58,6 +62,7 @@ function buildCounterpartyStats(entries: FinanceEntry[]): CounterpartyAggregate[
     current.totalCount += 1
 
     if (entry.movement_type === 'purchase') current.purchases += 1
+    if (entry.movement_type === 'stock_in') current.stockIns += 1
     if (entry.movement_type === 'sale') current.sales += 1
     if (entry.movement_type === 'stock_out') current.stockOuts += 1
     if (entry.movement_type === 'expense') current.expenses += 1
@@ -123,15 +128,44 @@ export default function CounterpartyStatsClient() {
     [aggregates],
   )
 
+  const allCount = entries.length
+  const expenseCount = entries.filter((entry) => entry.movement_type === 'expense').length
+  const purchaseCount = entries.filter((entry) => entry.movement_type === 'purchase').length
+  const stockInCount = entries.filter((entry) => entry.movement_type === 'stock_in').length
+  const saleCount = entries.filter((entry) => entry.movement_type === 'sale').length
+  const stockOutCount = entries.filter((entry) => entry.movement_type === 'stock_out').length
+
   return (
     <div className="space-y-4">
       <Panel>
-        <div className="flex flex-wrap items-center gap-2">
-          <TabPill active={type === 'all'} onClick={() => setType('all')}>Tous</TabPill>
-          <TabPill active={type === 'expense'} onClick={() => setType('expense')}>Dépenses</TabPill>
-          <TabPill active={type === 'purchase'} onClick={() => setType('purchase')}>Achats</TabPill>
-          <TabPill active={type === 'sale'} onClick={() => setType('sale')}>Ventes</TabPill>
-          <TabPill active={type === 'stock_out'} onClick={() => setType('stock_out')}>Sorties</TabPill>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <button type="button" onClick={() => setType('all')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'all' ? 'border-slate-200/70 from-slate-400/35 to-slate-500/25' : 'border-white/15 from-white/10 to-white/5 hover:from-white/15 hover:to-white/8'}`}>
+            <div className="flex items-center justify-between gap-2 text-slate-100/85"><p className="text-xs">Tous</p><UserRound className="h-4 w-4" /></div>
+            <p className="mt-1 text-xl font-semibold">{allCount}</p>
+          </button>
+          <button type="button" onClick={() => setType('expense')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'expense' ? 'border-amber-200/80 from-amber-500/35 to-orange-500/25' : 'border-amber-300/30 from-amber-500/20 to-orange-500/12 hover:from-amber-500/28 hover:to-orange-500/18'}`}>
+            <div className="flex items-center justify-between gap-2 text-amber-100/85"><p className="text-xs">Dépenses</p><Receipt className="h-4 w-4" /></div>
+            <p className="mt-1 text-xl font-semibold">{expenseCount}</p>
+          </button>
+          <button type="button" onClick={() => setType('purchase')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'purchase' ? 'border-cyan-200/80 from-cyan-500/35 to-blue-500/25' : 'border-cyan-300/30 from-cyan-500/20 to-blue-500/12 hover:from-cyan-500/28 hover:to-blue-500/18'}`}>
+            <div className="flex items-center justify-between gap-2 text-cyan-100/85"><p className="text-xs">Achats</p><ArrowDownRight className="h-4 w-4" /></div>
+            <p className="mt-1 text-xl font-semibold">{purchaseCount}</p>
+          </button>
+          <button type="button" onClick={() => setType('stock_in')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'stock_in' ? 'border-sky-200/80 from-sky-500/35 to-indigo-500/25' : 'border-sky-300/30 from-sky-500/20 to-indigo-500/12 hover:from-sky-500/28 hover:to-indigo-500/18'}`}>
+            <div className="flex items-center justify-between gap-2 text-sky-100/85"><p className="text-xs">Entrées</p><ArrowDownRight className="h-4 w-4" /></div>
+            <p className="mt-1 text-xl font-semibold">{stockInCount}</p>
+          </button>
+          <button type="button" onClick={() => setType('sale')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'sale' ? 'border-violet-200/80 from-violet-500/35 to-fuchsia-500/25' : 'border-violet-300/30 from-violet-500/20 to-fuchsia-500/12 hover:from-violet-500/28 hover:to-fuchsia-500/18'}`}>
+            <div className="flex items-center justify-between gap-2 text-violet-100/85"><p className="text-xs">Ventes</p><ArrowUpRight className="h-4 w-4" /></div>
+            <p className="mt-1 text-xl font-semibold">{saleCount}</p>
+          </button>
+          <button type="button" onClick={() => setType('stock_out')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'stock_out' ? 'border-rose-200/80 from-rose-500/35 to-orange-500/25' : 'border-rose-300/30 from-rose-500/20 to-orange-500/12 hover:from-rose-500/28 hover:to-orange-500/18'}`}>
+            <div className="flex items-center justify-between gap-2 text-rose-100/85"><p className="text-xs">Sorties</p><ArrowUpRight className="h-4 w-4" /></div>
+            <p className="mt-1 text-xl font-semibold">{stockOutCount}</p>
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <SearchInput
             value={q}
             onChange={(event) => setQ(event.target.value)}
@@ -179,7 +213,7 @@ export default function CounterpartyStatsClient() {
                   <div>
                     <p className="text-sm font-semibold">{row.name}</p>
                     <p className="text-xs text-white/60">
-                      {row.totalCount} mouvement(s) · Achats {row.purchases} · Ventes {row.sales} · Sorties {row.stockOuts} · Dépenses {row.expenses}
+                      {row.totalCount} mouvement(s) · Achats {row.purchases} · Entrées {row.stockIns} · Ventes {row.sales} · Sorties {row.stockOuts} · Dépenses {row.expenses}
                     </p>
                   </div>
                   <div className="text-right">

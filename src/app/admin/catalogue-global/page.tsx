@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { Box, Pill, Shapes, Shield, Swords } from 'lucide-react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
@@ -27,6 +29,14 @@ const defaultTypeByCategory: Record<ItemCategory, string> = {
   equipment: categoryTypeOptions.equipment[0]?.value ?? 'other',
   drugs: categoryTypeOptions.drugs[0]?.value ?? 'drug',
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
+}
+
+function categoryPillClass(category: ItemCategory, active: boolean) {
+  if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-r from-cyan-500/35 to-blue-500/25 text-cyan-50' : 'border-cyan-300/25 bg-cyan-500/[0.07] text-cyan-100/90 hover:bg-cyan-500/[0.14]'
+  if (category === 'weapons') return active ? 'border-rose-200/75 bg-gradient-to-r from-rose-500/35 to-red-500/25 text-rose-50' : 'border-rose-300/25 bg-rose-500/[0.07] text-rose-100/90 hover:bg-rose-500/[0.14]'
+  if (category === 'equipment') return active ? 'border-amber-200/75 bg-gradient-to-r from-amber-700/35 to-orange-700/25 text-amber-50' : 'border-amber-300/25 bg-amber-700/[0.16] text-amber-100/90 hover:bg-amber-700/[0.24]'
+  if (category === 'drugs') return active ? 'border-emerald-200/75 bg-gradient-to-r from-emerald-500/35 to-teal-500/25 text-emerald-50' : 'border-emerald-300/25 bg-emerald-500/[0.07] text-emerald-100/90 hover:bg-emerald-500/[0.14]'
+  return active ? 'border-slate-200/75 bg-gradient-to-r from-slate-500/35 to-slate-700/25 text-slate-50' : 'border-slate-300/25 bg-slate-500/[0.07] text-slate-100/90 hover:bg-slate-500/[0.14]'
 }
 
 export default function AdminCatalogueGlobalPage() {
@@ -195,29 +205,84 @@ export default function AdminCatalogueGlobalPage() {
 
   const createTypeOptions = categoryTypeOptions[createCategory]
 
+  const categoryCounts = useMemo(() => {
+    const counts: Record<ItemCategory, number> = {
+      objects: 0,
+      weapons: 0,
+      equipment: 0,
+      drugs: 0,
+      custom: 0,
+    }
+    for (const item of items) {
+      counts[item.category] += 1
+    }
+    return {
+      ...counts,
+      all: items.length,
+    }
+  }, [items])
+
   return (
     <div className="space-y-4">
       <Panel>
         <h1 className="text-2xl font-semibold">Objets (catalogue global)</h1>
         <p className="mt-1 text-sm text-white/70">Catalogue partagé entre modules, avec override local par groupe.</p>
+        <div className="mt-3">
+          <Link href="/items/nouveau">
+            <SecondaryButton>Créer un item (formulaire complet)</SecondaryButton>
+          </Link>
+        </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
             <label className="mb-2 block text-xs text-white/60">Catégorie</label>
-            <div className="flex flex-wrap gap-2">
-              {itemCategoryOptions.map((option) => (
-                <TabPill
-                  key={option.value}
-                  active={createCategory === option.value}
-                  onClick={() => {
-                    const nextCategory = option.value as ItemCategory
-                    setCreateCategory(nextCategory)
-                    setCreateItemType(defaultTypeByCategory[nextCategory])
-                  }}
-                >
-                  {option.label}
-                </TabPill>
-              ))}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {[
+                { key: 'objects' as const, label: 'Objets', icon: Box },
+                { key: 'weapons' as const, label: 'Armes', icon: Swords },
+                { key: 'equipment' as const, label: 'Équipement', icon: Shield },
+                { key: 'drugs' as const, label: 'Drogues', icon: Pill },
+                { key: 'custom' as const, label: 'Autres', icon: Shapes },
+              ].map((card) => {
+                const Icon = card.icon
+                return (
+                  <button
+                    key={card.key}
+                    type="button"
+                    onClick={() => {
+                      const nextCategory = card.key as ItemCategory
+                      setCreateCategory(nextCategory)
+                      setCreateItemType(defaultTypeByCategory[nextCategory])
+                    }}
+                    className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${
+                      createCategory === card.key
+                        ? card.key === 'objects'
+                          ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                          : card.key === 'weapons'
+                            ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
+                            : card.key === 'equipment'
+                              ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
+                              : card.key === 'drugs'
+                                ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                                : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
+                        : card.key === 'objects'
+                          ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
+                          : card.key === 'weapons'
+                            ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+                            : card.key === 'equipment'
+                              ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+                              : card.key === 'drugs'
+                                ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+                                : 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs text-white/70">{card.label}</p>
+                      <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -262,14 +327,59 @@ export default function AdminCatalogueGlobalPage() {
       <Panel>
         <div className="flex flex-wrap items-center gap-3">
           <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher un item" className="w-[320px]" />
-          <div className="flex flex-wrap gap-2">
-            <TabPill active={filterCategory === 'all'} onClick={() => setFilterCategory('all')}>Toutes catégories</TabPill>
-            {itemCategoryOptions.map((option) => (
-              <TabPill key={option.value} active={filterCategory === option.value} onClick={() => setFilterCategory(option.value as ItemCategory)}>
-                {option.label}
-              </TabPill>
-            ))}
-          </div>
+          <div className="text-xs text-white/55">Filtrer par catégorie</div>
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {[
+            { key: 'all' as const, label: 'Tous', value: categoryCounts.all, icon: Shapes },
+            { key: 'objects' as const, label: 'Objets', value: categoryCounts.objects, icon: Box },
+            { key: 'weapons' as const, label: 'Armes', value: categoryCounts.weapons, icon: Swords },
+            { key: 'equipment' as const, label: 'Équipement', value: categoryCounts.equipment, icon: Shield },
+            { key: 'drugs' as const, label: 'Drogues', value: categoryCounts.drugs, icon: Pill },
+            { key: 'custom' as const, label: 'Autres', value: categoryCounts.custom, icon: Shapes },
+          ].map((card) => {
+            const Icon = card.icon
+            const active = filterCategory === card.key || (card.key === 'all' && filterCategory === 'all')
+            return (
+              <button
+                key={card.key}
+                type="button"
+                onClick={() => setFilterCategory(card.key === 'all' ? 'all' : card.key)}
+                className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
+                  active
+                    ? card.key === 'objects'
+                      ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                      : card.key === 'weapons'
+                        ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
+                        : card.key === 'equipment'
+                          ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
+                          : card.key === 'drugs'
+                            ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                            : card.key === 'custom'
+                              ? 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
+                              : 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22'
+                    : card.key === 'objects'
+                      ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
+                      : card.key === 'weapons'
+                        ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+                        : card.key === 'equipment'
+                          ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+                          : card.key === 'drugs'
+                            ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+                            : card.key === 'custom'
+                              ? 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
+                              : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs text-white/70">{card.label}</p>
+                  <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
+                </div>
+                <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
+              </button>
+            )
+          })}
         </div>
 
         <div className="mt-4 space-y-2">
@@ -290,7 +400,7 @@ export default function AdminCatalogueGlobalPage() {
                     <Input value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} inputMode="numeric" placeholder="Stock" />
                     <div className="md:col-span-2 lg:col-span-3 flex flex-wrap gap-2">
                       {itemCategoryOptions.map((option) => (
-                        <TabPill key={option.value} active={editCategory === option.value} onClick={() => {
+                        <TabPill key={option.value} active={editCategory === option.value} className={categoryPillClass(option.value as ItemCategory, editCategory === option.value)} onClick={() => {
                           const next = option.value as ItemCategory
                           setEditCategory(next)
                           setEditType(defaultTypeByCategory[next])

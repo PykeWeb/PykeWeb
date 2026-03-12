@@ -7,8 +7,9 @@ import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
+import { markStockInNote } from '@/lib/financeStockFlow'
 
-export default function FinanceSortiesPage() {
+export default function FinanceEntreeSortiePage() {
   const router = useRouter()
   const [initialItems, setInitialItems] = useState<CatalogItem[]>([])
 
@@ -23,29 +24,37 @@ export default function FinanceSortiesPage() {
       <FinanceItemTradeModal
         inline
         open
-        mode="sell"
+        mode="buy"
+        enableModeSelect
         hideUnitPrice
-        titleOverride={copy.finance.stockFlow.stockOutTitle}
-        subtitleOverride={copy.finance.stockFlow.stockOutSubtitle}
+        titleOverride={copy.finance.stockFlow.stockInOutButton}
+        subtitleOverride={copy.finance.stockFlow.stockInSubtitle}
         showModeBadge={false}
+        modeBuyLabel={copy.finance.stockFlow.stockInModeLabel}
+        modeSellLabel={copy.finance.stockFlow.stockOutModeLabel}
         initialItems={initialItems}
         onClose={() => router.push('/finance')}
         onSubmit={async (payload) => {
           const reason = payload.notes?.trim() || ''
           if (!reason) {
-            throw new Error(copy.finance.stockFlow.stockOutReasonRequired)
+            throw new Error(
+              payload.mode === 'buy'
+                ? copy.finance.stockFlow.stockInReasonRequired
+                : copy.finance.stockFlow.stockOutReasonRequired,
+            )
           }
 
           await createFinanceTransaction({
             item_id: payload.item.id,
-            mode: 'sell',
+            mode: payload.mode,
             quantity: payload.quantity,
             unit_price: 0,
             counterparty: payload.counterparty,
-            notes: reason,
-            payment_mode: 'stock_out',
+            notes: payload.mode === 'buy' ? markStockInNote(reason) : reason,
+            payment_mode: payload.mode === 'buy' ? 'other' : 'stock_out',
           })
-          toast.success(copy.finance.stockFlow.stockOutSaved)
+
+          toast.success(payload.mode === 'buy' ? copy.finance.stockFlow.stockInSaved : copy.finance.stockFlow.stockOutSaved)
           router.push('/finance')
           router.refresh()
         }}

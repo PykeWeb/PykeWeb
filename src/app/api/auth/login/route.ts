@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { resolveGroupLoginRole } from '@/lib/groupCredentials'
 import {
   encodeTenantSession,
   TENANT_SESSION_COOKIE_KEY,
@@ -55,7 +56,6 @@ export async function POST(request: Request) {
       .from('tenant_groups')
       .select('id,name,badge,login,password,active,paid_until')
       .eq('login', login)
-      .eq('password', password)
       .maybeSingle<GroupRow>()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -65,6 +65,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Accès expiré (paiement en retard).' }, { status: 403 })
     }
 
+    const role = resolveGroupLoginRole(data.password, password)
+    if (!role) return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 })
+
     const isAdmin = isAdminGroup(data)
     const session: TenantSessionPayload = {
       v: TENANT_SESSION_VERSION,
@@ -72,9 +75,16 @@ export async function POST(request: Request) {
       groupName: isAdmin ? 'Administration' : data.name,
       groupBadge: isAdmin ? 'ADMIN' : data.badge,
       isAdmin,
+      role: isAdmin ? 'chef' : role,
     }
 
-    const response = NextResponse.json({ group: data, session })
+    const response = NextResponse.json({
+      group: {
+        ...data,
+        password: '',
+      },
+      session,
+    })
     response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(session), cookieOptions(remember))
     return response
   } catch {

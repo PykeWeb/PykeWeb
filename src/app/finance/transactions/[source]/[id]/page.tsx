@@ -25,8 +25,10 @@ function formatDate(value: string) {
   return date.toLocaleString('fr-FR')
 }
 
-function movementLabel(source: FinanceEntrySource, movement: 'expense' | 'purchase' | 'sale') {
+function movementLabel(source: FinanceEntrySource, movement: 'expense' | 'purchase' | 'stock_in' | 'sale' | 'stock_out') {
   if (source === 'expenses') return 'Dépense'
+  if (movement === 'stock_in') return 'Entrée'
+  if (movement === 'stock_out') return 'Sortie'
   return movement === 'sale' ? 'Vente' : 'Achat'
 }
 
