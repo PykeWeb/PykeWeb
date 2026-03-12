@@ -139,27 +139,27 @@ export default function CounterpartyStatsClient() {
     <div className="space-y-4">
       <Panel>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-          <button type="button" onClick={() => setType('all')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'all' ? 'border-slate-200/70 from-slate-400/35 to-slate-500/25' : 'border-white/15 from-white/10 to-white/5 hover:from-white/15 hover:to-white/8'}`}>
+          <button type="button" onClick={() => setType('all')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'all' ? 'border-slate-200/70 from-slate-400/35 to-slate-500/25' : 'border-white/15 from-white/10 to-white/5 hover:from-white/15 hover:to-white/8'}`}>
             <div className="flex items-center justify-between gap-2 text-slate-100/85"><p className="text-xs">Tous</p><UserRound className="h-4 w-4" /></div>
             <p className="mt-1 text-xl font-semibold">{allCount}</p>
           </button>
-          <button type="button" onClick={() => setType('expense')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'expense' ? 'border-amber-200/80 from-amber-500/35 to-orange-500/25' : 'border-amber-300/30 from-amber-500/20 to-orange-500/12 hover:from-amber-500/28 hover:to-orange-500/18'}`}>
+          <button type="button" onClick={() => setType('expense')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'expense' ? 'border-amber-200/80 from-amber-500/35 to-orange-500/25' : 'border-amber-300/30 from-amber-500/20 to-orange-500/12 hover:from-amber-500/28 hover:to-orange-500/18'}`}>
             <div className="flex items-center justify-between gap-2 text-amber-100/85"><p className="text-xs">Dépenses</p><Receipt className="h-4 w-4" /></div>
             <p className="mt-1 text-xl font-semibold">{expenseCount}</p>
           </button>
-          <button type="button" onClick={() => setType('purchase')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'purchase' ? 'border-cyan-200/80 from-cyan-500/35 to-blue-500/25' : 'border-cyan-300/30 from-cyan-500/20 to-blue-500/12 hover:from-cyan-500/28 hover:to-blue-500/18'}`}>
+          <button type="button" onClick={() => setType('purchase')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'purchase' ? 'border-cyan-200/80 from-cyan-500/35 to-blue-500/25' : 'border-cyan-300/30 from-cyan-500/20 to-blue-500/12 hover:from-cyan-500/28 hover:to-blue-500/18'}`}>
             <div className="flex items-center justify-between gap-2 text-cyan-100/85"><p className="text-xs">Achats</p><ArrowDownRight className="h-4 w-4" /></div>
             <p className="mt-1 text-xl font-semibold">{purchaseCount}</p>
           </button>
-          <button type="button" onClick={() => setType('stock_in')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'stock_in' ? 'border-sky-200/80 from-sky-500/35 to-indigo-500/25' : 'border-sky-300/30 from-sky-500/20 to-indigo-500/12 hover:from-sky-500/28 hover:to-indigo-500/18'}`}>
+          <button type="button" onClick={() => setType('stock_in')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'stock_in' ? 'border-sky-200/80 from-sky-500/35 to-indigo-500/25' : 'border-sky-300/30 from-sky-500/20 to-indigo-500/12 hover:from-sky-500/28 hover:to-indigo-500/18'}`}>
             <div className="flex items-center justify-between gap-2 text-sky-100/85"><p className="text-xs">Entrées</p><ArrowDownRight className="h-4 w-4" /></div>
             <p className="mt-1 text-xl font-semibold">{stockInCount}</p>
           </button>
-          <button type="button" onClick={() => setType('sale')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'sale' ? 'border-violet-200/80 from-violet-500/35 to-fuchsia-500/25' : 'border-violet-300/30 from-violet-500/20 to-fuchsia-500/12 hover:from-violet-500/28 hover:to-fuchsia-500/18'}`}>
+          <button type="button" onClick={() => setType('sale')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'sale' ? 'border-violet-200/80 from-violet-500/35 to-fuchsia-500/25' : 'border-violet-300/30 from-violet-500/20 to-fuchsia-500/12 hover:from-violet-500/28 hover:to-fuchsia-500/18'}`}>
             <div className="flex items-center justify-between gap-2 text-violet-100/85"><p className="text-xs">Ventes</p><ArrowUpRight className="h-4 w-4" /></div>
             <p className="mt-1 text-xl font-semibold">{saleCount}</p>
           </button>
-          <button type="button" onClick={() => setType('stock_out')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition ${type === 'stock_out' ? 'border-rose-200/80 from-rose-500/35 to-orange-500/25' : 'border-rose-300/30 from-rose-500/20 to-orange-500/12 hover:from-rose-500/28 hover:to-orange-500/18'}`}>
+          <button type="button" onClick={() => setType('stock_out')} className={`rounded-2xl border bg-gradient-to-br p-4 text-left transition min-h-[108px] ${type === 'stock_out' ? 'border-rose-200/80 from-rose-500/35 to-orange-500/25' : 'border-rose-300/30 from-rose-500/20 to-orange-500/12 hover:from-rose-500/28 hover:to-orange-500/18'}`}>
             <div className="flex items-center justify-between gap-2 text-rose-100/85"><p className="text-xs">Sorties</p><ArrowUpRight className="h-4 w-4" /></div>
             <p className="mt-1 text-xl font-semibold">{stockOutCount}</p>
           </button>

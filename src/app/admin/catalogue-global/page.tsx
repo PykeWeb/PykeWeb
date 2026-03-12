@@ -30,6 +30,14 @@ const defaultTypeByCategory: Record<ItemCategory, string> = {
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
 }
 
+function categoryPillClass(category: ItemCategory, active: boolean) {
+  if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-r from-cyan-500/35 to-blue-500/25 text-cyan-50' : 'border-cyan-300/25 bg-cyan-500/[0.07] text-cyan-100/90 hover:bg-cyan-500/[0.14]'
+  if (category === 'weapons') return active ? 'border-rose-200/75 bg-gradient-to-r from-rose-500/35 to-red-500/25 text-rose-50' : 'border-rose-300/25 bg-rose-500/[0.07] text-rose-100/90 hover:bg-rose-500/[0.14]'
+  if (category === 'equipment') return active ? 'border-amber-200/75 bg-gradient-to-r from-amber-700/35 to-orange-700/25 text-amber-50' : 'border-amber-300/25 bg-amber-700/[0.16] text-amber-100/90 hover:bg-amber-700/[0.24]'
+  if (category === 'drugs') return active ? 'border-emerald-200/75 bg-gradient-to-r from-emerald-500/35 to-teal-500/25 text-emerald-50' : 'border-emerald-300/25 bg-emerald-500/[0.07] text-emerald-100/90 hover:bg-emerald-500/[0.14]'
+  return active ? 'border-slate-200/75 bg-gradient-to-r from-slate-500/35 to-slate-700/25 text-slate-50' : 'border-slate-300/25 bg-slate-500/[0.07] text-slate-100/90 hover:bg-slate-500/[0.14]'
+}
+
 export default function AdminCatalogueGlobalPage() {
   const [items, setItems] = useState<GlobalItem[]>([])
   const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all')
@@ -215,6 +223,7 @@ export default function AdminCatalogueGlobalPage() {
                 <TabPill
                   key={option.value}
                   active={createCategory === option.value}
+                  className={categoryPillClass(option.value as ItemCategory, createCategory === option.value)}
                   onClick={() => {
                     const nextCategory = option.value as ItemCategory
                     setCreateCategory(nextCategory)
@@ -271,7 +280,7 @@ export default function AdminCatalogueGlobalPage() {
           <div className="flex flex-wrap gap-2">
             <TabPill active={filterCategory === 'all'} onClick={() => setFilterCategory('all')}>Toutes catégories</TabPill>
             {itemCategoryOptions.map((option) => (
-              <TabPill key={option.value} active={filterCategory === option.value} onClick={() => setFilterCategory(option.value as ItemCategory)}>
+              <TabPill key={option.value} active={filterCategory === option.value} className={categoryPillClass(option.value as ItemCategory, filterCategory === option.value)} onClick={() => setFilterCategory(option.value as ItemCategory)}>
                 {option.label}
               </TabPill>
             ))}
@@ -296,7 +305,7 @@ export default function AdminCatalogueGlobalPage() {
                     <Input value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} inputMode="numeric" placeholder="Stock" />
                     <div className="md:col-span-2 lg:col-span-3 flex flex-wrap gap-2">
                       {itemCategoryOptions.map((option) => (
-                        <TabPill key={option.value} active={editCategory === option.value} onClick={() => {
+                        <TabPill key={option.value} active={editCategory === option.value} className={categoryPillClass(option.value as ItemCategory, editCategory === option.value)} onClick={() => {
                           const next = option.value as ItemCategory
                           setEditCategory(next)
                           setEditType(defaultTypeByCategory[next])

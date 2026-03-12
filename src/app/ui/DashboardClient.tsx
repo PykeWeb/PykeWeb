@@ -12,7 +12,7 @@ import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type Tx = {
@@ -64,7 +64,7 @@ const CARD_OPTIONS: CardOption[] = [
   { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Swords, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
   { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Shield, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
   { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Pill, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
-  { key: 'catOther', title: 'Autres', href: '/items?category=custom', icon: FolderOpen, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
+  { key: 'catOther', title: 'Autres', href: '/items?category=custom', icon: Shapes, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
   { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
   { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
   { key: 'mvSale', title: 'Ventes', href: '/finance?type=sale', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
@@ -75,13 +75,13 @@ const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEqui
 
 
 function quickActionTone(key: QuickActionKey) {
-  if (key === 'newExpense') return { card: 'border-amber-300/30 from-amber-500/14 to-orange-500/14 hover:from-amber-500/26 hover:to-orange-500/22', icon: 'border-amber-300/45 bg-amber-500/25 text-amber-50' }
+  if (key === 'newExpense') return { card: 'border-rose-300/30 from-rose-500/14 to-red-500/14 hover:from-rose-500/26 hover:to-red-500/22', icon: 'border-rose-300/45 bg-rose-500/25 text-rose-50' }
   if (key === 'itemCreate') return { card: 'border-emerald-300/30 from-emerald-500/14 to-teal-500/14 hover:from-emerald-500/26 hover:to-teal-500/22', icon: 'border-emerald-300/45 bg-emerald-500/25 text-emerald-50' }
-  if (key === 'itemTrade') return { card: 'border-violet-300/30 from-violet-500/14 to-fuchsia-500/14 hover:from-violet-500/26 hover:to-fuchsia-500/22', icon: 'border-violet-300/45 bg-violet-500/25 text-violet-50' }
+  if (key === 'itemTrade') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
   if (key === 'finance') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
-  if (key === 'items') return { card: 'border-sky-300/30 from-sky-500/14 to-indigo-500/14 hover:from-sky-500/26 hover:to-indigo-500/22', icon: 'border-sky-300/45 bg-sky-500/25 text-sky-50' }
-  if (key === 'calculator') return { card: 'border-rose-300/30 from-rose-500/14 to-pink-500/14 hover:from-rose-500/26 hover:to-pink-500/22', icon: 'border-rose-300/45 bg-rose-500/25 text-rose-50' }
-  return { card: 'border-lime-300/30 from-lime-500/14 to-emerald-500/14 hover:from-lime-500/26 hover:to-emerald-500/22', icon: 'border-lime-300/45 bg-lime-500/25 text-lime-50' }
+  if (key === 'items') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
+  if (key === 'calculator') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
+  return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
 }
 
 function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
@@ -140,7 +140,6 @@ export function DashboardClient() {
     ShoppingCart,
     ArrowUpRight,
     ArrowDownRight,
-    FolderOpen,
   }
 
   function getBubbleOverride(key: string) {
@@ -464,7 +463,7 @@ export function DashboardClient() {
                 }}
                 tone={
                   card.key === 'catWeapons' ? 'rose'
-                    : card.key === 'catEquipment' ? 'violet'
+                    : card.key === 'catEquipment' ? 'amber'
                     : card.key === 'catDrugs' ? 'emerald'
                     : card.key === 'catObjects' ? 'cyan'
                     : card.key === 'catOther' ? 'amber'
