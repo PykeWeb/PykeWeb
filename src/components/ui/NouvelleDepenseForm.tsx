@@ -260,7 +260,7 @@ export function NouvelleDepenseForm({
               </TabPill>
             ))}
             <TabPill active={useTemporaryItem} onClick={() => setUseTemporaryItem(true)}>
-              Autres
+              {'Autres\u200b'}
             </TabPill>
           </div>
           <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">

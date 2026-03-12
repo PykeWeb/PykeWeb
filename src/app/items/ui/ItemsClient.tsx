@@ -318,7 +318,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
               { key: 'weapons', label: 'Armes', value: categoryCounts.weapons, icon: Swords },
               { key: 'equipment', label: 'Équipement', value: categoryCounts.equipment, icon: Shield },
               { key: 'drugs', label: 'Drogues', value: categoryCounts.drugs, icon: Pill },
-              { key: 'custom', label: 'Autres', value: categoryCounts.other, icon: Shapes },
+              { key: 'custom', label: 'Autres\u200b', value: categoryCounts.other, icon: Shapes },
             ].map((card) => {
               const Icon = card.icon
               const uiKey = `items.category.${card.key}`

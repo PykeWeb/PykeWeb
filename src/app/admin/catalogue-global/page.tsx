@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { getTenantSession } from '@/lib/tenantSession'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
@@ -200,6 +201,11 @@ export default function AdminCatalogueGlobalPage() {
       <Panel>
         <h1 className="text-2xl font-semibold">Objets (catalogue global)</h1>
         <p className="mt-1 text-sm text-white/70">Catalogue partagé entre modules, avec override local par groupe.</p>
+        <div className="mt-3">
+          <Link href="/items/nouveau">
+            <SecondaryButton>Créer un item (formulaire complet)</SecondaryButton>
+          </Link>
+        </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
