@@ -64,6 +64,17 @@ const CARD_OPTIONS: CardOption[] = [
 
 const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs']
 
+
+function quickActionTone(key: QuickActionKey) {
+  if (key === 'newExpense') return { card: 'border-amber-300/30 from-amber-500/14 to-orange-500/14 hover:from-amber-500/26 hover:to-orange-500/22', icon: 'border-amber-300/45 bg-amber-500/25 text-amber-50' }
+  if (key === 'itemCreate') return { card: 'border-emerald-300/30 from-emerald-500/14 to-teal-500/14 hover:from-emerald-500/26 hover:to-teal-500/22', icon: 'border-emerald-300/45 bg-emerald-500/25 text-emerald-50' }
+  if (key === 'itemTrade') return { card: 'border-violet-300/30 from-violet-500/14 to-fuchsia-500/14 hover:from-violet-500/26 hover:to-fuchsia-500/22', icon: 'border-violet-300/45 bg-violet-500/25 text-violet-50' }
+  if (key === 'finance') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
+  if (key === 'items') return { card: 'border-sky-300/30 from-sky-500/14 to-indigo-500/14 hover:from-sky-500/26 hover:to-indigo-500/22', icon: 'border-sky-300/45 bg-sky-500/25 text-sky-50' }
+  if (key === 'calculator') return { card: 'border-rose-300/30 from-rose-500/14 to-pink-500/14 hover:from-rose-500/26 hover:to-pink-500/22', icon: 'border-rose-300/45 bg-rose-500/25 text-rose-50' }
+  return { card: 'border-lime-300/30 from-lime-500/14 to-emerald-500/14 hover:from-lime-500/26 hover:to-emerald-500/22', icon: 'border-lime-300/45 bg-lime-500/25 text-lime-50' }
+}
+
 function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
   const allowed = new Set(CARD_OPTIONS.map((option) => option.key))
   const safeOrder = (order ?? [])
@@ -570,10 +581,11 @@ export function DashboardClient() {
               const action = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey) || QUICK_ACTION_OPTIONS[idx]
               if (!action) return null
               const Icon = action.icon
+              const tone = quickActionTone(action.key)
               return (
-                <Link key={`${action.key}-${idx}`} href={action.href} className="group flex items-center justify-between rounded-xl border border-cyan-300/20 bg-gradient-to-r from-cyan-500/10 to-indigo-500/10 px-3 py-2.5 transition hover:from-cyan-500/20 hover:to-indigo-500/20">
+                <Link key={`${action.key}-${idx}`} href={action.href} className={`group flex items-center justify-between rounded-xl border bg-gradient-to-r px-3 py-2.5 transition ${tone.card}`}>
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-500/20 text-cyan-50"><Icon className="h-4 w-4" /></span>
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${tone.icon}`}><Icon className="h-4 w-4" /></span>
                     <div>
                       <p className="text-sm font-medium">{action.title}</p>
                       <p className="text-xs text-white/60">{action.subtitle}</p>

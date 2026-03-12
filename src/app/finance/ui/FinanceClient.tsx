@@ -189,15 +189,6 @@ export default function FinanceClient() {
         />
       </div>
 
-      <div className="mb-[10px] mt-1 flex flex-wrap items-center gap-2">
-        <TabPill className="h-9 rounded-xl px-3 text-xs" active={type === 'all'} onClick={() => setType('all')}>Tous les types</TabPill>
-        <TabPill className="h-9 rounded-xl px-3 text-xs" active={type === 'expense'} onClick={() => setType('expense')}>Dépense</TabPill>
-        <TabPill className="h-9 rounded-xl px-3 text-xs" active={type === 'purchase'} onClick={() => setType('purchase')}>Achat</TabPill>
-        <TabPill className="h-9 rounded-xl px-3 text-xs" active={type === 'stock_in'} onClick={() => setType('stock_in')}>Entrée</TabPill>
-        <TabPill className="h-9 rounded-xl px-3 text-xs" active={type === 'sale'} onClick={() => setType('sale')}>Vente</TabPill>
-        <TabPill className="h-9 rounded-xl px-3 text-xs" active={type === 'stock_out'} onClick={() => setType('stock_out')}>Sortie</TabPill>
-      </div>
-
       <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
         <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'all'} onClick={() => setCategory('all')}>Toutes catégories</TabPill>
         <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'multi'} onClick={() => setCategory('multi')}>Multiple</TabPill>

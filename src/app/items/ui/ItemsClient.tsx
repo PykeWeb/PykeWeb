@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Box, Calculator, Factory, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
+import { Box, Image as ImageIcon, Pill, Shield, Swords, Shapes } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
@@ -409,10 +409,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       ) : (
         <div className="mt-4 space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Calculator className="h-4 w-4" />
-              <h3 className="text-sm font-semibold">Calculateur drogue (Items)</h3>
-            </div>
+            <h3 className="mb-3 text-sm font-semibold">Calculateur drogue (Items)</h3>
             <div className="grid gap-3 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs text-white/60">Mode</label>
@@ -521,94 +518,6 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Factory className="h-4 w-4" />
-              <h3 className="text-sm font-semibold">Contenu plantations</h3>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {plantationRecipes.map((recipe) => {
-                const outputItem = findItemByName(recipe.output_name)
-                return (
-                <div key={recipe.key} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                  <p className="text-sm font-semibold">{recipe.title}</p>
-                  <p className="mt-1 text-xs text-white/65">{recipe.subtitle}</p>
-                  <div className="mt-3 space-y-2 text-xs text-white/75">
-                    {recipe.requirements.map((req) => {
-                      const requirementItem = findItemByName(req.name)
-                      return (
-                        <div key={req.name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
-                              {requirementItem?.image_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={requirementItem.image_url} alt={req.name} className="h-full w-full object-cover" loading="lazy" />
-                              ) : (
-                                <div className="grid h-full w-full place-items-center text-white/40">
-                                  <ImageIcon className="h-3 w-3" />
-                                </div>
-                              )}
-                            </div>
-                            <span>{req.name}</span>
-                          </div>
-                          <span>× {req.qty}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/80">
-                    <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
-                      {outputItem?.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={outputItem.image_url} alt={recipe.output_name} className="h-full w-full object-cover" loading="lazy" />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-white/40">
-                          <ImageIcon className="h-3 w-3" />
-                        </div>
-                      )}
-                    </div>
-                    <p>Production : {recipe.output_name}</p>
-                  </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <label className="text-xs text-white/65">
-                      Nb plantations
-                      <div className="mt-1 flex items-center gap-1">
-                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'runs', -1, 0)}>-</SecondaryButton>
-                        <Input
-                          value={plantationRuns[recipe.key] || '0'}
-                          onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
-                          inputMode="numeric"
-                          className="h-9 rounded-lg px-2 text-sm"
-                        />
-                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'runs', 1, 0)}>+</SecondaryButton>
-                      </div>
-                    </label>
-                    <label className="text-xs text-white/65">
-                      Production reçue / plantation
-                      <div className="mt-1 flex items-center gap-1">
-                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'output', -1, recipe.default_output_per_run)}>-</SecondaryButton>
-                        <Input
-                          value={plantationOutputPerRun[recipe.key] || String(recipe.default_output_per_run)}
-                          onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [recipe.key]: event.target.value }))}
-                          inputMode="numeric"
-                          className="h-9 rounded-lg px-2 text-sm"
-                        />
-                        <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(recipe.key, 'output', 1, recipe.default_output_per_run)}>+</SecondaryButton>
-                      </div>
-                    </label>
-                  </div>
-                  <PrimaryButton
-                    className="mt-3 w-full"
-                    disabled={realizingRecipeKey === recipe.key}
-                    onClick={() => { void realizePlantation(recipe) }}
-                  >
-                    {realizingRecipeKey === recipe.key ? 'Validation...' : 'Plantation réalisée'}
-                  </PrimaryButton>
-                </div>
-                )
-              })}
-            </div>
-          </div>
         </div>
       )}
 

@@ -18,12 +18,12 @@ export function StatCard({
   href?: string
 }) {
   const toneClass = {
-    slate: 'border-white/10 bg-white/[0.03]',
-    cyan: 'border-cyan-300/25 bg-gradient-to-br from-cyan-500/16 to-blue-500/10',
-    emerald: 'border-emerald-300/25 bg-gradient-to-br from-emerald-500/16 to-teal-500/10',
-    amber: 'border-amber-300/25 bg-gradient-to-br from-amber-500/16 to-orange-500/10',
-    violet: 'border-violet-300/25 bg-gradient-to-br from-violet-500/16 to-indigo-500/10',
-    rose: 'border-rose-300/25 bg-gradient-to-br from-rose-500/16 to-orange-500/10',
+    slate: 'border-white/15 bg-white/[0.05]',
+    cyan: 'border-cyan-300/35 bg-gradient-to-br from-cyan-500/28 to-blue-500/20',
+    emerald: 'border-emerald-300/35 bg-gradient-to-br from-emerald-500/28 to-teal-500/20',
+    amber: 'border-amber-300/35 bg-gradient-to-br from-amber-500/28 to-orange-500/20',
+    violet: 'border-violet-300/35 bg-gradient-to-br from-violet-500/28 to-indigo-500/20',
+    rose: 'border-rose-300/35 bg-gradient-to-br from-rose-500/28 to-orange-500/20',
   }[tone]
 
   const card = (
@@ -40,7 +40,7 @@ export function StatCard({
           <p className="min-h-[2.5rem] text-sm text-white/60">{title}</p>
           <p className="mt-2 text-3xl font-semibold leading-none">{value}</p>
         </div>
-        <div className="grid h-11 w-11 place-items-center rounded-xl border border-white/15 bg-white/10 text-white/90">{icon}</div>
+        <div className={clsx('grid h-11 w-11 place-items-center rounded-xl border text-white/90', tone === 'cyan' && 'border-cyan-200/45 bg-cyan-500/20', tone === 'emerald' && 'border-emerald-200/45 bg-emerald-500/20', tone === 'amber' && 'border-amber-200/45 bg-amber-500/20', tone === 'violet' && 'border-violet-200/45 bg-violet-500/20', tone === 'rose' && 'border-rose-200/45 bg-rose-500/20', tone === 'slate' && 'border-white/15 bg-white/10')}>{icon}</div>
       </div>
     </Panel>
   )

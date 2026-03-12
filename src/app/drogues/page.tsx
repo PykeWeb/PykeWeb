@@ -5,7 +5,7 @@ import ItemsClient from '@/app/items/ui/ItemsClient'
 export default function DroguesPage() {
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Drogues" subtitle="Calculateur drogue (Items) + contenu plantations" />
+      <PageHeader title="Drogues" />
       <Suspense
         fallback={
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/60 shadow-glow">
