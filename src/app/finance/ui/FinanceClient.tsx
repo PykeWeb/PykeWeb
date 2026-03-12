@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Layers3, Pencil, Receipt, Trash2, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Layers3, Pencil, Receipt, ShoppingCart, Trash2, Wallet } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { listFinanceEntries, type FinanceCategory, type FinanceEntry, type FinanceMovementType } from '@/lib/financeApi'
@@ -122,7 +122,6 @@ export default function FinanceClient() {
   }, [entries, q, type, category])
 
   const pendingExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status !== 'paid').length, [filtered])
-  const paidExpenses = useMemo(() => filtered.filter((e) => e.movement_type === 'expense' && e.expense_status === 'paid').length, [filtered])
   const purchases = useMemo(() => filtered.filter((e) => e.movement_type === 'purchase').length, [filtered])
   const stockIns = useMemo(() => filtered.filter((e) => e.movement_type === 'stock_in').length, [filtered])
   const sales = useMemo(() => filtered.filter((e) => e.movement_type === 'sale').length, [filtered])
@@ -147,13 +146,27 @@ export default function FinanceClient() {
 
   return (
     <Panel>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        <div className="rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-500/20 to-orange-500/12 p-4"><p className="text-xs text-amber-100/80">Dépenses en attente</p><p className="mt-1 text-xl font-semibold">{pendingExpenses}</p></div>
-        <div className="rounded-2xl border border-emerald-300/30 bg-gradient-to-br from-emerald-500/20 to-teal-500/12 p-4"><p className="text-xs text-emerald-100/80">Dépenses remboursées</p><p className="mt-1 text-xl font-semibold">{paidExpenses}</p></div>
-        <div className="rounded-2xl border border-cyan-300/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/12 p-4"><p className="text-xs text-cyan-100/80">Achats</p><p className="mt-1 text-xl font-semibold">{purchases}</p></div>
-        <div className="rounded-2xl border border-sky-300/30 bg-gradient-to-br from-sky-500/20 to-indigo-500/12 p-4"><p className="text-xs text-sky-100/80">Entrées</p><p className="mt-1 text-xl font-semibold">{stockIns}</p></div>
-        <div className="rounded-2xl border border-violet-300/30 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/12 p-4"><p className="text-xs text-violet-100/80">Ventes</p><p className="mt-1 text-xl font-semibold">{sales}</p></div>
-        <div className="rounded-2xl border border-rose-300/30 bg-gradient-to-br from-rose-500/20 to-orange-500/12 p-4"><p className="text-xs text-rose-100/80">Sorties</p><p className="mt-1 text-xl font-semibold">{stockOuts}</p></div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-500/20 to-orange-500/12 p-4">
+          <div className="flex items-center justify-between gap-2 text-amber-100/85"><p className="text-xs">Dépenses en attente</p><Wallet className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{pendingExpenses}</p>
+        </div>
+        <div className="rounded-2xl border border-cyan-300/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/12 p-4">
+          <div className="flex items-center justify-between gap-2 text-cyan-100/85"><p className="text-xs">Achats</p><ArrowDownRight className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{purchases}</p>
+        </div>
+        <div className="rounded-2xl border border-sky-300/30 bg-gradient-to-br from-sky-500/20 to-indigo-500/12 p-4">
+          <div className="flex items-center justify-between gap-2 text-sky-100/85"><p className="text-xs">Entrées</p><ArrowDownRight className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{stockIns}</p>
+        </div>
+        <div className="rounded-2xl border border-violet-300/30 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/12 p-4">
+          <div className="flex items-center justify-between gap-2 text-violet-100/85"><p className="text-xs">Ventes</p><ShoppingCart className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{sales}</p>
+        </div>
+        <div className="rounded-2xl border border-rose-300/30 bg-gradient-to-br from-rose-500/20 to-orange-500/12 p-4">
+          <div className="flex items-center justify-between gap-2 text-rose-100/85"><p className="text-xs">Sorties</p><ArrowUpRight className="h-4 w-4" /></div>
+          <p className="mt-1 text-xl font-semibold">{stockOuts}</p>
+        </div>
       </div>
 
       <div className="mt-4 mb-3 flex flex-wrap items-center gap-2">

@@ -4,7 +4,7 @@ import { Image as ImageIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
-import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { PrimaryButton } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
@@ -187,7 +187,6 @@ export default function TablettePage() {
             >
               {saving ? 'Validation…' : 'Valider la tablette'}
             </PrimaryButton>
-            <SecondaryButton onClick={resetForm}>Réinitialiser</SecondaryButton>
           </div>
 
           {error ? <p className="mt-3 rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}

@@ -608,8 +608,8 @@ export function DashboardClient() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">Quick actions</h3>
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setQuickModalOpen(true)} className="rounded-md border border-cyan-300/35 bg-cyan-500/12 px-2 text-xs text-cyan-100">+</button>
-              <button type="button" onClick={() => setQuickRemoveMode((v) => !v)} className={`rounded-md border px-2 text-xs ${quickRemoveMode ? 'border-rose-300/60 bg-rose-500/30 text-rose-50' : 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100'}`}>−</button>
+              <button type="button" onClick={() => setQuickModalOpen(true)} className="rounded-md border border-sky-300/60 bg-sky-500/25 px-2 text-xs font-semibold text-sky-50">+</button>
+              <button type="button" onClick={() => setQuickRemoveMode((v) => !v)} className="rounded-md border border-rose-300/60 bg-rose-500/30 px-2 text-xs font-semibold text-rose-50">−</button>
             </div>
           </div>
           <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>

@@ -158,6 +158,7 @@ export default function ItemsClient() {
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
 
+
   const itemsByNormalizedName = useMemo(() => {
     const map = new Map<string, CatalogItem>()
     for (const item of items) {
@@ -190,6 +191,21 @@ export default function ItemsClient() {
 
     return null
   }, [itemsByNormalizedName])
+
+
+  const calculatorTotals = useMemo(() => {
+    const totalRequiredItems = drugCalculator.requirements.reduce((sum, req) => sum + Math.max(0, req.qty || 0), 0)
+    const withStock = drugCalculator.requirements.reduce((sum, req) => {
+      const item = findItemForLabel(req.label)
+      return sum + Math.max(0, Number(item?.stock || 0))
+    }, 0)
+    const totalMissing = drugCalculator.requirements.reduce((sum, req) => {
+      const item = findItemForLabel(req.label)
+      const stock = Math.max(0, Number(item?.stock || 0))
+      return sum + Math.max(0, req.qty - stock)
+    }, 0)
+    return { totalRequiredItems, withStock, totalMissing }
+  }, [drugCalculator, findItemForLabel])
 
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
     const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
@@ -414,13 +430,29 @@ export default function ItemsClient() {
                 </div>
               </div>
             </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-cyan-100/80">Items requis (total)</p>
+                <p className="text-xl font-semibold">{calculatorTotals.totalRequiredItems}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-emerald-100/80">Stock cumulé (items liés)</p>
+                <p className="text-xl font-semibold">{calculatorTotals.withStock}</p>
+              </div>
+              <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-rose-100/80">Manque estimé</p>
+                <p className="text-xl font-semibold">{calculatorTotals.totalMissing}</p>
+              </div>
+            </div>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               {drugCalculator.requirements.map((req) => {
                 const requirementItem = findItemForLabel(req.label)
+                const stock = Math.max(0, Number(requirementItem?.stock || 0))
+                const missing = Math.max(0, req.qty - stock)
                 return (
                   <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                      <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
                         {requirementItem?.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={requirementItem.image_url} alt={req.label} className="h-full w-full object-cover" loading="lazy" />
@@ -432,8 +464,13 @@ export default function ItemsClient() {
                       </div>
                       <div className="font-medium">{req.label}</div>
                     </div>
-                    <div className="text-white/70">Qté: {req.qty} · PU : {req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</div>
-                    <div className="text-white/80">Sous-total: {req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</div>
+                    <div className="mt-2 grid gap-1.5 text-xs">
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Besoin total</span><span className="font-semibold">{req.qty}</span></div>
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Stock actuel</span><span className="font-semibold">{stock}</span></div>
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Manque</span><span className={`font-semibold ${missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{missing}</span></div>
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">PU</span><span className="font-semibold">{req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</span></div>
+                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Sous-total</span><span className="font-semibold">{req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</span></div>
+                    </div>
                   </div>
                 )
               })}
