@@ -84,7 +84,6 @@ export function NouvelleDepenseForm({
   const [itemType, setItemType] = useState<Exclude<ExpenseItemType, 'custom'>>('objects')
   const [useTemporaryItem, setUseTemporaryItem] = useState(false)
   const [items, setItems] = useState<PickItem[]>([])
-  const [pickedId, setPickedId] = useState<string>('')
   const [selectedItems, setSelectedItems] = useState<SelectedExpenseItem[]>([])
   const [itemQuery, setItemQuery] = useState('')
   const [temporaryName, setTemporaryName] = useState('')
@@ -102,7 +101,6 @@ export function NouvelleDepenseForm({
     }
     return Number(unitPrice || 0) * Number(quantity || 0)
   }, [selectedItems, unitPrice, quantity, useTemporaryItem])
-  const pickedItem = useMemo(() => items.find((x) => x.id === pickedId) || null, [items, pickedId])
 
   const getSelectionKey = (item: PickItem) => `${item.type}:${item.id}`
 
@@ -148,20 +146,12 @@ export function NouvelleDepenseForm({
       }
     }
 
-    setPickedId('')
     setItemQuery('')
     void load()
   }, [itemType])
 
-  useEffect(() => {
-    if (useTemporaryItem || !pickedId) return
-    const item = items.find((x) => x.id === pickedId)
-    if (item) setUnitPrice(String(item.price ?? 0))
-  }, [pickedId, items, useTemporaryItem])
-
   function toggleSelectedItem(item: PickItem) {
     const selectionKey = getSelectionKey(item)
-    setPickedId(item.id)
     setSelectedItems((prev) => {
       const existing = prev.find((entry) => entry.selectionKey === selectionKey)
       if (existing) {
@@ -186,7 +176,7 @@ export function NouvelleDepenseForm({
 
   return (
     <CenteredFormLayout
-      className="max-h-[calc(100dvh-8.75rem)]"
+      className="max-h-[calc(100dvh-9.75rem)]"
       panelClassName="h-full overflow-hidden"
       title={title}
       actions={
@@ -320,8 +310,8 @@ export function NouvelleDepenseForm({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="h-[clamp(14rem,34dvh,20rem)] space-y-2 overflow-y-auto pr-1">
+            <div className="self-start rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="max-h-[clamp(14rem,30dvh,18rem)] space-y-2 overflow-y-auto pr-1">
                 {selectedItems.map((item) => (
                   <div key={item.selectionKey} className="rounded-xl border border-white/10 bg-white/[0.02] p-2">
                     <div className="flex items-center gap-2">
