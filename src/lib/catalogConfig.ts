@@ -29,18 +29,6 @@ export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label:
   custom: [{ value: 'other', label: 'Autres' }],
 }
 
-export const allCategoryTypeOptions: { value: ItemType; label: string }[] = [
-  { value: 'other', label: 'Autres' },
-  { value: 'equipment', label: 'Équipement' },
-  { value: 'weapon', label: 'Armes' },
-  { value: 'ammo', label: 'Munitions' },
-  { value: 'weapon_accessory', label: "Accessoire d’arme" },
-  { value: 'seed', label: 'Graine' },
-  { value: 'pouch', label: 'Pochon' },
-  { value: 'drug_material', label: 'Matériels' },
-  { value: 'product', label: 'Production' },
-]
-
 export type UnifiedTypeFilterValue =
   | 'all'
   | 'objects'
