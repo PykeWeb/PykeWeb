@@ -202,7 +202,7 @@ export default function FinanceClient() {
         <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'weapons'} onClick={() => setCategory('weapons')}>Armes</TabPill>
         <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'equipment'} onClick={() => setCategory('equipment')}>Équipement</TabPill>
         <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'drugs'} onClick={() => setCategory('drugs')}>Drogues</TabPill>
-        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'other'} onClick={() => setCategory('other')}>Autres</TabPill>
+        <TabPill className="h-9 rounded-xl px-3 text-xs" active={category === 'other'} onClick={() => setCategory('other')}>{'Autres\u200b'}</TabPill>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">

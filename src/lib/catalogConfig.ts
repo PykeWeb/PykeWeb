@@ -24,9 +24,9 @@ export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label:
     { value: 'seed', label: 'Graine' },
     { value: 'pouch', label: 'Pochon' },
     { value: 'drug_material', label: 'Matériels' },
-    { value: 'product', label: 'Production' },
+    { value: 'product', label: 'Production\u200b' },
   ],
-  custom: [{ value: 'other', label: 'Autres' }],
+  custom: [{ value: 'other', label: 'Autres\u200b' }],
 }
 
 export type UnifiedTypeFilterValue =
