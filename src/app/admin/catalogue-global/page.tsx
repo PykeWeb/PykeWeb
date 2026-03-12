@@ -236,21 +236,53 @@ export default function AdminCatalogueGlobalPage() {
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
             <label className="mb-2 block text-xs text-white/60">Catégorie</label>
-            <div className="flex flex-wrap gap-2">
-              {itemCategoryOptions.map((option) => (
-                <TabPill
-                  key={option.value}
-                  active={createCategory === option.value}
-                  className={categoryPillClass(option.value as ItemCategory, createCategory === option.value)}
-                  onClick={() => {
-                    const nextCategory = option.value as ItemCategory
-                    setCreateCategory(nextCategory)
-                    setCreateItemType(defaultTypeByCategory[nextCategory])
-                  }}
-                >
-                  {option.label}
-                </TabPill>
-              ))}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {[
+                { key: 'objects' as const, label: 'Objets', icon: Box },
+                { key: 'weapons' as const, label: 'Armes', icon: Swords },
+                { key: 'equipment' as const, label: 'Équipement', icon: Shield },
+                { key: 'drugs' as const, label: 'Drogues', icon: Pill },
+                { key: 'custom' as const, label: 'Autres', icon: Shapes },
+              ].map((card) => {
+                const Icon = card.icon
+                return (
+                  <button
+                    key={card.key}
+                    type="button"
+                    onClick={() => {
+                      const nextCategory = card.key as ItemCategory
+                      setCreateCategory(nextCategory)
+                      setCreateItemType(defaultTypeByCategory[nextCategory])
+                    }}
+                    className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${
+                      createCategory === card.key
+                        ? card.key === 'objects'
+                          ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                          : card.key === 'weapons'
+                            ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
+                            : card.key === 'equipment'
+                              ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
+                              : card.key === 'drugs'
+                                ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                                : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
+                        : card.key === 'objects'
+                          ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
+                          : card.key === 'weapons'
+                            ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+                            : card.key === 'equipment'
+                              ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+                              : card.key === 'drugs'
+                                ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+                                : 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs text-white/70">{card.label}</p>
+                      <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 

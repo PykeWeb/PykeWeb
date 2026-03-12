@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { Box, Pill, Shapes, Shield, Swords } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
@@ -10,7 +11,7 @@ import { makeUniqueInternalId, type CreateCatalogItemInput } from '@/lib/itemsAp
 import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinance'
 import { toNonNegative } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
-import { categoryTypeOptions, itemCategoryOptions, normalizeItemType } from '@/lib/catalogConfig'
+import { categoryTypeOptions, normalizeItemType } from '@/lib/catalogConfig'
 
 export function ItemForm({
   onCancel,
@@ -107,22 +108,60 @@ export function ItemForm({
             {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
           </div>
 
+          <div>
+            <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.description}</label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[82px]" />
+          </div>
+
           <div className="md:col-span-2">
             <label className="mb-2 block text-xs text-white/60">{copy.itemForm.labels.category}</label>
-            <div className="flex flex-wrap gap-2">
-              {itemCategoryOptions.map((option) => (
-                <TabPill
-                  key={option.value}
-                  active={category === option.value}
-                  onClick={() => {
-                    const nextCategory = option.value as ItemCategory
-                    setCategory(nextCategory)
-                    setItemType(categoryTypeOptions[nextCategory][0].value)
-                  }}
-                >
-                  {option.label}
-                </TabPill>
-              ))}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {[
+                { key: 'objects' as const, label: 'Objets', icon: Box },
+                { key: 'weapons' as const, label: 'Armes', icon: Swords },
+                { key: 'equipment' as const, label: 'Équipement', icon: Shield },
+                { key: 'drugs' as const, label: 'Drogues', icon: Pill },
+                { key: 'custom' as const, label: 'Autres\u200b', icon: Shapes },
+              ].map((card) => {
+                const Icon = card.icon
+                return (
+                  <button
+                    key={card.key}
+                    type="button"
+                    onClick={() => {
+                      const nextCategory = card.key as ItemCategory
+                      setCategory(nextCategory)
+                      setItemType(categoryTypeOptions[nextCategory][0].value)
+                    }}
+                    className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${
+                      category === card.key
+                        ? card.key === 'objects'
+                          ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                          : card.key === 'weapons'
+                            ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
+                            : card.key === 'equipment'
+                              ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
+                              : card.key === 'drugs'
+                                ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                                : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
+                        : card.key === 'objects'
+                          ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
+                          : card.key === 'weapons'
+                            ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+                            : card.key === 'equipment'
+                              ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+                              : card.key === 'drugs'
+                                ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+                                : 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs text-white/70">{card.label}</p>
+                      <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -172,11 +211,6 @@ export function ItemForm({
             <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.initialStock}</label>
             <Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
           </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs text-white/60">{copy.itemForm.labels.description}</label>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[120px]" />
         </div>
 
         <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-50">
