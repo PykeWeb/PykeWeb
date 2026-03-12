@@ -99,12 +99,14 @@ export function Sidebar() {
     : isMember
       ? [
         { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
+        { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
         { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
       ]
       : [
         { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
         { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
         { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
+        { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
         { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
         { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
       ]

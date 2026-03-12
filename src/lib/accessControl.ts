@@ -1,7 +1,7 @@
 import type { TenantSession } from '@/lib/tenantSession'
 import { isAdminTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
 
-const MEMBER_ALLOWED_PREFIXES = ['/tablette', '/finance/depense', '/depenses']
+const MEMBER_ALLOWED_PREFIXES = ['/tablette', '/finance/depense', '/depenses', '/activites']
 
 export function isMemberRouteAllowed(pathname: string) {
   return MEMBER_ALLOWED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))

@@ -216,13 +216,13 @@ export default function AdminGroupDetailsPage() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-          <p className="text-xs text-white/60">Mot de passe du groupe</p>
+          <p className="text-xs text-white/60">Accès du groupe (chef / membre)</p>
           <input
             type={showPassword ? 'text' : 'password'}
             value={passwordDraft}
             onChange={(e) => setPasswordDraft(e.target.value)}
             className="h-8 min-w-[220px] rounded-lg border border-white/12 bg-white/[0.06] px-3 text-sm"
-            placeholder="Nouveau mot de passe"
+            placeholder="Mot de passe chef"
           />
           <input
             type={showPassword ? 'text' : 'password'}
@@ -254,7 +254,8 @@ export default function AdminGroupDetailsPage() {
           >
             Générer membre
           </button>
-          <button type="button" onClick={() => void copyToClipboard(passwordDraft)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
+          <button type="button" onClick={() => void copyToClipboard(passwordDraft)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier chef</button>
+          <button type="button" onClick={() => void copyToClipboard(memberPasswordDraft)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier membre</button>
           <button
             type="button"
             disabled={
@@ -270,6 +271,20 @@ export default function AdminGroupDetailsPage() {
           >
             Enregistrer MDP
           </button>
+        </div>
+
+
+        <div className="mt-2 grid gap-2 md:grid-cols-2">
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+            <p className="font-semibold">Accès Chef</p>
+            <p className="mt-1 text-cyan-50">Identifiant: {group.login}</p>
+            <p className="text-cyan-50">Mot de passe: {passwordDraft || '—'}</p>
+          </div>
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+            <p className="font-semibold">Accès Membre</p>
+            <p className="mt-1 text-emerald-50">Identifiant: {group.login}</p>
+            <p className="text-emerald-50">Mot de passe: {memberPasswordDraft || '—'}</p>
+          </div>
         </div>
 
         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
