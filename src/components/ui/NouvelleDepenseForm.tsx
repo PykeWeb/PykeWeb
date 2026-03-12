@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { PrimaryButton, SecondaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
@@ -85,7 +84,6 @@ export function NouvelleDepenseForm({
   const [itemType, setItemType] = useState<Exclude<ExpenseItemType, 'custom'>>('objects')
   const [useTemporaryItem, setUseTemporaryItem] = useState(false)
   const [items, setItems] = useState<PickItem[]>([])
-  const [pickedId, setPickedId] = useState<string>('')
   const [selectedItems, setSelectedItems] = useState<SelectedExpenseItem[]>([])
   const [itemQuery, setItemQuery] = useState('')
   const [temporaryName, setTemporaryName] = useState('')
@@ -103,7 +101,6 @@ export function NouvelleDepenseForm({
     }
     return Number(unitPrice || 0) * Number(quantity || 0)
   }, [selectedItems, unitPrice, quantity, useTemporaryItem])
-  const pickedItem = useMemo(() => items.find((x) => x.id === pickedId) || null, [items, pickedId])
 
   const getSelectionKey = (item: PickItem) => `${item.type}:${item.id}`
 
@@ -149,20 +146,12 @@ export function NouvelleDepenseForm({
       }
     }
 
-    setPickedId('')
     setItemQuery('')
     void load()
   }, [itemType])
 
-  useEffect(() => {
-    if (useTemporaryItem || !pickedId) return
-    const item = items.find((x) => x.id === pickedId)
-    if (item) setUnitPrice(String(item.price ?? 0))
-  }, [pickedId, items, useTemporaryItem])
-
   function toggleSelectedItem(item: PickItem) {
     const selectionKey = getSelectionKey(item)
-    setPickedId(item.id)
     setSelectedItems((prev) => {
       const existing = prev.find((entry) => entry.selectionKey === selectionKey)
       if (existing) {
@@ -187,6 +176,8 @@ export function NouvelleDepenseForm({
 
   return (
     <CenteredFormLayout
+      className="max-h-[calc(100dvh-9.75rem)]"
+      panelClassName="h-full overflow-hidden"
       title={title}
       actions={
         <>
@@ -243,14 +234,18 @@ export function NouvelleDepenseForm({
       }
       actionsPlacement={actionsPlacement}
     >
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="md:col-span-2">
+      <div className="grid h-full gap-3 md:grid-cols-2">
+        <div>
           <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
           <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" />
         </div>
 
-        <div className="md:col-span-2">
-          <label className="mb-2 block text-xs text-white/60">Catégorie</label>
+        <div>
+          <label className="mb-1 block text-xs text-white/60">Raison / note</label>
+          <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Pourquoi cette dépense ?" />
+        </div>
+
+        <div className="md:col-span-2 flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-2">
             {catalogTypeOptions.map((option) => (
               <TabPill
@@ -268,6 +263,9 @@ export function NouvelleDepenseForm({
               Autres
             </TabPill>
           </div>
+          <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">
+            <span className="text-sm font-semibold text-white">{`Total : ${Number.isFinite(total) ? total.toFixed(2) : '0.00'} $`}</span>
+          </div>
         </div>
 
         {useTemporaryItem ? (
@@ -276,24 +274,48 @@ export function NouvelleDepenseForm({
             <Input value={temporaryName} onChange={(e) => setTemporaryName(e.target.value)} placeholder="Ex: Réparation véhicule (provisoire)" />
           </div>
         ) : (
-          <>
-            <div className="md:col-span-2">
+          <div className="md:col-span-2 grid gap-3 lg:grid-cols-[1fr_380px]">
+            <div>
               <label className="mb-1 block text-xs text-white/60">Rechercher dans le catalogue</label>
               <SearchInput value={itemQuery} onChange={(e) => setItemQuery(e.target.value)} placeholder="Chercher un item..." />
+              <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+                <div className="h-[clamp(14rem,34dvh,20rem)] space-y-1 overflow-y-auto pr-1">
+                  {filteredItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleSelectedItem(item)}
+                      className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
+                        selectedItems.some((entry) => entry.selectionKey === getSelectionKey(item)) ? 'border-cyan-300/40 bg-cyan-500/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                          {item.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{item.name}</div>
+                          <div className="text-xs text-white/60">Prix catalogue: {Number(item.price || 0).toFixed(2)} $</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  {filteredItems.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item trouvé.</p> : null}
+                </div>
+              </div>
             </div>
-            <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2">
-              <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
-                {filteredItems.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => toggleSelectedItem(item)}
-                    className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
-                      selectedItems.some((entry) => entry.selectionKey === getSelectionKey(item)) ? 'border-cyan-300/40 bg-cyan-500/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+
+            <div className="self-start rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="max-h-[clamp(14rem,30dvh,18rem)] space-y-2 overflow-y-auto pr-1">
+                {selectedItems.map((item) => (
+                  <div key={item.selectionKey} className="rounded-xl border border-white/10 bg-white/[0.02] p-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                         {item.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
@@ -301,17 +323,37 @@ export function NouvelleDepenseForm({
                           <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{item.name}</div>
-                        <div className="text-xs text-white/60">Prix catalogue: {Number(item.price || 0).toFixed(2)} $</div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{item.name}</p>
+                        <p className="text-xs text-white/60">{item.unitPrice.toFixed(2)} $ / unité</p>
+                      </div>
+                      <SecondaryButton onClick={() => setSelectedItems((prev) => prev.filter((row) => row.selectionKey !== item.selectionKey))}>Retirer</SecondaryButton>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <QuantityStepper
+                        size="sm"
+                        fitContent
+                        value={item.quantity}
+                        min={1}
+                        onChange={(nextQty) => setSelectedItems((prev) => prev.map((row) => row.selectionKey === item.selectionKey ? { ...row, quantity: nextQty } : row))}
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={String(item.unitPrice)}
+                          onChange={(event) => updateSelectedItemUnitPrice(item.selectionKey, event.target.value)}
+                          inputMode="decimal"
+                          className="h-8 w-[92px] px-2 text-center"
+                        />
+                        <span className="text-sm font-semibold text-white/85">$</span>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
-                {filteredItems.length === 0 ? <p className="px-2 py-2 text-xs text-white/60">Aucun item trouvé.</p> : null}
+                {selectedItems.length === 0 ? <p className="text-xs text-white/55">Sélectionne un ou plusieurs objets dans la liste.</p> : null}
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {useTemporaryItem ? (
@@ -326,75 +368,11 @@ export function NouvelleDepenseForm({
               <QuantityStepper value={quantity} onChange={setQuantity} min={1} />
             </div>
           </>
-        ) : (
-          <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-            <p className="mb-2 text-xs text-white/60">Items sélectionnés</p>
-            <div className="space-y-2">
-              {selectedItems.map((item) => (
-                <div key={item.selectionKey} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-2">
-                  <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-                    {item.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-[10px] text-white/40">IMG</div>
-                    )}
-                  </div>
-                  <div className="min-w-[160px] flex-1">
-                    <p className="truncate text-sm font-medium">{item.name}</p>
-                    <p className="text-xs text-white/60">{item.unitPrice.toFixed(2)} $ / unité</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-8 items-center rounded-full border border-white/15 bg-white/[0.05] px-2.5 text-[11px] text-white/75">
-                      Prix item
-                    </span>
-                    <Input
-                      value={String(item.unitPrice)}
-                      onChange={(event) => updateSelectedItemUnitPrice(item.selectionKey, event.target.value)}
-                      inputMode="decimal"
-                      className="w-[120px]"
-                    />
-                  </div>
-                  <div className="w-[220px]">
-                    <QuantityStepper
-                      value={item.quantity}
-                      min={1}
-                      onChange={(nextQty) => setSelectedItems((prev) => prev.map((row) => row.selectionKey === item.selectionKey ? { ...row, quantity: nextQty } : row))}
-                    />
-                  </div>
-                  <SecondaryButton onClick={() => setSelectedItems((prev) => prev.filter((row) => row.selectionKey !== item.selectionKey))}>Retirer</SecondaryButton>
-                </div>
-              ))}
-              {selectedItems.length === 0 ? <p className="text-xs text-white/55">Sélectionne un ou plusieurs objets dans la liste.</p> : null}
-            </div>
-          </div>
-        )}
+        ) : null}
 
-        <ImageDropzone label="Preuve (image optionnelle)" onChange={setProofFile} />
-
-        <div className="md:col-span-2">
-          <label className="mb-1 block text-xs text-white/60">Description (optionnelle)</label>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[120px]" />
-        </div>
-
-        <div className="md:col-span-2 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-          <div className="text-sm text-white/70">Total</div>
-          <div className="text-lg font-semibold">{Number.isFinite(total) ? total.toFixed(2) : '0.00'} $</div>
-        </div>
+        <ImageDropzone label="Preuve (image optionnelle)" onChange={setProofFile} compact />
 
         {error ? <div className="md:col-span-2 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">❌ {error}</div> : null}
-        {pickedItem?.image_url && !useTemporaryItem && selectedItems.length === 1 ? (
-          <div className="md:col-span-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="h-12 w-12 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={pickedItem.image_url} alt="" className="h-full w-full object-cover" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{pickedItem.name}</p>
-              <p className="text-xs text-white/60">Prix catalogue: {Number(pickedItem.price || 0).toFixed(2)} $</p>
-            </div>
-          </div>
-        ) : null}
       </div>
     </CenteredFormLayout>
   )

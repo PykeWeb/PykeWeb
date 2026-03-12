@@ -15,6 +15,17 @@ function toPositiveInt(value: string, fallback: number) {
   return Math.max(1, Math.floor(num))
 }
 
+function formatDuration(ms: number) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const hh = String(hours).padStart(2, '0')
+  const mm = String(minutes).padStart(2, '0')
+  const ss = String(seconds).padStart(2, '0')
+  return `${hh}:${mm}:${ss}`
+}
+
 export default function PwrCommandesPage() {
   const [orders, setOrders] = useState<PwrOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +42,7 @@ export default function PwrCommandesPage() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [isPwr, setIsPwr] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
 
   const refreshOrders = useCallback(async () => {
     setLoading(true)
@@ -47,6 +59,11 @@ export default function PwrCommandesPage() {
       setLoading(false)
     }
   }, [selectedOrderId])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -70,6 +87,13 @@ export default function PwrCommandesPage() {
   }, [selectedOrderId])
 
   const selectedOrder = useMemo(() => orders.find((order) => order.id === selectedOrderId) || null, [orders, selectedOrderId])
+
+  const runDuration = useMemo(() => {
+    if (!selectedOrder) return '00:00:00'
+    const startedAt = new Date(selectedOrder.created_at).getTime()
+    if (!Number.isFinite(startedAt)) return '00:00:00'
+    return formatDuration(now - startedAt)
+  }, [selectedOrder, now])
 
   const summary = useMemo(() => {
     if (!selectedOrder) return null
@@ -154,11 +178,12 @@ export default function PwrCommandesPage() {
             {!selectedOrder ? <p className="text-sm text-white/60">Sélectionne une commande pour suivre les allers-retours.</p> : null}
             {selectedOrder && summary ? (
               <div className="space-y-4">
-                <div className="grid gap-2 sm:grid-cols-4">
+                <div className="grid gap-2 sm:grid-cols-5">
                   <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Total</p><p className="text-xl font-semibold">{summary.target}</p></div>
                   <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Actuel</p><p className="text-xl font-semibold">{summary.delivered}</p></div>
                   <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Restant</p><p className="text-xl font-semibold">{summary.remaining}</p></div>
                   <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Allers restants</p><p className="text-xl font-semibold">{summary.tripsRemaining}</p></div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-white/60">Durée run</p><p className="text-xl font-semibold">{runDuration}</p></div>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
