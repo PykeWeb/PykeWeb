@@ -13,6 +13,7 @@ import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } fr
 import { getFinanceListImage } from '@/lib/financeVisuals'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, FolderOpen, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type Tx = {
   id: string
@@ -40,6 +41,14 @@ type DashboardMetrics = {
 
 type QuickActionOption = { key: QuickActionKey; title: string; subtitle: string; href: string; icon: LucideIcon }
 type CardOption = { key: CardKey; title: string; href: string; icon: LucideIcon; getValue: (metrics: DashboardMetrics) => string }
+
+type BubbleStyle = {
+  bgColor?: string
+  borderColor?: string
+  textColor?: string
+  iconBgColor?: string
+  iconColor?: string
+}
 
 const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'newExpense', title: 'Nouvelle dépense', subtitle: 'Créer une dépense Finance', href: '/finance/depense/nouveau', icon: Wallet },
@@ -93,6 +102,7 @@ function createEmptyMovementCounts(): Record<FinanceMovementType, number> {
 }
 
 export function DashboardClient() {
+  const themeConfig = useUiThemeConfig()
   const [loading, setLoading] = useState(true)
   const [recentTx, setRecentTx] = useState<Tx[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
@@ -117,6 +127,25 @@ export function DashboardClient() {
   const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
+
+  const iconByName: Record<string, LucideIcon> = {
+    Wallet,
+    PlusCircle,
+    Receipt,
+    Box,
+    Shapes,
+    Pill,
+    Swords,
+    Shield,
+    ShoppingCart,
+    ArrowUpRight,
+    ArrowDownRight,
+    FolderOpen,
+  }
+
+  function getBubbleOverride(key: string) {
+    return themeConfig.bubbles[key] || null
+  }
 
 
 
@@ -418,13 +447,21 @@ export function DashboardClient() {
           )) : null}
           {uiLayoutsReady ? dashboardCards.map((cardKey, idx) => {
             const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
-            const Icon = card.icon
+            const override = getBubbleOverride(`dashboard.card.${card.key}`)
+            const Icon = (override?.icon && iconByName[override.icon]) ? iconByName[override.icon] : card.icon
             return (
               <div key={`${card.key}-${idx}`} className="select-none touch-none" onPointerDown={onCardPointerDown} onPointerUp={onCardPointerEnd} onPointerLeave={onCardPointerEnd} onPointerCancel={onCardPointerEnd} onClickCapture={onCardClickCapture}>
               <StatCard
-                title={card.title}
+                title={override?.label || card.title}
                 value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })}
                 icon={<Icon className="h-5 w-5" />}
+                bubbleStyle={{
+                  bgColor: override?.bgColor,
+                  borderColor: override?.borderColor,
+                  textColor: override?.textColor,
+                  iconBgColor: override?.iconBgColor,
+                  iconColor: override?.iconColor,
+                }}
                 tone={
                   card.key === 'catWeapons' ? 'rose'
                     : card.key === 'catEquipment' ? 'violet'
@@ -442,6 +479,32 @@ export function DashboardClient() {
             )
           }) : null}
         </div>
+
+        {themeConfig.customDashboardBubbles.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {themeConfig.customDashboardBubbles.map((entry) => {
+              const Icon = (entry.icon && iconByName[entry.icon]) ? iconByName[entry.icon] : Shapes
+              const bubbleStyle: BubbleStyle = {
+                bgColor: entry.bgColor,
+                borderColor: entry.borderColor,
+                textColor: entry.textColor,
+                iconBgColor: entry.bgColor,
+                iconColor: entry.textColor,
+              }
+              return (
+                <StatCard
+                  key={entry.id}
+                  title={entry.title}
+                  value={entry.value || '—'}
+                  icon={<Icon className="h-5 w-5" />}
+                  tone="slate"
+                  href={entry.href}
+                  bubbleStyle={bubbleStyle}
+                />
+              )
+            })}
+          </div>
+        ) : null}
 
         <Panel>
           <div className="flex items-center justify-between gap-3">
@@ -580,14 +643,20 @@ export function DashboardClient() {
             {uiLayoutsReady ? quickActions.map((actionKey, idx) => {
               const action = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey) || QUICK_ACTION_OPTIONS[idx]
               if (!action) return null
-              const Icon = action.icon
+              const override = getBubbleOverride(`dashboard.quick.${action.key}`)
+              const Icon = (override?.icon && iconByName[override.icon]) ? iconByName[override.icon] : action.icon
               const tone = quickActionTone(action.key)
               return (
-                <Link key={`${action.key}-${idx}`} href={action.href} className={`group flex items-center justify-between rounded-xl border bg-gradient-to-r px-3 py-2.5 transition ${tone.card}`}>
+                <Link
+                  key={`${action.key}-${idx}`}
+                  href={action.href}
+                  className={`group flex items-center justify-between rounded-xl border bg-gradient-to-r px-3 py-2.5 transition ${tone.card}`}
+                  style={{ background: override?.bgColor || undefined, borderColor: override?.borderColor || undefined, color: override?.textColor || undefined }}
+                >
                   <div className="flex items-center gap-3">
-                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${tone.icon}`}><Icon className="h-4 w-4" /></span>
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${tone.icon}`} style={{ background: override?.iconBgColor || undefined, color: override?.iconColor || undefined, borderColor: override?.borderColor || undefined }}><Icon className="h-4 w-4" /></span>
                     <div>
-                      <p className="text-sm font-medium">{action.title}</p>
+                      <p className="text-sm font-medium">{override?.label || action.title}</p>
                       <p className="text-xs text-white/60">{action.subtitle}</p>
                     </div>
                   </div>

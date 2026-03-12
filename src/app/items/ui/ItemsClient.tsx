@@ -14,6 +14,7 @@ import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinan
 import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
 import { getCategoryLabel, getTypeLabel } from '@/lib/catalogConfig'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
@@ -74,6 +75,7 @@ const plantationDefaultOutputPerRun = plantationRecipes.reduce<Record<string, st
 
 
 export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?: ItemsView }) {
+  const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<CatalogItem[]>([])
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<CategoryFilter>('all')
@@ -319,11 +321,14 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
               { key: 'custom', label: 'Autres', value: categoryCounts.other, icon: Shapes },
             ].map((card) => {
               const Icon = card.icon
+              const uiKey = `items.category.${card.key}`
+              const override = themeConfig.bubbles[uiKey]
               return (
                 <button
                   key={card.key}
                   type="button"
                   onClick={() => { setCategory(card.key as CategoryFilter); setType('all') }}
+                  style={{ background: override?.bgColor || undefined, borderColor: override?.borderColor || undefined, color: override?.textColor || undefined }}
                   className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
                     category === card.key
                       ? 'border-cyan-300/55 bg-gradient-to-br from-cyan-500/28 to-blue-500/16 shadow-[0_0_0_1px_rgba(56,189,248,0.22)_inset]'
