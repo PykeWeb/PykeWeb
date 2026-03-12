@@ -9,6 +9,7 @@ import {
   buildUiThemeConfigFromOverrides,
   defaultUiThemeConfig,
   UI_THEME_CONFIG_KEY,
+  type UiBubbleConfig,
   type UiCustomDashboardBubble,
   type UiThemeConfig,
 } from '@/lib/uiThemeConfig'
@@ -170,6 +171,8 @@ export function SiteTextModWidget() {
   const [adminCreds, setAdminCreds] = useState<AdminCreds | null>(null)
   const [editingSourceText, setEditingSourceText] = useState<string | null>(null)
   const [editingDraft, setEditingDraft] = useState('')
+  const [editingBubbleKey, setEditingBubbleKey] = useState<string | null>(null)
+  const [editingBubbleDraft, setEditingBubbleDraft] = useState<UiBubbleConfig>({})
   const themeInitializedRef = useRef(false)
 
   useEffect(() => {
@@ -202,6 +205,18 @@ export function SiteTextModWidget() {
     if (!modMode || !adminCreds) return
 
     const clickHandler = (event: MouseEvent) => {
+      const bubbleTarget = (event.target instanceof HTMLElement ? event.target.closest('[data-bubble-key]') : null) as HTMLElement | null
+      if (bubbleTarget) {
+        const bubbleKey = bubbleTarget.dataset.bubbleKey || ''
+        if (bubbleKey) {
+          event.preventDefault()
+          event.stopPropagation()
+          setEditingBubbleKey(bubbleKey)
+          setEditingBubbleDraft(themeConfig.bubbles[bubbleKey] || {})
+          return
+        }
+      }
+
       const editable = getEditableText(event.target)
       if (!editable) return
       event.preventDefault()
@@ -215,7 +230,23 @@ export function SiteTextModWidget() {
 
     document.addEventListener('click', clickHandler, true)
     return () => document.removeEventListener('click', clickHandler, true)
-  }, [modMode, overrides, adminCreds])
+  }, [modMode, overrides, adminCreds, themeConfig])
+
+  function saveBubbleEdit() {
+    if (!editingBubbleKey) return
+    setThemeConfig((curr) => ({
+      ...curr,
+      bubbles: {
+        ...curr.bubbles,
+        [editingBubbleKey]: {
+          ...(curr.bubbles[editingBubbleKey] || {}),
+          ...editingBubbleDraft,
+        },
+      },
+    }))
+    setEditingBubbleKey(null)
+    setEditingBubbleDraft({})
+  }
 
   useEffect(() => {
     if (!themeInitializedRef.current) {
@@ -243,14 +274,17 @@ export function SiteTextModWidget() {
     return () => window.clearTimeout(timer)
   }, [themeConfig, adminCreds, isAdmin])
 
-  function updateBubble(key: string, field: string, value: string) {
+  function updateBubble(key: string, field: keyof UiBubbleConfig, value: string | number) {
+    const normalizedValue = (field === 'minWidthPx' || field === 'minHeightPx')
+      ? Math.max(0, Number(value) || 0)
+      : value
     setThemeConfig((curr) => ({
       ...curr,
       bubbles: {
         ...curr.bubbles,
         [key]: {
           ...(curr.bubbles[key] || {}),
-          [field]: value,
+          [field]: normalizedValue,
         },
       },
     }))
@@ -414,6 +448,10 @@ export function SiteTextModWidget() {
                           <label className="text-[11px]">Bordure<input type="color" value={entry.borderColor || '#374151'} onChange={(e) => updateBubble(key, 'borderColor', e.target.value)} className="mt-1 h-8 w-full rounded" /></label>
                           <label className="text-[11px]">Texte<input type="color" value={entry.textColor || '#ffffff'} onChange={(e) => updateBubble(key, 'textColor', e.target.value)} className="mt-1 h-8 w-full rounded" /></label>
                         </div>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          <input type="number" min={0} value={entry.minWidthPx ?? ''} onChange={(e) => updateBubble(key, 'minWidthPx', Math.max(0, Number(e.target.value) || 0))} placeholder="Largeur min (px)" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
+                          <input type="number" min={0} value={entry.minHeightPx ?? ''} onChange={(e) => updateBubble(key, 'minHeightPx', Math.max(0, Number(e.target.value) || 0))} placeholder="Hauteur min (px)" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
+                        </div>
                         <button type="button" onClick={() => removeBubble(key)} className="mt-2 rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Supprimer cette clé</button>
                       </div>
                     )
@@ -461,6 +499,35 @@ export function SiteTextModWidget() {
             <div className="mt-3 flex justify-end gap-2">
               <button type="button" onClick={() => { setEditingSourceText(null); setEditingDraft('') }} className="rounded-md border border-white/20 bg-white/10 px-3 py-1">Annuler</button>
               <button type="button" onClick={saveEdit} disabled={!editingDraft.trim()} className="rounded-md border border-emerald-400/40 bg-emerald-600/20 px-3 py-1 disabled:opacity-50">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editingBubbleKey ? (
+        <div data-mod-widget="true" className="fixed inset-0 z-[125] grid place-items-center bg-black/70 p-4" onClick={() => { setEditingBubbleKey(null); setEditingBubbleDraft({}) }}>
+          <div className="w-full max-w-xl rounded-xl border border-white/20 bg-slate-950/95 p-3 text-xs text-white" onClick={(event) => event.stopPropagation()}>
+            <p className="mb-2 font-semibold">Modifier la bulle</p>
+            <p className="mb-2 rounded-md border border-white/10 bg-white/5 p-2 text-[11px] text-white/70">Clé: {editingBubbleKey}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input value={editingBubbleDraft.label || ''} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, label: e.target.value }))} placeholder="Label" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
+              <select value={editingBubbleDraft.icon || ''} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, icon: e.target.value || undefined }))} className="rounded border border-white/15 bg-black/40 px-2 py-1">
+                <option value="">Icône par défaut</option>
+                {ICON_OPTIONS.map((icon) => <option key={icon} value={icon}>{icon}</option>)}
+              </select>
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              <label className="text-[11px]">Fond<input type="color" value={editingBubbleDraft.bgColor || '#1f2937'} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, bgColor: e.target.value }))} className="mt-1 h-8 w-full rounded" /></label>
+              <label className="text-[11px]">Bordure<input type="color" value={editingBubbleDraft.borderColor || '#374151'} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, borderColor: e.target.value }))} className="mt-1 h-8 w-full rounded" /></label>
+              <label className="text-[11px]">Texte<input type="color" value={editingBubbleDraft.textColor || '#ffffff'} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, textColor: e.target.value }))} className="mt-1 h-8 w-full rounded" /></label>
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <input type="number" min={0} value={editingBubbleDraft.minWidthPx ?? ''} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, minWidthPx: Math.max(0, Number(e.target.value) || 0) }))} placeholder="Largeur min (px)" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
+              <input type="number" min={0} value={editingBubbleDraft.minHeightPx ?? ''} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, minHeightPx: Math.max(0, Number(e.target.value) || 0) }))} placeholder="Hauteur min (px)" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <button type="button" onClick={() => { setEditingBubbleKey(null); setEditingBubbleDraft({}) }} className="rounded-md border border-white/20 bg-white/10 px-3 py-1">Annuler</button>
+              <button type="button" onClick={saveBubbleEdit} className="rounded-md border border-emerald-400/40 bg-emerald-600/20 px-3 py-1">Enregistrer</button>
             </div>
           </div>
         </div>

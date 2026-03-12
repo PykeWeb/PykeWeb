@@ -327,8 +327,15 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                 <button
                   key={card.key}
                   type="button"
+                  data-bubble-key={uiKey}
                   onClick={() => { setCategory(card.key as CategoryFilter); setType('all') }}
-                  style={{ background: override?.bgColor || undefined, borderColor: override?.borderColor || undefined, color: override?.textColor || undefined }}
+                  style={{
+                    background: override?.bgColor || undefined,
+                    borderColor: override?.borderColor || undefined,
+                    color: override?.textColor || undefined,
+                    minWidth: override?.minWidthPx ? `${override.minWidthPx}px` : undefined,
+                    minHeight: override?.minHeightPx ? `${override.minHeightPx}px` : undefined,
+                  }}
                   className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
                     category === card.key
                       ? 'border-cyan-300/55 bg-gradient-to-br from-cyan-500/28 to-blue-500/16 shadow-[0_0_0_1px_rgba(56,189,248,0.22)_inset]'

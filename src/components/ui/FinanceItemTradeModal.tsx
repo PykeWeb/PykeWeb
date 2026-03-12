@@ -11,6 +11,7 @@ import type { CatalogItem, ItemCategory, ItemType } from '@/lib/types/itemsFinan
 import { calcTotal, toNonNegative, toPositiveInt } from '@/lib/numberUtils'
 import { copy } from '@/lib/copy'
 import { categoryTypeOptions, getTypeLabel } from '@/lib/catalogConfig'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = 'all' | ItemType
@@ -60,6 +61,7 @@ export function FinanceItemTradeModal({
   modeBuyLabel?: string
   modeSellLabel?: string
 }) {
+  const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<CatalogItem[]>([])
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>(mode)
   const [category, setCategory] = useState<CategoryFilter>('all')
@@ -241,20 +243,30 @@ export function FinanceItemTradeModal({
               { key: 'weapons', label: 'Armes', icon: Swords },
               { key: 'equipment', label: 'Équipement', icon: Shield },
               { key: 'drugs', label: 'Drogues', icon: Pill },
-              { key: 'custom', label: 'Autres', icon: Shapes },
+              { key: 'custom', label: 'Autres\u200b', icon: Shapes },
             ].map((option) => {
               const cardQty = items.reduce((total, item) => {
                 if (option.key !== 'all' && item.category !== option.key) return total
                 return total + Math.max(0, Number(item.stock) || 0)
               }, 0)
               const Icon = option.icon
+              const bubbleKey = `finance.trade.category.${option.key}`
+              const bubble = themeConfig.bubbles[bubbleKey]
               return (
                 <button
                   key={option.key}
                   type="button"
+                  data-bubble-key={bubbleKey}
                   onClick={() => {
                     setCategory(option.key as CategoryFilter)
                     setType('all')
+                  }}
+                  style={{
+                    background: bubble?.bgColor || undefined,
+                    borderColor: bubble?.borderColor || undefined,
+                    color: bubble?.textColor || undefined,
+                    minWidth: bubble?.minWidthPx ? `${bubble.minWidthPx}px` : undefined,
+                    minHeight: bubble?.minHeightPx ? `${bubble.minHeightPx}px` : undefined,
                   }}
                   className={`rounded-xl border px-2.5 py-2.5 text-left transition min-h-[82px] ${
                     category === option.key

@@ -8,6 +8,8 @@ export type UiBubbleConfig = {
   textColor?: string
   iconBgColor?: string
   iconColor?: string
+  minWidthPx?: number
+  minHeightPx?: number
 }
 
 export type UiCustomDashboardBubble = {
