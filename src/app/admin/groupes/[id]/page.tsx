@@ -18,6 +18,7 @@ import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 import { toast } from 'sonner'
 import { ROLE_ACCESS_OPTIONS, type GroupRoleDefinition } from '@/lib/types/groupRoles'
 import { GroupMembersGradesSection } from './ui/GroupMembersGradesSection'
+import { PageHeader } from '@/components/PageHeader'
 
 type EditableExportItem = ExportableGroupItem & { selected: boolean }
 
@@ -261,10 +262,10 @@ export default function AdminGroupDetailsPage() {
 
       <div id="section-general" className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-semibold">Gestion : {group.name} {group.badge ? `(${group.badge})` : ''}</h1>
-            <p className="mt-1 text-sm text-white/70">Modifier, sécurité, activation et reset sans suppression.</p>
-          </div>
+          <PageHeader
+            title={`Gestion : ${group.name}${group.badge ? ` (${group.badge})` : ''}`}
+            subtitle="Modifier, sécurité, activation et reset sans suppression."
+          />
           <Link href="/admin/groupes" className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Retour</Link>
         </div>
 

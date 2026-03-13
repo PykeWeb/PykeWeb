@@ -12,6 +12,7 @@ import type { ExpenseStatus } from '@/lib/expensesApi'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { PageHeader } from '@/components/PageHeader'
 import { toast } from 'sonner'
 
 function formatMoney(value: number) {
@@ -94,10 +95,7 @@ export default function FinanceTransactionDetailPage() {
     <div className="space-y-4">
       <Panel>
         <div className="mb-4 flex items-center justify-between gap-2">
-          <div>
-            <p className="text-xs text-white/60">Finance</p>
-            <h1 className="text-2xl font-semibold">{entry?.display_name || 'Transaction'}</h1>
-          </div>
+          <PageHeader title={entry?.display_name || 'Transaction'} subtitle="Finance" />
           <Link href="/finance"><SecondaryButton>Retour</SecondaryButton></Link>
         </div>
 

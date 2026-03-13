@@ -2,6 +2,7 @@
 
 import { Image as ImageIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton } from '@/components/ui/design-system'
@@ -101,8 +102,7 @@ export default function TablettePage() {
     <Panel>
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-semibold">Tablette</h1>
-          <p className="text-sm text-white/60">Quota journalier par membre (00:00 → 00:00). Un membre ne peut valider qu’une fois par jour.</p>
+          <PageHeader title="Tablette" subtitle="Quota journalier par membre (00:00 → 00:00). Un membre ne peut valider qu’une fois par jour." />
         </div>
 
         {stats ? (

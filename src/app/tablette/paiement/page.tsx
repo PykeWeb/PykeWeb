@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import { PrimaryButton } from '@/components/ui/design-system'
 import { Input } from '@/components/ui/Input'
@@ -57,8 +58,7 @@ export default function TablettePaiementPage() {
   return (
     <div className="space-y-4">
       <Panel>
-        <h1 className="text-2xl font-semibold">Paiement tablette par virement</h1>
-        <p className="mt-1 text-sm text-white/70">Numéro de téléphone : <span className="font-semibold">{TABLET_PHONE}</span></p>
+        <PageHeader title="Paiement tablette par virement" subtitle={`Numéro de téléphone : ${TABLET_PHONE}`} />
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div>

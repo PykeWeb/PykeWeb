@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { listTenantGroups, type TenantGroup } from '@/lib/tenantAuthApi'
 import { getTenantSession } from '@/lib/tenantSession'
+import { PageHeader } from '@/components/PageHeader'
 
 export default function AdminDashboardPage() {
   const [groups, setGroups] = useState<TenantGroup[]>([])
@@ -38,8 +39,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <h1 className="text-4xl font-semibold tracking-tight">Admin • Dashboard</h1>
-        <p className="mt-2 text-lg text-white/70">Vue rapide de la gestion globale.</p>
+        <PageHeader title="Admin • Dashboard" subtitle="Vue rapide de la gestion globale." />
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <article className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">

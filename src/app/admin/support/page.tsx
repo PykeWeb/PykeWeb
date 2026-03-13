@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { listSupportTicketsAdmin, updateSupportTicketStatus, type SupportTicket } from '@/lib/communicationApi'
+import { PageHeader } from '@/components/PageHeader'
 import { copyToClipboard } from '@/lib/utils/password'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 
@@ -181,7 +182,7 @@ export default function AdminSupportPage() {
     <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-3xl font-semibold">Support</h1>
+          <PageHeader title="Support" subtitle="Tickets message + bug avec statut et résolution rapide." />
           <label className="inline-flex items-center gap-2 text-sm text-white/80">
             <input type="checkbox" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-white/5" />
             Afficher les résolus

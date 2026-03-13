@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
+import { PageHeader } from '@/components/PageHeader'
 import { PrimaryButton, SecondaryButton, TabPill } from '@/components/ui/design-system'
 import { createPwrCheckpoint, createPwrOrder, listPwrCheckpoints, listPwrOrders, toErrorMessage } from '@/lib/pwrApi'
 import { getTenantSession } from '@/lib/tenantSession'
@@ -108,8 +109,10 @@ export default function PwrCommandesPage() {
 
   return (
     <Panel>
-      <h1 className="text-2xl font-semibold">PWR • Commandes</h1>
-      <p className="mt-1 text-sm text-white/65">Catégorie unique: Commande. Tu crées un total, puis tu ajoutes des passages (475 par défaut) avec photo et note.</p>
+      <PageHeader
+        title="PWR • Commandes"
+        subtitle="Catégorie unique: Commande. Tu crées un total, puis tu ajoutes des passages (475 par défaut) avec photo et note."
+      />
 
       {!isPwr ? (
         <p className="mt-4 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">Cette page est réservée au groupe PWR.</p>

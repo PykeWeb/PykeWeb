@@ -11,6 +11,7 @@ import { categoryTypeOptions, getTypeFilterOptions, itemCategoryOptions, normali
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
+import { PageHeader } from '@/components/PageHeader'
 
 type GlobalItem = {
   id: string
@@ -46,7 +47,7 @@ const categoryLabelByKey = Object.fromEntries(itemCategoryOptions.map((option) =
 
 const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: LucideIcon }[] = ADMIN_CATEGORY_ORDER.map((key) => ({
   key,
-  label: key === 'custom' ? 'Autres​' : (categoryLabelByKey[key] ?? 'Autres​'),
+  label: key === 'custom' ? 'Autres' : (categoryLabelByKey[key] ?? 'Autres'),
   icon: categoryIconByKey[key],
 }))
 
@@ -269,8 +270,10 @@ export default function AdminCatalogueGlobalPage() {
   return (
     <div className="space-y-4">
       <Panel>
-        <h1 className="text-2xl font-semibold">Items (catalogue global)</h1>
-        <p className="mt-1 text-sm text-white/70">Catalogue partagé entre modules, avec override local par groupe.</p>
+        <PageHeader
+          title="Items (catalogue global)"
+          subtitle="Catalogue partagé entre modules, avec override local par groupe."
+        />
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="md:col-span-2">

@@ -6,6 +6,7 @@ import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import type { TabletRentalTicket } from '@/lib/tabletRental'
+import { PageHeader } from '@/components/PageHeader'
 
 type AdminRentalTicket = TabletRentalTicket & { group_name?: string | null; group_badge?: string | null }
 
@@ -57,11 +58,7 @@ export default function AdminServiceAchatTablettePage() {
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200">Catégorie Service</p>
-            <h1 className="text-2xl font-semibold">Achat service tablette</h1>
-            <p className="mt-1 text-sm text-white/70">Validation des preuves d’achat du service tablette.</p>
-          </div>
+          <PageHeader title="Achat service tablette" subtitle="Validation des preuves d’achat du service tablette." />
           <GlassSelect
             value={serviceCategory}
             onChange={(value) => setServiceCategory(value as 'all' | 'pending' | 'resolved')}

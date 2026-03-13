@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { listAdminLogs } from '@/lib/logsApi'
+import { PageHeader } from '@/components/PageHeader'
 import type { AppLogEntry } from '@/lib/types/logs'
 import { getTenantSession } from '@/lib/tenantSession'
 import { SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
@@ -76,8 +77,7 @@ export default function AdminLogsPage() {
     <Panel>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Admin · Logs</h1>
-          <p className="text-sm text-white/60">Vision globale des actions pour tous les groupes.</p>
+          <PageHeader title="Admin · Logs" subtitle="Vision globale des actions pour tous les groupes." />
         </div>
         <Link href="/admin/dashboard"><SecondaryButton>Retour</SecondaryButton></Link>
       </div>

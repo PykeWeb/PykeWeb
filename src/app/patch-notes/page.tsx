@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { listActivePatchNotes, type PatchNote } from '@/lib/communicationApi'
 import { PatchNoteModal } from '@/components/ui/PatchNoteModal'
+import { PageHeader } from '@/components/PageHeader'
 
 export default function PatchNotesPage() {
   const [notes, setNotes] = useState<PatchNote[]>([])
@@ -15,14 +16,13 @@ export default function PatchNotesPage() {
         setNotes(rows)
         setError(null)
       })
-      .catch((e: any) => setError(e?.message || 'Impossible de charger les patch notes'))
+      .catch((error: unknown) => setError(error instanceof Error ? error.message : 'Impossible de charger les patch notes'))
   }, [])
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <h1 className="text-3xl font-semibold">Patch notes</h1>
-        <p className="mt-1 text-sm text-white/65">Toutes les mises à jour publiées.</p>
+        <PageHeader title="Patch notes" subtitle="Toutes les mises à jour publiées." />
 
         {error ? <p className="mt-3 rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
 

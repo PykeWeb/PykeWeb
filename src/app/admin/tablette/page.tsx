@@ -7,6 +7,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Input } from '@/components/ui/Input'
 import type { AdminTabletAtelierStatsResponse, TabletCatalogItemConfig } from '@/lib/types/tablette'
+import { PageHeader } from '@/components/PageHeader'
 
 function isSupportedImage(file: File) {
   return ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)
@@ -149,10 +150,7 @@ export default function AdminTablettePage() {
     <div className="space-y-4">
       <Panel>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold">Admin • Tablette</h1>
-            <p className="mt-1 text-sm text-white/70">Gestion des items tablette journaliers.</p>
-          </div>
+          <PageHeader title="Admin • Tablette" subtitle="Gestion des items tablette journaliers." />
         </div>
       </Panel>
 

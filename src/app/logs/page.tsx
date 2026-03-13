@@ -8,6 +8,7 @@ import { getTenantSession } from '@/lib/tenantSession'
 import { SearchInput, SecondaryButton } from '@/components/ui/design-system'
 import { Panel } from '@/components/ui/Panel'
 import { getLogActorDetails } from '@/lib/logActor'
+import { PageHeader } from '@/components/PageHeader'
 
 function formatDate(value: string) {
   const date = new Date(value)
@@ -68,8 +69,7 @@ export default function LogsPage() {
     <Panel>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Logs</h1>
-          <p className="text-sm text-white/60">Historique des actions du groupe.</p>
+          <PageHeader title="Logs" subtitle="Historique des actions du groupe." />
         </div>
         <Link href="/"><SecondaryButton>Retour</SecondaryButton></Link>
       </div>
