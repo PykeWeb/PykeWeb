@@ -8,7 +8,7 @@ import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
-import { categoryTypeOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
+import { categoryTypeOptions, itemCategoryOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
@@ -31,13 +31,19 @@ const defaultTypeByCategory: Record<ItemCategory, string> = {
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
 }
 
-const CATALOG_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: typeof Box }[] = [
-  { key: 'objects', label: 'Objets', icon: Box },
-  { key: 'weapons', label: 'Armes', icon: Swords },
-  { key: 'equipment', label: 'Équipement', icon: Shield },
-  { key: 'drugs', label: 'Drogues', icon: Pill },
-  { key: 'custom', label: 'Autres', icon: Shapes },
-]
+const CATEGORY_ICON_MAP: Record<ItemCategory, typeof Box> = {
+  objects: Box,
+  weapons: Swords,
+  equipment: Shield,
+  drugs: Pill,
+  custom: Shapes,
+}
+
+const CATALOG_CATEGORY_CARDS = itemCategoryOptions.map((option) => ({
+  key: option.value,
+  label: option.label,
+  icon: CATEGORY_ICON_MAP[option.value],
+}))
 
 function categoryPillClass(category: ItemCategory, active: boolean) {
   if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-r from-cyan-500/35 to-blue-500/25 text-cyan-50' : 'border-cyan-300/25 bg-cyan-500/[0.07] text-cyan-100/90 hover:bg-cyan-500/[0.14]'
