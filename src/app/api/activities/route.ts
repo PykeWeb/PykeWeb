@@ -12,6 +12,15 @@ type CatalogItemRow = { id: string; name: string; category: string; buy_price: n
 
 const MAX_PROOF_LENGTH = 3_000_000
 
+function toErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim()) return message
+  }
+  return fallback
+}
+
 function toWeekStart(date = new Date()) {
   const copy = new Date(date)
   const day = copy.getDay()
@@ -79,8 +88,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ entries: entries ?? [], summaries, settings: normalizedSettings })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Impossible de charger les activités.'
-    return NextResponse.json({ error: message }, { status: 400 })
+    return NextResponse.json({ error: toErrorMessage(error, 'Impossible de charger les activités.') }, { status: 400 })
   }
 }
 
@@ -102,7 +110,6 @@ export async function POST(request: Request) {
     const activityType = body.activity_type
     const objectLines = Array.isArray(body.object_lines) ? body.object_lines : []
     const equipmentLines = Array.isArray(body.equipment_lines) ? body.equipment_lines : []
-    const percent = Math.max(0, Number(body.percent_per_object) || 0)
     const proof = String(body.proof_image_data ?? '').trim()
 
     if (!memberName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
@@ -117,13 +124,26 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Lignes équipements invalides.' }, { status: 400 })
       }
     }
-    if (percent <= 0) return NextResponse.json({ error: 'Pourcentage invalide.' }, { status: 400 })
     if (!proof.startsWith('data:image/jpeg;base64,') && !proof.startsWith('data:image/png;base64,')) {
       return NextResponse.json({ error: 'Preuve obligatoire (jpeg/png).' }, { status: 400 })
     }
     if (proof.length > MAX_PROOF_LENGTH) return NextResponse.json({ error: 'Image trop volumineuse.' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
+    const { data: settings, error: settingsError } = await supabase
+      .from('group_activity_settings')
+      .select('default_percent_per_object')
+      .eq('group_id', session.groupId)
+      .maybeSingle()
+
+    if (settingsError) throw settingsError
+
+    const fallbackPercent = Math.max(0.01, Number(settings?.default_percent_per_object) || 2)
+    const canOverridePercent = Boolean(session.isAdmin || session.role === 'chef')
+    const requestedPercent = Math.max(0.01, Number(body.percent_per_object) || 0.01)
+    const percent = canOverridePercent ? requestedPercent : fallbackPercent
+
+    if (percent <= 0) return NextResponse.json({ error: 'Pourcentage invalide.' }, { status: 400 })
 
     const objectIds = [...new Set(objectLines.map((line) => String(line.object_item_id).trim()).filter(Boolean))]
     const { data: objectRows, error: objectErr } = await supabase
@@ -200,7 +220,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Impossible d\'enregistrer l\'activité.'
-    return NextResponse.json({ error: message }, { status: 400 })
+    return NextResponse.json({ error: toErrorMessage(error, "Impossible d'enregistrer l'activité.") }, { status: 400 })
   }
 }

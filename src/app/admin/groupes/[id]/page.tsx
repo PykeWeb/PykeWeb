@@ -286,7 +286,7 @@ export default function AdminGroupDetailsPage() {
           <div className="space-y-3">
             {rolesDraft.map((role, index) => (
               <div key={role.key} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                <div className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto_auto] md:items-center">
+                <div className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto_auto_auto] md:items-center">
                   <input
                     value={role.name}
                     onChange={(event) => updateRole(index, { name: event.target.value })}
@@ -302,6 +302,7 @@ export default function AdminGroupDetailsPage() {
                   />
                   <p className="text-xs text-white/60">Clé: <span className="font-semibold text-white/90">{role.key}</span></p>
                   <button type="button" onClick={() => updateRole(index, { password: generatePassword({ avoidAmbiguous: true }) })} className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Générer</button>
+                  <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">{showPassword ? 'Masquer' : 'Voir'}</button>
                   <button type="button" onClick={() => void copyToClipboard(role.password)} className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">

@@ -104,10 +104,12 @@ export default function ActivitesPage() {
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [isMember, setIsMember] = useState(false)
+  const [isChef, setIsChef] = useState(false)
 
   useEffect(() => {
     const session = getTenantSession()
     setIsMember(isMemberTenantSession(session))
+    setIsChef(Boolean(session?.isAdmin || session?.role === 'chef'))
     void refresh()
     void listCatalogItems().then(setCatalogItems).catch(() => setCatalogItems([]))
   }, [])
@@ -259,13 +261,17 @@ export default function ActivitesPage() {
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 className="text-xl font-semibold">Déclaration activité</h2>
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1">Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></span>
-              <span className="rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1">Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></span>
+          <div className="flex flex-wrap items-stretch justify-end gap-2 text-sm">
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+              <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
             </div>
-            <p className="mt-2">Salaire total estimé pour cette validation:</p>
-            <p className="font-semibold">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+              <p>Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
+            </div>
+            <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-right">
+              <p className="text-cyan-100">Salaire :</p>
+              <p className="font-semibold text-cyan-50">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+            </div>
           </div>
         </div>
 
@@ -347,7 +353,7 @@ export default function ActivitesPage() {
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {!isMember ? (
+          {isChef ? (
             <label className="space-y-1 text-sm">
               <span className="text-white/70">% appliqué aux objets</span>
               <Input type="number" min={0.01} step={0.01} value={percentDraft} onChange={(event) => setPercentDraft(Math.max(0.01, Number(event.target.value) || 0.01))} />
@@ -387,7 +393,7 @@ export default function ActivitesPage() {
         </div>
       </section>
 
-      {!isMember ? (
+      {isChef ? (
         <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
           <h2 className="text-xl font-semibold">Gestion Chef</h2>
           <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -396,7 +402,6 @@ export default function ActivitesPage() {
               <Input type="number" min={0.01} step={0.01} value={percentDraft} onChange={(event) => setPercentDraft(Math.max(0.01, Number(event.target.value) || 0.01))} />
             </label>
             <Button variant="secondary" onClick={() => void saveDefaultPercent()} disabled={savingSettings}>{savingSettings ? 'Enregistrement…' : 'Enregistrer le % par défaut'}</Button>
-            <Button variant="ghost" onClick={() => void updateActivitySettings({ default_percent_per_object: 2 }).then(refresh)}>Mettre % test à 2</Button>
           </div>
 
           <div className="mt-4 space-y-4">
