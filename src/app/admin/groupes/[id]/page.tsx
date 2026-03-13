@@ -17,6 +17,7 @@ import { getTenantSession } from '@/lib/tenantSession'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 import { toast } from 'sonner'
 import { ROLE_ACCESS_OPTIONS, type GroupRoleDefinition } from '@/lib/types/groupRoles'
+import { GroupMembersGradesSection } from './ui/GroupMembersGradesSection'
 
 type EditableExportItem = ExportableGroupItem & { selected: boolean }
 
@@ -249,7 +250,16 @@ export default function AdminGroupDetailsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/60">Menu admin groupe</p>
+        <div className="flex flex-wrap gap-2">
+          <a href="#section-general" className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs leading-9 hover:bg-white/[0.12]">Général</a>
+          <a href="#section-members-grades" className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs leading-9 hover:bg-white/[0.12]">Membres & Grades</a>
+          <a href="#section-catalog-export" className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs leading-9 hover:bg-white/[0.12]">Catalogue du groupe</a>
+        </div>
+      </div>
+
+      <div id="section-general" className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-semibold">Gestion : {group.name} {group.badge ? `(${group.badge})` : ''}</h1>
@@ -371,7 +381,11 @@ export default function AdminGroupDetailsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
+      <div id="section-members-grades">
+        <GroupMembersGradesSection groupId={group.id} />
+      </div>
+
+      <div id="section-catalog-export" className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-semibold">Ajouter items du groupe vers Objets admin</h2>
