@@ -111,7 +111,12 @@ export function Sidebar() {
   const hasFullAccess = allowedPrefixes.includes('/')
   const filteredUserLinks = hasFullAccess
     ? defaultUserLinks
-    : defaultUserLinks.filter((link) => allowedPrefixes.some((prefix) => link.href === prefix || link.href.startsWith(`${prefix}/`) || prefix.startsWith(link.href)))
+    : defaultUserLinks.filter((link) =>
+      allowedPrefixes.some((prefix) => {
+        if (link.href === '/') return prefix === '/'
+        return link.href === prefix || link.href.startsWith(`${prefix}/`)
+      })
+    )
 
   const hasExplicitRoleRestrictions = allowedPrefixes.length > 0
 

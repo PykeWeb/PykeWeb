@@ -342,12 +342,12 @@ export default function ActivitesPage() {
 
         <div className="mt-4 grid gap-3 md:grid-cols-1">
           <div
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+            className="cursor-text rounded-2xl border border-white/10 bg-white/[0.03] p-3"
             tabIndex={0}
             onPaste={(event) => void onPaste(event)}
+            onClick={(event) => event.currentTarget.focus()}
           >
             <p className="text-sm text-white/70">Preuve (jpeg/png) • Clique ici puis colle une capture (Ctrl+V), ou choisis un fichier.</p>
-            <div className="mt-2 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Zone de collage active</div>
             <div className="mt-2">
               <Input type="file" accept="image/png,image/jpeg" onChange={(event) => void onPickFile(event.target.files?.[0] ?? null)} className="pt-2" />
             </div>
