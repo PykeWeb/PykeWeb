@@ -46,10 +46,12 @@ const CATALOG_CATEGORY_CARDS = itemCategoryOptions.map((option) => ({
 }))
 
 
-function getAdminCategoryLabel(category: ItemCategory, fallback: string) {
+function getAdminCategoryLabel(category: ItemCategory) {
   if (category === 'objects') return 'Objets'
-  if (category === 'custom') return 'Autres'
-  return fallback
+  if (category === 'weapons') return 'Armes'
+  if (category === 'equipment') return 'Équipement'
+  if (category === 'drugs') return 'Drogues'
+  return 'Autres'
 }
 
 function categoryPillClass(category: ItemCategory, active: boolean) {
@@ -292,7 +294,7 @@ export default function AdminCatalogueGlobalPage() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{getAdminCategoryLabel(card.key, card.label)}</p>
+                      <p className="text-xs text-white/70">{getAdminCategoryLabel(card.key)}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -348,7 +350,7 @@ export default function AdminCatalogueGlobalPage() {
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {[
             { key: 'all' as const, label: 'Tous', value: categoryCounts.all, icon: Shapes },
-            ...CATALOG_CATEGORY_CARDS.map((card) => ({ key: card.key, label: getAdminCategoryLabel(card.key, card.label), value: categoryCounts[card.key], icon: card.icon })),
+            ...CATALOG_CATEGORY_CARDS.map((card) => ({ key: card.key, label: getAdminCategoryLabel(card.key), value: categoryCounts[card.key], icon: card.icon })),
           ].map((card) => {
             const Icon = card.icon
             const active = filterCategory === card.key || (card.key === 'all' && filterCategory === 'all')
@@ -384,7 +386,7 @@ export default function AdminCatalogueGlobalPage() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{card.key === 'all' ? card.label : getAdminCategoryLabel(card.key, card.label)}</p>
+                  <p className="text-xs text-white/70">{card.key === 'all' ? card.label : getAdminCategoryLabel(card.key)}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
@@ -440,7 +442,7 @@ export default function AdminCatalogueGlobalPage() {
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-white/80">{getAdminCategoryLabel(card.key, card.label)}</p>
+                                <p className="text-xs text-white/80">{getAdminCategoryLabel(card.key)}</p>
                                 <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                               </div>
                             </button>
