@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Box, Pill, Shapes, Shield, Swords } from 'lucide-react'
+import { Pill, Shapes, Shield, Swords, type LucideIcon } from 'lucide-react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
@@ -23,45 +23,46 @@ type GlobalItem = {
   weapon_id: string | null
 }
 
-const defaultTypeByCategory: Record<ItemCategory, string> = {
-  objects: categoryTypeOptions.objects[0]?.value ?? 'other',
+type AdminCategory = Exclude<ItemCategory, 'objects'>
+type AdminGlobalItem = Omit<GlobalItem, 'category'> & { category: AdminCategory }
+
+const defaultTypeByCategory: Record<AdminCategory, string> = {
   weapons: categoryTypeOptions.weapons[0]?.value ?? 'other',
   equipment: categoryTypeOptions.equipment[0]?.value ?? 'other',
-  drugs: categoryTypeOptions.drugs[0]?.value ?? 'drug',
+  drugs: categoryTypeOptions.drugs[0]?.value ?? 'drug_material',
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
 }
 
-const categoryIconByKey: Record<ItemCategory, typeof Box> = {
-  objects: Box,
+const categoryIconByKey: Record<AdminCategory, LucideIcon> = {
   weapons: Swords,
   equipment: Shield,
   drugs: Pill,
   custom: Shapes,
 }
 
-const ADMIN_VISIBLE_CATEGORIES: ItemCategory[] = ['weapons', 'equipment', 'drugs', 'custom']
+const ADMIN_VISIBLE_CATEGORIES: AdminCategory[] = ['weapons', 'equipment', 'drugs', 'custom']
 
-const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: typeof Box }[] = itemCategoryOptions
-  .filter((option) => ADMIN_VISIBLE_CATEGORIES.includes(option.value))
+const ADMIN_CATEGORY_CARDS: { key: AdminCategory; label: string; icon: LucideIcon }[] = itemCategoryOptions
+  .filter((option): option is { value: AdminCategory; label: string } => ADMIN_VISIBLE_CATEGORIES.includes(option.value as AdminCategory))
   .map((option) => ({
     key: option.value,
     label: option.label,
     icon: categoryIconByKey[option.value],
   }))
 
-function categoryPillClass(category: ItemCategory, active: boolean) {
-  if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-r from-cyan-500/35 to-blue-500/25 text-cyan-50' : 'border-cyan-300/25 bg-cyan-500/[0.07] text-cyan-100/90 hover:bg-cyan-500/[0.14]'
-  if (category === 'weapons') return active ? 'border-rose-200/75 bg-gradient-to-r from-rose-500/35 to-red-500/25 text-rose-50' : 'border-rose-300/25 bg-rose-500/[0.07] text-rose-100/90 hover:bg-rose-500/[0.14]'
-  if (category === 'equipment') return active ? 'border-amber-200/75 bg-gradient-to-r from-amber-700/35 to-orange-700/25 text-amber-50' : 'border-amber-300/25 bg-amber-700/[0.16] text-amber-100/90 hover:bg-amber-700/[0.24]'
-  if (category === 'drugs') return active ? 'border-emerald-200/75 bg-gradient-to-r from-emerald-500/35 to-teal-500/25 text-emerald-50' : 'border-emerald-300/25 bg-emerald-500/[0.07] text-emerald-100/90 hover:bg-emerald-500/[0.14]'
-  return active ? 'border-slate-200/75 bg-gradient-to-r from-slate-500/35 to-slate-700/25 text-slate-50' : 'border-slate-300/25 bg-slate-500/[0.07] text-slate-100/90 hover:bg-slate-500/[0.14]'
+function getCategoryCardClass(category: 'all' | AdminCategory, active: boolean): string {
+  if (category === 'all') return active ? 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+  if (category === 'weapons') return active ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25' : 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+  if (category === 'equipment') return active ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25' : 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+  if (category === 'drugs') return active ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25' : 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+  return active ? 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25' : 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
 }
 
 export default function AdminCatalogueGlobalPage() {
-  const [items, setItems] = useState<GlobalItem[]>([])
-  const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all')
+  const [items, setItems] = useState<AdminGlobalItem[]>([])
+  const [filterCategory, setFilterCategory] = useState<'all' | AdminCategory>('all')
   const [query, setQuery] = useState('')
-  const [createCategory, setCreateCategory] = useState<ItemCategory>('custom')
+  const [createCategory, setCreateCategory] = useState<AdminCategory>('custom')
   const [name, setName] = useState('')
   const [price, setPrice] = useState('0')
   const [quantity, setQuantity] = useState('0')
@@ -71,7 +72,7 @@ export default function AdminCatalogueGlobalPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editCategory, setEditCategory] = useState<ItemCategory>('custom')
+  const [editCategory, setEditCategory] = useState<AdminCategory>('custom')
   const [editType, setEditType] = useState<string>(defaultTypeByCategory.custom)
   const [editName, setEditName] = useState('')
   const [editPrice, setEditPrice] = useState('0')
@@ -85,6 +86,7 @@ export default function AdminCatalogueGlobalPage() {
       .map((row) => ({ ...row, category: normalizeCatalogCategory(String(row.category)) }))
       .filter((row): row is GlobalItem => Boolean(row.category))
       .map((row) => ({ ...row, category: row.category === 'objects' ? 'custom' : row.category }))
+      .filter((row): row is AdminGlobalItem => ADMIN_VISIBLE_CATEGORIES.includes(row.category as AdminCategory))
     setItems(normalized)
   }
 
@@ -164,11 +166,10 @@ export default function AdminCatalogueGlobalPage() {
     await refresh()
   }
 
-  function startEdit(item: GlobalItem) {
+  function startEdit(item: AdminGlobalItem) {
     setEditingId(item.id)
-    const safeCategory = item.category === 'objects' ? 'custom' : item.category
-    setEditCategory(safeCategory)
-    setEditType(normalizeItemType(item.item_type, safeCategory))
+    setEditCategory(item.category)
+    setEditType(normalizeItemType(item.item_type, item.category))
     setEditName(item.name)
     setEditPrice(String(Math.max(0, Number(item.price || 0) || 0)))
     setEditQuantity(String(Math.max(0, Math.floor(Number(item.default_quantity || 0) || 0))))
@@ -226,8 +227,7 @@ export default function AdminCatalogueGlobalPage() {
   const createTypeOptions = categoryTypeOptions[createCategory]
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<ItemCategory, number> = {
-      objects: 0,
+    const counts: Record<AdminCategory, number> = {
       weapons: 0,
       equipment: 0,
       drugs: 0,
@@ -245,7 +245,7 @@ export default function AdminCatalogueGlobalPage() {
   return (
     <div className="space-y-4">
       <Panel>
-        <h1 className="text-2xl font-semibold">Objets (catalogue global)</h1>
+        <h1 className="text-2xl font-semibold">Items (catalogue global)</h1>
         <p className="mt-1 text-sm text-white/70">Catalogue partagé entre modules, avec override local par groupe.</p>
         <div className="mt-3">
           <Link href="/items/nouveau">
@@ -264,31 +264,11 @@ export default function AdminCatalogueGlobalPage() {
                     key={card.key}
                     type="button"
                     onClick={() => {
-                      const nextCategory = card.key as ItemCategory
+                      const nextCategory = card.key
                       setCreateCategory(nextCategory)
                       setCreateItemType(defaultTypeByCategory[nextCategory])
                     }}
-                    className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${
-                      createCategory === card.key
-                        ? card.key === 'objects'
-                          ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
-                          : card.key === 'weapons'
-                            ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
-                            : card.key === 'equipment'
-                              ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
-                              : card.key === 'drugs'
-                                ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
-                                : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
-                        : card.key === 'objects'
-                          ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
-                          : card.key === 'weapons'
-                            ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
-                            : card.key === 'equipment'
-                              ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
-                              : card.key === 'drugs'
-                                ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
-                                : 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
-                    }`}
+                    className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${getCategoryCardClass(card.key, createCategory === card.key)}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-xs text-white/70">{card.label}</p>
@@ -356,31 +336,7 @@ export default function AdminCatalogueGlobalPage() {
                 key={card.key}
                 type="button"
                 onClick={() => setFilterCategory(card.key === 'all' ? 'all' : card.key)}
-                className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
-                  active
-                    ? card.key === 'objects'
-                      ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
-                      : card.key === 'weapons'
-                        ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
-                        : card.key === 'equipment'
-                          ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
-                          : card.key === 'drugs'
-                            ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
-                            : card.key === 'custom'
-                              ? 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
-                              : 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22'
-                    : card.key === 'objects'
-                      ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
-                      : card.key === 'weapons'
-                        ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
-                        : card.key === 'equipment'
-                          ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
-                          : card.key === 'drugs'
-                            ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
-                            : card.key === 'custom'
-                              ? 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
-                              : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
-                }`}
+                className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${getCategoryCardClass(card.key, active)}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-xs text-white/70">{card.key === 'all' ? card.label : card.label}</p>
@@ -420,23 +376,11 @@ export default function AdminCatalogueGlobalPage() {
                               key={card.key}
                               type="button"
                               onClick={() => {
-                                const next = card.key as ItemCategory
+                                const next = card.key
                                 setEditCategory(next)
                                 setEditType(defaultTypeByCategory[next])
                               }}
-                              className={`rounded-2xl border px-3 py-3 text-left transition ${
-                                active
-                                  ? card.key === 'objects'
-                                    ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
-                                    : card.key === 'weapons'
-                                      ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
-                                      : card.key === 'equipment'
-                                        ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
-                                        : card.key === 'drugs'
-                                          ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
-                                          : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
-                                  : 'border-white/12 bg-white/[0.04] hover:bg-white/[0.08]'
-                              }`}
+                              className={`rounded-2xl border px-3 py-3 text-left transition ${getCategoryCardClass(card.key, active)}`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <p className="text-xs text-white/80">{card.label}</p>
@@ -453,7 +397,7 @@ export default function AdminCatalogueGlobalPage() {
                       <div className="flex flex-wrap gap-2">
                         {categoryTypeOptions[editCategory].map((option) => (
                           <TabPill key={option.value} active={editType === option.value} onClick={() => setEditType(option.value)}>
-                            {editCategory === 'objects' && option.value === 'other' ? 'Standard' : option.label}
+                            {option.label}
                           </TabPill>
                         ))}
                       </div>
