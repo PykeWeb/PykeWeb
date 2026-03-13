@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { GlassSelect } from '@/components/ui/GlassSelect'
@@ -53,7 +53,7 @@ function CatalogScrollableList({
     <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
       <p className="text-sm font-semibold">{title}</p>
       <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher..." />
-      <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+      <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
         {filtered.map((item) => (
           <button
             key={item.id}
@@ -67,7 +67,7 @@ function CatalogScrollableList({
               <div className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-white/[0.05] text-xs text-white/55">IMG</div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{item.name}</p>
+              <p className="text-sm font-medium leading-tight break-words">{item.name}</p>
             </div>
           </button>
         ))}
@@ -171,7 +171,7 @@ export default function ActivitesPage() {
   }, [data, memberName])
   const groupedForChef = useMemo(() => groupEntriesByMember(data?.entries ?? []), [data?.entries])
 
-  function addLine(setter: React.Dispatch<React.SetStateAction<SelectedLine[]>>, itemId: string) {
+  function addLine(setter: Dispatch<SetStateAction<SelectedLine[]>>, itemId: string) {
     setter((prev) => {
       const index = prev.findIndex((line) => line.itemId === itemId)
       if (index < 0) return [...prev, { itemId, quantity: 1 }]
@@ -179,11 +179,11 @@ export default function ActivitesPage() {
     })
   }
 
-  function updateLineQty(setter: React.Dispatch<React.SetStateAction<SelectedLine[]>>, itemId: string, qty: number) {
+  function updateLineQty(setter: Dispatch<SetStateAction<SelectedLine[]>>, itemId: string, qty: number) {
     setter((prev) => prev.map((line) => (line.itemId === itemId ? { ...line, quantity: Math.max(1, qty) } : line)))
   }
 
-  function removeLine(setter: React.Dispatch<React.SetStateAction<SelectedLine[]>>, itemId: string) {
+  function removeLine(setter: Dispatch<SetStateAction<SelectedLine[]>>, itemId: string) {
     setter((prev) => prev.filter((line) => line.itemId !== itemId))
   }
 
@@ -257,7 +257,14 @@ export default function ActivitesPage() {
       <PageHeader title={copy.activities.title} subtitle={copy.activities.subtitle} />
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
-        <h2 className="text-xl font-semibold">Déclaration activité</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-xl font-semibold">Déclaration activité</h2>
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
+            <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span> • Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
+            <p>Salaire total estimé pour cette validation: <span className="font-semibold">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</span></p>
+          </div>
+        </div>
+
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Nom du joueur</span>
@@ -293,7 +300,7 @@ export default function ActivitesPage() {
               ) : null}
             </div>
 
-            <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
               {(step === 'equipment' ? selectedEquipmentRows : selectedObjectRows).length === 0 ? (
                 <p className="text-sm text-white/60">Aucune ligne sélectionnée.</p>
               ) : null}
@@ -301,7 +308,14 @@ export default function ActivitesPage() {
               {step === 'equipment'
                 ? selectedEquipmentRows.map((row) => (
                     <div key={row.item.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.05] p-2">
-                      <p className="truncate text-sm font-medium">{row.item.name}</p>
+                      <div className="flex min-w-0 items-center gap-2">
+                        {row.item.image_url ? (
+                          <Image src={row.item.image_url} alt={row.item.name} width={34} height={34} className="h-8 w-8 rounded object-cover" unoptimized />
+                        ) : (
+                          <div className="grid h-8 w-8 place-items-center rounded border border-white/10 bg-white/[0.05] text-[10px] text-white/55">IMG</div>
+                        )}
+                        <p className="text-sm font-medium leading-tight break-words">{row.item.name}</p>
+                      </div>
                       <div className="flex items-center gap-2">
                         <QuantityStepper value={row.qty} onChange={(value) => updateLineQty(setSelectedEquipmentLines, row.item.id, value)} size="sm" fitContent />
                         <button type="button" onClick={() => removeLine(setSelectedEquipmentLines, row.item.id)} className="rounded-lg border border-rose-300/35 bg-rose-500/15 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25">Retirer</button>
@@ -310,7 +324,14 @@ export default function ActivitesPage() {
                   ))
                 : selectedObjectRows.map((row) => (
                     <div key={row.item.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.05] p-2">
-                      <p className="truncate text-sm font-medium">{row.item.name}</p>
+                      <div className="flex min-w-0 items-center gap-2">
+                        {row.item.image_url ? (
+                          <Image src={row.item.image_url} alt={row.item.name} width={34} height={34} className="h-8 w-8 rounded object-cover" unoptimized />
+                        ) : (
+                          <div className="grid h-8 w-8 place-items-center rounded border border-white/10 bg-white/[0.05] text-[10px] text-white/55">IMG</div>
+                        )}
+                        <p className="text-sm font-medium leading-tight break-words">{row.item.name}</p>
+                      </div>
                       <div className="flex items-center gap-2">
                         <QuantityStepper value={row.qty} onChange={(value) => updateLineQty(setSelectedObjectLines, row.item.id, value)} size="sm" fitContent />
                         <button type="button" onClick={() => removeLine(setSelectedObjectLines, row.item.id)} className="rounded-lg border border-rose-300/35 bg-rose-500/15 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25">Retirer</button>
@@ -318,19 +339,6 @@ export default function ActivitesPage() {
                     </div>
                   ))}
             </div>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-          <p className="mb-2 text-sm font-semibold">Objets ajoutés à cette activité</p>
-          <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
-            {selectedObjectRows.length === 0 ? <p className="text-sm text-white/60">Aucun objet ajouté.</p> : null}
-            {selectedObjectRows.map((row) => (
-              <div key={row.item.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.05] p-2">
-                <p className="truncate text-sm font-medium">{row.item.name}</p>
-                <QuantityStepper value={row.qty} onChange={(value) => updateLineQty(setSelectedObjectLines, row.item.id, value)} size="sm" fitContent />
-              </div>
-            ))}
           </div>
         </div>
 
@@ -345,11 +353,6 @@ export default function ActivitesPage() {
             <span className="text-white/70">Preuve (jpeg/png)</span>
             <Input type="file" accept="image/png,image/jpeg" onChange={(event) => void onPickFile(event.target.files?.[0] ?? null)} className="pt-2" />
           </label>
-        </div>
-
-        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
-          <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span> • Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
-          <p>Salaire total estimé pour cette validation: <span className="font-semibold">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</span></p>
         </div>
 
         {proofImageData ? <Image src={proofImageData} alt="Preuve" width={320} height={192} unoptimized className="mt-4 max-h-48 w-auto rounded-xl border border-white/10" /> : null}
