@@ -7,6 +7,11 @@ export type ActivityObjectLineInput = {
   quantity: number
 }
 
+export type ActivityEquipmentLineInput = {
+  equipment_item_id: string
+  quantity: number
+}
+
 export type ActivityEntry = {
   id: string
   group_id: string

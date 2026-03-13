@@ -1,4 +1,11 @@
-import type { ActivityEntry, ActivityMemberSummary, ActivityObjectLineInput, ActivitySettings, ActivityType } from '@/lib/types/activities'
+import type {
+  ActivityEntry,
+  ActivityEquipmentLineInput,
+  ActivityMemberSummary,
+  ActivityObjectLineInput,
+  ActivitySettings,
+  ActivityType,
+} from '@/lib/types/activities'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 export type ActivityListResponse = {
@@ -18,8 +25,7 @@ export async function createActivity(payload: {
   member_name: string
   activity_type: ActivityType
   object_lines: ActivityObjectLineInput[]
-  equipment_item_id: string | null
-  equipment_quantity: number
+  equipment_lines: ActivityEquipmentLineInput[]
   percent_per_object: number
   proof_image_data: string
 }) {

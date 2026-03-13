@@ -8,13 +8,20 @@ import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { createActivity, listActivities, updateActivitySettings, type ActivityListResponse } from '@/lib/activitiesApi'
-import { ACTIVITY_OPTIONS, type ActivityEntry, type ActivityObjectLineInput, type ActivityType } from '@/lib/types/activities'
+import {
+  ACTIVITY_OPTIONS,
+  type ActivityEntry,
+  type ActivityEquipmentLineInput,
+  type ActivityObjectLineInput,
+  type ActivityType,
+} from '@/lib/types/activities'
 import { getTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
 import { listCatalogItems } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 
-type SelectedObjectLine = { itemId: string; quantity: number }
+type SelectedLine = { itemId: string; quantity: number }
+type SelectionStep = 'equipment' | 'objects'
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -28,12 +35,10 @@ function fileToDataUrl(file: File): Promise<string> {
 function CatalogScrollableList({
   title,
   items,
-  selectedId,
   onSelect,
 }: {
   title: string
   items: CatalogItem[]
-  selectedId: string
   onSelect: (item: CatalogItem) => void
 }) {
   const [query, setQuery] = useState('')
@@ -48,28 +53,24 @@ function CatalogScrollableList({
     <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
       <p className="text-sm font-semibold">{title}</p>
       <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher..." />
-      <div className="max-h-[310px] space-y-2 overflow-y-auto pr-1">
-        {filtered.map((item) => {
-          const active = selectedId === item.id
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelect(item)}
-              className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition ${active ? 'border-cyan-300/45 bg-cyan-500/15' : 'border-white/10 bg-white/[0.05] hover:bg-white/[0.09]'}`}
-            >
-              {item.image_url ? (
-                <Image src={item.image_url} alt={item.name} width={44} height={44} className="h-11 w-11 rounded-lg object-cover" unoptimized />
-              ) : (
-                <div className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-white/[0.05] text-xs text-white/55">IMG</div>
-              )}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{item.name}</p>
-                <p className="text-xs text-white/60">{Math.max(0, Number(item.buy_price) || 0).toLocaleString('fr-FR')} $</p>
-              </div>
-            </button>
-          )
-        })}
+      <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+        {filtered.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item)}
+            className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] p-2 text-left transition hover:bg-white/[0.09]"
+          >
+            {item.image_url ? (
+              <Image src={item.image_url} alt={item.name} width={44} height={44} className="h-11 w-11 rounded-lg object-cover" unoptimized />
+            ) : (
+              <div className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-white/[0.05] text-xs text-white/55">IMG</div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{item.name}</p>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -91,9 +92,9 @@ function groupEntriesByMember(entries: ActivityEntry[]) {
 export default function ActivitesPage() {
   const [memberName, setMemberName] = useState('')
   const [activityType, setActivityType] = useState<ActivityType>('Cambriolage')
-  const [selectedObjectLines, setSelectedObjectLines] = useState<SelectedObjectLine[]>([])
-  const [selectedEquipmentId, setSelectedEquipmentId] = useState('')
-  const [selectedEquipmentQty, setSelectedEquipmentQty] = useState(1)
+  const [step, setStep] = useState<SelectionStep>('equipment')
+  const [selectedEquipmentLines, setSelectedEquipmentLines] = useState<SelectedLine[]>([])
+  const [selectedObjectLines, setSelectedObjectLines] = useState<SelectedLine[]>([])
   const [percentDraft, setPercentDraft] = useState(2)
   const [proofImageData, setProofImageData] = useState('')
   const [data, setData] = useState<ActivityListResponse | null>(null)
@@ -111,6 +112,15 @@ export default function ActivitesPage() {
     void listCatalogItems().then(setCatalogItems).catch(() => setCatalogItems([]))
   }, [])
 
+  useEffect(() => {
+    if (activityType === 'Boite au lettre') {
+      setSelectedEquipmentLines([])
+      setStep('objects')
+    } else if (step === 'objects' && selectedEquipmentLines.length === 0) {
+      setStep('equipment')
+    }
+  }, [activityType, step, selectedEquipmentLines.length])
+
   async function refresh() {
     try {
       const response = await listActivities()
@@ -125,8 +135,6 @@ export default function ActivitesPage() {
   const objectItems = useMemo(() => catalogItems.filter((item) => item.category === 'objects' && item.is_active), [catalogItems])
   const equipmentItems = useMemo(() => catalogItems.filter((item) => item.category === 'equipment' && item.is_active), [catalogItems])
 
-  const selectedEquipment = useMemo(() => equipmentItems.find((item) => item.id === selectedEquipmentId) ?? null, [equipmentItems, selectedEquipmentId])
-
   const effectivePercent = useMemo(() => {
     if (isMember) return Math.max(0.01, Number(data?.settings.default_percent_per_object) || 2)
     return Math.max(0.01, Number(percentDraft) || 0.01)
@@ -135,49 +143,57 @@ export default function ActivitesPage() {
   const selectedObjectRows = useMemo(() => {
     return selectedObjectLines
       .map((line) => {
-        const item = objectItems.find((it) => it.id === line.itemId)
+        const item = objectItems.find((entry) => entry.id === line.itemId)
         if (!item) return null
-        const price = Math.max(0, Number(item.buy_price) || 0)
         const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
-        return { line, item, price, lineSalary: price * qty * (effectivePercent / 100) }
+        const price = Math.max(0, Number(item.buy_price) || 0)
+        return { line, item, qty, salary: price * qty * (effectivePercent / 100) }
       })
-      .filter((entry): entry is { line: SelectedObjectLine; item: CatalogItem; price: number; lineSalary: number } => Boolean(entry))
-  }, [objectItems, selectedObjectLines, effectivePercent])
+      .filter((entry): entry is { line: SelectedLine; item: CatalogItem; qty: number; salary: number } => Boolean(entry))
+  }, [selectedObjectLines, objectItems, effectivePercent])
 
-  const estimatedThisSubmission = useMemo(() => selectedObjectRows.reduce((sum, row) => sum + row.lineSalary, 0), [selectedObjectRows])
+  const selectedEquipmentRows = useMemo(() => {
+    return selectedEquipmentLines
+      .map((line) => {
+        const item = equipmentItems.find((entry) => entry.id === line.itemId)
+        if (!item) return null
+        const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        return { line, item, qty }
+      })
+      .filter((entry): entry is { line: SelectedLine; item: CatalogItem; qty: number } => Boolean(entry))
+  }, [selectedEquipmentLines, equipmentItems])
 
+  const estimatedThisSubmission = useMemo(() => selectedObjectRows.reduce((sum, row) => sum + row.salary, 0), [selectedObjectRows])
   const selectedMemberSummary = useMemo(() => {
     const normalizedName = memberName.trim().toLowerCase()
     if (!normalizedName || !data) return null
     return data.summaries.find((entry) => entry.member_name.toLowerCase() === normalizedName) ?? null
   }, [data, memberName])
-
   const groupedForChef = useMemo(() => groupEntriesByMember(data?.entries ?? []), [data?.entries])
 
-  function addObjectLine(item: CatalogItem) {
-    setSelectedObjectLines((prev) => {
-      const idx = prev.findIndex((line) => line.itemId === item.id)
-      if (idx < 0) return [...prev, { itemId: item.id, quantity: 1 }]
-      return prev.map((line, index) => (index === idx ? { ...line, quantity: Math.max(1, line.quantity + 1) } : line))
+  function addLine(setter: React.Dispatch<React.SetStateAction<SelectedLine[]>>, itemId: string) {
+    setter((prev) => {
+      const index = prev.findIndex((line) => line.itemId === itemId)
+      if (index < 0) return [...prev, { itemId, quantity: 1 }]
+      return prev.map((line, i) => (i === index ? { ...line, quantity: Math.max(1, line.quantity + 1) } : line))
     })
   }
 
-  function updateObjectQty(itemId: string, qty: number) {
-    setSelectedObjectLines((prev) => prev.map((line) => (line.itemId === itemId ? { ...line, quantity: Math.max(1, qty) } : line)))
+  function updateLineQty(setter: React.Dispatch<React.SetStateAction<SelectedLine[]>>, itemId: string, qty: number) {
+    setter((prev) => prev.map((line) => (line.itemId === itemId ? { ...line, quantity: Math.max(1, qty) } : line)))
   }
 
-  function removeObjectLine(itemId: string) {
-    setSelectedObjectLines((prev) => prev.filter((line) => line.itemId !== itemId))
+  function removeLine(setter: React.Dispatch<React.SetStateAction<SelectedLine[]>>, itemId: string) {
+    setter((prev) => prev.filter((line) => line.itemId !== itemId))
   }
 
   async function onSubmit() {
     if (!proofImageData) return setError('Ajoute une preuve image (jpeg ou png).')
-    if (selectedObjectRows.length === 0) return setError('Ajoute au moins un objet à l’activité.')
+    if (selectedObjectRows.length === 0) return setError('Ajoute au moins un objet.')
+    if (activityType !== 'Boite au lettre' && selectedEquipmentRows.length === 0) return setError('Ajoute au moins un équipement.')
 
-    const payloadLines: ActivityObjectLineInput[] = selectedObjectRows.map((row) => ({
-      object_item_id: row.item.id,
-      quantity: Math.max(1, Math.floor(Number(row.line.quantity) || 1)),
-    }))
+    const objectLines: ActivityObjectLineInput[] = selectedObjectRows.map((row) => ({ object_item_id: row.item.id, quantity: row.qty }))
+    const equipmentLines: ActivityEquipmentLineInput[] = selectedEquipmentRows.map((row) => ({ equipment_item_id: row.item.id, quantity: row.qty }))
 
     try {
       setSaving(true)
@@ -185,16 +201,16 @@ export default function ActivitesPage() {
       await createActivity({
         member_name: memberName,
         activity_type: activityType,
-        object_lines: payloadLines,
-        equipment_item_id: activityType === 'Boite au lettre' ? null : selectedEquipmentId,
-        equipment_quantity: activityType === 'Boite au lettre' ? 0 : Math.max(1, Math.floor(Number(selectedEquipmentQty) || 1)),
+        object_lines: objectLines,
+        equipment_lines: activityType === 'Boite au lettre' ? [] : equipmentLines,
         percent_per_object: effectivePercent,
         proof_image_data: proofImageData,
       })
-      setOk(`Activité enregistrée ✅ (${payloadLines.length} objet${payloadLines.length > 1 ? 's' : ''})`)
+      setOk(`Activité enregistrée ✅ (${objectLines.length} objet${objectLines.length > 1 ? 's' : ''})`)
       setSelectedObjectLines([])
-      setSelectedEquipmentQty(1)
+      setSelectedEquipmentLines([])
       setProofImageData('')
+      setStep(activityType === 'Boite au lettre' ? 'objects' : 'equipment')
       await refresh()
     } catch (submitError: unknown) {
       setError(submitError instanceof Error ? submitError.message : 'Impossible d\'enregistrer.')
@@ -224,14 +240,17 @@ export default function ActivitesPage() {
   }
 
   async function onPaste(event: React.ClipboardEvent<HTMLDivElement>) {
-    const item = [...event.clipboardData.items].find((entry) => entry.type === 'image/png' || entry.type === 'image/jpeg')
-    if (!item) return
-    const file = item.getAsFile()
+    const imageItem = [...event.clipboardData.items].find((entry) => entry.type === 'image/png' || entry.type === 'image/jpeg')
+    if (!imageItem) return
+    const file = imageItem.getAsFile()
     if (!file) return
     const dataUrl = await fileToDataUrl(file)
     setProofImageData(dataUrl)
     setError(null)
   }
+
+  const leftTitle = step === 'equipment' ? 'Équipements du groupe (molette pour défiler)' : 'Objets du groupe (molette pour défiler)'
+  const leftItems = step === 'equipment' ? equipmentItems : objectItems
 
   return (
     <div className="space-y-6" onPaste={(event) => void onPaste(event)}>
@@ -250,37 +269,66 @@ export default function ActivitesPage() {
           </label>
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <CatalogScrollableList title="Objets du groupe (molette pour défiler)" items={objectItems} selectedId="" onSelect={addObjectLine} />
-          {activityType !== 'Boite au lettre' ? (
-            <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <CatalogScrollableList title="Équipements du groupe (molette pour défiler)" items={equipmentItems} selectedId={selectedEquipmentId} onSelect={(item) => setSelectedEquipmentId(item.id)} />
-              {selectedEquipment ? (
-                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] p-2 text-sm">
-                  <span>Quantité équipement</span>
-                  <QuantityStepper value={selectedEquipmentQty} onChange={(value) => setSelectedEquipmentQty(Math.max(1, value))} size="sm" fitContent />
-                </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2 lg:items-start">
+          <CatalogScrollableList
+            title={leftTitle}
+            items={leftItems}
+            onSelect={(item) => {
+              if (step === 'equipment') addLine(setSelectedEquipmentLines, item.id)
+              else addLine(setSelectedObjectLines, item.id)
+            }}
+          />
+
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold">{step === 'equipment' ? 'Équipements choisis' : 'Objets choisis'}</p>
+              {activityType !== 'Boite au lettre' ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => setStep((prev) => (prev === 'equipment' ? 'objects' : 'equipment'))}
+                  disabled={step === 'equipment' && selectedEquipmentRows.length === 0}
+                >
+                  {step === 'equipment' ? 'Valider équipements' : 'Modifier équipements'}
+                </Button>
               ) : null}
             </div>
-          ) : (
-            <div className="rounded-2xl border border-emerald-300/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">Boite au lettre: pas besoin d’équipement.</div>
-          )}
+
+            <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+              {(step === 'equipment' ? selectedEquipmentRows : selectedObjectRows).length === 0 ? (
+                <p className="text-sm text-white/60">Aucune ligne sélectionnée.</p>
+              ) : null}
+
+              {step === 'equipment'
+                ? selectedEquipmentRows.map((row) => (
+                    <div key={row.item.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.05] p-2">
+                      <p className="truncate text-sm font-medium">{row.item.name}</p>
+                      <div className="flex items-center gap-2">
+                        <QuantityStepper value={row.qty} onChange={(value) => updateLineQty(setSelectedEquipmentLines, row.item.id, value)} size="sm" fitContent />
+                        <button type="button" onClick={() => removeLine(setSelectedEquipmentLines, row.item.id)} className="rounded-lg border border-rose-300/35 bg-rose-500/15 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25">Retirer</button>
+                      </div>
+                    </div>
+                  ))
+                : selectedObjectRows.map((row) => (
+                    <div key={row.item.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.05] p-2">
+                      <p className="truncate text-sm font-medium">{row.item.name}</p>
+                      <div className="flex items-center gap-2">
+                        <QuantityStepper value={row.qty} onChange={(value) => updateLineQty(setSelectedObjectLines, row.item.id, value)} size="sm" fitContent />
+                        <button type="button" onClick={() => removeLine(setSelectedObjectLines, row.item.id)} className="rounded-lg border border-rose-300/35 bg-rose-500/15 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25">Retirer</button>
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          </div>
         </div>
 
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
           <p className="mb-2 text-sm font-semibold">Objets ajoutés à cette activité</p>
-          <div className="max-h-[260px] space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
             {selectedObjectRows.length === 0 ? <p className="text-sm text-white/60">Aucun objet ajouté.</p> : null}
             {selectedObjectRows.map((row) => (
               <div key={row.item.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.05] p-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{row.item.name}</p>
-                  <p className="text-xs text-white/60">{row.price.toLocaleString('fr-FR')} $ • {row.lineSalary.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <QuantityStepper value={row.line.quantity} onChange={(value) => updateObjectQty(row.item.id, value)} size="sm" fitContent />
-                  <button type="button" onClick={() => removeObjectLine(row.item.id)} className="rounded-lg border border-rose-300/35 bg-rose-500/15 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25">Retirer</button>
-                </div>
+                <p className="truncate text-sm font-medium">{row.item.name}</p>
+                <QuantityStepper value={row.qty} onChange={(value) => updateLineQty(setSelectedObjectLines, row.item.id, value)} size="sm" fitContent />
               </div>
             ))}
           </div>
@@ -292,9 +340,7 @@ export default function ActivitesPage() {
               <span className="text-white/70">% appliqué aux objets</span>
               <Input type="number" min={0.01} step={0.01} value={percentDraft} onChange={(event) => setPercentDraft(Math.max(0.01, Number(event.target.value) || 0.01))} />
             </label>
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/70">Le pourcentage est géré uniquement par le chef.</div>
-          )}
+          ) : null}
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Preuve (jpeg/png)</span>
             <Input type="file" accept="image/png,image/jpeg" onChange={(event) => void onPickFile(event.target.files?.[0] ?? null)} className="pt-2" />
@@ -302,7 +348,7 @@ export default function ActivitesPage() {
         </div>
 
         <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
-          <p>Équipement: <span className="font-semibold">{activityType === 'Boite au lettre' ? 'Aucun requis' : selectedEquipment?.name || '—'}</span>{activityType === 'Boite au lettre' ? '' : ` • Qté: ${selectedEquipmentQty}`}</p>
+          <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span> • Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
           <p>Salaire total estimé pour cette validation: <span className="font-semibold">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</span></p>
         </div>
 
@@ -347,7 +393,7 @@ export default function ActivitesPage() {
                         <th className="px-3 py-2 text-left">Activité</th>
                         <th className="px-3 py-2 text-left">Objet</th>
                         <th className="px-3 py-2 text-left">Qté obj</th>
-                        <th className="px-3 py-2 text-left">Équipement</th>
+                        <th className="px-3 py-2 text-left">Équipements</th>
                         <th className="px-3 py-2 text-left">Qté eqp</th>
                         <th className="px-3 py-2 text-left">%</th>
                         <th className="px-3 py-2 text-left">Salaire</th>

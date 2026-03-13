@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getSessionFromRequest } from '@/server/auth/session'
-import { ACTIVITY_OPTIONS, type ActivityObjectLineInput, type ActivityType } from '@/lib/types/activities'
+import {
+  ACTIVITY_OPTIONS,
+  type ActivityEquipmentLineInput,
+  type ActivityObjectLineInput,
+  type ActivityType,
+} from '@/lib/types/activities'
 
 type CatalogItemRow = { id: string; name: string; category: string; buy_price: number | null }
 
@@ -88,8 +93,7 @@ export async function POST(request: Request) {
       member_name?: string
       activity_type?: ActivityType
       object_lines?: ActivityObjectLineInput[]
-      equipment_item_id?: string | null
-      equipment_quantity?: number
+      equipment_lines?: ActivityEquipmentLineInput[]
       percent_per_object?: number
       proof_image_data?: string
     }
@@ -97,8 +101,7 @@ export async function POST(request: Request) {
     const memberName = String(body.member_name ?? '').trim()
     const activityType = body.activity_type
     const objectLines = Array.isArray(body.object_lines) ? body.object_lines : []
-    const equipmentItemId = body.equipment_item_id ? String(body.equipment_item_id).trim() : null
-    const equipmentQuantity = Math.max(0, Math.floor(Number(body.equipment_quantity) || 0))
+    const equipmentLines = Array.isArray(body.equipment_lines) ? body.equipment_lines : []
     const percent = Math.max(0, Number(body.percent_per_object) || 0)
     const proof = String(body.proof_image_data ?? '').trim()
 
@@ -109,8 +112,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Lignes objets invalides.' }, { status: 400 })
     }
     if (activityType !== 'Boite au lettre') {
-      if (!equipmentItemId) return NextResponse.json({ error: 'Équipement requis pour cette activité.' }, { status: 400 })
-      if (equipmentQuantity <= 0) return NextResponse.json({ error: 'Quantité équipement invalide.' }, { status: 400 })
+      if (equipmentLines.length === 0) return NextResponse.json({ error: 'Ajoute au moins un équipement.' }, { status: 400 })
+      if (equipmentLines.some((line) => !line.equipment_item_id || Math.max(0, Math.floor(Number(line.quantity) || 0)) <= 0)) {
+        return NextResponse.json({ error: 'Lignes équipements invalides.' }, { status: 400 })
+      }
     }
     if (percent <= 0) return NextResponse.json({ error: 'Pourcentage invalide.' }, { status: 400 })
     if (!proof.startsWith('data:image/jpeg;base64,') && !proof.startsWith('data:image/png;base64,')) {
@@ -133,25 +138,38 @@ export async function POST(request: Request) {
     for (const row of (objectRows ?? []) as CatalogItemRow[]) {
       if (row.category === 'objects') objectMap.set(row.id, row)
     }
+    if (objectMap.size !== objectIds.length) return NextResponse.json({ error: 'Un ou plusieurs objets sont invalides.' }, { status: 400 })
 
-    if (objectMap.size !== objectIds.length) {
-      return NextResponse.json({ error: 'Un ou plusieurs objets sont invalides.' }, { status: 400 })
-    }
+    let equipmentDisplay = ''
+    let equipmentTotalQty = 0
+    let firstEquipmentId: string | null = null
 
-    let equipmentItem: CatalogItemRow | null = null
     if (activityType !== 'Boite au lettre') {
-      const { data, error } = await supabase
+      const equipmentIds = [...new Set(equipmentLines.map((line) => String(line.equipment_item_id).trim()).filter(Boolean))]
+      const { data: equipmentRows, error: equipmentErr } = await supabase
         .from('catalog_items')
         .select('id,name,category,buy_price')
         .eq('group_id', session.groupId)
-        .eq('id', equipmentItemId)
         .eq('is_active', true)
-        .maybeSingle<CatalogItemRow>()
-      if (error) throw error
-      if (!data || data.category !== 'equipment') {
-        return NextResponse.json({ error: 'Équipement invalide (catégorie Équipement requise).' }, { status: 400 })
+        .in('id', equipmentIds)
+
+      if (equipmentErr) throw equipmentErr
+      const equipmentMap = new Map<string, CatalogItemRow>()
+      for (const row of (equipmentRows ?? []) as CatalogItemRow[]) {
+        if (row.category === 'equipment') equipmentMap.set(row.id, row)
       }
-      equipmentItem = data
+      if (equipmentMap.size !== equipmentIds.length) return NextResponse.json({ error: 'Un ou plusieurs équipements sont invalides.' }, { status: 400 })
+
+      const parts: string[] = []
+      for (const line of equipmentLines) {
+        const item = equipmentMap.get(line.equipment_item_id)
+        if (!item) continue
+        const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        equipmentTotalQty += qty
+        parts.push(`${item.name} x${qty}`)
+        if (!firstEquipmentId) firstEquipmentId = item.id
+      }
+      equipmentDisplay = parts.join(' • ')
     }
 
     const rowsToInsert = objectLines.map((line) => {
@@ -159,6 +177,7 @@ export async function POST(request: Request) {
       const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
       const objectPrice = Math.max(0, Number(item.buy_price) || 0)
       const salaryAmount = objectPrice * qty * (percent / 100)
+
       return {
         group_id: session.groupId,
         member_name: memberName,
@@ -169,9 +188,9 @@ export async function POST(request: Request) {
         quantity: qty,
         percent_per_object: percent,
         salary_amount: salaryAmount,
-        equipment_item_id: equipmentItem?.id ?? null,
-        equipment_name: equipmentItem?.name ?? null,
-        equipment_quantity: activityType === 'Boite au lettre' ? 0 : equipmentQuantity,
+        equipment_item_id: firstEquipmentId,
+        equipment_name: equipmentDisplay || null,
+        equipment_quantity: activityType === 'Boite au lettre' ? 0 : equipmentTotalQty,
         proof_image_data: proof,
       }
     })
