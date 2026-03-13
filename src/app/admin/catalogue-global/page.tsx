@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { Pill, Shapes, Shield, Swords, type LucideIcon } from 'lucide-react'
+import { Box, Pill, Shapes, Shield, Swords, type LucideIcon } from 'lucide-react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
-import { categoryTypeOptions, itemCategoryOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
+import { categoryTypeOptions, getTypeFilterOptions, itemCategoryOptions, normalizeCatalogCategory, normalizeItemType, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
@@ -23,35 +22,46 @@ type GlobalItem = {
   weapon_id: string | null
 }
 
-type AdminCategory = Exclude<ItemCategory, 'objects'>
-type AdminGlobalItem = Omit<GlobalItem, 'category'> & { category: AdminCategory }
-
-const defaultTypeByCategory: Record<AdminCategory, string> = {
+const defaultTypeByCategory: Record<ItemCategory, string> = {
+  objects: categoryTypeOptions.objects[0]?.value ?? 'other',
   weapons: categoryTypeOptions.weapons[0]?.value ?? 'other',
   equipment: categoryTypeOptions.equipment[0]?.value ?? 'other',
   drugs: categoryTypeOptions.drugs[0]?.value ?? 'drug_material',
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
 }
 
-const categoryIconByKey: Record<AdminCategory, LucideIcon> = {
+const categoryIconByKey: Record<ItemCategory, LucideIcon> = {
+  objects: Box,
   weapons: Swords,
   equipment: Shield,
   drugs: Pill,
   custom: Shapes,
 }
 
-const ADMIN_VISIBLE_CATEGORIES: AdminCategory[] = ['weapons', 'equipment', 'drugs', 'custom']
+const ADMIN_VISIBLE_CATEGORIES: ItemCategory[] = ['objects', 'weapons', 'equipment', 'drugs', 'custom']
 
-const ADMIN_CATEGORY_CARDS: { key: AdminCategory; label: string; icon: LucideIcon }[] = itemCategoryOptions
-  .filter((option): option is { value: AdminCategory; label: string } => ADMIN_VISIBLE_CATEGORIES.includes(option.value as AdminCategory))
+const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: LucideIcon }[] = itemCategoryOptions
+  .filter((option): option is { value: ItemCategory; label: string } => ADMIN_VISIBLE_CATEGORIES.includes(option.value as ItemCategory))
   .map((option) => ({
     key: option.value,
     label: option.label,
     icon: categoryIconByKey[option.value],
   }))
 
-function getCategoryCardClass(category: 'all' | AdminCategory, active: boolean): string {
+
+function matchesAdminTypeFilter(item: GlobalItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
+  if (selectedType === 'all') return true
+  if (selectedCategory === 'all') {
+    if (selectedType === 'objects') return item.category === 'objects'
+    if (selectedType === 'equipment') return item.category === 'equipment'
+    if (selectedType === 'other') return item.category === 'custom'
+  }
+  return normalizeItemType(item.item_type, item.category) === selectedType
+}
+
+function getCategoryCardClass(category: 'all' | ItemCategory, active: boolean): string {
   if (category === 'all') return active ? 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+  if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25' : 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
   if (category === 'weapons') return active ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25' : 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
   if (category === 'equipment') return active ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25' : 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
   if (category === 'drugs') return active ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25' : 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
@@ -59,21 +69,22 @@ function getCategoryCardClass(category: 'all' | AdminCategory, active: boolean):
 }
 
 export default function AdminCatalogueGlobalPage() {
-  const [items, setItems] = useState<AdminGlobalItem[]>([])
-  const [filterCategory, setFilterCategory] = useState<'all' | AdminCategory>('all')
+  const [items, setItems] = useState<GlobalItem[]>([])
+  const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all')
+  const [filterType, setFilterType] = useState<UnifiedTypeFilterValue>('all')
   const [query, setQuery] = useState('')
-  const [createCategory, setCreateCategory] = useState<AdminCategory>('custom')
+  const [createCategory, setCreateCategory] = useState<ItemCategory>('objects')
   const [name, setName] = useState('')
   const [price, setPrice] = useState('0')
   const [quantity, setQuantity] = useState('0')
   const [weaponId, setWeaponId] = useState('')
-  const [createItemType, setCreateItemType] = useState<string>(defaultTypeByCategory.custom)
+  const [createItemType, setCreateItemType] = useState<string>(defaultTypeByCategory.objects)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editCategory, setEditCategory] = useState<AdminCategory>('custom')
-  const [editType, setEditType] = useState<string>(defaultTypeByCategory.custom)
+  const [editCategory, setEditCategory] = useState<ItemCategory>('objects')
+  const [editType, setEditType] = useState<string>(defaultTypeByCategory.objects)
   const [editName, setEditName] = useState('')
   const [editPrice, setEditPrice] = useState('0')
   const [editQuantity, setEditQuantity] = useState('0')
@@ -85,8 +96,7 @@ export default function AdminCatalogueGlobalPage() {
     const normalized = (Array.isArray(data) ? data : [])
       .map((row) => ({ ...row, category: normalizeCatalogCategory(String(row.category)) }))
       .filter((row): row is GlobalItem => Boolean(row.category))
-      .map((row) => ({ ...row, category: row.category === 'objects' ? 'custom' : row.category }))
-      .filter((row): row is AdminGlobalItem => ADMIN_VISIBLE_CATEGORIES.includes(row.category as AdminCategory))
+      .filter((row) => ADMIN_VISIBLE_CATEGORIES.includes(row.category))
     setItems(normalized)
   }
 
@@ -143,7 +153,7 @@ export default function AdminCatalogueGlobalPage() {
       setPrice('0')
       setQuantity('0')
       setWeaponId('')
-      setCreateItemType(defaultTypeByCategory.custom)
+      setCreateItemType(defaultTypeByCategory.objects)
       setImageFile(null)
       await refresh()
     } catch (e: unknown) {
@@ -154,19 +164,16 @@ export default function AdminCatalogueGlobalPage() {
   }
 
   async function removeItem(id: string) {
-    const res = await fetch(
-      '/api/admin/global-catalog',
-      {
-        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
-        method: 'DELETE',
-        body: JSON.stringify({ id }),
-      }
-    )
+    const res = await fetch('/api/admin/global-catalog', {
+      ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    })
     if (!res.ok) return
     await refresh()
   }
 
-  function startEdit(item: AdminGlobalItem) {
+  function startEdit(item: GlobalItem) {
     setEditingId(item.id)
     setEditCategory(item.category)
     setEditType(normalizeItemType(item.item_type, item.category))
@@ -219,15 +226,18 @@ export default function AdminCatalogueGlobalPage() {
     const q = query.trim().toLowerCase()
     return items.filter((it) => {
       if (filterCategory !== 'all' && it.category !== filterCategory) return false
+      if (!matchesAdminTypeFilter(it, filterCategory, filterType)) return false
       if (!q) return true
       return `${it.name} ${it.item_type ?? ''} ${it.weapon_id ?? ''}`.toLowerCase().includes(q)
     })
-  }, [items, query, filterCategory])
+  }, [items, query, filterCategory, filterType])
 
   const createTypeOptions = categoryTypeOptions[createCategory]
+  const typeFilterOptions = getTypeFilterOptions(filterCategory)
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<AdminCategory, number> = {
+    const counts: Record<ItemCategory, number> = {
+      objects: 0,
       weapons: 0,
       equipment: 0,
       drugs: 0,
@@ -247,11 +257,6 @@ export default function AdminCatalogueGlobalPage() {
       <Panel>
         <h1 className="text-2xl font-semibold">Items (catalogue global)</h1>
         <p className="mt-1 text-sm text-white/70">Catalogue partagé entre modules, avec override local par groupe.</p>
-        <div className="mt-3">
-          <Link href="/items/nouveau">
-            <SecondaryButton>Créer un item (formulaire complet)</SecondaryButton>
-          </Link>
-        </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -264,9 +269,8 @@ export default function AdminCatalogueGlobalPage() {
                     key={card.key}
                     type="button"
                     onClick={() => {
-                      const nextCategory = card.key
-                      setCreateCategory(nextCategory)
-                      setCreateItemType(defaultTypeByCategory[nextCategory])
+                      setCreateCategory(card.key)
+                      setCreateItemType(defaultTypeByCategory[card.key])
                     }}
                     className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${getCategoryCardClass(card.key, createCategory === card.key)}`}
                   >
@@ -335,17 +339,28 @@ export default function AdminCatalogueGlobalPage() {
               <button
                 key={card.key}
                 type="button"
-                onClick={() => setFilterCategory(card.key === 'all' ? 'all' : card.key)}
+                onClick={() => {
+                  setFilterCategory(card.key === 'all' ? 'all' : card.key)
+                  setFilterType('all')
+                }}
                 className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${getCategoryCardClass(card.key, active)}`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{card.key === 'all' ? card.label : card.label}</p>
+                  <p className="text-xs text-white/70">{card.label}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
               </button>
             )
           })}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {typeFilterOptions.map((opt) => (
+            <TabPill key={opt.value} active={filterType === opt.value} onClick={() => setFilterType(opt.value)}>
+              {opt.label}
+            </TabPill>
+          ))}
         </div>
 
         <div className="mt-4 space-y-2">
@@ -376,9 +391,8 @@ export default function AdminCatalogueGlobalPage() {
                               key={card.key}
                               type="button"
                               onClick={() => {
-                                const next = card.key
-                                setEditCategory(next)
-                                setEditType(defaultTypeByCategory[next])
+                                setEditCategory(card.key)
+                                setEditType(defaultTypeByCategory[card.key])
                               }}
                               className={`rounded-2xl border px-3 py-3 text-left transition ${getCategoryCardClass(card.key, active)}`}
                             >
