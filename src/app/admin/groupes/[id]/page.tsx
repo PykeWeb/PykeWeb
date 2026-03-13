@@ -265,6 +265,7 @@ export default function AdminGroupDetailsPage() {
           <PageHeader
             title={`Gestion : ${group.name}${group.badge ? ` (${group.badge})` : ''}`}
             subtitle="Modifier, sécurité, activation et reset sans suppression."
+            size="compact"
           />
           <Link href="/admin/groupes" className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Retour</Link>
         </div>

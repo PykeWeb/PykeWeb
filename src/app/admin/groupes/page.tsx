@@ -167,6 +167,7 @@ export default function AdminGroupsPage() {
           <PageHeader
             title="Admin • Gestion des groupes"
             subtitle="Un bouton unique “Gérer” par groupe pour accéder à la fiche complète."
+            size="compact"
           />
           <button
             onClick={() => setCreateModalOpen(true)}
