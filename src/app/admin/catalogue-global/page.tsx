@@ -39,15 +39,27 @@ const categoryIconByKey: Record<ItemCategory, LucideIcon> = {
 }
 
 const ADMIN_VISIBLE_CATEGORIES: ItemCategory[] = ['objects', 'weapons', 'equipment', 'drugs', 'custom']
+const ADMIN_CATEGORY_ORDER: ItemCategory[] = ['objects', 'weapons', 'equipment', 'drugs', 'custom']
 
-const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: LucideIcon }[] = itemCategoryOptions
-  .filter((option): option is { value: ItemCategory; label: string } => ADMIN_VISIBLE_CATEGORIES.includes(option.value as ItemCategory))
-  .map((option) => ({
-    key: option.value,
-    label: option.label,
-    icon: categoryIconByKey[option.value],
-  }))
+const categoryLabelByKey = Object.fromEntries(itemCategoryOptions.map((option) => [option.value, option.label])) as Record<ItemCategory, string>
 
+const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: LucideIcon }[] = ADMIN_CATEGORY_ORDER.map((key) => ({
+  key,
+  label: key === 'custom' ? 'Autres' : (categoryLabelByKey[key] ?? 'Autres'),
+  icon: categoryIconByKey[key],
+}))
+
+function getAdminTypeFilterOptions(category: 'all' | ItemCategory): { value: UnifiedTypeFilterValue; label: string }[] {
+  const base = getTypeFilterOptions(category)
+  if (category !== 'all') return base
+
+  const byValue = new Map(base.map((option) => [option.value, option]))
+  const preferredOrder: UnifiedTypeFilterValue[] = ['all', 'objects', 'weapon', 'equipment', 'ammo', 'weapon_accessory', 'seed', 'pouch', 'drug_material', 'product', 'other']
+
+  return preferredOrder
+    .map((value) => byValue.get(value))
+    .filter((option): option is { value: UnifiedTypeFilterValue; label: string } => Boolean(option))
+}
 
 function matchesAdminTypeFilter(item: GlobalItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
   if (selectedType === 'all') return true
@@ -233,7 +245,7 @@ export default function AdminCatalogueGlobalPage() {
   }, [items, query, filterCategory, filterType])
 
   const createTypeOptions = categoryTypeOptions[createCategory]
-  const typeFilterOptions = getTypeFilterOptions(filterCategory)
+  const typeFilterOptions = getAdminTypeFilterOptions(filterCategory)
 
   const categoryCounts = useMemo(() => {
     const counts: Record<ItemCategory, number> = {
