@@ -43,6 +43,8 @@ export function Sidebar() {
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'drogues', 'tablette'])
   const [isPwrGroup, setIsPwrGroup] = useState(false)
+  const [roleLabel, setRoleLabel] = useState('')
+  const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -52,6 +54,8 @@ export function Sidebar() {
     setGroupBadge(nextGroupBadge)
     setIsAdmin(isAdminTenantSession(session))
     setIsMember(isMemberTenantSession(session))
+    setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Admin' : ''))
+    setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
     setIsPwrGroup(scope.includes('pwr'))
   }, [])
@@ -94,20 +98,41 @@ export function Sidebar() {
     return { label: `Valide jusqu’au ${dateLabel}`, className: 'border-emerald-300/35 bg-emerald-500/20 text-emerald-100' }
   }, [accessInfo])
 
+  const defaultUserLinks: NavLink[] = [
+    { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
+    { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
+    { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
+    { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
+    { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
+    { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
+    { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
+  ]
+
+  const hasFullAccess = allowedPrefixes.includes('/')
+  const filteredUserLinks = hasFullAccess
+    ? defaultUserLinks
+    : defaultUserLinks.filter((link) =>
+      allowedPrefixes.some((prefix) => {
+        if (link.href === '/') return prefix === '/'
+        return link.href === prefix || link.href.startsWith(`${prefix}/`)
+      })
+    )
+
+  const hasExplicitRoleRestrictions = allowedPrefixes.length > 0
+
   const userNavLinks: NavLink[] = isPwrGroup
     ? [{ id: 'pwr-commandes', href: '/pwr/commandes', label: 'Commande', icon: <Truck className="h-5 w-5" />, active: pathname.startsWith('/pwr/commandes') }]
-    : isMember
-      ? [
-        { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
-        { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
-      ]
-      : [
-        { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
-        { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
-        { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
-        { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
-        { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
-      ]
+    : filteredUserLinks.length > 0
+      ? filteredUserLinks
+      : hasExplicitRoleRestrictions
+        ? []
+        : isMember
+          ? [
+            { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
+            { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
+            { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
+          ]
+          : defaultUserLinks
 
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
@@ -140,7 +165,10 @@ export function Sidebar() {
           </div>
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="min-w-0 truncate text-xl font-semibold tracking-tight">{groupName}</p>
-            <div className="inline-flex shrink-0 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
+            <div className="flex items-center gap-2">
+              {roleLabel ? <span className="inline-flex shrink-0 rounded-full border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1 text-xs font-semibold text-cyan-100">{roleLabel}</span> : null}
+              <div className="inline-flex shrink-0 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
+            </div>
           </div>
           <div className="mt-4 border-t border-white/10 pt-3">
             <p className="text-sm text-white/55">Accès</p>
@@ -164,18 +192,21 @@ export function Sidebar() {
             <NavItem href="/admin/logs" label="Logs" icon={<ClipboardList className="h-5 w-5" />} active={pathname.startsWith('/admin/logs')} />
           </>
         ) : (
-          <LongPressReorderableRow
-            className="flex flex-col gap-3"
-            order={navOrder}
-            onOrderChange={async (next) => {
-              setNavOrder(next)
-              await saveLayoutOrder('sidebar.nav', next, 'group')
-            }}
-            items={userNavLinks.map((link) => ({
-              id: link.id,
-              element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
-            }))}
-          />
+          <>
+            <LongPressReorderableRow
+              className="flex flex-col gap-3"
+              order={navOrder}
+              onOrderChange={async (next) => {
+                setNavOrder(next)
+                await saveLayoutOrder('sidebar.nav', next, 'group')
+              }}
+              items={userNavLinks.map((link) => ({
+                id: link.id,
+                element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
+              }))}
+            />
+            {userNavLinks.length === 0 ? <p className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">Aucune catégorie autorisée pour ce rôle.</p> : null}
+          </>
         )}
       </div>
     </aside>

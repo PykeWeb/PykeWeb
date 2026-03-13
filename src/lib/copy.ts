@@ -100,4 +100,8 @@ export const copy = {
     },
     toastSaved: 'Transaction enregistrée.',
   },
+  activities: {
+    title: 'Catégorie Activités',
+    subtitle: 'Choisis les objets/équipements du groupe avec image et quantité, puis calcule automatiquement le salaire.',
+  }
 } as const

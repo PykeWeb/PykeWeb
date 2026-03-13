@@ -75,7 +75,9 @@ export async function POST(request: Request) {
       groupName: isAdmin ? 'Administration' : data.name,
       groupBadge: isAdmin ? 'ADMIN' : data.badge,
       isAdmin,
-      role: isAdmin ? 'chef' : role,
+      role: isAdmin ? 'chef' : role.key,
+      roleLabel: isAdmin ? 'Administration' : role.name,
+      allowedPrefixes: isAdmin ? ['/'] : role.allowedPrefixes,
     }
 
     const response = NextResponse.json({

@@ -1,4 +1,5 @@
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
+import type { GroupRoleDefinition } from '@/lib/types/groupRoles'
 
 async function readApiError(res: Response) {
   try {
@@ -16,6 +17,7 @@ export type TenantGroup = {
   login: string
   password: string
   password_member?: string | null
+  roles?: GroupRoleDefinition[]
   active: boolean
   paid_until: string | null
   created_at?: string
@@ -105,6 +107,6 @@ export async function loginTenant(login: string, password: string, remember = tr
     body: JSON.stringify({ login, password, remember }),
   })
   if (!res.ok) throw new Error(await readApiError(res))
-  const json = (await res.json()) as { group: TenantGroup; session: { groupId: string; groupName: string; groupBadge?: string | null; isAdmin?: boolean; role?: 'chef' | 'member' } }
+  const json = (await res.json()) as { group: TenantGroup; session: { groupId: string; groupName: string; groupBadge?: string | null; isAdmin?: boolean; role?: string; roleLabel?: string; allowedPrefixes?: string[] } }
   return json
 }
