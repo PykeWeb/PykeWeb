@@ -8,7 +8,7 @@ import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
-import { categoryTypeOptions, itemCategoryOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
+import { categoryTypeOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
@@ -30,6 +30,14 @@ const defaultTypeByCategory: Record<ItemCategory, string> = {
   drugs: categoryTypeOptions.drugs[0]?.value ?? 'drug',
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
 }
+
+const CATALOG_CATEGORY_CARDS = [
+  { key: 'objects' as const, label: 'Objets', icon: Box },
+  { key: 'weapons' as const, label: 'Armes', icon: Swords },
+  { key: 'equipment' as const, label: 'Équipement', icon: Shield },
+  { key: 'drugs' as const, label: 'Drogues', icon: Pill },
+  { key: 'custom' as const, label: 'Autres', icon: Shapes },
+]
 
 function categoryPillClass(category: ItemCategory, active: boolean) {
   if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-r from-cyan-500/35 to-blue-500/25 text-cyan-50' : 'border-cyan-300/25 bg-cyan-500/[0.07] text-cyan-100/90 hover:bg-cyan-500/[0.14]'
@@ -237,13 +245,7 @@ export default function AdminCatalogueGlobalPage() {
           <div className="md:col-span-2">
             <label className="mb-2 block text-xs text-white/60">Catégorie</label>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {[
-                { key: 'objects' as const, label: 'Objets', icon: Box },
-                { key: 'weapons' as const, label: 'Armes', icon: Swords },
-                { key: 'equipment' as const, label: 'Équipement', icon: Shield },
-                { key: 'drugs' as const, label: 'Drogues', icon: Pill },
-                { key: 'custom' as const, label: 'Autres', icon: Shapes },
-              ].map((card) => {
+              {CATALOG_CATEGORY_CARDS.map((card) => {
                 const Icon = card.icon
                 return (
                   <button
@@ -402,13 +404,7 @@ export default function AdminCatalogueGlobalPage() {
                     <div className="md:col-span-2 lg:col-span-3">
                       <p className="mb-2 text-xs text-white/60">Catégorie</p>
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                        {[
-                          { key: 'objects' as const, label: 'Objets', icon: Box },
-                          { key: 'weapons' as const, label: 'Armes', icon: Swords },
-                          { key: 'equipment' as const, label: 'Équipement', icon: Shield },
-                          { key: 'drugs' as const, label: 'Drogues', icon: Pill },
-                          { key: 'custom' as const, label: 'Autres', icon: Shapes },
-                        ].map((card) => {
+                        {CATALOG_CATEGORY_CARDS.map((card) => {
                           const Icon = card.icon
                           const active = editCategory === card.key
                           return (
