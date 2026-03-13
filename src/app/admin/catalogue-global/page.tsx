@@ -8,7 +8,7 @@ import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
-import { categoryTypeOptions, getCategoryLabel, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
+import { categoryTypeOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
@@ -31,12 +31,12 @@ const defaultTypeByCategory: Record<ItemCategory, string> = {
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
 }
 
-const CATALOG_CATEGORY_CARDS: { key: ItemCategory; icon: typeof Box }[] = [
-  { key: 'objects', icon: Box },
-  { key: 'weapons', icon: Swords },
-  { key: 'equipment', icon: Shield },
-  { key: 'drugs', icon: Pill },
-  { key: 'custom', icon: Shapes },
+const CATALOG_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: typeof Box }[] = [
+  { key: 'objects', label: 'Objets', icon: Box },
+  { key: 'weapons', label: 'Armes', icon: Swords },
+  { key: 'equipment', label: 'Équipement', icon: Shield },
+  { key: 'drugs', label: 'Drogues', icon: Pill },
+  { key: 'custom', label: 'Autres', icon: Shapes },
 ]
 
 function categoryPillClass(category: ItemCategory, active: boolean) {
@@ -279,7 +279,7 @@ export default function AdminCatalogueGlobalPage() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{getCategoryLabel(card.key)}</p>
+                      <p className="text-xs text-white/70">{card.label}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -335,11 +335,7 @@ export default function AdminCatalogueGlobalPage() {
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {[
             { key: 'all' as const, label: 'Tous', value: categoryCounts.all, icon: Shapes },
-            { key: 'objects' as const, label: 'Objets', value: categoryCounts.objects, icon: Box },
-            { key: 'weapons' as const, label: 'Armes', value: categoryCounts.weapons, icon: Swords },
-            { key: 'equipment' as const, label: 'Équipement', value: categoryCounts.equipment, icon: Shield },
-            { key: 'drugs' as const, label: 'Drogues', value: categoryCounts.drugs, icon: Pill },
-            { key: 'custom' as const, label: 'Autres', value: categoryCounts.custom, icon: Shapes },
+            ...CATALOG_CATEGORY_CARDS.map((card) => ({ key: card.key, label: card.label, value: categoryCounts[card.key], icon: card.icon })),
           ].map((card) => {
             const Icon = card.icon
             const active = filterCategory === card.key || (card.key === 'all' && filterCategory === 'all')
@@ -375,7 +371,7 @@ export default function AdminCatalogueGlobalPage() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{card.key === 'all' ? card.label : getCategoryLabel(card.key)}</p>
+                  <p className="text-xs text-white/70">{card.label}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
@@ -431,7 +427,7 @@ export default function AdminCatalogueGlobalPage() {
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-white/80">{getCategoryLabel(card.key)}</p>
+                                <p className="text-xs text-white/80">{card.label}</p>
                                 <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                               </div>
                             </button>
