@@ -23,6 +23,13 @@ import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
 type SelectedLine = { itemId: string; quantity: number }
 type SelectionStep = 'equipment' | 'objects'
 
+const ACTIVITY_EQUIPMENT_RULES: Partial<Record<ActivityType, string[]>> = {
+  Cambriolage: ['kit de cambriolage'],
+  Conteneur: ['disqueuse'],
+  ATM: ['grosse perceuse'],
+  Superette: ['grosse perceuse'],
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -119,6 +126,20 @@ export default function ActivitesPage() {
   const objectItems = useMemo(() => catalogItems.filter((item) => item.category === 'objects' && item.is_active), [catalogItems])
   const equipmentItems = useMemo(() => catalogItems.filter((item) => item.category === 'equipment' && item.is_active), [catalogItems])
 
+  const allowedEquipmentItems = useMemo(() => {
+    const rules = ACTIVITY_EQUIPMENT_RULES[activityType]
+    if (!rules || rules.length === 0) return equipmentItems
+    return equipmentItems.filter((item) => {
+      const name = item.name.toLowerCase()
+      return rules.some((keyword) => name.includes(keyword))
+    })
+  }, [activityType, equipmentItems])
+
+  useEffect(() => {
+    const allowedIds = new Set(allowedEquipmentItems.map((item) => item.id))
+    setSelectedEquipmentLines((prev) => prev.filter((line) => allowedIds.has(line.itemId)))
+  }, [allowedEquipmentItems])
+
   const effectivePercent = useMemo(() => Math.max(0.01, Number(data?.settings.default_percent_per_object) || 2), [data?.settings.default_percent_per_object])
 
   const selectedObjectRows = useMemo(() => {
@@ -136,20 +157,16 @@ export default function ActivitesPage() {
   const selectedEquipmentRows = useMemo(() => {
     return selectedEquipmentLines
       .map((line) => {
-        const item = equipmentItems.find((entry) => entry.id === line.itemId)
+        const item = allowedEquipmentItems.find((entry) => entry.id === line.itemId)
         if (!item) return null
         const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
         return { line, item, qty }
       })
       .filter((entry): entry is { line: SelectedLine; item: CatalogItem; qty: number } => Boolean(entry))
-  }, [selectedEquipmentLines, equipmentItems])
+  }, [selectedEquipmentLines, allowedEquipmentItems])
 
   const estimatedThisSubmission = useMemo(() => selectedObjectRows.reduce((sum, row) => sum + row.salary, 0), [selectedObjectRows])
-  const selectedMemberSummary = useMemo(() => {
-    const normalizedName = memberName.trim().toLowerCase()
-    if (!normalizedName || !data) return null
-    return data.summaries.find((entry) => entry.member_name.toLowerCase() === normalizedName) ?? null
-  }, [data, memberName])
+
 
   function addLine(setter: Dispatch<SetStateAction<SelectedLine[]>>, itemId: string) {
     setter((prev) => {
@@ -193,7 +210,7 @@ export default function ActivitesPage() {
       setStep(activityType === 'Boite au lettre' ? 'objects' : 'equipment')
       await refresh()
     } catch (submitError: unknown) {
-      setError(submitError instanceof Error ? submitError.message : 'Impossible d\'enregistrer.')
+      setError(submitError instanceof Error ? submitError.message : 'Impossible d’enregistrer.')
     } finally {
       setSaving(false)
     }
@@ -220,17 +237,19 @@ export default function ActivitesPage() {
   }
 
   const leftTitle = step === 'equipment' ? 'Équipements du groupe (molette pour défiler)' : 'Objets du groupe (molette pour défiler)'
-  const leftItems = step === 'equipment' ? equipmentItems : objectItems
+  const leftItems = step === 'equipment' ? allowedEquipmentItems : objectItems
 
   return (
-    <div className="space-y-6" onPaste={(event) => void onPaste(event)}>
+    <div className="space-y-6">
       <PageHeader title={copy.activities.title} subtitle={copy.activities.subtitle} />
+
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
+        <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
+      </section>
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
-          </div>
+          <div className="text-sm text-white/65">Sélectionne l&apos;activité puis ajoute équipements/objets.</div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
@@ -322,10 +341,17 @@ export default function ActivitesPage() {
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-1">
-          <label className="space-y-1 text-sm">
-            <span className="text-white/70">Preuve (jpeg/png) • Upload ou coller une capture (Ctrl+V)</span>
-            <Input type="file" accept="image/png,image/jpeg" onChange={(event) => void onPickFile(event.target.files?.[0] ?? null)} className="pt-2" />
-          </label>
+          <div
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+            tabIndex={0}
+            onPaste={(event) => void onPaste(event)}
+          >
+            <p className="text-sm text-white/70">Preuve (jpeg/png) • Clique ici puis colle une capture (Ctrl+V), ou choisis un fichier.</p>
+            <div className="mt-2 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Zone de collage active</div>
+            <div className="mt-2">
+              <Input type="file" accept="image/png,image/jpeg" onChange={(event) => void onPickFile(event.target.files?.[0] ?? null)} className="pt-2" />
+            </div>
+          </div>
         </div>
 
         {proofImageData ? (
@@ -345,14 +371,6 @@ export default function ActivitesPage() {
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={() => void onSubmit()} disabled={saving}>{saving ? 'Enregistrement…' : 'Valider activité'}</Button>
           {ok ? <p className="text-sm text-emerald-300">{ok}</p> : null}
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
-        <h2 className="text-xl font-semibold">Semaine en cours (Lundi 00h → Dimanche 00h)</h2>
-        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
-          <p>Total objets ({memberName || 'membre'}): <span className="font-semibold">{selectedMemberSummary?.total_objects ?? 0}</span></p>
-          <p>Salaire cumulé ({memberName || 'membre'}): <span className="font-semibold">{Math.max(0, Number(selectedMemberSummary?.total_salary) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</span></p>
         </div>
       </section>
 
