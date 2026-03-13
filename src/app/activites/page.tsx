@@ -1,7 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -15,10 +14,10 @@ import {
   type ActivityObjectLineInput,
   type ActivityType,
 } from '@/lib/types/activities'
-import { getTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
 import { listCatalogItems } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
+import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
 
 type SelectedLine = { itemId: string; quantity: number }
 type SelectionStep = 'equipment' | 'objects'
@@ -82,20 +81,14 @@ export default function ActivitesPage() {
   const [step, setStep] = useState<SelectionStep>('equipment')
   const [selectedEquipmentLines, setSelectedEquipmentLines] = useState<SelectedLine[]>([])
   const [selectedObjectLines, setSelectedObjectLines] = useState<SelectedLine[]>([])
-  const [percentDraft, setPercentDraft] = useState(2)
   const [proofImageData, setProofImageData] = useState('')
   const [data, setData] = useState<ActivityListResponse | null>(null)
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
-  const [isMember, setIsMember] = useState(false)
-  const [isChef, setIsChef] = useState(false)
 
   useEffect(() => {
-    const session = getTenantSession()
-    setIsMember(isMemberTenantSession(session))
-    setIsChef(Boolean(session?.isAdmin || session?.role === 'chef'))
     void refresh()
     void listCatalogItems().then(setCatalogItems).catch(() => setCatalogItems([]))
   }, [])
@@ -113,7 +106,6 @@ export default function ActivitesPage() {
     try {
       const response = await listActivities()
       setData(response)
-      setPercentDraft(Math.max(0.01, Number(response.settings.default_percent_per_object) || 2))
       setError(null)
     } catch (loadError: unknown) {
       setError(loadError instanceof Error ? loadError.message : 'Erreur de chargement.')
@@ -123,10 +115,7 @@ export default function ActivitesPage() {
   const objectItems = useMemo(() => catalogItems.filter((item) => item.category === 'objects' && item.is_active), [catalogItems])
   const equipmentItems = useMemo(() => catalogItems.filter((item) => item.category === 'equipment' && item.is_active), [catalogItems])
 
-  const effectivePercent = useMemo(() => {
-    if (isMember) return Math.max(0.01, Number(data?.settings.default_percent_per_object) || 2)
-    return Math.max(0.01, Number(percentDraft) || 0.01)
-  }, [isMember, data?.settings.default_percent_per_object, percentDraft])
+  const effectivePercent = useMemo(() => Math.max(0.01, Number(data?.settings.default_percent_per_object) || 2), [data?.settings.default_percent_per_object])
 
   const selectedObjectRows = useMemo(() => {
     return selectedObjectLines
@@ -190,7 +179,7 @@ export default function ActivitesPage() {
         activity_type: activityType,
         object_lines: objectLines,
         equipment_lines: activityType === 'Boite au lettre' ? [] : equipmentLines,
-        percent_per_object: effectivePercent,
+        percent_per_object: Math.max(0.01, Number(data?.settings.default_percent_per_object) || 2),
         proof_image_data: proofImageData,
       })
       setOk(`Activité enregistrée ✅ (${objectLines.length} objet${objectLines.length > 1 ? 's' : ''})`)
@@ -235,15 +224,11 @@ export default function ActivitesPage() {
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="space-y-2">
             <h2 className="text-xl font-semibold">Déclaration activité</h2>
-            {isChef ? (
-              <Link href="/activites/gestion-chef" className="inline-flex h-9 items-center rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs font-semibold hover:bg-white/[0.12]">
-                Ouvrir Gestion chef
-              </Link>
-            ) : null}
+            <ActivitiesPageTabs active="declaration" />
           </div>
-          <div className="ml-auto flex flex-wrap items-stretch justify-end gap-2 text-sm">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
             </div>
@@ -251,8 +236,7 @@ export default function ActivitesPage() {
               <p>Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
             </div>
             <div className="min-w-[130px] rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-right">
-              <p className="text-cyan-100">Salaire :</p>
-              <p className="font-semibold text-cyan-50">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+              <p className="font-semibold text-cyan-50">Salaire: {estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
             </div>
           </div>
         </div>
@@ -334,13 +318,7 @@ export default function ActivitesPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {isChef ? (
-            <label className="space-y-1 text-sm">
-              <span className="text-white/70">% appliqué aux objets</span>
-              <Input type="number" min={0.01} step={0.01} value={percentDraft} onChange={(event) => setPercentDraft(Math.max(0.01, Number(event.target.value) || 0.01))} />
-            </label>
-          ) : null}
+        <div className="mt-4 grid gap-3 md:grid-cols-1">
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Preuve (jpeg/png) • Upload ou coller une capture (Ctrl+V)</span>
             <Input type="file" accept="image/png,image/jpeg" onChange={(event) => void onPickFile(event.target.files?.[0] ?? null)} className="pt-2" />

@@ -1,7 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +9,9 @@ import { listActivities, resetActivitiesCurrentWeek, updateActivitySettings, typ
 import type { ActivityEntry } from '@/lib/types/activities'
 import { copy } from '@/lib/copy'
 import { getTenantSession } from '@/lib/tenantSession'
+import { listCatalogItems } from '@/lib/itemsApi'
+import type { CatalogItem } from '@/lib/types/itemsFinance'
+import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
 
 type GroupedMember = {
   memberName: string
@@ -37,6 +39,7 @@ export default function ActivitesGestionChefPage() {
   const [savingSettings, setSavingSettings] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [expandedMember, setExpandedMember] = useState<string | null>(null)
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
 
@@ -48,6 +51,7 @@ export default function ActivitesGestionChefPage() {
       return
     }
     void refresh()
+    void listCatalogItems().then(setCatalogItems).catch(() => setCatalogItems([]))
   }, [])
 
   async function refresh() {
@@ -90,10 +94,12 @@ export default function ActivitesGestionChefPage() {
   }
 
   const groupedForChef = useMemo(() => groupEntriesByMember(data?.entries ?? []), [data?.entries])
+  const catalogItemMap = useMemo(() => new Map(catalogItems.map((item) => [item.id, item])), [catalogItems])
 
   return (
     <div className="space-y-6">
       <PageHeader title={`${copy.activities.title} • Gestion chef`} subtitle="Toutes les activités centralisées par membre avec preuves et reset hebdo." />
+      <ActivitiesPageTabs active="chef" />
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -101,9 +107,6 @@ export default function ActivitesGestionChefPage() {
             <h2 className="text-xl font-semibold">Réglages chef</h2>
             <p className="text-sm text-white/65">Semaine en cours (Lundi 00h → Dimanche 00h). Reset à faire le dimanche minuit si besoin.</p>
           </div>
-          <Link href="/activites" className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">
-            Retour déclaration
-          </Link>
         </div>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -137,20 +140,33 @@ export default function ActivitesGestionChefPage() {
 
                 {isOpen ? (
                   <div className="mt-3 space-y-3">
-                    {member.entries.map((entry) => (
-                      <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                        <div className="grid gap-2 text-sm md:grid-cols-2">
-                          <p><span className="text-white/65">Activité:</span> {entry.activity_type}</p>
-                          <p><span className="text-white/65">Objet:</span> {entry.object_name} x{entry.quantity}</p>
-                          <p><span className="text-white/65">Équipements:</span> {entry.equipment_name || '—'}</p>
-                          <p><span className="text-white/65">Salaire:</span> {Math.max(0, Number(entry.salary_amount) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+                    {member.entries.map((entry) => {
+                      const objectCatalog = catalogItemMap.get(entry.object_item_id)
+                      return (
+                        <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
+                            <div className="space-y-2 text-sm">
+                              <p><span className="text-white/65">Date:</span> {new Date(entry.created_at).toLocaleString('fr-FR')}</p>
+                              <p><span className="text-white/65">Activité:</span> {entry.activity_type}</p>
+                              <div className="flex items-center gap-2">
+                                {objectCatalog?.image_url ? (
+                                  <Image src={objectCatalog.image_url} alt={entry.object_name} width={34} height={34} className="h-8 w-8 rounded object-cover" unoptimized />
+                                ) : (
+                                  <div className="grid h-8 w-8 place-items-center rounded border border-white/10 bg-white/[0.05] text-[10px] text-white/55">IMG</div>
+                                )}
+                                <p><span className="text-white/65">Objet:</span> {entry.object_name} x{entry.quantity}</p>
+                              </div>
+                              <p><span className="text-white/65">Équipements:</span> {entry.equipment_name || '—'}</p>
+                              <p><span className="text-white/65">Salaire:</span> {Math.max(0, Number(entry.salary_amount) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+                            </div>
+                            <div>
+                              <p className="mb-2 text-xs text-white/60">Preuve</p>
+                              <Image src={entry.proof_image_data} alt={`Preuve ${entry.member_name}`} width={320} height={200} unoptimized className="max-h-48 w-auto rounded-lg border border-white/10" />
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-2">
-                          <p className="mb-2 text-xs text-white/60">Preuve</p>
-                          <Image src={entry.proof_image_data} alt={`Preuve ${entry.member_name}`} width={360} height={220} unoptimized className="max-h-56 w-auto rounded-lg border border-white/10" />
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : null}
               </article>
