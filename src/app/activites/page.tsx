@@ -261,14 +261,14 @@ export default function ActivitesPage() {
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 className="text-xl font-semibold">Déclaration activité</h2>
-          <div className="flex flex-wrap items-stretch justify-end gap-2 text-sm">
+          <div className="ml-auto flex flex-wrap items-stretch justify-end gap-2 text-sm">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
             </div>
-            <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-right">
+            <div className="min-w-[130px] rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-right">
               <p className="text-cyan-100">Salaire :</p>
               <p className="font-semibold text-cyan-50">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
             </div>
