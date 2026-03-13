@@ -260,8 +260,12 @@ export default function ActivitesPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 className="text-xl font-semibold">Déclaration activité</h2>
           <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
-            <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span> • Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
-            <p>Salaire total estimé pour cette validation: <span className="font-semibold">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</span></p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1">Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></span>
+              <span className="rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1">Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></span>
+            </div>
+            <p className="mt-2">Salaire total estimé pour cette validation:</p>
+            <p className="font-semibold">{estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
           </div>
         </div>
 
@@ -350,12 +354,25 @@ export default function ActivitesPage() {
             </label>
           ) : null}
           <label className="space-y-1 text-sm">
-            <span className="text-white/70">Preuve (jpeg/png)</span>
+            <span className="text-white/70">Preuve (jpeg/png) • Upload ou coller une capture (Ctrl+V)</span>
             <Input type="file" accept="image/png,image/jpeg" onChange={(event) => void onPickFile(event.target.files?.[0] ?? null)} className="pt-2" />
           </label>
         </div>
 
-        {proofImageData ? <Image src={proofImageData} alt="Preuve" width={320} height={192} unoptimized className="mt-4 max-h-48 w-auto rounded-xl border border-white/10" /> : null}
+        {proofImageData ? (
+          <div className="relative mt-4 inline-block">
+            <Image src={proofImageData} alt="Preuve" width={320} height={192} unoptimized className="max-h-48 w-auto rounded-xl border border-white/10" />
+            <button
+              type="button"
+              onClick={() => setProofImageData('')}
+              className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-rose-300/35 bg-rose-500/80 text-xs font-bold text-white hover:bg-rose-500"
+              aria-label="Supprimer la preuve"
+              title="Supprimer la preuve"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={() => void onSubmit()} disabled={saving}>{saving ? 'Enregistrement…' : 'Valider activité'}</Button>
           {ok ? <p className="text-sm text-emerald-300">{ok}</p> : null}
