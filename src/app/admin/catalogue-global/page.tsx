@@ -8,7 +8,7 @@ import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
-import { categoryTypeOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
+import { categoryTypeOptions, getCategoryLabel, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
@@ -31,12 +31,12 @@ const defaultTypeByCategory: Record<ItemCategory, string> = {
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
 }
 
-const CATALOG_CATEGORY_CARDS = [
-  { key: 'objects' as const, label: 'Objets', icon: Box },
-  { key: 'weapons' as const, label: 'Armes', icon: Swords },
-  { key: 'equipment' as const, label: 'Équipement', icon: Shield },
-  { key: 'drugs' as const, label: 'Drogues', icon: Pill },
-  { key: 'custom' as const, label: 'Autres', icon: Shapes },
+const CATALOG_CATEGORY_CARDS: { key: ItemCategory; icon: typeof Box }[] = [
+  { key: 'objects', icon: Box },
+  { key: 'weapons', icon: Swords },
+  { key: 'equipment', icon: Shield },
+  { key: 'drugs', icon: Pill },
+  { key: 'custom', icon: Shapes },
 ]
 
 function categoryPillClass(category: ItemCategory, active: boolean) {
@@ -279,7 +279,7 @@ export default function AdminCatalogueGlobalPage() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{card.label}</p>
+                      <p className="text-xs text-white/70">{getCategoryLabel(card.key)}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -375,7 +375,7 @@ export default function AdminCatalogueGlobalPage() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{card.label}</p>
+                  <p className="text-xs text-white/70">{card.key === 'all' ? card.label : getCategoryLabel(card.key)}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
@@ -431,7 +431,7 @@ export default function AdminCatalogueGlobalPage() {
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-white/80">{card.label}</p>
+                                <p className="text-xs text-white/80">{getCategoryLabel(card.key)}</p>
                                 <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                               </div>
                             </button>
