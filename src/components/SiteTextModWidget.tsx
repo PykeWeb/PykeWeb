@@ -248,16 +248,19 @@ function applyOverrides(overrides: Overrides, visual: VisualState, pathname: str
   }
 }
 
-function getEditableTarget(target: EventTarget | null): { text: string; element: HTMLElement } | null {
+function getEditableTarget(target: EventTarget | null): { text: string; element: HTMLElement; sourceText?: string } | null {
   if (!(target instanceof HTMLElement)) return null
   if (target.closest('[data-mod-widget="true"]')) return null
+
+  const forcedSourceHost = target.closest('[data-mod-source]') as HTMLElement | null
+  const forcedSource = forcedSourceHost?.dataset.modSource?.trim()
 
   let current: HTMLElement | null = target
   while (current && current !== document.body) {
     if (current.childNodes.length) {
       const directTextNode = Array.from(current.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
       if (directTextNode) {
-        return { text: directTextNode.textContent ?? '', element: current }
+        return { text: directTextNode.textContent ?? '', element: current, sourceText: forcedSource || undefined }
       }
     }
     current = current.parentElement
@@ -329,14 +332,16 @@ export function SiteTextModWidget() {
       event.preventDefault()
       event.stopPropagation()
 
+      const current = editable.text
       const domPath = getDomPath(editable.element)
       const existing = visualState.entries.find((entry) => entry.page === pathname && entry.domPath === domPath)
+      const stableSource = editable.sourceText || current
       const entry: VisualEntry = existing ?? {
         id: makeId('entry'),
         page: pathname,
         domPath,
-        sourceText: editable.text,
-        text: editable.text,
+        sourceText: stableSource,
+        text: current,
         style: { ...defaultStyle },
       }
 

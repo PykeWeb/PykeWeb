@@ -302,7 +302,7 @@ export default function AdminCatalogueGlobalPage() {
                     className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${getCategoryCardClass(card.key, createCategory === card.key)}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{card.label}</p>
+                      <p className="text-xs text-white/70" data-mod-source={card.label}>{card.label}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -315,7 +315,7 @@ export default function AdminCatalogueGlobalPage() {
             <label className="mb-2 block text-xs text-white/60">Type</label>
             <div className="flex flex-wrap gap-2">
               {createTypeOptions.map((option) => (
-                <TabPill key={option.value} active={createItemType === option.value} onClick={() => setCreateItemType(option.value)}>
+                <TabPill key={option.value} active={createItemType === option.value} onClick={() => setCreateItemType(option.value)} data-mod-source={option.label}>
                   {option.label}
                 </TabPill>
               ))}
@@ -383,7 +383,7 @@ export default function AdminCatalogueGlobalPage() {
                 className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${getCategoryCardClass(card.key, active)}`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{card.label}</p>
+                  <p className="text-xs text-white/70" data-mod-source={card.label}>{card.label}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
@@ -394,7 +394,7 @@ export default function AdminCatalogueGlobalPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {typeFilterOptions.map((opt) => (
-            <TabPill key={opt.value} active={filterType === opt.value} onClick={() => setFilterType(opt.value)}>
+            <TabPill key={opt.value} active={filterType === opt.value} onClick={() => setFilterType(opt.value)} data-mod-source={opt.label}>
               {opt.label}
             </TabPill>
           ))}
@@ -444,7 +444,7 @@ export default function AdminCatalogueGlobalPage() {
                               className={`rounded-2xl border px-3 py-3 text-left transition ${getCategoryCardClass(card.key, active)}`}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-white/80">{card.label}</p>
+                                <p className="text-xs text-white/80" data-mod-source={card.label}>{card.label}</p>
                                 <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                               </div>
                             </button>
@@ -457,7 +457,7 @@ export default function AdminCatalogueGlobalPage() {
                       <p className="mb-2 text-xs text-white/60">Type</p>
                       <div className="flex flex-wrap gap-2">
                         {categoryTypeOptions[editCategory].map((option) => (
-                          <TabPill key={option.value} active={editType === option.value} onClick={() => setEditType(option.value)}>
+                          <TabPill key={option.value} active={editType === option.value} onClick={() => setEditType(option.value)} data-mod-source={option.label}>
                             {option.label}
                           </TabPill>
                         ))}
