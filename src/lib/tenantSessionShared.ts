@@ -1,4 +1,4 @@
-export type TenantRole = 'chef' | 'member'
+export type TenantRole = string
 
 export type TenantSessionPayload = {
   v?: number
@@ -7,6 +7,8 @@ export type TenantSessionPayload = {
   groupBadge?: string | null
   isAdmin?: boolean
   role?: TenantRole
+  roleLabel?: string
+  allowedPrefixes?: string[]
 }
 
 export const TENANT_SESSION_VERSION = 4
@@ -19,7 +21,11 @@ export function isValidTenantSession(session: TenantSessionPayload | null): sess
   if (!session.groupName || !session.groupName.trim()) return false
   if ((session.v ?? 0) !== TENANT_SESSION_VERSION) return false
 
-  if (session.role && session.role !== 'chef' && session.role !== 'member') return false
+  if (session.role && typeof session.role !== 'string') return false
+  if (session.roleLabel && typeof session.roleLabel !== 'string') return false
+  if (session.allowedPrefixes && !Array.isArray(session.allowedPrefixes)) return false
+  if (Array.isArray(session.allowedPrefixes) && session.allowedPrefixes.some((entry) => typeof entry !== 'string')) return false
+
   if (session.groupId === 'admin') return true
 
   return UUID_RE.test(session.groupId)

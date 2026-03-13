@@ -16,6 +16,7 @@ import {
 import { getTenantSession } from '@/lib/tenantSession'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 import { toast } from 'sonner'
+import { ROLE_ACCESS_OPTIONS, type GroupRoleDefinition } from '@/lib/types/groupRoles'
 
 type EditableExportItem = ExportableGroupItem & { selected: boolean }
 
@@ -50,6 +51,7 @@ export default function AdminGroupDetailsPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [passwordDraft, setPasswordDraft] = useState('')
   const [memberPasswordDraft, setMemberPasswordDraft] = useState('')
+  const [rolesDraft, setRolesDraft] = useState<GroupRoleDefinition[]>([])
 
   const refresh = useCallback(async () => {
     if (!groupId) return
@@ -59,6 +61,10 @@ export default function AdminGroupDetailsPage() {
       setGroup(groupRow)
       setPasswordDraft(groupRow.password || '')
       setMemberPasswordDraft(groupRow.password_member || '')
+      setRolesDraft((groupRow.roles && groupRow.roles.length > 0) ? groupRow.roles : [
+        { key: 'chef', name: 'Admin', password: groupRow.password || '', allowedPrefixes: ['/'] },
+        { key: 'member', name: 'Membre', password: groupRow.password_member || '', allowedPrefixes: ['/tablette', '/finance/depense', '/depenses', '/activites'] },
+      ].filter((role) => role.password))
       setError(null)
 
       try {
@@ -175,6 +181,58 @@ export default function AdminGroupDetailsPage() {
     }
   }
 
+
+  function updateRole(index: number, patch: Partial<GroupRoleDefinition>) {
+    setRolesDraft((prev) => prev.map((role, i) => (i === index ? { ...role, ...patch } : role)))
+  }
+
+  function toggleRoleAccess(index: number, prefix: string) {
+    setRolesDraft((prev) => prev.map((role, i) => {
+      if (i !== index) return role
+      const exists = role.allowedPrefixes.includes(prefix)
+      const nextAllowed = exists ? role.allowedPrefixes.filter((entry) => entry !== prefix) : [...role.allowedPrefixes, prefix]
+      return { ...role, allowedPrefixes: nextAllowed.length > 0 ? nextAllowed : ['/tablette'] }
+    }))
+  }
+
+  function addCustomRole() {
+    const baseKey = `role_${Date.now()}`
+    setRolesDraft((prev) => [...prev, {
+      key: baseKey,
+      name: 'Nouveau rôle',
+      password: generatePassword({ avoidAmbiguous: true }),
+      allowedPrefixes: ['/tablette'],
+    }])
+  }
+
+  function removeRole(key: string) {
+    if (key === 'chef' || key === 'member') return
+    setRolesDraft((prev) => prev.filter((role) => role.key !== key))
+  }
+
+  async function saveRoles() {
+    const sanitized = rolesDraft
+      .map((role, index) => ({
+        key: (role.key || `role_${index + 1}`).trim(),
+        name: role.name.trim() || `Rôle ${index + 1}`,
+        password: role.password.trim(),
+        allowedPrefixes: role.allowedPrefixes.length > 0 ? role.allowedPrefixes : ['/tablette'],
+      }))
+      .filter((role) => role.password.length > 0)
+
+    const chefRole = sanitized.find((role) => role.key === 'chef')
+    const memberRole = sanitized.find((role) => role.key === 'member')
+
+    if (!chefRole) {
+      setError('Un rôle chef/admin est obligatoire.')
+      return
+    }
+
+    setPasswordDraft(chefRole.password)
+    setMemberPasswordDraft(memberRole?.password || '')
+    await savePatch({ password: chefRole.password, password_member: memberRole?.password || null, roles: sanitized })
+  }
+
   const selectedCount = useMemo(() => exportItems.filter((x) => x.selected).length, [exportItems])
 
   if (loading) {
@@ -215,77 +273,77 @@ export default function AdminGroupDetailsPage() {
           </label>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-          <p className="text-xs text-white/60">Accès du groupe (chef / membre)</p>
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={passwordDraft}
-            onChange={(e) => setPasswordDraft(e.target.value)}
-            className="h-8 min-w-[220px] rounded-lg border border-white/12 bg-white/[0.06] px-3 text-sm"
-            placeholder="Mot de passe chef"
-          />
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={memberPasswordDraft}
-            onChange={(e) => setMemberPasswordDraft(e.target.value)}
-            className="h-8 min-w-[220px] rounded-lg border border-white/12 bg-white/[0.06] px-3 text-sm"
-            placeholder="Mot de passe membre"
-          />
-          <button type="button" onClick={() => setShowPassword((v) => !v)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">{showPassword ? 'Masquer' : 'Voir'}</button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              const generated = generatePassword({ avoidAmbiguous: true })
-              setPasswordDraft(generated)
-            }}
-            className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Générer
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              const generated = generatePassword({ avoidAmbiguous: true })
-              setMemberPasswordDraft(generated)
-            }}
-            className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Générer membre
-          </button>
-          <button type="button" onClick={() => void copyToClipboard(passwordDraft)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier chef</button>
-          <button type="button" onClick={() => void copyToClipboard(memberPasswordDraft)} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier membre</button>
-          <button
-            type="button"
-            disabled={
-              busy
-              || passwordDraft.trim().length === 0
-              || (
-                passwordDraft.trim() === (group.password || '')
-                && memberPasswordDraft.trim() === (group.password_member || '')
-              )
-            }
-            onClick={() => void savePatch({ password: passwordDraft.trim(), password_member: memberPasswordDraft.trim() || null })}
-            className="h-8 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 text-xs text-cyan-50 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Enregistrer MDP
-          </button>
+
+        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-white/80">Rôles du groupe (nom, mot de passe, accès catégories)</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={addCustomRole} className="h-8 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Ajouter un sous-rôle</button>
+              <button type="button" disabled={busy} onClick={() => void saveRoles()} className="h-8 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 text-xs text-cyan-50 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50">Enregistrer les rôles</button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {rolesDraft.map((role, index) => (
+              <div key={role.key} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                <div className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto_auto] md:items-center">
+                  <input
+                    value={role.name}
+                    onChange={(event) => updateRole(index, { name: event.target.value })}
+                    className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm"
+                    placeholder="Nom du rôle"
+                  />
+                  <input
+                    value={role.password}
+                    onChange={(event) => updateRole(index, { password: event.target.value })}
+                    type={showPassword ? 'text' : 'password'}
+                    className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm"
+                    placeholder="Mot de passe"
+                  />
+                  <p className="text-xs text-white/60">Clé: <span className="font-semibold text-white/90">{role.key}</span></p>
+                  <button type="button" onClick={() => updateRole(index, { password: generatePassword({ avoidAmbiguous: true }) })} className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Générer</button>
+                  <button type="button" onClick={() => void copyToClipboard(role.password)} className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {ROLE_ACCESS_OPTIONS.map((option) => {
+                    const selected = role.allowedPrefixes.includes('/') || role.allowedPrefixes.includes(option.prefix)
+                    return (
+                      <label key={`${role.key}-${option.prefix}`} className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs ${selected ? 'border-cyan-300/35 bg-cyan-500/20 text-cyan-100' : 'border-white/12 bg-white/[0.04] text-white/70'}`}>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleRoleAccess(index, option.prefix)}
+                        />
+                        {option.label}
+                      </label>
+                    )
+                  })}
+                </div>
+                <div className="mt-2 flex justify-end">
+                  {role.key !== 'chef' && role.key !== 'member' ? (
+                    <button type="button" onClick={() => removeRole(role.key)} className="h-8 rounded-xl border border-rose-300/35 bg-rose-500/15 px-3 text-xs text-rose-100 hover:bg-rose-500/25">Supprimer</button>
+                  ) : (
+                    <p className="text-xs text-white/55">Rôle système non supprimable</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+              <p className="font-semibold">Accès {rolesDraft.find((role) => role.key === 'chef')?.name || 'Admin'}</p>
+              <p className="mt-1 text-cyan-50">Identifiant: {group.login}</p>
+              <p className="text-cyan-50">Mot de passe: {rolesDraft.find((role) => role.key === 'chef')?.password || '—'}</p>
+            </div>
+            <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+              <p className="font-semibold">Accès {rolesDraft.find((role) => role.key === 'member')?.name || 'Membre'}</p>
+              <p className="mt-1 text-emerald-50">Identifiant: {group.login}</p>
+              <p className="text-emerald-50">Mot de passe: {rolesDraft.find((role) => role.key === 'member')?.password || '—'}</p>
+            </div>
+          </div>
         </div>
 
-
-        <div className="mt-2 grid gap-2 md:grid-cols-2">
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
-            <p className="font-semibold">Accès Chef</p>
-            <p className="mt-1 text-cyan-50">Identifiant: {group.login}</p>
-            <p className="text-cyan-50">Mot de passe: {passwordDraft || '—'}</p>
-          </div>
-          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
-            <p className="font-semibold">Accès Membre</p>
-            <p className="mt-1 text-emerald-50">Identifiant: {group.login}</p>
-            <p className="text-emerald-50">Mot de passe: {memberPasswordDraft || '—'}</p>
-          </div>
-        </div>
 
         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
           <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">

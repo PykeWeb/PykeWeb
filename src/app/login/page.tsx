@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { loginTenant } from '@/lib/tenantAuthApi'
 import { saveTenantSession, syncTenantSessionToServer } from '@/lib/tenantSession'
+import { getDefaultRouteForSession } from '@/lib/accessControl'
 import { listActivePatchNotes, type PatchNote } from '@/lib/communicationApi'
 import { PatchNoteModal } from '@/components/ui/PatchNoteModal'
 import { PatchNotesRecapModal } from '@/components/ui/PatchNotesRecapModal'
@@ -42,7 +43,7 @@ export default function LoginPage() {
 
       saveTenantSession(session, rememberMe)
       await syncTenantSessionToServer(session, rememberMe).catch(() => undefined)
-      const nextPath = session.isAdmin ? '/admin/dashboard' : session.role === 'member' ? '/tablette' : '/'
+      const nextPath = getDefaultRouteForSession(session)
       window.location.href = `/auth/bridge?next=${encodeURIComponent(nextPath)}`
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Connexion impossible')

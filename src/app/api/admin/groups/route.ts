@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { assertAdminSession } from '@/server/auth/admin'
-import { encodeGroupCredentials, parseGroupCredentials } from '@/lib/groupCredentials'
+import { encodeGroupCredentials, parseGroupCredentials, parseGroupRolesConfig } from '@/lib/groupCredentials'
+import type { GroupRoleDefinition } from '@/lib/types/groupRoles'
 
 const TABLE = 'tenant_groups'
 
@@ -22,19 +23,22 @@ function normalizeGroupRecord(row: GroupRecord) {
     ...row,
     password: credentials.chefPassword,
     password_member: credentials.memberPassword,
+    roles: parseGroupRolesConfig(row.password).roles,
   }
 }
 
 function normalizePayload(payload: Record<string, unknown>) {
   const chefPassword = typeof payload.password === 'string' ? payload.password.trim() : ''
   const memberPassword = typeof payload.password_member === 'string' ? payload.password_member.trim() : ''
-  const next = { ...payload }
+  const next = { ...payload } as Record<string, unknown>
+  const rolePayload = Array.isArray(payload.roles) ? payload.roles as GroupRoleDefinition[] : undefined
 
-  if (typeof payload.password !== 'undefined' || typeof payload.password_member !== 'undefined') {
-    next.password = encodeGroupCredentials({ chefPassword, memberPassword })
+  if (typeof payload.password !== 'undefined' || typeof payload.password_member !== 'undefined' || typeof payload.roles !== 'undefined') {
+    next.password = encodeGroupCredentials({ chefPassword, memberPassword, roles: rolePayload })
   }
 
   delete next.password_member
+  delete next.roles
   return next
 }
 

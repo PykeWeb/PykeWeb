@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { assertAdminSession } from '@/server/auth/admin'
-import { parseGroupCredentials } from '@/lib/groupCredentials'
+import { parseGroupCredentials, parseGroupRolesConfig } from '@/lib/groupCredentials'
 
 type GroupRecord = {
   id: string
@@ -20,6 +20,7 @@ function normalizeGroupRecord(row: GroupRecord) {
     ...row,
     password: credentials.chefPassword,
     password_member: credentials.memberPassword,
+    roles: parseGroupRolesConfig(row.password).roles,
   }
 }
 
