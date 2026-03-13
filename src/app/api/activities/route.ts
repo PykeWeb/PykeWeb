@@ -36,6 +36,13 @@ function toWeekEnd(weekStart: Date) {
   return end
 }
 
+
+function isMissingColumnError(error: unknown, column: string) {
+  if (!error || typeof error !== 'object' || !('message' in error)) return false
+  const message = String((error as { message?: unknown }).message || '').toLowerCase()
+  return message.includes(`'${column.toLowerCase()}'`) && message.includes('could not find')
+}
+
 export async function GET(request: Request) {
   try {
     const session = await getSessionFromRequest(request)
@@ -215,7 +222,14 @@ export async function POST(request: Request) {
       }
     })
 
-    const { error } = await supabase.from('group_activity_entries').insert(rowsToInsert)
+    let { error } = await supabase.from('group_activity_entries').insert(rowsToInsert)
+
+    if (error && isMissingColumnError(error, 'equipment_quantity')) {
+      const legacyRows = rowsToInsert.map(({ equipment_quantity: _equipmentQuantity, ...row }) => row)
+      const legacyInsert = await supabase.from('group_activity_entries').insert(legacyRows)
+      error = legacyInsert.error
+    }
+
     if (error) throw error
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
