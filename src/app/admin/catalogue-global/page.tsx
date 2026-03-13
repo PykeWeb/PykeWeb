@@ -10,6 +10,7 @@ import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } fr
 import { categoryTypeOptions, getTypeFilterOptions, itemCategoryOptions, normalizeCatalogCategory, normalizeItemType, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type GlobalItem = {
   id: string
@@ -45,7 +46,7 @@ const categoryLabelByKey = Object.fromEntries(itemCategoryOptions.map((option) =
 
 const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: LucideIcon }[] = ADMIN_CATEGORY_ORDER.map((key) => ({
   key,
-  label: key === 'custom' ? 'Autres' : (categoryLabelByKey[key] ?? 'Autres'),
+  label: key === 'custom' ? 'Autres​' : (categoryLabelByKey[key] ?? 'Autres​'),
   icon: categoryIconByKey[key],
 }))
 
@@ -81,6 +82,7 @@ function getCategoryCardClass(category: 'all' | ItemCategory, active: boolean): 
 }
 
 export default function AdminCatalogueGlobalPage() {
+  const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<GlobalItem[]>([])
   const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all')
   const [filterType, setFilterType] = useState<UnifiedTypeFilterValue>('all')
@@ -276,18 +278,28 @@ export default function AdminCatalogueGlobalPage() {
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {ADMIN_CATEGORY_CARDS.map((card) => {
                 const Icon = card.icon
+                const uiKey = `items.category.${card.key}`
+                const bubble = themeConfig.bubbles[uiKey]
                 return (
                   <button
                     key={card.key}
                     type="button"
+                    data-bubble-key={uiKey}
                     onClick={() => {
                       setCreateCategory(card.key)
                       setCreateItemType(defaultTypeByCategory[card.key])
                     }}
+                    style={{
+                      background: bubble?.bgColor || undefined,
+                      borderColor: bubble?.borderColor || undefined,
+                      color: bubble?.textColor || undefined,
+                      minWidth: bubble?.minWidthPx ? `${bubble.minWidthPx}px` : undefined,
+                      minHeight: bubble?.minHeightPx ? `${bubble.minHeightPx}px` : undefined,
+                    }}
                     className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${getCategoryCardClass(card.key, createCategory === card.key)}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{card.label}</p>
+                      <p className="text-xs text-white/70">{bubble?.label || card.label}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -347,18 +359,28 @@ export default function AdminCatalogueGlobalPage() {
           ].map((card) => {
             const Icon = card.icon
             const active = filterCategory === card.key || (card.key === 'all' && filterCategory === 'all')
+            const uiKey = `items.category.${card.key}`
+            const bubble = themeConfig.bubbles[uiKey]
             return (
               <button
                 key={card.key}
                 type="button"
+                data-bubble-key={uiKey}
                 onClick={() => {
                   setFilterCategory(card.key === 'all' ? 'all' : card.key)
                   setFilterType('all')
                 }}
+                style={{
+                  background: bubble?.bgColor || undefined,
+                  borderColor: bubble?.borderColor || undefined,
+                  color: bubble?.textColor || undefined,
+                  minWidth: bubble?.minWidthPx ? `${bubble.minWidthPx}px` : undefined,
+                  minHeight: bubble?.minHeightPx ? `${bubble.minHeightPx}px` : undefined,
+                }}
                 className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${getCategoryCardClass(card.key, active)}`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{card.label}</p>
+                  <p className="text-xs text-white/70">{bubble?.label || card.label}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
@@ -398,18 +420,28 @@ export default function AdminCatalogueGlobalPage() {
                         {ADMIN_CATEGORY_CARDS.map((card) => {
                           const Icon = card.icon
                           const active = editCategory === card.key
+                          const uiKey = `items.category.${card.key}`
+                          const bubble = themeConfig.bubbles[uiKey]
                           return (
                             <button
                               key={card.key}
                               type="button"
+                              data-bubble-key={uiKey}
                               onClick={() => {
                                 setEditCategory(card.key)
                                 setEditType(defaultTypeByCategory[card.key])
                               }}
+                              style={{
+                                background: bubble?.bgColor || undefined,
+                                borderColor: bubble?.borderColor || undefined,
+                                color: bubble?.textColor || undefined,
+                                minWidth: bubble?.minWidthPx ? `${bubble.minWidthPx}px` : undefined,
+                                minHeight: bubble?.minHeightPx ? `${bubble.minHeightPx}px` : undefined,
+                              }}
                               className={`rounded-2xl border px-3 py-3 text-left transition ${getCategoryCardClass(card.key, active)}`}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-white/80">{card.label}</p>
+                                <p className="text-xs text-white/80">{bubble?.label || card.label}</p>
                                 <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                               </div>
                             </button>
