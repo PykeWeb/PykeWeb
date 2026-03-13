@@ -15,6 +15,7 @@ import {
   type ActivityType,
 } from '@/lib/types/activities'
 import { listCatalogItems } from '@/lib/itemsApi'
+import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
@@ -87,8 +88,11 @@ export default function ActivitesPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
+  const [canSeeChefTab, setCanSeeChefTab] = useState(false)
 
   useEffect(() => {
+    const session = getTenantSession()
+    setCanSeeChefTab(Boolean(session?.isAdmin || session?.role === 'chef'))
     void refresh()
     void listCatalogItems().then(setCatalogItems).catch(() => setCatalogItems([]))
   }, [])
@@ -226,7 +230,7 @@ export default function ActivitesPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Déclaration activité</h2>
-            <ActivitiesPageTabs active="declaration" />
+            <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
           </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
@@ -235,7 +239,7 @@ export default function ActivitesPage() {
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
             </div>
-            <div className="min-w-[130px] rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-right">
+            <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2">
               <p className="font-semibold text-cyan-50">Salaire: {estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
             </div>
           </div>

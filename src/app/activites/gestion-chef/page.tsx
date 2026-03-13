@@ -99,7 +99,10 @@ export default function ActivitesGestionChefPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={`${copy.activities.title} • Gestion chef`} subtitle="Toutes les activités centralisées par membre avec preuves et reset hebdo." />
-      <ActivitiesPageTabs active="chef" />
+
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
+        <ActivitiesPageTabs active="chef" />
+      </section>
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -139,30 +142,28 @@ export default function ActivitesGestionChefPage() {
                 </button>
 
                 {isOpen ? (
-                  <div className="mt-3 space-y-3">
+                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
                     {member.entries.map((entry) => {
                       const objectCatalog = catalogItemMap.get(entry.object_item_id)
                       return (
                         <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
-                            <div className="space-y-2 text-sm">
-                              <p><span className="text-white/65">Date:</span> {new Date(entry.created_at).toLocaleString('fr-FR')}</p>
-                              <p><span className="text-white/65">Activité:</span> {entry.activity_type}</p>
-                              <div className="flex items-center gap-2">
-                                {objectCatalog?.image_url ? (
-                                  <Image src={objectCatalog.image_url} alt={entry.object_name} width={34} height={34} className="h-8 w-8 rounded object-cover" unoptimized />
-                                ) : (
-                                  <div className="grid h-8 w-8 place-items-center rounded border border-white/10 bg-white/[0.05] text-[10px] text-white/55">IMG</div>
-                                )}
-                                <p><span className="text-white/65">Objet:</span> {entry.object_name} x{entry.quantity}</p>
-                              </div>
-                              <p><span className="text-white/65">Équipements:</span> {entry.equipment_name || '—'}</p>
-                              <p><span className="text-white/65">Salaire:</span> {Math.max(0, Number(entry.salary_amount) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+                          <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-2">
+                            <p className="mb-2 text-xs text-white/60">Preuve</p>
+                            <Image src={entry.proof_image_data} alt={`Preuve ${entry.member_name}`} width={420} height={240} unoptimized className="h-44 w-full rounded-lg object-cover" />
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <p><span className="text-white/65">Date:</span> {new Date(entry.created_at).toLocaleString('fr-FR')}</p>
+                            <p><span className="text-white/65">Activité:</span> {entry.activity_type}</p>
+                            <div className="flex items-center gap-2">
+                              {objectCatalog?.image_url ? (
+                                <Image src={objectCatalog.image_url} alt={entry.object_name} width={36} height={36} className="h-9 w-9 rounded object-cover" unoptimized />
+                              ) : (
+                                <div className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.05] text-[10px] text-white/55">IMG</div>
+                              )}
+                              <p><span className="text-white/65">Objet:</span> {entry.object_name} x{entry.quantity}</p>
                             </div>
-                            <div>
-                              <p className="mb-2 text-xs text-white/60">Preuve</p>
-                              <Image src={entry.proof_image_data} alt={`Preuve ${entry.member_name}`} width={320} height={200} unoptimized className="max-h-48 w-auto rounded-lg border border-white/10" />
-                            </div>
+                            <p><span className="text-white/65">Équipements:</span> {entry.equipment_name || '—'}</p>
+                            <p><span className="text-white/65">Salaire:</span> {Math.max(0, Number(entry.salary_amount) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
                           </div>
                         </div>
                       )
