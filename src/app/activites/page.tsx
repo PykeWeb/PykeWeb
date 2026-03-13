@@ -1,16 +1,16 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
-import { createActivity, listActivities, updateActivitySettings, type ActivityListResponse } from '@/lib/activitiesApi'
+import { createActivity, listActivities, type ActivityListResponse } from '@/lib/activitiesApi'
 import {
   ACTIVITY_OPTIONS,
-  type ActivityEntry,
   type ActivityEquipmentLineInput,
   type ActivityObjectLineInput,
   type ActivityType,
@@ -76,19 +76,6 @@ function CatalogScrollableList({
   )
 }
 
-function groupEntriesByMember(entries: ActivityEntry[]) {
-  const map = new Map<string, { totalSalary: number; totalObjects: number; entries: ActivityEntry[] }>()
-  for (const entry of entries) {
-    const key = entry.member_name.trim() || 'Inconnu'
-    const current = map.get(key) ?? { totalSalary: 0, totalObjects: 0, entries: [] }
-    current.totalSalary += Math.max(0, Number(entry.salary_amount) || 0)
-    current.totalObjects += Math.max(0, Number(entry.quantity) || 0)
-    current.entries.push(entry)
-    map.set(key, current)
-  }
-  return [...map.entries()].map(([memberName, value]) => ({ memberName, ...value })).sort((a, b) => b.totalSalary - a.totalSalary)
-}
-
 export default function ActivitesPage() {
   const [memberName, setMemberName] = useState('')
   const [activityType, setActivityType] = useState<ActivityType>('Cambriolage')
@@ -100,7 +87,6 @@ export default function ActivitesPage() {
   const [data, setData] = useState<ActivityListResponse | null>(null)
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   const [saving, setSaving] = useState(false)
-  const [savingSettings, setSavingSettings] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [isMember, setIsMember] = useState(false)
@@ -171,7 +157,6 @@ export default function ActivitesPage() {
     if (!normalizedName || !data) return null
     return data.summaries.find((entry) => entry.member_name.toLowerCase() === normalizedName) ?? null
   }, [data, memberName])
-  const groupedForChef = useMemo(() => groupEntriesByMember(data?.entries ?? []), [data?.entries])
 
   function addLine(setter: Dispatch<SetStateAction<SelectedLine[]>>, itemId: string) {
     setter((prev) => {
@@ -221,17 +206,7 @@ export default function ActivitesPage() {
     }
   }
 
-  async function saveDefaultPercent() {
-    try {
-      setSavingSettings(true)
-      await updateActivitySettings({ default_percent_per_object: Math.max(0.01, Number(percentDraft) || 0.01) })
-      await refresh()
-    } catch (settingsError: unknown) {
-      setError(settingsError instanceof Error ? settingsError.message : 'Impossible de modifier le % par défaut.')
-    } finally {
-      setSavingSettings(false)
-    }
-  }
+
 
   async function onPickFile(file: File | null) {
     if (!file) return
@@ -260,7 +235,14 @@ export default function ActivitesPage() {
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 className="text-xl font-semibold">Déclaration activité</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold">Déclaration activité</h2>
+            {isChef ? (
+              <Link href="/activites/gestion-chef" className="inline-flex h-9 items-center rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs font-semibold hover:bg-white/[0.12]">
+                Ouvrir Gestion chef
+              </Link>
+            ) : null}
+          </div>
           <div className="ml-auto flex flex-wrap items-stretch justify-end gap-2 text-sm">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
@@ -393,57 +375,6 @@ export default function ActivitesPage() {
         </div>
       </section>
 
-      {isChef ? (
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
-          <h2 className="text-xl font-semibold">Gestion Chef</h2>
-          <div className="mt-3 flex flex-wrap items-end gap-3">
-            <label className="space-y-1 text-sm">
-              <span className="text-white/70">% par défaut</span>
-              <Input type="number" min={0.01} step={0.01} value={percentDraft} onChange={(event) => setPercentDraft(Math.max(0.01, Number(event.target.value) || 0.01))} />
-            </label>
-            <Button variant="secondary" onClick={() => void saveDefaultPercent()} disabled={savingSettings}>{savingSettings ? 'Enregistrement…' : 'Enregistrer le % par défaut'}</Button>
-          </div>
-
-          <div className="mt-4 space-y-4">
-            {groupedForChef.map((member) => (
-              <div key={member.memberName} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold">{member.memberName}</p>
-                  <p className="text-xs text-white/70">Objets: {member.totalObjects} • Salaire: {member.totalSalary.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
-                </div>
-                <div className="overflow-x-auto rounded-xl border border-white/10">
-                  <table className="w-full min-w-[940px] text-sm">
-                    <thead className="bg-white/[0.04] text-white/70">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Activité</th>
-                        <th className="px-3 py-2 text-left">Objet</th>
-                        <th className="px-3 py-2 text-left">Qté obj</th>
-                        <th className="px-3 py-2 text-left">Équipements</th>
-                        <th className="px-3 py-2 text-left">Qté eqp</th>
-                        <th className="px-3 py-2 text-left">%</th>
-                        <th className="px-3 py-2 text-left">Salaire</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {member.entries.map((entry) => (
-                        <tr key={entry.id} className="border-t border-white/10">
-                          <td className="px-3 py-2">{entry.activity_type}</td>
-                          <td className="px-3 py-2">{entry.object_name}</td>
-                          <td className="px-3 py-2">{entry.quantity}</td>
-                          <td className="px-3 py-2">{entry.equipment_name || '—'}</td>
-                          <td className="px-3 py-2">{Math.max(0, Number(entry.equipment_quantity) || 0)}</td>
-                          <td className="px-3 py-2">{Math.max(0, Number(entry.percent_per_object) || 0)}%</td>
-                          <td className="px-3 py-2">{Math.max(0, Number(entry.salary_amount) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       {error ? <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
     </div>

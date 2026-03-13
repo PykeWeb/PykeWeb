@@ -43,6 +43,12 @@ function isMissingColumnError(error: unknown, column: string) {
   return message.includes(`'${column.toLowerCase()}'`) && message.includes('could not find')
 }
 
+function getCurrentWeekRange() {
+  const weekStart = toWeekStart()
+  const weekEnd = toWeekEnd(weekStart)
+  return { weekStart, weekEnd }
+}
+
 export async function GET(request: Request) {
   try {
     const session = await getSessionFromRequest(request)
@@ -237,5 +243,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
   } catch (error: unknown) {
     return NextResponse.json({ error: toErrorMessage(error, "Impossible d'enregistrer l'activité.") }, { status: 400 })
+  }
+}
+
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getSessionFromRequest(request)
+    if (!session?.groupId) return NextResponse.json({ error: 'Session invalide.' }, { status: 401 })
+
+    const isChef = Boolean(session.isAdmin || session.role === 'chef')
+    if (!isChef) return NextResponse.json({ error: 'Réservé au chef.' }, { status: 403 })
+
+    const { weekStart, weekEnd } = getCurrentWeekRange()
+    const supabase = getSupabaseAdmin()
+    const { error } = await supabase
+      .from('group_activity_entries')
+      .delete()
+      .eq('group_id', session.groupId)
+      .gte('created_at', weekStart.toISOString())
+      .lt('created_at', weekEnd.toISOString())
+
+    if (error) throw error
+
+    return NextResponse.json({ ok: true })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: toErrorMessage(error, "Impossible de réinitialiser la semaine.") }, { status: 400 })
   }
 }

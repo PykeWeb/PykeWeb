@@ -8,6 +8,19 @@ import type {
 } from '@/lib/types/activities'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
+async function readApiError(res: Response, fallback: string) {
+  try {
+    const json = await res.json() as { error?: string }
+    return json.error || fallback
+  } catch {
+    try {
+      return (await res.text()) || fallback
+    } catch {
+      return fallback
+    }
+  }
+}
+
 export type ActivityListResponse = {
   entries: ActivityEntry[]
   summaries: ActivityMemberSummary[]
@@ -17,7 +30,7 @@ export type ActivityListResponse = {
 export async function listActivities(weekStartIso?: string): Promise<ActivityListResponse> {
   const query = weekStartIso ? `?weekStart=${encodeURIComponent(weekStartIso)}` : ''
   const res = await fetch(`/api/activities${query}`, withTenantSessionHeader({ cache: 'no-store' }))
-  if (!res.ok) throw new Error((await res.text()) || 'Impossible de charger les activités.')
+  if (!res.ok) throw new Error(await readApiError(res, 'Impossible de charger les activités.'))
   return res.json() as Promise<ActivityListResponse>
 }
 
@@ -34,7 +47,7 @@ export async function createActivity(payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   }))
-  if (!res.ok) throw new Error((await res.text()) || 'Impossible d\'ajouter l\'activité.')
+  if (!res.ok) throw new Error(await readApiError(res, "Impossible d'ajouter l'activité."))
 }
 
 export async function updateActivitySettings(payload: { default_percent_per_object: number }) {
@@ -43,5 +56,11 @@ export async function updateActivitySettings(payload: { default_percent_per_obje
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   }))
-  if (!res.ok) throw new Error((await res.text()) || 'Impossible de modifier les paramètres.')
+  if (!res.ok) throw new Error(await readApiError(res, 'Impossible de modifier les paramètres.'))
+}
+
+
+export async function resetActivitiesCurrentWeek() {
+  const res = await fetch('/api/activities', withTenantSessionHeader({ method: 'DELETE' }))
+  if (!res.ok) throw new Error(await readApiError(res, 'Impossible de réinitialiser la semaine.'))
 }
