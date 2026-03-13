@@ -394,28 +394,67 @@ export default function AdminCatalogueGlobalPage() {
                   ) : null}
                 </div>
                 {editingId === it.id ? (
-                  <div className="grid flex-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid flex-1 gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-2 lg:grid-cols-3">
                     <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nom" />
                     <Input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} inputMode="decimal" placeholder="Prix" />
                     <Input value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} inputMode="numeric" placeholder="Stock" />
-                    <div className="md:col-span-2 lg:col-span-3 flex flex-wrap gap-2">
-                      {itemCategoryOptions.map((option) => (
-                        <TabPill key={option.value} active={editCategory === option.value} className={categoryPillClass(option.value as ItemCategory, editCategory === option.value)} onClick={() => {
-                          const next = option.value as ItemCategory
-                          setEditCategory(next)
-                          setEditType(defaultTypeByCategory[next])
-                        }}>
-                          {option.label}
-                        </TabPill>
-                      ))}
+
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <p className="mb-2 text-xs text-white/60">Catégorie</p>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                        {[
+                          { key: 'objects' as const, label: 'Objets', icon: Box },
+                          { key: 'weapons' as const, label: 'Armes', icon: Swords },
+                          { key: 'equipment' as const, label: 'Équipement', icon: Shield },
+                          { key: 'drugs' as const, label: 'Drogues', icon: Pill },
+                          { key: 'custom' as const, label: 'Autres', icon: Shapes },
+                        ].map((card) => {
+                          const Icon = card.icon
+                          const active = editCategory === card.key
+                          return (
+                            <button
+                              key={card.key}
+                              type="button"
+                              onClick={() => {
+                                const next = card.key as ItemCategory
+                                setEditCategory(next)
+                                setEditType(defaultTypeByCategory[next])
+                              }}
+                              className={`rounded-2xl border px-3 py-3 text-left transition ${
+                                active
+                                  ? card.key === 'objects'
+                                    ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                                    : card.key === 'weapons'
+                                      ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
+                                      : card.key === 'equipment'
+                                        ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
+                                        : card.key === 'drugs'
+                                          ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                                          : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
+                                  : 'border-white/12 bg-white/[0.04] hover:bg-white/[0.08]'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs text-white/80">{card.label}</p>
+                                <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                    <div className="md:col-span-2 lg:col-span-3 flex flex-wrap gap-2">
-                      {categoryTypeOptions[editCategory].map((option) => (
-                        <TabPill key={option.value} active={editType === option.value} onClick={() => setEditType(option.value)}>
-                          {option.label}
-                        </TabPill>
-                      ))}
+
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <p className="mb-2 text-xs text-white/60">Type</p>
+                      <div className="flex flex-wrap gap-2">
+                        {categoryTypeOptions[editCategory].map((option) => (
+                          <TabPill key={option.value} active={editType === option.value} onClick={() => setEditType(option.value)}>
+                            {editCategory === 'objects' && option.value === 'other' ? 'Standard' : option.label}
+                          </TabPill>
+                        ))}
+                      </div>
                     </div>
+
                     {editCategory === 'weapons' ? (
                       <Input value={editWeaponId} onChange={(e) => setEditWeaponId(e.target.value)} placeholder="Weapon ID / hash" />
                     ) : null}
