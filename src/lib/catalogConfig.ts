@@ -24,9 +24,9 @@ export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label:
     { value: 'seed', label: 'Graine' },
     { value: 'pouch', label: 'Pochon' },
     { value: 'drug_material', label: 'Matériels' },
-    { value: 'product', label: 'Production\u200b' },
+    { value: 'product', label: 'Production' },
   ],
-  custom: [{ value: 'other', label: 'Autres\u200b' }],
+  custom: [{ value: 'other', label: 'Autres' }],
 }
 
 export type UnifiedTypeFilterValue =
@@ -45,7 +45,7 @@ export type UnifiedTypeFilterValue =
 export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: UnifiedTypeFilterValue; label: string }[] {
   if (category === 'all') {
     return [
-      { value: 'all', label: 'Tous les types' },
+      { value: 'all', label: 'Tous' },
       { value: 'objects', label: 'Objets' },
       { value: 'equipment', label: 'Équipement' },
       { value: 'weapon', label: 'Armes' },
@@ -54,16 +54,16 @@ export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: U
       { value: 'seed', label: 'Graine' },
       { value: 'pouch', label: 'Pochon' },
       { value: 'drug_material', label: 'Matériels' },
-      { value: 'product', label: 'Production\u200b' },
-      { value: 'other', label: 'Autres\u200b' },
+      { value: 'product', label: 'Production' },
+      { value: 'other', label: 'Autres' },
     ]
   }
 
   if (category === 'objects') return [{ value: 'all', label: 'Tous' }, { value: 'objects', label: 'Objets' }]
   if (category === 'equipment') return [{ value: 'all', label: 'Tous' }, { value: 'equipment', label: 'Équipement' }]
   if (category === 'weapons') return [{ value: 'all', label: 'Tous' }, { value: 'weapon', label: 'Armes' }, { value: 'ammo', label: 'Munitions' }, { value: 'weapon_accessory', label: "Accessoire d’arme" }]
-  if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graine' }, { value: 'pouch', label: 'Pochon' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Production\u200b' }]
-  return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres\u200b' }]
+  if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graine' }, { value: 'pouch', label: 'Pochon' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Production' }]
+  return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres' }]
 }
 
 export function matchesTypeFilter(item: CatalogItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
@@ -150,13 +150,13 @@ export function getTypeLabel(type: ItemType, category?: ItemCategory): string {
     protection: 'Protection',
     seed: 'Graine',
     pouch: 'Pochon',
-    product: 'Production\u200b',
+    product: 'Production',
     recipe: 'Matériels',
     drug_material: 'Matériels',
-    other: 'Autres\u200b',
+    other: 'Autres',
     input: 'Autres',
-    output: 'Production\u200b',
-    production: 'Production\u200b',
+    output: 'Production',
+    production: 'Production',
   }
-  return globalLabels[type] ?? 'Autres\u200b'
+  return globalLabels[type] ?? 'Autres'
 }

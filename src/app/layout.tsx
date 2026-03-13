@@ -2,7 +2,6 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { BRAND } from '@/lib/constants/brand'
 import { Toaster } from 'sonner'
-import { SiteTextModWidget } from '@/components/SiteTextModWidget'
 import { AppFrame } from '@/components/layout/AppFrame'
 
 export const metadata: Metadata = {
@@ -18,7 +17,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AppFrame>{children}</AppFrame>
         </div>
             <Toaster richColors closeButton />
-            <SiteTextModWidget />
     </body>
     </html>
   )

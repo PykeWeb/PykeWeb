@@ -302,7 +302,7 @@ export default function AdminCatalogueGlobalPage() {
                     className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${getCategoryCardClass(card.key, createCategory === card.key)}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{bubble?.label || card.label}</p>
+                      <p className="text-xs text-white/70">{card.label}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -383,7 +383,7 @@ export default function AdminCatalogueGlobalPage() {
                 className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${getCategoryCardClass(card.key, active)}`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{bubble?.label || card.label}</p>
+                  <p className="text-xs text-white/70">{card.label}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
@@ -444,7 +444,7 @@ export default function AdminCatalogueGlobalPage() {
                               className={`rounded-2xl border px-3 py-3 text-left transition ${getCategoryCardClass(card.key, active)}`}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-white/80">{bubble?.label || card.label}</p>
+                                <p className="text-xs text-white/80">{card.label}</p>
                                 <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                               </div>
                             </button>
