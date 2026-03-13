@@ -45,6 +45,13 @@ const CATALOG_CATEGORY_CARDS = itemCategoryOptions.map((option) => ({
   icon: CATEGORY_ICON_MAP[option.value],
 }))
 
+
+function getAdminCategoryLabel(category: ItemCategory, fallback: string) {
+  if (category === 'objects') return 'Objets'
+  if (category === 'custom') return 'Autres'
+  return fallback
+}
+
 function categoryPillClass(category: ItemCategory, active: boolean) {
   if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-r from-cyan-500/35 to-blue-500/25 text-cyan-50' : 'border-cyan-300/25 bg-cyan-500/[0.07] text-cyan-100/90 hover:bg-cyan-500/[0.14]'
   if (category === 'weapons') return active ? 'border-rose-200/75 bg-gradient-to-r from-rose-500/35 to-red-500/25 text-rose-50' : 'border-rose-300/25 bg-rose-500/[0.07] text-rose-100/90 hover:bg-rose-500/[0.14]'
@@ -285,7 +292,7 @@ export default function AdminCatalogueGlobalPage() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{card.label}</p>
+                      <p className="text-xs text-white/70">{getAdminCategoryLabel(card.key, card.label)}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -341,7 +348,7 @@ export default function AdminCatalogueGlobalPage() {
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {[
             { key: 'all' as const, label: 'Tous', value: categoryCounts.all, icon: Shapes },
-            ...CATALOG_CATEGORY_CARDS.map((card) => ({ key: card.key, label: card.label, value: categoryCounts[card.key], icon: card.icon })),
+            ...CATALOG_CATEGORY_CARDS.map((card) => ({ key: card.key, label: getAdminCategoryLabel(card.key, card.label), value: categoryCounts[card.key], icon: card.icon })),
           ].map((card) => {
             const Icon = card.icon
             const active = filterCategory === card.key || (card.key === 'all' && filterCategory === 'all')
@@ -377,7 +384,7 @@ export default function AdminCatalogueGlobalPage() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{card.label}</p>
+                  <p className="text-xs text-white/70">{card.key === 'all' ? card.label : getAdminCategoryLabel(card.key, card.label)}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
@@ -433,7 +440,7 @@ export default function AdminCatalogueGlobalPage() {
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-white/80">{card.label}</p>
+                                <p className="text-xs text-white/80">{getAdminCategoryLabel(card.key, card.label)}</p>
                                 <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                               </div>
                             </button>
