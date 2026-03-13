@@ -113,17 +113,21 @@ export function Sidebar() {
     ? defaultUserLinks
     : defaultUserLinks.filter((link) => allowedPrefixes.some((prefix) => link.href === prefix || link.href.startsWith(`${prefix}/`) || prefix.startsWith(link.href)))
 
+  const hasExplicitRoleRestrictions = allowedPrefixes.length > 0
+
   const userNavLinks: NavLink[] = isPwrGroup
     ? [{ id: 'pwr-commandes', href: '/pwr/commandes', label: 'Commande', icon: <Truck className="h-5 w-5" />, active: pathname.startsWith('/pwr/commandes') }]
     : filteredUserLinks.length > 0
       ? filteredUserLinks
-      : isMember
-        ? [
-          { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
-          { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
-          { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
-        ]
-        : defaultUserLinks
+      : hasExplicitRoleRestrictions
+        ? []
+        : isMember
+          ? [
+            { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
+            { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
+            { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
+          ]
+          : defaultUserLinks
 
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
@@ -183,18 +187,21 @@ export function Sidebar() {
             <NavItem href="/admin/logs" label="Logs" icon={<ClipboardList className="h-5 w-5" />} active={pathname.startsWith('/admin/logs')} />
           </>
         ) : (
-          <LongPressReorderableRow
-            className="flex flex-col gap-3"
-            order={navOrder}
-            onOrderChange={async (next) => {
-              setNavOrder(next)
-              await saveLayoutOrder('sidebar.nav', next, 'group')
-            }}
-            items={userNavLinks.map((link) => ({
-              id: link.id,
-              element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
-            }))}
-          />
+          <>
+            <LongPressReorderableRow
+              className="flex flex-col gap-3"
+              order={navOrder}
+              onOrderChange={async (next) => {
+                setNavOrder(next)
+                await saveLayoutOrder('sidebar.nav', next, 'group')
+              }}
+              items={userNavLinks.map((link) => ({
+                id: link.id,
+                element: <NavItem href={link.href} label={link.label} icon={link.icon} active={link.active} />,
+              }))}
+            />
+            {userNavLinks.length === 0 ? <p className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">Aucune catégorie autorisée pour ce rôle.</p> : null}
+          </>
         )}
       </div>
     </aside>

@@ -228,8 +228,7 @@ export default function ActivitesPage() {
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">Déclaration activité</h2>
+          <div>
             <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
           </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">

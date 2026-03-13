@@ -84,8 +84,10 @@ export async function GET(request: Request) {
       default_percent_per_object: Math.max(0, Number(settings?.default_percent_per_object) || 2),
     }
 
+    const safeEntries = (entries ?? []).filter((entry) => String(entry.group_id || '') === session.groupId)
+
     const byMember = new Map<string, { totalObjects: number; totalSalary: number }>()
-    for (const entry of entries ?? []) {
+    for (const entry of safeEntries) {
       const name = String(entry.member_name || '').trim()
       if (!name) continue
       const prev = byMember.get(name) ?? { totalObjects: 0, totalSalary: 0 }
@@ -99,7 +101,7 @@ export async function GET(request: Request) {
       .map(([member_name, stats]) => ({ member_name, total_objects: stats.totalObjects, total_salary: stats.totalSalary }))
       .sort((a, b) => b.total_salary - a.total_salary)
 
-    return NextResponse.json({ entries: entries ?? [], summaries, settings: normalizedSettings })
+    return NextResponse.json({ entries: safeEntries, summaries, settings: normalizedSettings })
   } catch (error: unknown) {
     return NextResponse.json({ error: toErrorMessage(error, 'Impossible de charger les activités.') }, { status: 400 })
   }
