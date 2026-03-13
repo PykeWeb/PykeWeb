@@ -39,11 +39,15 @@ const categoryIconByKey: Record<ItemCategory, typeof Box> = {
   custom: Shapes,
 }
 
-const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: typeof Box }[] = itemCategoryOptions.map((option) => ({
-  key: option.value,
-  label: option.label,
-  icon: categoryIconByKey[option.value],
-}))
+const ADMIN_VISIBLE_CATEGORIES: ItemCategory[] = ['weapons', 'equipment', 'drugs', 'custom']
+
+const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: typeof Box }[] = itemCategoryOptions
+  .filter((option) => ADMIN_VISIBLE_CATEGORIES.includes(option.value))
+  .map((option) => ({
+    key: option.value,
+    label: option.label,
+    icon: categoryIconByKey[option.value],
+  }))
 
 function categoryPillClass(category: ItemCategory, active: boolean) {
   if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-r from-cyan-500/35 to-blue-500/25 text-cyan-50' : 'border-cyan-300/25 bg-cyan-500/[0.07] text-cyan-100/90 hover:bg-cyan-500/[0.14]'
@@ -57,18 +61,18 @@ export default function AdminCatalogueGlobalPage() {
   const [items, setItems] = useState<GlobalItem[]>([])
   const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all')
   const [query, setQuery] = useState('')
-  const [createCategory, setCreateCategory] = useState<ItemCategory>('objects')
+  const [createCategory, setCreateCategory] = useState<ItemCategory>('custom')
   const [name, setName] = useState('')
   const [price, setPrice] = useState('0')
   const [quantity, setQuantity] = useState('0')
   const [weaponId, setWeaponId] = useState('')
-  const [createItemType, setCreateItemType] = useState<string>(defaultTypeByCategory.objects)
+  const [createItemType, setCreateItemType] = useState<string>(defaultTypeByCategory.custom)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editCategory, setEditCategory] = useState<ItemCategory>('objects')
-  const [editType, setEditType] = useState<string>(defaultTypeByCategory.objects)
+  const [editCategory, setEditCategory] = useState<ItemCategory>('custom')
+  const [editType, setEditType] = useState<string>(defaultTypeByCategory.custom)
   const [editName, setEditName] = useState('')
   const [editPrice, setEditPrice] = useState('0')
   const [editQuantity, setEditQuantity] = useState('0')
@@ -80,6 +84,7 @@ export default function AdminCatalogueGlobalPage() {
     const normalized = (Array.isArray(data) ? data : [])
       .map((row) => ({ ...row, category: normalizeCatalogCategory(String(row.category)) }))
       .filter((row): row is GlobalItem => Boolean(row.category))
+      .map((row) => ({ ...row, category: row.category === 'objects' ? 'custom' : row.category }))
     setItems(normalized)
   }
 
@@ -136,7 +141,7 @@ export default function AdminCatalogueGlobalPage() {
       setPrice('0')
       setQuantity('0')
       setWeaponId('')
-      setCreateItemType(defaultTypeByCategory.objects)
+      setCreateItemType(defaultTypeByCategory.custom)
       setImageFile(null)
       await refresh()
     } catch (e: unknown) {
@@ -161,8 +166,9 @@ export default function AdminCatalogueGlobalPage() {
 
   function startEdit(item: GlobalItem) {
     setEditingId(item.id)
-    setEditCategory(item.category)
-    setEditType(normalizeItemType(item.item_type, item.category))
+    const safeCategory = item.category === 'objects' ? 'custom' : item.category
+    setEditCategory(safeCategory)
+    setEditType(normalizeItemType(item.item_type, safeCategory))
     setEditName(item.name)
     setEditPrice(String(Math.max(0, Number(item.price || 0) || 0)))
     setEditQuantity(String(Math.max(0, Math.floor(Number(item.default_quantity || 0) || 0))))
