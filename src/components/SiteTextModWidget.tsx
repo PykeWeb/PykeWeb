@@ -55,6 +55,50 @@ const defaultStyle: VisualStyle = {
   y: 0,
 }
 
+function parsePx(value: string, fallback: number) {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function toHexColor(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback
+  const match = value.match(/rgba?\(([^)]+)\)/i)
+  if (!match) return fallback
+  const parts = match[1].split(',').map((chunk) => Number.parseFloat(chunk.trim()))
+  const [r, g, b] = parts
+  if (![r, g, b].every((part) => Number.isFinite(part))) return fallback
+  const clamp = (input: number) => Math.max(0, Math.min(255, Math.round(input)))
+  return `#${[clamp(r), clamp(g), clamp(b)].map((part) => part.toString(16).padStart(2, '0')).join('')}`
+}
+
+function deriveStyleFromElement(element: HTMLElement): VisualStyle {
+  const computed = window.getComputedStyle(element)
+  const align: EditableAlign = computed.textAlign === 'center' || computed.textAlign === 'right' ? computed.textAlign : 'left'
+  return normalizeStyle({
+    fontSize: parsePx(computed.fontSize, defaultStyle.fontSize),
+    color: toHexColor(computed.color, defaultStyle.color),
+    align,
+    marginTop: parsePx(computed.marginTop, defaultStyle.marginTop),
+    padding: parsePx(computed.paddingTop, defaultStyle.padding),
+    x: 0,
+    y: 0,
+  })
+}
+
+function shouldSkipApplyingStoredStyle(style: VisualStyle, element: HTMLElement) {
+  const isDefaultStored =
+    style.fontSize === defaultStyle.fontSize
+    && style.color.toLowerCase() === defaultStyle.color
+    && style.align === defaultStyle.align
+    && style.marginTop === defaultStyle.marginTop
+    && style.padding === defaultStyle.padding
+    && style.x === defaultStyle.x
+    && style.y === defaultStyle.y
+
+  if (!isDefaultStored) return false
+  return ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)
+}
+
 function clampNumber(value: number, min: number, max: number, fallback: number) {
   if (!Number.isFinite(value)) return fallback
   return Math.max(min, Math.min(max, value))
@@ -249,7 +293,9 @@ function applyOverrides(overrides: Overrides, visual: VisualState, pathname: str
     if (!element.textContent?.includes(entry.sourceText) && !element.textContent?.includes(entry.text)) continue
 
     element.textContent = entry.text
-    applyVisualStyle(element, entry.style)
+    if (!shouldSkipApplyingStoredStyle(entry.style, element)) {
+      applyVisualStyle(element, entry.style)
+    }
   }
 }
 
@@ -347,7 +393,7 @@ export function SiteTextModWidget() {
         domPath,
         sourceText: stableSource,
         text: current,
-        style: { ...defaultStyle },
+        style: deriveStyleFromElement(editable.element),
       }
 
       setEditingEntry(entry)
