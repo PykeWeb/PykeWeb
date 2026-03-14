@@ -174,75 +174,85 @@ export function NouvelleDepenseForm({
     )
   }
 
+  async function submitExpense() {
+    setSaving(true)
+    setError(null)
+    try {
+      const item = useTemporaryItem ? null : selectedItems[0] || null
+      const totalQuantity = !useTemporaryItem
+        ? selectedItems.reduce((sum, row) => sum + Math.max(1, row.quantity), 0)
+        : quantity
+      const totalAmount = !useTemporaryItem
+        ? selectedItems.reduce((sum, row) => sum + Math.max(1, row.quantity) * Math.max(0, row.unitPrice), 0)
+        : Number(unitPrice) * quantity
+      const normalizedUnit = totalQuantity > 0 ? totalAmount / totalQuantity : 0
+      const multiLabel = selectedItems.length > 1 ? 'Multiple' : item?.name || 'Item'
+      const isMultiCatalogExpense = !useTemporaryItem && selectedItems.length > 1
+      const mergedDescription = !useTemporaryItem && selectedItems.length > 1
+        ? `${description.trim() || ''}${description.trim() ? '\n\n' : ''}Items:\n${selectedItems.map((row) => `- ${row.name} × ${Math.max(1, row.quantity)}`).join('\n')}\n\n${ITEMS_JSON_MARKER}${JSON.stringify(selectedItems.map((row) => ({
+          name: row.name,
+          quantity: Math.max(1, row.quantity),
+          unit_price: Math.max(0, row.unitPrice),
+          image_url: row.image_url || null,
+          item_source: row.type,
+          item_id: row.id,
+        })))}`
+        : description.trim()
+      await createExpense({
+        member_name: memberName.trim(),
+        item_source: useTemporaryItem || isMultiCatalogExpense ? 'custom' : itemType,
+        item_id: useTemporaryItem || selectedItems.length !== 1 ? null : item?.id || null,
+        item_label: useTemporaryItem ? temporaryName.trim() : multiLabel,
+        unit_price: useTemporaryItem ? Number(unitPrice) : normalizedUnit,
+        default_unit_price: useTemporaryItem ? null : normalizedUnit,
+        quantity: useTemporaryItem ? quantity : Math.max(1, totalQuantity),
+        description: mergedDescription || undefined,
+        proofFile,
+      })
+      router.push(successHref)
+      router.refresh()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <CenteredFormLayout
       className="max-h-[calc(100dvh-9.75rem)]"
       panelClassName="h-full overflow-hidden"
       title={title}
-      actions={
+      actions={actionsPlacement === 'top-right' ? undefined : (
         <>
           <Link href={backHref}><SecondaryButton>Retour</SecondaryButton></Link>
-          <PrimaryButton
-            disabled={!canSave}
-            onClick={async () => {
-              setSaving(true)
-              setError(null)
-              try {
-                const item = useTemporaryItem ? null : selectedItems[0] || null
-                const totalQuantity = !useTemporaryItem
-                  ? selectedItems.reduce((sum, row) => sum + Math.max(1, row.quantity), 0)
-                  : quantity
-                const totalAmount = !useTemporaryItem
-                  ? selectedItems.reduce((sum, row) => sum + Math.max(1, row.quantity) * Math.max(0, row.unitPrice), 0)
-                  : Number(unitPrice) * quantity
-                const normalizedUnit = totalQuantity > 0 ? totalAmount / totalQuantity : 0
-                const multiLabel = selectedItems.length > 1 ? 'Multiple' : item?.name || 'Item'
-                const isMultiCatalogExpense = !useTemporaryItem && selectedItems.length > 1
-                const mergedDescription = !useTemporaryItem && selectedItems.length > 1
-                  ? `${description.trim() || ''}${description.trim() ? '\n\n' : ''}Items:\n${selectedItems.map((row) => `- ${row.name} × ${Math.max(1, row.quantity)}`).join('\n')}\n\n${ITEMS_JSON_MARKER}${JSON.stringify(selectedItems.map((row) => ({
-                    name: row.name,
-                    quantity: Math.max(1, row.quantity),
-                    unit_price: Math.max(0, row.unitPrice),
-                    image_url: row.image_url || null,
-                    item_source: row.type,
-                    item_id: row.id,
-                  })))}`
-                  : description.trim()
-                await createExpense({
-                  member_name: memberName.trim(),
-                  item_source: useTemporaryItem || isMultiCatalogExpense ? 'custom' : itemType,
-                  item_id: useTemporaryItem || selectedItems.length !== 1 ? null : item?.id || null,
-                  item_label: useTemporaryItem ? temporaryName.trim() : multiLabel,
-                  unit_price: useTemporaryItem ? Number(unitPrice) : normalizedUnit,
-                  default_unit_price: useTemporaryItem ? null : normalizedUnit,
-                  quantity: useTemporaryItem ? quantity : Math.max(1, totalQuantity),
-                  description: mergedDescription || undefined,
-                  proofFile,
-                })
-                router.push(successHref)
-                router.refresh()
-              } catch (e: unknown) {
-                setError(e instanceof Error ? e.message : 'Erreur')
-              } finally {
-                setSaving(false)
-              }
-            }}
-          >
+          <PrimaryButton disabled={!canSave} onClick={() => void submitExpense()}>
             {saving ? 'Enregistrement…' : 'Enregistrer'}
           </PrimaryButton>
         </>
-      }
+      )}
       actionsPlacement={actionsPlacement}
     >
       <div className="grid h-full gap-3 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
-          <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" />
-        </div>
+        <div className="md:col-span-2 grid gap-3 xl:grid-cols-[1fr_1fr_auto] xl:items-end">
+          <div>
+            <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
+            <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" className="h-10" />
+          </div>
 
-        <div>
-          <label className="mb-1 block text-xs text-white/60">Raison / note</label>
-          <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Pourquoi cette dépense ?" />
+          <div>
+            <label className="mb-1 block text-xs text-white/60">Raison / note</label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Pourquoi cette dépense ?" className="h-10" />
+          </div>
+
+          {actionsPlacement === 'top-right' ? (
+            <div className="flex items-end justify-end gap-2">
+              <Link href={backHref}><SecondaryButton>Retour</SecondaryButton></Link>
+              <PrimaryButton disabled={!canSave} onClick={() => void submitExpense()}>
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </PrimaryButton>
+            </div>
+          ) : null}
         </div>
 
         <div className="md:col-span-2 flex flex-wrap items-center gap-2">

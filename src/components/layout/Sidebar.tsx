@@ -176,7 +176,7 @@ export function Sidebar() {
                 <Shield className="h-3.5 w-3.5" />
                 Groupe
               </p>
-              <p className="mt-2 inline-flex h-8 items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]">{groupName}</p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">{groupName}</span></p>
             </div>
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
@@ -184,7 +184,7 @@ export function Sidebar() {
                 <PanelsTopLeft className="h-3.5 w-3.5" />
                 Type
               </p>
-              <p className="mt-2 inline-flex h-8 items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]">PF</p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">PF</span></p>
             </div>
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
@@ -200,7 +200,7 @@ export function Sidebar() {
                 <BadgeCheck className="h-3.5 w-3.5" />
                 Rôle
               </p>
-              <p className="mt-2 inline-flex h-8 items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]">{roleLabel || 'Admin'}</p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]"><span className="max-w-[10rem] truncate">{roleLabel || 'Admin'}</span></p>
             </div>
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
@@ -208,7 +208,7 @@ export function Sidebar() {
                 <KeyRound className="h-3.5 w-3.5" />
                 Licence
               </p>
-              <p className={`mt-2 inline-flex h-8 items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
+              <p className={`mt-2 inline-flex h-8 max-w-full items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}><span className="max-w-[10rem] truncate">{accessStatus.label}</span></p>
             </div>
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
@@ -216,7 +216,7 @@ export function Sidebar() {
                 <PanelsTopLeft className="h-3.5 w-3.5" />
                 Page
               </p>
-              <p className="mt-2 inline-flex h-8 items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.18)]">{pageContext.label}</p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.18)]"><span className="max-w-[10rem] truncate">{pageContext.label}</span></p>
             </div>
           </div>
         </div>
