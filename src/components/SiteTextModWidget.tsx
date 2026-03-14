@@ -341,6 +341,9 @@ export function SiteTextModWidget() {
   const [editingDraft, setEditingDraft] = useState('')
   const [draggingExtraId, setDraggingExtraId] = useState<string | null>(null)
   const dragStartRef = useRef<{ x: number; y: number; initialX: number; initialY: number } | null>(null)
+  const applyingOverridesRef = useRef(false)
+  const observerQueuedRef = useRef(false)
+  const observerRafRef = useRef<number | null>(null)
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
 
   useEffect(() => {
@@ -359,7 +362,15 @@ export function SiteTextModWidget() {
       setOverrides(merged)
       writeOverrides(merged)
       setDbCount(Object.keys(remote).length)
-      setTimeout(() => applyOverrides(merged, visual, pathname), 0)
+      setTimeout(() => {
+        if (applyingOverridesRef.current) return
+        applyingOverridesRef.current = true
+        try {
+          applyOverrides(merged, visual, pathname)
+        } finally {
+          applyingOverridesRef.current = false
+        }
+      }, 0)
     })().catch((error: unknown) => setDbStatus(`Erreur base : ${error instanceof Error ? error.message : 'inconnue'}`))
 
     return () => {
@@ -368,10 +379,38 @@ export function SiteTextModWidget() {
   }, [pathname])
 
   useEffect(() => {
-    applyOverrides(overrides, visualState, pathname)
-    const observer = new MutationObserver(() => applyOverrides(overrides, visualState, pathname))
+    const runApply = () => {
+      if (applyingOverridesRef.current) return
+      applyingOverridesRef.current = true
+      try {
+        applyOverrides(overrides, visualState, pathname)
+      } finally {
+        applyingOverridesRef.current = false
+      }
+    }
+
+    runApply()
+
+    const observer = new MutationObserver(() => {
+      if (applyingOverridesRef.current) return
+      if (observerQueuedRef.current) return
+      observerQueuedRef.current = true
+      observerRafRef.current = window.requestAnimationFrame(() => {
+        observerQueuedRef.current = false
+        runApply()
+      })
+    })
+
     observer.observe(document.body, { childList: true, subtree: true })
-    return () => observer.disconnect()
+
+    return () => {
+      observer.disconnect()
+      if (observerRafRef.current !== null) {
+        window.cancelAnimationFrame(observerRafRef.current)
+        observerRafRef.current = null
+      }
+      observerQueuedRef.current = false
+    }
   }, [overrides, visualState, pathname])
 
   useEffect(() => {
