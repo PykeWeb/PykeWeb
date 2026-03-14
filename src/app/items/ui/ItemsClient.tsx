@@ -429,7 +429,6 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       ) : (
         <div className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <h3 className="mb-3 text-sm font-semibold">Calculateur drogue (Items)</h3>
             <div className="grid gap-3 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs text-white/60">Mode</label>

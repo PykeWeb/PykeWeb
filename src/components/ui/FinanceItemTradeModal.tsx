@@ -195,45 +195,6 @@ export function FinanceItemTradeModal({
         subtitle={subtitleOverride}
       >
         <div className="space-y-3">
-          <div className="grid gap-3 xl:grid-cols-[auto_1fr_auto] xl:items-end">
-            <div>
-              {enableModeSelect ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-emerald-300/60 data-[active=true]:bg-emerald-500/25 data-[active=true]:text-emerald-50" active={tradeMode === 'buy'} onClick={() => { setTradeMode('buy'); onModeChange?.('buy') }}>
-                    <ArrowDownRight className="h-4 w-4" />
-                    {buyModeLabel}
-                  </TabPill>
-                  <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-rose-300/60 data-[active=true]:bg-rose-500/25 data-[active=true]:text-rose-50" active={tradeMode === 'sell'} onClick={() => { setTradeMode('sell'); onModeChange?.('sell') }}>
-                    <ArrowUpRight className="h-4 w-4" />
-                    {sellModeLabel}
-                  </TabPill>
-                </div>
-              ) : showModeBadge ? (
-                <div className="inline-flex h-9 items-center rounded-xl border border-white/15 bg-white/[0.06] px-3 text-xs text-white/70">
-                  {tradeMode === 'buy' ? buyModeLabel : sellModeLabel}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
-                <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société" className="h-10" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-white/60">Raison / note</label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Pourquoi cette opération ?" className="h-10" />
-              </div>
-            </div>
-
-            <div className="flex items-end justify-end gap-2">
-              <SecondaryButton onClick={onClose}>Retour</SecondaryButton>
-              <PrimaryButton disabled={saving || linesWithItems.length === 0} onClick={() => void submitTrades()}>
-                {saving ? copy.finance.trade.saveInProgress : copy.finance.actions.validate}
-              </PrimaryButton>
-            </div>
-          </div>
-
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {[
               { key: 'all', label: copy.common.allCategories, icon: Shapes },
@@ -304,6 +265,46 @@ export function FinanceItemTradeModal({
                 </button>
               )
             })}
+          </div>
+
+
+          <div className="grid gap-3 xl:grid-cols-[auto_1fr_auto] xl:items-end">
+            <div>
+              {enableModeSelect ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-emerald-300/60 data-[active=true]:bg-emerald-500/25 data-[active=true]:text-emerald-50" active={tradeMode === 'buy'} onClick={() => { setTradeMode('buy'); onModeChange?.('buy') }}>
+                    <ArrowDownRight className="h-4 w-4" />
+                    {buyModeLabel}
+                  </TabPill>
+                  <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-rose-300/60 data-[active=true]:bg-rose-500/25 data-[active=true]:text-rose-50" active={tradeMode === 'sell'} onClick={() => { setTradeMode('sell'); onModeChange?.('sell') }}>
+                    <ArrowUpRight className="h-4 w-4" />
+                    {sellModeLabel}
+                  </TabPill>
+                </div>
+              ) : showModeBadge ? (
+                <div className="inline-flex h-9 items-center rounded-xl border border-white/15 bg-white/[0.06] px-3 text-xs text-white/70">
+                  {tradeMode === 'buy' ? buyModeLabel : sellModeLabel}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-white/60">{copy.finance.labels.counterparty}</label>
+                <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société" className="h-10" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/60">Raison / note</label>
+                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Pourquoi cette opération ?" className="h-10" />
+              </div>
+            </div>
+
+            <div className="flex items-end justify-end gap-2">
+              <SecondaryButton onClick={onClose}>Retour</SecondaryButton>
+              <PrimaryButton disabled={saving || linesWithItems.length === 0} onClick={() => void submitTrades()}>
+                {saving ? copy.finance.trade.saveInProgress : copy.finance.actions.validate}
+              </PrimaryButton>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

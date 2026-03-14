@@ -115,6 +115,8 @@ const PAGE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/admin/patch-notes', label: 'Patch notes' },
   { prefix: '/admin/support', label: 'Support' },
   { prefix: '/admin/logs', label: 'Logs' },
+  { prefix: '/finance/stats-interlocuteurs', label: 'Stats' },
+  { prefix: '/finance/depense', label: 'Dépense' },
   { prefix: '/finance', label: 'Finance' },
   { prefix: '/items', label: 'Items' },
   { prefix: '/drogues', label: 'Drogues' },

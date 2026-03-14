@@ -2,7 +2,6 @@
 
 import Image from 'next/image'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
@@ -241,15 +240,9 @@ export default function ActivitesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={copy.activities.title} subtitle={copy.activities.subtitle} />
-
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-        <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="text-sm text-white/65">Sélectionne l&apos;activité puis ajoute équipements/objets.</div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
@@ -262,6 +255,9 @@ export default function ActivitesPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
