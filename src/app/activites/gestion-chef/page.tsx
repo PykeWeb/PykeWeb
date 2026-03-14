@@ -35,7 +35,7 @@ function groupEntriesByMember(entries: ActivityEntry[]): GroupedMember[] {
 
 export default function ActivitesGestionChefPage() {
   const [data, setData] = useState<ActivityListResponse | null>(null)
-  const [percentDraft, setPercentDraft] = useState(2)
+  const [percentDraft, setPercentDraft] = useState('')
   const [savingSettings, setSavingSettings] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [expandedMember, setExpandedMember] = useState<string | null>(null)
@@ -58,7 +58,8 @@ export default function ActivitesGestionChefPage() {
     try {
       const response = await listActivities()
       setData(response)
-      setPercentDraft(Math.max(0.01, Number(response.settings.default_percent_per_object) || 2))
+      const initialPercent = Math.max(0.01, Number(response.settings.default_percent_per_object) || 2)
+      setPercentDraft(String(initialPercent))
       setError(null)
     } catch (loadError: unknown) {
       setError(loadError instanceof Error ? loadError.message : 'Erreur de chargement.')
@@ -115,9 +116,16 @@ export default function ActivitesGestionChefPage() {
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="space-y-1 text-sm">
             <span className="text-white/70">% par défaut</span>
-            <Input type="number" min={0.01} step={0.01} value={percentDraft} onChange={(event) => setPercentDraft(Math.max(0.01, Number(event.target.value) || 0.01))} />
+            <Input
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={percentDraft}
+              disabled={!data}
+              onChange={(event) => setPercentDraft(event.target.value)}
+            />
           </label>
-          <Button variant="secondary" onClick={() => void saveDefaultPercent()} disabled={savingSettings}>{savingSettings ? 'Enregistrement…' : 'Enregistrer le % par défaut'}</Button>
+          <Button variant="secondary" onClick={() => void saveDefaultPercent()} disabled={savingSettings || !data}>{savingSettings ? 'Enregistrement…' : 'Enregistrer le % par défaut'}</Button>
           <Button variant="ghost" onClick={() => void resetCurrentWeek()} disabled={resetting}>{resetting ? 'Reset…' : 'Reset semaine en cours'}</Button>
           {ok ? <p className="text-sm text-emerald-300">{ok}</p> : null}
         </div>
