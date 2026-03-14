@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { ClipboardList, Plus, Settings2, Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
@@ -171,6 +172,17 @@ function writeOverrides(overrides: Overrides) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
 }
 
+
+function getInitialVisualState() {
+  const initial = readOverrides()
+  try {
+    const serialized = initial[VISUAL_EDITOR_KEY]
+    return normalizeVisualState(typeof serialized === 'string' ? JSON.parse(serialized) : null)
+  } catch {
+    return { entries: [], extra: [] }
+  }
+}
+
 function buildAdminHeaders(creds: AdminCreds) {
   return {
     'x-admin-user': creds.username,
@@ -332,8 +344,8 @@ export function SiteTextModWidget() {
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
-  const [overrides, setOverrides] = useState<Overrides>({})
-  const [visualState, setVisualState] = useState<VisualState>({ entries: [], extra: [] })
+  const [overrides, setOverrides] = useState<Overrides>(() => readOverrides())
+  const [visualState, setVisualState] = useState<VisualState>(() => getInitialVisualState())
   const [dbStatus, setDbStatus] = useState<string>('Sauvegarde en ligne active')
   const [dbCount, setDbCount] = useState<number>(0)
   const [adminCreds, setAdminCreds] = useState<AdminCreds | null>(null)
@@ -344,7 +356,7 @@ export function SiteTextModWidget() {
   const applyingOverridesRef = useRef(false)
   const observerQueuedRef = useRef(false)
   const observerRafRef = useRef<number | null>(null)
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
+  const pathname = usePathname() || '/'
 
   useEffect(() => {
     let alive = true
@@ -378,7 +390,7 @@ export function SiteTextModWidget() {
     }
   }, [pathname])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const runApply = () => {
       if (applyingOverridesRef.current) return
       applyingOverridesRef.current = true
