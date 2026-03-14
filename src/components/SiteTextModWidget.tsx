@@ -180,6 +180,7 @@ async function resetOverridesOnline(creds: AdminCreds) {
 function shouldSkipNode(parent: Node | null) {
   if (!parent || !(parent instanceof HTMLElement)) return true
   if (parent.closest('[data-mod-widget="true"]')) return true
+  if (parent.closest('[data-mod-source]')) return true
   const tag = parent.tagName
   if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT'].includes(tag)) return true
   return parent.isContentEditable
@@ -242,7 +243,11 @@ function applyOverrides(overrides: Overrides, visual: VisualState, pathname: str
     if (entry.page !== pathname) continue
     const element = findElementByDomPath(entry.domPath)
     if (!element) continue
+
+    const forcedSource = element.dataset.modSource?.trim()
+    if (forcedSource && forcedSource !== entry.sourceText) continue
     if (!element.textContent?.includes(entry.sourceText) && !element.textContent?.includes(entry.text)) continue
+
     element.textContent = entry.text
     applyVisualStyle(element, entry.style)
   }
@@ -334,8 +339,8 @@ export function SiteTextModWidget() {
 
       const current = editable.text
       const domPath = getDomPath(editable.element)
-      const existing = visualState.entries.find((entry) => entry.page === pathname && entry.domPath === domPath)
       const stableSource = editable.sourceText || current
+      const existing = visualState.entries.find((entry) => entry.page === pathname && entry.domPath === domPath && entry.sourceText === stableSource)
       const entry: VisualEntry = existing ?? {
         id: makeId('entry'),
         page: pathname,
@@ -419,7 +424,7 @@ export function SiteTextModWidget() {
     const nextState: VisualState = {
       ...visualState,
       entries: [
-        ...visualState.entries.filter((entry) => entry.id !== normalizedEntry.id),
+        ...visualState.entries.filter((entry) => !(entry.id === normalizedEntry.id || (entry.page === normalizedEntry.page && entry.domPath === normalizedEntry.domPath))),
         normalizedEntry,
       ],
     }
