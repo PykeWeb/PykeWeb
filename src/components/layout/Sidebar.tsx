@@ -138,54 +138,55 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-glow">
+      <div className="rounded-[2rem] border border-white/15 bg-gradient-to-br from-[#141b40]/95 via-[#111634]/92 to-[#0b0f24]/95 p-5 shadow-[0_12px_45px_rgba(5,8,25,0.55)] backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+          <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]">
             <Image src="/logo.png" alt="Logo" fill className="object-cover" />
           </div>
-          <div>
-            <p className="text-2xl font-semibold leading-tight">{labels.site_name || BRAND.name}</p>
-            <p className="text-base text-white/70">{labels.site_tagline || BRAND.tagline}</p>
+          <div className="min-w-0">
+            <p className="truncate text-[2rem] font-semibold leading-none tracking-tight text-white">{labels.site_name || BRAND.name}</p>
+            <p className="mt-1 text-base text-white/65">{labels.site_tagline || BRAND.tagline}</p>
           </div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-          <div className="grid grid-cols-2">
-            <div className="border-b border-r border-white/10 p-4">
-              <p className="text-sm text-white/60">Groupe</p>
-              <p className="mt-2 min-w-0 truncate text-xl font-semibold tracking-tight">{groupName}</p>
+        <div className="mt-5 rounded-[1.6rem] border border-white/10 bg-gradient-to-br from-white/[0.09] via-white/[0.045] to-white/[0.02] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_30px_rgba(5,8,25,0.35)]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/50">Groupe</p>
+              <p className="mt-2 truncate text-4xl font-semibold leading-none tracking-tight text-white">{groupName}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                clearTenantSession()
+                void clearTenantSessionOnServer().finally(() => {
+                  window.location.href = '/login'
+                })
+              }}
+              className="inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.08] px-3 text-xs font-medium text-white/85 transition hover:border-white/35 hover:bg-white/[0.14]"
+            >
+              Déconnexion
+            </button>
+          </div>
 
-            <div className="border-b border-white/10 p-4 text-right">
-              <button
-                type="button"
-                onClick={() => {
-                  clearTenantSession()
-                  void clearTenantSessionOnServer().finally(() => {
-                    window.location.href = '/login'
-                  })
-                }}
-                className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/90 transition hover:bg-white/10"
-              >
-                Déconnexion
-              </button>
+          <div className="mt-4 flex justify-end">
+            {roleLabel ? (
+              <span className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/20 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.2)]">
+                {roleLabel}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="mt-4 h-px w-full bg-gradient-to-r from-white/0 via-white/14 to-white/0" />
+
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/50">Type</p>
+              <p className={`mt-2 inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
             </div>
-
-            <div className="border-b border-r border-white/10 p-4">
-              <p className="text-sm text-white/55">Type</p>
-              <p className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
-            </div>
-
-            <div className="border-b border-white/10 p-4">
-              <p className="text-sm text-white/55">Rôle</p>
-              <p className="mt-2 inline-flex rounded-full border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1 text-sm font-semibold text-cyan-100">{roleLabel || '—'}</p>
-            </div>
-
-            <div className="border-r border-white/10 p-4" aria-hidden="true" />
-
-            <div className="p-4">
-              <p className="text-sm text-white/55">Page</p>
-              <p className="mt-2 inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2.5 py-1 text-sm font-semibold text-cyan-100">{currentPageLabel}</p>
+            <div className="text-right">
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/50">Page</p>
+              <p className="mt-2 inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/18 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.16)]">{currentPageLabel}</p>
             </div>
           </div>
         </div>
