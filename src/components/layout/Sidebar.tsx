@@ -95,10 +95,10 @@ export function Sidebar() {
     const dateLabel = new Date(accessInfo.paid_until).toLocaleDateString('fr-FR')
 
     if (daysLeft <= 10) {
-      return { label: `Valide jusqu’au ${dateLabel}`, className: 'border-rose-300/35 bg-rose-500/20 text-rose-100' }
+      return { label: dateLabel, className: 'border-amber-300/35 bg-amber-500/22 text-amber-100' }
     }
 
-    return { label: `Valide jusqu’au ${dateLabel}`, className: 'border-emerald-300/35 bg-emerald-500/20 text-emerald-100' }
+    return { label: dateLabel, className: 'border-amber-300/35 bg-amber-500/22 text-amber-100' }
   }, [accessInfo])
 
   const defaultUserLinks: NavLink[] = [
