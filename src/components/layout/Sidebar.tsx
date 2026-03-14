@@ -138,22 +138,22 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
-      <div className="rounded-[2rem] border border-white/15 bg-gradient-to-br from-[#141b40]/95 via-[#111634]/92 to-[#0b0f24]/95 p-5 shadow-[0_12px_45px_rgba(5,8,25,0.55)] backdrop-blur-xl">
+      <div className="rounded-[2rem] border border-[#5d74d1]/30 bg-gradient-to-br from-[#11183d]/95 via-[#0f1534]/94 to-[#0a1028]/96 p-5 shadow-[0_18px_46px_rgba(4,9,30,0.6)] backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]">
+          <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/20 bg-white/8 shadow-[inset_0_1px_1px_rgba(255,255,255,0.16)]">
             <Image src="/logo.png" alt="Logo" fill className="object-cover" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[2rem] font-semibold leading-none tracking-tight text-white">{labels.site_name || BRAND.name}</p>
-            <p className="mt-1 text-base text-white/65">{labels.site_tagline || BRAND.tagline}</p>
+            <p className="truncate text-[2rem] font-semibold leading-[0.95] tracking-tight text-white">{labels.site_name || BRAND.name}</p>
+            <p className="mt-1 text-[1rem] text-white/72">{labels.site_tagline || BRAND.tagline}</p>
           </div>
         </div>
 
-        <div className="mt-5 rounded-[1.6rem] border border-white/10 bg-gradient-to-br from-white/[0.09] via-white/[0.045] to-white/[0.02] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_30px_rgba(5,8,25,0.35)]">
+        <div className="mt-5 rounded-[1.55rem] border border-white/12 bg-gradient-to-br from-white/[0.08] via-white/[0.04] to-white/[0.02] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_16px_30px_rgba(4,9,30,0.38)]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/50">Groupe</p>
-              <p className="mt-2 truncate text-4xl font-semibold leading-none tracking-tight text-white">{groupName}</p>
+              <p className="text-[0.68rem] font-medium uppercase tracking-[0.24em] text-white/52">Groupe</p>
+              <p className="mt-2 truncate text-[2.6rem] font-semibold leading-none tracking-tight text-white">{groupName}</p>
             </div>
             <button
               type="button"
@@ -163,30 +163,30 @@ export function Sidebar() {
                   window.location.href = '/login'
                 })
               }}
-              className="inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.08] px-3 text-xs font-medium text-white/85 transition hover:border-white/35 hover:bg-white/[0.14]"
+              className="inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.1] px-3 text-xs font-medium text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-white/30 hover:bg-white/[0.16]"
             >
               Déconnexion
             </button>
           </div>
 
-          <div className="mt-4 flex justify-end">
-            {roleLabel ? (
-              <span className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/20 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.2)]">
+          {roleLabel ? (
+            <div className="mt-4 flex justify-end">
+              <span className="inline-flex rounded-full border border-cyan-300/40 bg-cyan-500/22 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.24)]">
                 {roleLabel}
               </span>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
-          <div className="mt-4 h-px w-full bg-gradient-to-r from-white/0 via-white/14 to-white/0" />
+          <div className="mt-4 h-px w-full bg-gradient-to-r from-white/0 via-white/16 to-white/0" />
 
-          <div className="mt-4 grid grid-cols-2 gap-4">
+          <div className="mt-4 grid grid-cols-2 items-end gap-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/50">Type</p>
+              <p className="text-[0.68rem] font-medium uppercase tracking-[0.24em] text-white/52">Type</p>
               <p className={`mt-2 inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/50">Page</p>
-              <p className="mt-2 inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/18 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.16)]">{currentPageLabel}</p>
+              <p className="text-[0.68rem] font-medium uppercase tracking-[0.24em] text-white/52">Page</p>
+              <p className="mt-2 inline-flex rounded-full border border-cyan-300/40 bg-cyan-500/20 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.2)]">{currentPageLabel}</p>
             </div>
           </div>
         </div>
