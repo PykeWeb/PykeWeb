@@ -3,10 +3,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft } from 'lucide-react'
+import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
-import { resolvePageLabel } from '@/lib/copy'
+import { resolvePageContext } from '@/lib/copy'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
@@ -46,7 +46,7 @@ export function Sidebar() {
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
-  const currentPageLabel = useMemo(() => resolvePageLabel(pathname), [pathname])
+  const pageContext = useMemo(() => resolvePageContext(pathname), [pathname])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -139,51 +139,65 @@ export function Sidebar() {
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
       <div className="rounded-[2rem] border border-[#5b6fc7]/28 bg-gradient-to-br from-[#11173a]/95 via-[#101633]/95 to-[#0b1027]/96 p-5 shadow-[0_16px_42px_rgba(4,8,28,0.58)] backdrop-blur-xl">
-        <div className="flex items-center gap-3.5">
-          <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/18 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.14)]">
-            <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/18 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.14)]">
+              <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[1.85rem] font-semibold leading-[0.98] tracking-tight text-white">{labels.site_name || BRAND.name}</p>
+              <p className="mt-1 inline-flex items-center gap-1.5 text-[0.9rem] text-white/68">
+                <Sparkles className="h-3.5 w-3.5 text-cyan-200/75" />
+                {labels.nav_dashboard || 'Dashboard'}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-[1.95rem] font-semibold leading-[0.98] tracking-tight text-white">{labels.site_name || BRAND.name}</p>
-            <p className="mt-1 text-[0.95rem] text-white/68">{labels.nav_dashboard || 'Dashboard'}</p>
-          </div>
+          <button
+            type="button"
+            aria-label="Déconnexion"
+            title="Déconnexion"
+            onClick={() => {
+              clearTenantSession()
+              void clearTenantSessionOnServer().finally(() => {
+                window.location.href = '/login'
+              })
+            }}
+            className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/18 bg-white/[0.09] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-white/30 hover:bg-white/[0.14]"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-gradient-to-br from-white/[0.075] via-white/[0.04] to-white/[0.02] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_24px_rgba(4,8,28,0.34)]">
-          <div className="flex items-start justify-between gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="min-w-0">
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
                 <Shield className="h-3.5 w-3.5" />
                 Groupe
               </p>
-              <p className="mt-1.5 truncate text-[2.15rem] font-semibold leading-none tracking-tight text-white">{groupName}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                clearTenantSession()
-                void clearTenantSessionOnServer().finally(() => {
-                  window.location.href = '/login'
-                })
-              }}
-              className="inline-flex h-7 items-center gap-1.5 rounded-xl border border-white/18 bg-white/[0.09] px-2.5 text-[11px] font-medium text-white/84 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-white/30 hover:bg-white/[0.14]"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Déconnexion
-            </button>
-          </div>
+              <p className="mt-1.5 truncate text-[2.05rem] font-semibold leading-none tracking-tight text-white">{groupName}</p>
 
-          {roleLabel ? (
-            <div className="mt-3 flex justify-end">
-              <span className="inline-flex h-8 items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]">
-                {roleLabel}
-              </span>
+              <div className="mt-3">
+                <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
+                  <Users className="h-3.5 w-3.5" />
+                  Users
+                </p>
+                <p className="mt-1 text-sm text-white/70">-</p>
+              </div>
             </div>
-          ) : null}
+
+            <div className="text-right">
+              <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
+                <PanelsTopLeft className="h-3.5 w-3.5" />
+                Type
+              </p>
+              <p className="mt-1 text-sm font-medium text-white/80">PF</p>
+            </div>
+          </div>
 
           <div className="mt-3 h-px w-full bg-gradient-to-r from-white/0 via-white/12 to-white/0" />
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-3 gap-2.5">
             <div>
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
                 <KeyRound className="h-3.5 w-3.5" />
@@ -191,12 +205,26 @@ export function Sidebar() {
               </p>
               <p className={`mt-1.5 inline-flex h-8 items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
             </div>
+
+            <div className="text-center">
+              <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
+                <BadgeCheck className="h-3.5 w-3.5" />
+                Rôle
+              </p>
+              <p className="mt-1.5 inline-flex h-8 items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]">{roleLabel || 'Admin'}</p>
+            </div>
+
             <div className="text-right">
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
                 <PanelsTopLeft className="h-3.5 w-3.5" />
                 Page
               </p>
-              <p className="mt-1.5 inline-flex h-8 items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.18)]">{currentPageLabel}</p>
+              <p className="mt-1.5 inline-flex h-8 items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.18)]">{pageContext.label}</p>
+              {pageContext.subLabel ? (
+                <p className="mt-1 inline-flex h-7 items-center rounded-full border border-white/14 bg-white/[0.06] px-2.5 text-xs font-medium text-white/78">
+                  {pageContext.subLabel}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>

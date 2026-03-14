@@ -130,8 +130,29 @@ const PAGE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/pwr/commandes', label: 'Commande' },
 ]
 
-export function resolvePageLabel(pathname: string) {
-  if (pathname === '/') return 'Dashboard'
+type PageContext = {
+  label: string
+  subLabel?: string
+}
+
+const PAGE_SUBLABELS: Array<{ prefix: string; subLabel: string }> = [
+  { prefix: '/finance/achat-vente', subLabel: 'Achat / Vente' },
+  { prefix: '/finance/entree-sortie', subLabel: 'Entrée / Sortie' },
+  { prefix: '/items/achat-vente', subLabel: 'Achat / Vente' },
+]
+
+export function resolvePageContext(pathname: string): PageContext {
+  if (pathname === '/') return { label: 'Dashboard' }
+
   const match = PAGE_LABELS.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
-  return match?.label || 'Page'
+  const subMatch = PAGE_SUBLABELS.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+
+  return {
+    label: match?.label || 'Page',
+    subLabel: subMatch?.subLabel,
+  }
+}
+
+export function resolvePageLabel(pathname: string) {
+  return resolvePageContext(pathname).label
 }
