@@ -134,23 +134,47 @@ type PageContext = {
   label: string
 }
 
-const PAGE_SUBLABELS: Array<{ prefix: string; subLabel: string }> = [
-  { prefix: '/finance/achat-vente', subLabel: 'Achat / Vente' },
-  { prefix: '/finance/entree-sortie', subLabel: 'Entrée / Sortie' },
-  { prefix: '/items/achat-vente', subLabel: 'Achat / Vente' },
-]
+type PreciseMode = 'buy' | 'sell' | null
 
-export function resolvePageContext(pathname: string): PageContext {
+function normalizeMode(mode?: string | null): PreciseMode {
+  if (mode === 'buy') return 'buy'
+  if (mode === 'sell') return 'sell'
+  return null
+}
+
+function resolvePreciseLabel(pathname: string, mode?: string | null) {
+  const preciseMode = normalizeMode(mode)
+
+  if (pathname === '/finance/achat-vente' || pathname.startsWith('/finance/achat-vente/')) {
+    if (preciseMode === 'sell') return 'Vente'
+    return 'Achat'
+  }
+
+  if (pathname === '/finance/entree-sortie' || pathname.startsWith('/finance/entree-sortie/')) {
+    if (preciseMode === 'sell') return 'Sortie'
+    return 'Entrée'
+  }
+
+  if (pathname === '/items/achat-vente' || pathname.startsWith('/items/achat-vente/')) {
+    if (preciseMode === 'sell') return 'Vente'
+    return 'Achat'
+  }
+
+  return null
+}
+
+export function resolvePageContext(pathname: string, mode?: string | null): PageContext {
   if (pathname === '/') return { label: 'Dashboard' }
 
-  const match = PAGE_LABELS.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
-  const subMatch = PAGE_SUBLABELS.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  const preciseLabel = resolvePreciseLabel(pathname, mode)
+  if (preciseLabel) return { label: preciseLabel }
 
+  const match = PAGE_LABELS.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
   return {
-    label: subMatch?.subLabel || match?.label || 'Page',
+    label: match?.label || 'Page',
   }
 }
 
-export function resolvePageLabel(pathname: string) {
-  return resolvePageContext(pathname).label
+export function resolvePageLabel(pathname: string, mode?: string | null) {
+  return resolvePageContext(pathname, mode).label
 }

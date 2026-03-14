@@ -45,6 +45,7 @@ export function FinanceItemTradeModal({
   showModeBadge = true,
   modeBuyLabel,
   modeSellLabel,
+  onModeChange,
 }: {
   open: boolean
   mode: 'buy' | 'sell'
@@ -60,6 +61,7 @@ export function FinanceItemTradeModal({
   showModeBadge?: boolean
   modeBuyLabel?: string
   modeSellLabel?: string
+  onModeChange?: (mode: 'buy' | 'sell') => void
 }) {
   const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<CatalogItem[]>([])
@@ -206,11 +208,11 @@ export function FinanceItemTradeModal({
           <div>
             {enableModeSelect ? (
               <div className="flex flex-wrap items-center gap-2">
-                <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-emerald-300/60 data-[active=true]:bg-emerald-500/25 data-[active=true]:text-emerald-50" active={tradeMode === 'buy'} onClick={() => setTradeMode('buy')}>
+                <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-emerald-300/60 data-[active=true]:bg-emerald-500/25 data-[active=true]:text-emerald-50" active={tradeMode === 'buy'} onClick={() => { setTradeMode('buy'); onModeChange?.('buy') }}>
                   <ArrowDownRight className="h-4 w-4" />
                   {buyModeLabel}
                 </TabPill>
-                <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-rose-300/60 data-[active=true]:bg-rose-500/25 data-[active=true]:text-rose-50" active={tradeMode === 'sell'} onClick={() => setTradeMode('sell')}>
+                <TabPill className="h-9 rounded-xl px-3 text-xs data-[active=true]:border-rose-300/60 data-[active=true]:bg-rose-500/25 data-[active=true]:text-rose-50" active={tradeMode === 'sell'} onClick={() => { setTradeMode('sell'); onModeChange?.('sell') }}>
                   <ArrowUpRight className="h-4 w-4" />
                   {sellModeLabel}
                 </TabPill>

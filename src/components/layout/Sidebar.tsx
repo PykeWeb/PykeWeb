@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
@@ -36,6 +36,7 @@ const NavItem = ({ href, label, icon, active }: { href: string; label: string; i
 
 export function Sidebar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
   const [isAdmin, setIsAdmin] = useState(false)
@@ -46,7 +47,7 @@ export function Sidebar() {
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
-  const pageContext = useMemo(() => resolvePageContext(pathname), [pathname])
+  const pageContext = useMemo(() => resolvePageContext(pathname, searchParams.get('mode')), [pathname, searchParams])
 
   useEffect(() => {
     const session = getTenantSession()

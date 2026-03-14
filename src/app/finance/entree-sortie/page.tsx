@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
@@ -11,7 +11,9 @@ import { markStockInNote } from '@/lib/financeStockFlow'
 
 export default function FinanceEntreeSortiePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [initialItems, setInitialItems] = useState<CatalogItem[]>([])
+  const initialMode: 'buy' | 'sell' = searchParams.get('mode') === 'sell' ? 'sell' : 'buy'
 
   useEffect(() => {
     void listCatalogItemsUnified()
@@ -24,14 +26,18 @@ export default function FinanceEntreeSortiePage() {
       <FinanceItemTradeModal
         inline
         open
-        mode="buy"
+        mode={initialMode}
         enableModeSelect
+        hideTitle
         hideUnitPrice
-        titleOverride={copy.finance.stockFlow.stockInOutButton}
-        subtitleOverride={copy.finance.stockFlow.stockInSubtitle}
         showModeBadge={false}
         modeBuyLabel={copy.finance.stockFlow.stockInModeLabel}
         modeSellLabel={copy.finance.stockFlow.stockOutModeLabel}
+        onModeChange={(nextMode) => {
+          const params = new URLSearchParams(searchParams.toString())
+          params.set('mode', nextMode)
+          router.replace(`/finance/entree-sortie?${params.toString()}`)
+        }}
         initialItems={initialItems}
         onClose={() => router.push('/finance')}
         onSubmit={async (payload) => {
