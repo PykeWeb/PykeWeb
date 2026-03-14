@@ -168,45 +168,33 @@ export function Sidebar() {
           </button>
         </div>
 
-        <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-gradient-to-br from-white/[0.075] via-white/[0.04] to-white/[0.02] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_24px_rgba(4,8,28,0.34)]">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0">
+        <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-gradient-to-br from-white/[0.075] via-white/[0.04] to-white/[0.02] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_24px_rgba(4,8,28,0.34)]">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
                 <Shield className="h-3.5 w-3.5" />
                 Groupe
               </p>
-              <p className="mt-1.5 truncate text-[2.05rem] font-semibold leading-none tracking-tight text-white">{groupName}</p>
-
-              <div className="mt-3">
-                <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
-                  <Users className="h-3.5 w-3.5" />
-                  Users
-                </p>
-                <p className="mt-1 text-sm text-white/70">-</p>
-              </div>
+              <p className="mt-1.5 truncate text-xl font-semibold leading-none tracking-tight text-white">{groupName}</p>
             </div>
 
-            <div className="text-right">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-right">
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
                 <PanelsTopLeft className="h-3.5 w-3.5" />
                 Type
               </p>
-              <p className="mt-1 text-sm font-medium text-white/80">PF</p>
+              <p className="mt-1.5 text-sm font-medium text-white/82">PF</p>
             </div>
-          </div>
 
-          <div className="mt-3 h-px w-full bg-gradient-to-r from-white/0 via-white/12 to-white/0" />
-
-          <div className="mt-3 grid grid-cols-3 gap-2.5">
-            <div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
-                <KeyRound className="h-3.5 w-3.5" />
-                Licence
+                <Users className="h-3.5 w-3.5" />
+                Users
               </p>
-              <p className={`mt-1.5 inline-flex h-8 items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
+              <p className="mt-1.5 text-sm text-white/72">-</p>
             </div>
 
-            <div className="text-center">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-right">
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
                 <BadgeCheck className="h-3.5 w-3.5" />
                 Rôle
@@ -214,14 +202,22 @@ export function Sidebar() {
               <p className="mt-1.5 inline-flex h-8 items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]">{roleLabel || 'Admin'}</p>
             </div>
 
-            <div className="text-right">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
+                <KeyRound className="h-3.5 w-3.5" />
+                Licence
+              </p>
+              <p className={`mt-1.5 inline-flex h-8 items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-right">
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/56">
                 <PanelsTopLeft className="h-3.5 w-3.5" />
                 Page
               </p>
               <p className="mt-1.5 inline-flex h-8 items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.18)]">{pageContext.label}</p>
               {pageContext.subLabel ? (
-                <p className="mt-1 inline-flex h-7 items-center rounded-full border border-white/14 bg-white/[0.06] px-2.5 text-xs font-medium text-white/78">
+                <p className="mt-1 inline-flex h-8 items-center rounded-full border border-white/14 bg-white/[0.06] px-2.5 text-xs font-medium text-white/78">
                   {pageContext.subLabel}
                 </p>
               ) : null}
