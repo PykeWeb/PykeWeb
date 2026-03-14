@@ -38,7 +38,6 @@ export function Sidebar() {
   const pathname = usePathname()
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
-  const [groupBadge, setGroupBadge] = useState('GROUPE')
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
   const [isChef, setIsChef] = useState(false)
@@ -54,7 +53,6 @@ export function Sidebar() {
     const nextGroupName = session?.groupName || 'Groupe'
     const nextGroupBadge = session?.groupBadge || 'GROUPE'
     setGroupName(nextGroupName)
-    setGroupBadge(nextGroupBadge)
     setIsAdmin(isAdminTenantSession(session))
     setIsMember(isMemberTenantSession(session))
     setIsChef(session?.role === 'chef')
@@ -151,37 +149,43 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-white/60">Groupe</p>
-            <button
-              type="button"
-              onClick={() => {
-                clearTenantSession()
-                void clearTenantSessionOnServer().finally(() => {
-                  window.location.href = '/login'
-                })
-              }}
-              className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/90 transition hover:bg-white/10"
-            >
-              Déconnexion
-            </button>
-          </div>
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-xl font-semibold tracking-tight">{groupName}</p>
-            <div className="flex items-center gap-2">
-              {roleLabel ? <span className="inline-flex shrink-0 rounded-full border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1 text-xs font-semibold text-cyan-100">{roleLabel}</span> : null}
-              <div className="inline-flex shrink-0 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
+        <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+          <div className="grid grid-cols-2">
+            <div className="border-b border-r border-white/10 p-4">
+              <p className="text-sm text-white/60">Groupe</p>
+              <p className="mt-2 min-w-0 truncate text-xl font-semibold tracking-tight">{groupName}</p>
             </div>
-          </div>
-          <div className="mt-4 grid gap-4 border-t border-white/10 pt-3 md:grid-cols-2">
-            <div>
-              <p className="text-sm text-white/55">Accès</p>
-              <p className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
+
+            <div className="border-b border-white/10 p-4 text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  clearTenantSession()
+                  void clearTenantSessionOnServer().finally(() => {
+                    window.location.href = '/login'
+                  })
+                }}
+                className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/90 transition hover:bg-white/10"
+              >
+                Déconnexion
+              </button>
             </div>
-            <div className="md:text-right">
+
+            <div className="border-b border-r border-white/10 p-4">
+              <p className="text-sm text-white/55">Type</p>
+              <p className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
+            </div>
+
+            <div className="border-b border-white/10 p-4">
+              <p className="text-sm text-white/55">Rôle</p>
+              <p className="mt-2 inline-flex rounded-full border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1 text-sm font-semibold text-cyan-100">{roleLabel || '—'}</p>
+            </div>
+
+            <div className="border-r border-white/10 p-4" aria-hidden="true" />
+
+            <div className="p-4">
               <p className="text-sm text-white/55">Page</p>
-              <p className="mt-1 inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2.5 py-1 text-sm font-semibold text-cyan-100">{currentPageLabel}</p>
+              <p className="mt-2 inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2.5 py-1 text-sm font-semibold text-cyan-100">{currentPageLabel}</p>
             </div>
           </div>
         </div>
