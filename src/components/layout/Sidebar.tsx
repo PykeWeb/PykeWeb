@@ -40,6 +40,7 @@ export function Sidebar() {
   const [groupBadge, setGroupBadge] = useState('GROUPE')
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
+  const [isChef, setIsChef] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'drogues', 'tablette'])
   const [isPwrGroup, setIsPwrGroup] = useState(false)
@@ -54,6 +55,7 @@ export function Sidebar() {
     setGroupBadge(nextGroupBadge)
     setIsAdmin(isAdminTenantSession(session))
     setIsMember(isMemberTenantSession(session))
+    setIsChef(session?.role === 'chef')
     setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Admin' : ''))
     setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
@@ -101,7 +103,7 @@ export function Sidebar() {
   const defaultUserLinks: NavLink[] = [
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
-    { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
+    ...(!isChef ? [{ id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') } as NavLink] : []),
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
     { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
     { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
