@@ -407,8 +407,30 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (source === 'finance_transactions') {
       const groupedIds = parseGroupedFinanceTransactionIds(id)
-      if (groupedIds.length > 1) {
-        return NextResponse.json({ error: 'Modification impossible pour une transaction multiple.' }, { status: 400 })
+      const hasGroupedIds = groupedIds.length > 1
+      const hasQtyPatch = body.quantity !== undefined || body.unit_price !== undefined
+
+      if (hasGroupedIds) {
+        if (hasQtyPatch) {
+          return NextResponse.json({ error: 'Pour une transaction multiple, seule la note/interlocuteur est modifiable.' }, { status: 400 })
+        }
+
+        const sharedPatch: { counterparty?: string | null; notes?: string | null } = {}
+        if (typeof body.counterparty === 'string') sharedPatch.counterparty = body.counterparty.trim() || null
+        if (typeof body.notes === 'string') sharedPatch.notes = body.notes.trim() || null
+
+        if (Object.keys(sharedPatch).length === 0) {
+          return NextResponse.json({ ok: true })
+        }
+
+        const { error: groupedUpdateError } = await supabase
+          .from('finance_transactions')
+          .update(sharedPatch)
+          .eq('group_id', session.groupId)
+          .in('id', groupedIds)
+
+        if (groupedUpdateError) throw groupedUpdateError
+        return NextResponse.json({ ok: true })
       }
 
       const targetId = groupedIds[0] || id

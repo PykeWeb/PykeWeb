@@ -31,7 +31,7 @@ type Expense = { id: string; item_label: string; total: number; quantity: number
 type ActivityView = 'summary' | 'transactions' | 'expenses'
 
 type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items' | 'calculator' | 'plantations'
-type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'catOther' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
+type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
 type DashboardMetrics = {
   loading: boolean
@@ -64,7 +64,6 @@ const CARD_OPTIONS: CardOption[] = [
   { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Swords, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
   { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Shield, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
   { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Pill, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
-  { key: 'catOther', title: 'Autres', href: '/items?category=custom', icon: Shapes, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.other + v.categoryCounts.custom)) },
   { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
   { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
   { key: 'mvSale', title: 'Ventes', href: '/finance?type=sale', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
@@ -127,6 +126,10 @@ export function DashboardClient() {
   const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
   const ticketPreviewUrl = useMemo(() => (ticketImage ? URL.createObjectURL(ticketImage) : null), [ticketImage])
+
+  const visibleCustomDashboardBubbles = useMemo(() => (
+    themeConfig.customDashboardBubbles.filter((entry) => entry.title.trim().toLowerCase() !== 'nouvelle bulle')
+  ), [themeConfig.customDashboardBubbles])
 
   const iconByName: Record<string, LucideIcon> = {
     Wallet,
@@ -466,7 +469,6 @@ export function DashboardClient() {
                     : card.key === 'catEquipment' ? 'amber'
                     : card.key === 'catDrugs' ? 'emerald'
                     : card.key === 'catObjects' ? 'cyan'
-                    : card.key === 'catOther' ? 'amber'
                     : card.key === 'mvExpense' ? 'amber'
                     : card.key === 'mvPurchase' ? 'emerald'
                     : card.key === 'mvSale' ? 'rose'
@@ -479,9 +481,9 @@ export function DashboardClient() {
           }) : null}
         </div>
 
-        {themeConfig.customDashboardBubbles.length > 0 ? (
+        {visibleCustomDashboardBubbles.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {themeConfig.customDashboardBubbles.map((entry) => {
+            {visibleCustomDashboardBubbles.map((entry) => {
               const Icon = (entry.icon && iconByName[entry.icon]) ? iconByName[entry.icon] : Shapes
               const bubbleStyle: BubbleStyle = {
                 bgColor: entry.bgColor,
