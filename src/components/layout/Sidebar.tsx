@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
+import { resolvePageLabel } from '@/lib/copy'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
@@ -46,6 +47,7 @@ export function Sidebar() {
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
+  const currentPageLabel = useMemo(() => resolvePageLabel(pathname), [pathname])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -172,9 +174,15 @@ export function Sidebar() {
               <div className="inline-flex shrink-0 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
             </div>
           </div>
-          <div className="mt-4 border-t border-white/10 pt-3">
-            <p className="text-sm text-white/55">Accès</p>
-            <p className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
+          <div className="mt-4 grid gap-4 border-t border-white/10 pt-3 md:grid-cols-2">
+            <div>
+              <p className="text-sm text-white/55">Accès</p>
+              <p className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
+            </div>
+            <div className="md:text-right">
+              <p className="text-sm text-white/55">Page</p>
+              <p className="mt-1 inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2.5 py-1 text-sm font-semibold text-cyan-100">{currentPageLabel}</p>
+            </div>
           </div>
         </div>
       </div>

@@ -105,3 +105,33 @@ export const copy = {
     subtitle: 'Choisis les objets/équipements du groupe avec image et quantité, puis calcule automatiquement le salaire.',
   }
 } as const
+
+const PAGE_LABELS: Array<{ prefix: string; label: string }> = [
+  { prefix: '/admin/dashboard', label: 'Dashboard' },
+  { prefix: '/admin/groupes', label: 'Groupes' },
+  { prefix: '/admin/catalogue-global', label: 'Catalogue global' },
+  { prefix: '/admin/tablette', label: 'Tablette' },
+  { prefix: '/admin/service/achat-service-tablette', label: 'Achat service' },
+  { prefix: '/admin/patch-notes', label: 'Patch notes' },
+  { prefix: '/admin/support', label: 'Support' },
+  { prefix: '/admin/logs', label: 'Logs' },
+  { prefix: '/finance', label: 'Finance' },
+  { prefix: '/items', label: 'Items' },
+  { prefix: '/drogues', label: 'Drogues' },
+  { prefix: '/tablette', label: 'Tablette' },
+  { prefix: '/activites', label: 'Activités' },
+  { prefix: '/armes', label: 'Armes' },
+  { prefix: '/objets', label: 'Objets' },
+  { prefix: '/equipement', label: 'Équipement' },
+  { prefix: '/depenses', label: 'Dépenses' },
+  { prefix: '/transactions', label: 'Transactions' },
+  { prefix: '/logs', label: 'Logs' },
+  { prefix: '/patch-notes', label: 'Patch notes' },
+  { prefix: '/pwr/commandes', label: 'Commande' },
+]
+
+export function resolvePageLabel(pathname: string) {
+  if (pathname === '/') return 'Dashboard'
+  const match = PAGE_LABELS.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  return match?.label || 'Page'
+}
