@@ -1,16 +1,17 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { Box, Pill, Shapes, Shield, Swords } from 'lucide-react'
+import { Box, Pill, Shapes, Shield, Swords, type LucideIcon } from 'lucide-react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { DangerButton, PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
-import { categoryTypeOptions, normalizeCatalogCategory, normalizeItemType } from '@/lib/catalogConfig'
+import { categoryTypeOptions, getTypeFilterOptions, itemCategoryOptions, normalizeCatalogCategory, normalizeItemType, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import type { ItemCategory } from '@/lib/types/itemsFinance'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
+import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
+import { PageHeader } from '@/components/PageHeader'
 
 type GlobalItem = {
   id: string
@@ -27,29 +28,65 @@ const defaultTypeByCategory: Record<ItemCategory, string> = {
   objects: categoryTypeOptions.objects[0]?.value ?? 'other',
   weapons: categoryTypeOptions.weapons[0]?.value ?? 'other',
   equipment: categoryTypeOptions.equipment[0]?.value ?? 'other',
-  drugs: categoryTypeOptions.drugs[0]?.value ?? 'drug',
+  drugs: categoryTypeOptions.drugs[0]?.value ?? 'drug_material',
   custom: categoryTypeOptions.custom[0]?.value ?? 'other',
 }
 
-const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: typeof Box }[] = [
-  { key: 'objects', label: 'Objets', icon: Box },
-  { key: 'weapons', label: 'Armes', icon: Swords },
-  { key: 'equipment', label: 'Équipement', icon: Shield },
-  { key: 'drugs', label: 'Drogues', icon: Pill },
-  { key: 'custom', label: 'Autres', icon: Shapes },
-]
+const categoryIconByKey: Record<ItemCategory, LucideIcon> = {
+  objects: Box,
+  weapons: Swords,
+  equipment: Shield,
+  drugs: Pill,
+  custom: Shapes,
+}
 
-function categoryPillClass(category: ItemCategory, active: boolean) {
-  if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-r from-cyan-500/35 to-blue-500/25 text-cyan-50' : 'border-cyan-300/25 bg-cyan-500/[0.07] text-cyan-100/90 hover:bg-cyan-500/[0.14]'
-  if (category === 'weapons') return active ? 'border-rose-200/75 bg-gradient-to-r from-rose-500/35 to-red-500/25 text-rose-50' : 'border-rose-300/25 bg-rose-500/[0.07] text-rose-100/90 hover:bg-rose-500/[0.14]'
-  if (category === 'equipment') return active ? 'border-amber-200/75 bg-gradient-to-r from-amber-700/35 to-orange-700/25 text-amber-50' : 'border-amber-300/25 bg-amber-700/[0.16] text-amber-100/90 hover:bg-amber-700/[0.24]'
-  if (category === 'drugs') return active ? 'border-emerald-200/75 bg-gradient-to-r from-emerald-500/35 to-teal-500/25 text-emerald-50' : 'border-emerald-300/25 bg-emerald-500/[0.07] text-emerald-100/90 hover:bg-emerald-500/[0.14]'
-  return active ? 'border-slate-200/75 bg-gradient-to-r from-slate-500/35 to-slate-700/25 text-slate-50' : 'border-slate-300/25 bg-slate-500/[0.07] text-slate-100/90 hover:bg-slate-500/[0.14]'
+const ADMIN_VISIBLE_CATEGORIES: ItemCategory[] = ['objects', 'weapons', 'equipment', 'drugs', 'custom']
+const ADMIN_CATEGORY_ORDER: ItemCategory[] = ['objects', 'weapons', 'equipment', 'drugs', 'custom']
+
+const categoryLabelByKey = Object.fromEntries(itemCategoryOptions.map((option) => [option.value, option.label])) as Record<ItemCategory, string>
+
+const ADMIN_CATEGORY_CARDS: { key: ItemCategory; label: string; icon: LucideIcon }[] = ADMIN_CATEGORY_ORDER.map((key) => ({
+  key,
+  label: key === 'custom' ? 'Autres' : (categoryLabelByKey[key] ?? 'Autres'),
+  icon: categoryIconByKey[key],
+}))
+
+function getAdminTypeFilterOptions(category: 'all' | ItemCategory): { value: UnifiedTypeFilterValue; label: string }[] {
+  const base = getTypeFilterOptions(category)
+  if (category !== 'all') return base
+
+  const byValue = new Map(base.map((option) => [option.value, option]))
+  const preferredOrder: UnifiedTypeFilterValue[] = ['all', 'objects', 'weapon', 'equipment', 'ammo', 'weapon_accessory', 'seed', 'pouch', 'drug_material', 'product', 'other']
+
+  return preferredOrder
+    .map((value) => byValue.get(value))
+    .filter((option): option is { value: UnifiedTypeFilterValue; label: string } => Boolean(option))
+}
+
+function matchesAdminTypeFilter(item: GlobalItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
+  if (selectedType === 'all') return true
+  if (selectedCategory === 'all') {
+    if (selectedType === 'objects') return item.category === 'objects'
+    if (selectedType === 'equipment') return item.category === 'equipment'
+    if (selectedType === 'other') return item.category === 'custom'
+  }
+  return normalizeItemType(item.item_type, item.category) === selectedType
+}
+
+function getCategoryCardClass(category: 'all' | ItemCategory, active: boolean): string {
+  if (category === 'all') return active ? 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+  if (category === 'objects') return active ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25' : 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
+  if (category === 'weapons') return active ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25' : 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+  if (category === 'equipment') return active ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25' : 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+  if (category === 'drugs') return active ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25' : 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+  return active ? 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25' : 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
 }
 
 export default function AdminCatalogueGlobalPage() {
+  const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<GlobalItem[]>([])
   const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all')
+  const [filterType, setFilterType] = useState<UnifiedTypeFilterValue>('all')
   const [query, setQuery] = useState('')
   const [createCategory, setCreateCategory] = useState<ItemCategory>('objects')
   const [name, setName] = useState('')
@@ -74,6 +111,7 @@ export default function AdminCatalogueGlobalPage() {
     const normalized = (Array.isArray(data) ? data : [])
       .map((row) => ({ ...row, category: normalizeCatalogCategory(String(row.category)) }))
       .filter((row): row is GlobalItem => Boolean(row.category))
+      .filter((row) => ADMIN_VISIBLE_CATEGORIES.includes(row.category))
     setItems(normalized)
   }
 
@@ -141,14 +179,11 @@ export default function AdminCatalogueGlobalPage() {
   }
 
   async function removeItem(id: string) {
-    const res = await fetch(
-      '/api/admin/global-catalog',
-      {
-        ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
-        method: 'DELETE',
-        body: JSON.stringify({ id }),
-      }
-    )
+    const res = await fetch('/api/admin/global-catalog', {
+      ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    })
     if (!res.ok) return
     await refresh()
   }
@@ -206,12 +241,14 @@ export default function AdminCatalogueGlobalPage() {
     const q = query.trim().toLowerCase()
     return items.filter((it) => {
       if (filterCategory !== 'all' && it.category !== filterCategory) return false
+      if (!matchesAdminTypeFilter(it, filterCategory, filterType)) return false
       if (!q) return true
       return `${it.name} ${it.item_type ?? ''} ${it.weapon_id ?? ''}`.toLowerCase().includes(q)
     })
-  }, [items, query, filterCategory])
+  }, [items, query, filterCategory, filterType])
 
   const createTypeOptions = categoryTypeOptions[createCategory]
+  const typeFilterOptions = getAdminTypeFilterOptions(filterCategory)
 
   const categoryCounts = useMemo(() => {
     const counts: Record<ItemCategory, number> = {
@@ -233,13 +270,10 @@ export default function AdminCatalogueGlobalPage() {
   return (
     <div className="space-y-4">
       <Panel>
-        <h1 className="text-2xl font-semibold">Objets (catalogue global)</h1>
-        <p className="mt-1 text-sm text-white/70">Catalogue partagé entre modules, avec override local par groupe.</p>
-        <div className="mt-3">
-          <Link href="/items/nouveau">
-            <SecondaryButton>Créer un item (formulaire complet)</SecondaryButton>
-          </Link>
-        </div>
+        <PageHeader
+          title="Items (catalogue global)"
+          subtitle="Catalogue partagé entre modules, avec override local par groupe."
+        />
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -247,39 +281,28 @@ export default function AdminCatalogueGlobalPage() {
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {ADMIN_CATEGORY_CARDS.map((card) => {
                 const Icon = card.icon
+                const uiKey = `items.category.${card.key}`
+                const bubble = themeConfig.bubbles[uiKey]
                 return (
                   <button
                     key={card.key}
                     type="button"
+                    data-bubble-key={uiKey}
                     onClick={() => {
-                      const nextCategory = card.key as ItemCategory
-                      setCreateCategory(nextCategory)
-                      setCreateItemType(defaultTypeByCategory[nextCategory])
+                      setCreateCategory(card.key)
+                      setCreateItemType(defaultTypeByCategory[card.key])
                     }}
-                    className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${
-                      createCategory === card.key
-                        ? card.key === 'objects'
-                          ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
-                          : card.key === 'weapons'
-                            ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
-                            : card.key === 'equipment'
-                              ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
-                              : card.key === 'drugs'
-                                ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
-                                : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
-                        : card.key === 'objects'
-                          ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
-                          : card.key === 'weapons'
-                            ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
-                            : card.key === 'equipment'
-                              ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
-                              : card.key === 'drugs'
-                                ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
-                                : 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
-                    }`}
+                    style={{
+                      background: bubble?.bgColor || undefined,
+                      borderColor: bubble?.borderColor || undefined,
+                      color: bubble?.textColor || undefined,
+                      minWidth: bubble?.minWidthPx ? `${bubble.minWidthPx}px` : undefined,
+                      minHeight: bubble?.minHeightPx ? `${bubble.minHeightPx}px` : undefined,
+                    }}
+                    className={`rounded-2xl border px-3 py-3 text-left transition min-h-[88px] ${getCategoryCardClass(card.key, createCategory === card.key)}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{card.label}</p>
+                      <p className="text-xs text-white/70" data-mod-source={card.label}>{card.label}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -292,7 +315,7 @@ export default function AdminCatalogueGlobalPage() {
             <label className="mb-2 block text-xs text-white/60">Type</label>
             <div className="flex flex-wrap gap-2">
               {createTypeOptions.map((option) => (
-                <TabPill key={option.value} active={createItemType === option.value} onClick={() => setCreateItemType(option.value)}>
+                <TabPill key={option.value} active={createItemType === option.value} onClick={() => setCreateItemType(option.value)} data-mod-source={option.label}>
                   {option.label}
                 </TabPill>
               ))}
@@ -339,45 +362,42 @@ export default function AdminCatalogueGlobalPage() {
           ].map((card) => {
             const Icon = card.icon
             const active = filterCategory === card.key || (card.key === 'all' && filterCategory === 'all')
+            const uiKey = `items.category.${card.key}`
+            const bubble = themeConfig.bubbles[uiKey]
             return (
               <button
                 key={card.key}
                 type="button"
-                onClick={() => setFilterCategory(card.key === 'all' ? 'all' : card.key)}
-                className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
-                  active
-                    ? card.key === 'objects'
-                      ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
-                      : card.key === 'weapons'
-                        ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
-                        : card.key === 'equipment'
-                          ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
-                          : card.key === 'drugs'
-                            ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
-                            : card.key === 'custom'
-                              ? 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
-                              : 'border-slate-200/70 bg-gradient-to-br from-slate-500/30 to-slate-700/22'
-                    : card.key === 'objects'
-                      ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
-                      : card.key === 'weapons'
-                        ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
-                        : card.key === 'equipment'
-                          ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
-                          : card.key === 'drugs'
-                            ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
-                            : card.key === 'custom'
-                              ? 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
-                              : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
-                }`}
+                data-bubble-key={uiKey}
+                onClick={() => {
+                  setFilterCategory(card.key === 'all' ? 'all' : card.key)
+                  setFilterType('all')
+                }}
+                style={{
+                  background: bubble?.bgColor || undefined,
+                  borderColor: bubble?.borderColor || undefined,
+                  color: bubble?.textColor || undefined,
+                  minWidth: bubble?.minWidthPx ? `${bubble.minWidthPx}px` : undefined,
+                  minHeight: bubble?.minHeightPx ? `${bubble.minHeightPx}px` : undefined,
+                }}
+                className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${getCategoryCardClass(card.key, active)}`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white/70">{card.key === 'all' ? card.label : card.label}</p>
+                  <p className="text-xs text-white/70" data-mod-source={card.label}>{card.label}</p>
                   <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                 </div>
                 <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
               </button>
             )
           })}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {typeFilterOptions.map((opt) => (
+            <TabPill key={opt.value} active={filterType === opt.value} onClick={() => setFilterType(opt.value)} data-mod-source={opt.label}>
+              {opt.label}
+            </TabPill>
+          ))}
         </div>
 
         <div className="mt-4 space-y-2">
@@ -403,31 +423,28 @@ export default function AdminCatalogueGlobalPage() {
                         {ADMIN_CATEGORY_CARDS.map((card) => {
                           const Icon = card.icon
                           const active = editCategory === card.key
+                          const uiKey = `items.category.${card.key}`
+                          const bubble = themeConfig.bubbles[uiKey]
                           return (
                             <button
                               key={card.key}
                               type="button"
+                              data-bubble-key={uiKey}
                               onClick={() => {
-                                const next = card.key as ItemCategory
-                                setEditCategory(next)
-                                setEditType(defaultTypeByCategory[next])
+                                setEditCategory(card.key)
+                                setEditType(defaultTypeByCategory[card.key])
                               }}
-                              className={`rounded-2xl border px-3 py-3 text-left transition ${
-                                active
-                                  ? card.key === 'objects'
-                                    ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
-                                    : card.key === 'weapons'
-                                      ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
-                                      : card.key === 'equipment'
-                                        ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
-                                        : card.key === 'drugs'
-                                          ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
-                                          : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
-                                  : 'border-white/12 bg-white/[0.04] hover:bg-white/[0.08]'
-                              }`}
+                              style={{
+                                background: bubble?.bgColor || undefined,
+                                borderColor: bubble?.borderColor || undefined,
+                                color: bubble?.textColor || undefined,
+                                minWidth: bubble?.minWidthPx ? `${bubble.minWidthPx}px` : undefined,
+                                minHeight: bubble?.minHeightPx ? `${bubble.minHeightPx}px` : undefined,
+                              }}
+                              className={`rounded-2xl border px-3 py-3 text-left transition ${getCategoryCardClass(card.key, active)}`}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs text-white/80">{card.label}</p>
+                                <p className="text-xs text-white/80" data-mod-source={card.label}>{card.label}</p>
                                 <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                               </div>
                             </button>
@@ -440,8 +457,8 @@ export default function AdminCatalogueGlobalPage() {
                       <p className="mb-2 text-xs text-white/60">Type</p>
                       <div className="flex flex-wrap gap-2">
                         {categoryTypeOptions[editCategory].map((option) => (
-                          <TabPill key={option.value} active={editType === option.value} onClick={() => setEditType(option.value)}>
-                            {editCategory === 'objects' && option.value === 'other' ? 'Standard' : option.label}
+                          <TabPill key={option.value} active={editType === option.value} onClick={() => setEditType(option.value)} data-mod-source={option.label}>
+                            {option.label}
                           </TabPill>
                         ))}
                       </div>

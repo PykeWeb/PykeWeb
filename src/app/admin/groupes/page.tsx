@@ -6,6 +6,7 @@ import { createTenantGroup, listTenantGroups, type TenantGroup } from '@/lib/ten
 import { getTenantSession } from '@/lib/tenantSession'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 import { GlassSelect } from '@/components/ui/GlassSelect'
+import { PageHeader } from '@/components/PageHeader'
 
 type CreateGroupModalProps = {
   open: boolean
@@ -163,10 +164,11 @@ export default function AdminGroupsPage() {
     <div className="space-y-6">
       <div className="mx-auto w-full max-w-7xl rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight">Admin • Gestion des groupes</h1>
-            <p className="mt-2 text-lg text-white/70">Un bouton unique “Gérer” par groupe pour accéder à la fiche complète.</p>
-          </div>
+          <PageHeader
+            title="Admin • Gestion des groupes"
+            subtitle="Un bouton unique “Gérer” par groupe pour accéder à la fiche complète."
+            size="compact"
+          />
           <button
             onClick={() => setCreateModalOpen(true)}
             className="h-10 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"

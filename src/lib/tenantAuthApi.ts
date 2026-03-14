@@ -1,5 +1,6 @@
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import type { GroupRoleDefinition } from '@/lib/types/groupRoles'
+import type { GroupMember, GroupMemberGrade, GroupMembersGradesPayload } from '@/lib/types/groupMembers'
 
 async function readApiError(res: Response) {
   try {
@@ -109,4 +110,71 @@ export async function loginTenant(login: string, password: string, remember = tr
   if (!res.ok) throw new Error(await readApiError(res))
   const json = (await res.json()) as { group: TenantGroup; session: { groupId: string; groupName: string; groupBadge?: string | null; isAdmin?: boolean; role?: string; roleLabel?: string; allowedPrefixes?: string[] } }
   return json
+}
+
+
+export async function listGroupMembersGrades(groupId: string) {
+  const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, withTenantSessionHeader({ cache: 'no-store' }))
+  if (!res.ok) throw new Error(await readApiError(res))
+  return (await res.json()) as GroupMembersGradesPayload
+}
+
+export async function createGroupMemberGrade(groupId: string, input: { name: string; permissions: string[] }) {
+  const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+    method: 'POST',
+    body: JSON.stringify({ entity: 'grade', ...input }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return (await res.json()) as GroupMembersGradesPayload
+}
+
+export async function updateGroupMemberGrade(groupId: string, id: string, patch: { name: string; permissions: string[] }) {
+  const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+    method: 'PUT',
+    body: JSON.stringify({ entity: 'grade', id, patch }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return (await res.json()) as GroupMembersGradesPayload
+}
+
+export async function deleteGroupMemberGrade(groupId: string, id: string) {
+  const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+    method: 'DELETE',
+    body: JSON.stringify({ entity: 'grade', id }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return (await res.json()) as GroupMembersGradesPayload
+}
+
+export async function createGroupMember(groupId: string, input: { player_name: string; player_identifier?: string | null; grade_id?: string | null }) {
+  const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+    method: 'POST',
+    body: JSON.stringify({ entity: 'member', ...input }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return (await res.json()) as GroupMembersGradesPayload
+}
+
+export async function updateGroupMember(groupId: string, id: string, patch: { player_name: string; player_identifier?: string | null; grade_id?: string | null }) {
+  const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+    method: 'PUT',
+    body: JSON.stringify({ entity: 'member', id, patch }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return (await res.json()) as GroupMembersGradesPayload
+}
+
+export async function deleteGroupMember(groupId: string, id: string) {
+  const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+    method: 'DELETE',
+    body: JSON.stringify({ entity: 'member', id }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return (await res.json()) as GroupMembersGradesPayload
 }

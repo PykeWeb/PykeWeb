@@ -1,27 +1,162 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ClipboardList, Settings2 } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { ClipboardList, Plus, Settings2, Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
-import {
-  buildUiThemeConfigFromOverrides,
-  defaultUiThemeConfig,
-  UI_THEME_CONFIG_KEY,
-  type UiBubbleConfig,
-  type UiCustomDashboardBubble,
-  type UiThemeConfig,
-} from '@/lib/uiThemeConfig'
 
 const STORAGE_KEY = 'pykeweb:text-overrides:v1'
+const VISUAL_EDITOR_KEY = '__visual_editor_state_v1__'
 
 type Overrides = Record<string, string>
 type AdminCreds = { username: string; password: string }
 
-const ICON_OPTIONS = [
-  'Wallet', 'PlusCircle', 'Receipt', 'Box', 'Shapes', 'Pill', 'Swords', 'Shield', 'ShoppingCart', 'ArrowUpRight', 'ArrowDownRight', 'FolderOpen', 'LayoutGrid',
-]
+type EditableAlign = 'left' | 'center' | 'right'
+
+type VisualStyle = {
+  fontSize: number
+  color: string
+  align: EditableAlign
+  marginTop: number
+  padding: number
+  x: number
+  y: number
+}
+
+type VisualEntry = {
+  id: string
+  page: string
+  domPath: string
+  sourceText: string
+  text: string
+  style: VisualStyle
+}
+
+type ExtraEntry = {
+  id: string
+  page: string
+  text: string
+  style: VisualStyle
+}
+
+type VisualState = {
+  entries: VisualEntry[]
+  extra: ExtraEntry[]
+}
+
+const defaultStyle: VisualStyle = {
+  fontSize: 16,
+  color: '#ffffff',
+  align: 'left',
+  marginTop: 0,
+  padding: 0,
+  x: 0,
+  y: 0,
+}
+
+function parsePx(value: string, fallback: number) {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function toHexColor(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback
+  const match = value.match(/rgba?\(([^)]+)\)/i)
+  if (!match) return fallback
+  const parts = match[1].split(',').map((chunk) => Number.parseFloat(chunk.trim()))
+  const [r, g, b] = parts
+  if (![r, g, b].every((part) => Number.isFinite(part))) return fallback
+  const clamp = (input: number) => Math.max(0, Math.min(255, Math.round(input)))
+  return `#${[clamp(r), clamp(g), clamp(b)].map((part) => part.toString(16).padStart(2, '0')).join('')}`
+}
+
+function deriveStyleFromElement(element: HTMLElement): VisualStyle {
+  const computed = window.getComputedStyle(element)
+  const align: EditableAlign = computed.textAlign === 'center' || computed.textAlign === 'right' ? computed.textAlign : 'left'
+  return normalizeStyle({
+    fontSize: parsePx(computed.fontSize, defaultStyle.fontSize),
+    color: toHexColor(computed.color, defaultStyle.color),
+    align,
+    marginTop: parsePx(computed.marginTop, defaultStyle.marginTop),
+    padding: parsePx(computed.paddingTop, defaultStyle.padding),
+    x: 0,
+    y: 0,
+  })
+}
+
+function shouldSkipApplyingStoredStyle(style: VisualStyle, element: HTMLElement) {
+  const isDefaultStored =
+    style.fontSize === defaultStyle.fontSize
+    && style.color.toLowerCase() === defaultStyle.color
+    && style.align === defaultStyle.align
+    && style.marginTop === defaultStyle.marginTop
+    && style.padding === defaultStyle.padding
+    && style.x === defaultStyle.x
+    && style.y === defaultStyle.y
+
+  if (!isDefaultStored) return false
+  return ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)
+}
+
+function clampNumber(value: number, min: number, max: number, fallback: number) {
+  if (!Number.isFinite(value)) return fallback
+  return Math.max(min, Math.min(max, value))
+}
+
+function normalizeStyle(input?: Partial<VisualStyle> | null): VisualStyle {
+  return {
+    fontSize: clampNumber(Number(input?.fontSize), 10, 72, defaultStyle.fontSize),
+    color: typeof input?.color === 'string' && input.color.trim() ? input.color : defaultStyle.color,
+    align: input?.align === 'center' || input?.align === 'right' ? input.align : 'left',
+    marginTop: clampNumber(Number(input?.marginTop), -200, 200, defaultStyle.marginTop),
+    padding: clampNumber(Number(input?.padding), 0, 120, defaultStyle.padding),
+    x: clampNumber(Number(input?.x), -1200, 1200, defaultStyle.x),
+    y: clampNumber(Number(input?.y), -1200, 1200, defaultStyle.y),
+  }
+}
+
+function normalizeVisualState(raw: unknown): VisualState {
+  if (!raw || typeof raw !== 'object') return { entries: [], extra: [] }
+  const src = raw as { entries?: unknown; extra?: unknown }
+
+  const entries = Array.isArray(src.entries)
+    ? src.entries
+      .map((entry): VisualEntry | null => {
+        if (!entry || typeof entry !== 'object') return null
+        const item = entry as Partial<VisualEntry>
+        if (!item.id || !item.page || !item.domPath || typeof item.text !== 'string' || typeof item.sourceText !== 'string') return null
+        return {
+          id: item.id,
+          page: item.page,
+          domPath: item.domPath,
+          sourceText: item.sourceText,
+          text: item.text,
+          style: normalizeStyle(item.style),
+        }
+      })
+      .filter((entry): entry is VisualEntry => Boolean(entry))
+    : []
+
+  const extra = Array.isArray(src.extra)
+    ? src.extra
+      .map((entry): ExtraEntry | null => {
+        if (!entry || typeof entry !== 'object') return null
+        const item = entry as Partial<ExtraEntry>
+        if (!item.id || !item.page || typeof item.text !== 'string') return null
+        return {
+          id: item.id,
+          page: item.page,
+          text: item.text,
+          style: normalizeStyle(item.style),
+        }
+      })
+      .filter((entry): entry is ExtraEntry => Boolean(entry))
+    : []
+
+  return { entries, extra }
+}
 
 function readOverrides(): Overrides {
   if (typeof window === 'undefined') return {}
@@ -37,11 +172,15 @@ function writeOverrides(overrides: Overrides) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
 }
 
-async function readOverridesFromDatabase(): Promise<Overrides> {
-  const res = await fetch('/api/ui-texts', { cache: 'no-store' })
-  if (!res.ok) return {}
-  const data = (await res.json()) as { overrides?: Overrides }
-  return data.overrides ?? {}
+
+function getInitialVisualState() {
+  const initial = readOverrides()
+  try {
+    const serialized = initial[VISUAL_EDITOR_KEY]
+    return normalizeVisualState(typeof serialized === 'string' ? JSON.parse(serialized) : null)
+  } catch {
+    return { entries: [], extra: [] }
+  }
 }
 
 function buildAdminHeaders(creds: AdminCreds) {
@@ -85,11 +224,7 @@ async function upsertOverrideOnline(key: string, value: string, creds: AdminCred
 
 async function resetOverridesOnline(creds: AdminCreds) {
   const res = await fetch('/api/admin/ui-texts/reset', {
-    ...withTenantSessionHeader({
-      headers: {
-        ...buildAdminHeaders(creds),
-      },
-    }),
+    ...withTenantSessionHeader({ headers: { ...buildAdminHeaders(creds) } }),
     method: 'POST',
   })
   if (!res.ok) {
@@ -101,12 +236,50 @@ async function resetOverridesOnline(creds: AdminCreds) {
 function shouldSkipNode(parent: Node | null) {
   if (!parent || !(parent instanceof HTMLElement)) return true
   if (parent.closest('[data-mod-widget="true"]')) return true
+  if (parent.closest('[data-mod-source]')) return true
   const tag = parent.tagName
   if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT'].includes(tag)) return true
   return parent.isContentEditable
 }
 
-function applyOverrides(overrides: Overrides) {
+function getDomPath(element: HTMLElement): string {
+  const segments: string[] = []
+  let current: HTMLElement | null = element
+
+  while (current && current.tagName !== 'BODY') {
+    const tag = current.tagName.toLowerCase()
+    let index = 0
+    let sibling = current.previousElementSibling
+    while (sibling) {
+      if (sibling.tagName.toLowerCase() === tag) index += 1
+      sibling = sibling.previousElementSibling
+    }
+    segments.unshift(`${tag}:nth-of-type(${index + 1})`)
+    current = current.parentElement
+  }
+
+  return segments.join(' > ')
+}
+
+function findElementByDomPath(path: string): HTMLElement | null {
+  if (!path.trim()) return null
+  try {
+    return document.querySelector(path) as HTMLElement | null
+  } catch {
+    return null
+  }
+}
+
+function applyVisualStyle(target: HTMLElement, style: VisualStyle) {
+  target.style.fontSize = `${style.fontSize}px`
+  target.style.color = style.color
+  target.style.textAlign = style.align
+  target.style.marginTop = `${style.marginTop}px`
+  target.style.padding = `${style.padding}px`
+  target.style.transform = `translate(${style.x}px, ${style.y}px)`
+}
+
+function applyOverrides(overrides: Overrides, visual: VisualState, pathname: string) {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
   let node = walker.nextNode()
   while (node) {
@@ -121,38 +294,46 @@ function applyOverrides(overrides: Overrides) {
     if (replacement && replacement !== value) textNode.nodeValue = replacement
     node = walker.nextNode()
   }
+
+  for (const entry of visual.entries) {
+    if (entry.page !== pathname) continue
+    const element = findElementByDomPath(entry.domPath)
+    if (!element) continue
+
+    const forcedSource = element.dataset.modSource?.trim()
+    if (forcedSource && forcedSource !== entry.sourceText) continue
+    if (!element.textContent?.includes(entry.sourceText) && !element.textContent?.includes(entry.text)) continue
+
+    element.textContent = entry.text
+    if (!shouldSkipApplyingStoredStyle(entry.style, element)) {
+      applyVisualStyle(element, entry.style)
+    }
+  }
 }
 
-function getEditableText(target: EventTarget | null) {
+function getEditableTarget(target: EventTarget | null): { text: string; element: HTMLElement; sourceText?: string } | null {
   if (!(target instanceof HTMLElement)) return null
   if (target.closest('[data-mod-widget="true"]')) return null
 
-  const directTextNode = Array.from(target.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
-  if (directTextNode) return { value: directTextNode.textContent ?? '' }
+  const forcedSourceHost = target.closest('[data-mod-source]') as HTMLElement | null
+  const forcedSource = forcedSourceHost?.dataset.modSource?.trim()
 
-  const descendant = document.createTreeWalker(target, NodeFilter.SHOW_TEXT)
-  let next = descendant.nextNode()
-  while (next) {
-    const textNode = next as Text
-    const value = textNode.nodeValue ?? ''
-    if (value.trim() && !shouldSkipNode(textNode.parentNode)) return { value }
-    next = descendant.nextNode()
+  let current: HTMLElement | null = target
+  while (current && current !== document.body) {
+    if (current.childNodes.length) {
+      const directTextNode = Array.from(current.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
+      if (directTextNode) {
+        return { text: directTextNode.textContent ?? '', element: current, sourceText: forcedSource || undefined }
+      }
+    }
+    current = current.parentElement
   }
 
   return null
 }
 
-function createCustomBubble(): UiCustomDashboardBubble {
-  return {
-    id: `custom-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
-    title: 'Nouvelle bulle',
-    href: '/',
-    value: '—',
-    icon: 'Shapes',
-    bgColor: '#1f2937',
-    borderColor: '#374151',
-    textColor: '#ffffff',
-  }
+function makeId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10_000)}`
 }
 
 export function SiteTextModWidget() {
@@ -163,174 +344,238 @@ export function SiteTextModWidget() {
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
-  const [overrides, setOverrides] = useState<Overrides>({})
-  const [themeConfig, setThemeConfig] = useState<UiThemeConfig>(defaultUiThemeConfig)
-  const [themeEditorOpen, setThemeEditorOpen] = useState(false)
+  const [overrides, setOverrides] = useState<Overrides>(() => readOverrides())
+  const [visualState, setVisualState] = useState<VisualState>(() => getInitialVisualState())
   const [dbStatus, setDbStatus] = useState<string>('Sauvegarde en ligne active')
   const [dbCount, setDbCount] = useState<number>(0)
   const [adminCreds, setAdminCreds] = useState<AdminCreds | null>(null)
-  const [editingSourceText, setEditingSourceText] = useState<string | null>(null)
+  const [editingEntry, setEditingEntry] = useState<VisualEntry | null>(null)
   const [editingDraft, setEditingDraft] = useState('')
-  const [editingBubbleKey, setEditingBubbleKey] = useState<string | null>(null)
-  const [editingBubbleDraft, setEditingBubbleDraft] = useState<UiBubbleConfig>({})
-  const themeInitializedRef = useRef(false)
+  const [draggingExtraId, setDraggingExtraId] = useState<string | null>(null)
+  const dragStartRef = useRef<{ x: number; y: number; initialX: number; initialY: number } | null>(null)
+  const applyingOverridesRef = useRef(false)
+  const observerQueuedRef = useRef(false)
+  const observerRafRef = useRef<number | null>(null)
+  const pathname = usePathname() || '/'
 
   useEffect(() => {
     let alive = true
     ;(async () => {
       const local = readOverrides()
-      const remote = await readOverridesFromDatabase()
+      const res = await fetch('/api/ui-texts', { cache: 'no-store' })
+      const remote = res.ok ? ((await res.json()) as { overrides?: Overrides }).overrides ?? {} : {}
       if (!alive) return
+
       const merged = Object.keys(remote).length ? remote : local
+      const visual = normalizeVisualState(
+        typeof merged[VISUAL_EDITOR_KEY] === 'string' ? JSON.parse(merged[VISUAL_EDITOR_KEY]) : null
+      )
+      setVisualState(visual)
       setOverrides(merged)
-      setThemeConfig(buildUiThemeConfigFromOverrides(merged))
       writeOverrides(merged)
       setDbCount(Object.keys(remote).length)
-      setTimeout(() => applyOverrides(merged), 0)
-    })().catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
+      setTimeout(() => {
+        if (applyingOverridesRef.current) return
+        applyingOverridesRef.current = true
+        try {
+          applyOverrides(merged, visual, pathname)
+        } finally {
+          applyingOverridesRef.current = false
+        }
+      }, 0)
+    })().catch((error: unknown) => setDbStatus(`Erreur base : ${error instanceof Error ? error.message : 'inconnue'}`))
 
     return () => {
       alive = false
     }
-  }, [])
+  }, [pathname])
 
-  useEffect(() => {
-    applyOverrides(overrides)
-    const observer = new MutationObserver(() => applyOverrides(overrides))
+  useLayoutEffect(() => {
+    const runApply = () => {
+      if (applyingOverridesRef.current) return
+      applyingOverridesRef.current = true
+      try {
+        applyOverrides(overrides, visualState, pathname)
+      } finally {
+        applyingOverridesRef.current = false
+      }
+    }
+
+    runApply()
+
+    const observer = new MutationObserver(() => {
+      if (applyingOverridesRef.current) return
+      if (observerQueuedRef.current) return
+      observerQueuedRef.current = true
+      observerRafRef.current = window.requestAnimationFrame(() => {
+        observerQueuedRef.current = false
+        runApply()
+      })
+    })
+
     observer.observe(document.body, { childList: true, subtree: true })
-    return () => observer.disconnect()
-  }, [overrides])
+
+    return () => {
+      observer.disconnect()
+      if (observerRafRef.current !== null) {
+        window.cancelAnimationFrame(observerRafRef.current)
+        observerRafRef.current = null
+      }
+      observerQueuedRef.current = false
+    }
+  }, [overrides, visualState, pathname])
 
   useEffect(() => {
     if (!modMode || !adminCreds) return
 
     const clickHandler = (event: MouseEvent) => {
-      const bubbleTarget = (event.target instanceof HTMLElement ? event.target.closest('[data-bubble-key]') : null) as HTMLElement | null
-      if (bubbleTarget) {
-        const bubbleKey = bubbleTarget.dataset.bubbleKey || ''
-        if (bubbleKey) {
-          event.preventDefault()
-          event.stopPropagation()
-          setEditingBubbleKey(bubbleKey)
-          setEditingBubbleDraft(themeConfig.bubbles[bubbleKey] || {})
-          return
-        }
-      }
-
-      const editable = getEditableText(event.target)
+      const editable = getEditableTarget(event.target)
       if (!editable) return
       event.preventDefault()
       event.stopPropagation()
-      const current = editable.value
-      const originalEntry = Object.entries(overrides).find(([, replacement]) => replacement === current)
-      const source = originalEntry?.[0] || current
-      setEditingSourceText(source)
-      setEditingDraft(current)
+
+      const current = editable.text
+      const domPath = getDomPath(editable.element)
+      const stableSource = editable.sourceText || current
+      const existing = visualState.entries.find((entry) => entry.page === pathname && entry.domPath === domPath && entry.sourceText === stableSource)
+      const entry: VisualEntry = existing ?? {
+        id: makeId('entry'),
+        page: pathname,
+        domPath,
+        sourceText: stableSource,
+        text: current,
+        style: deriveStyleFromElement(editable.element),
+      }
+
+      setEditingEntry(entry)
+      setEditingDraft(entry.text)
+    }
+
+    const pointerMove = (event: PointerEvent) => {
+      if (!draggingExtraId || !dragStartRef.current) return
+      const deltaX = event.clientX - dragStartRef.current.x
+      const deltaY = event.clientY - dragStartRef.current.y
+      setVisualState((curr) => ({
+        ...curr,
+        extra: curr.extra.map((entry) => (
+          entry.id === draggingExtraId
+            ? {
+                ...entry,
+                style: normalizeStyle({
+                  ...entry.style,
+                  x: dragStartRef.current!.initialX + deltaX,
+                  y: dragStartRef.current!.initialY + deltaY,
+                }),
+              }
+            : entry
+        )),
+      }))
+    }
+
+    const pointerUp = () => {
+      setDraggingExtraId(null)
+      dragStartRef.current = null
     }
 
     document.addEventListener('click', clickHandler, true)
-    return () => document.removeEventListener('click', clickHandler, true)
-  }, [modMode, overrides, adminCreds, themeConfig])
+    window.addEventListener('pointermove', pointerMove)
+    window.addEventListener('pointerup', pointerUp)
 
-  function saveBubbleEdit() {
-    if (!editingBubbleKey) return
-    setThemeConfig((curr) => ({
-      ...curr,
-      bubbles: {
-        ...curr.bubbles,
-        [editingBubbleKey]: {
-          ...(curr.bubbles[editingBubbleKey] || {}),
-          ...editingBubbleDraft,
-        },
-      },
-    }))
-    setEditingBubbleKey(null)
-    setEditingBubbleDraft({})
-  }
-
-  useEffect(() => {
-    if (!themeInitializedRef.current) {
-      themeInitializedRef.current = true
-      return
+    return () => {
+      document.removeEventListener('click', clickHandler, true)
+      window.removeEventListener('pointermove', pointerMove)
+      window.removeEventListener('pointerup', pointerUp)
     }
-    const serialized = JSON.stringify(themeConfig)
-    setOverrides((curr) => {
-      const nextOverrides = { ...curr, [UI_THEME_CONFIG_KEY]: serialized }
-      writeOverrides(nextOverrides)
-      return nextOverrides
-    })
-
-    if (!adminCreds || !isAdmin) return
-
-    const timer = window.setTimeout(() => {
-      void upsertOverrideOnline(UI_THEME_CONFIG_KEY, serialized, adminCreds)
-        .then((count) => {
-          setDbStatus('Sauvegarde bulles en ligne active')
-          setDbCount(count)
-        })
-        .catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
-    }, 500)
-
-    return () => window.clearTimeout(timer)
-  }, [themeConfig, adminCreds, isAdmin])
-
-  function updateBubble(key: string, field: keyof UiBubbleConfig, value: string | number) {
-    const normalizedValue = (field === 'minWidthPx' || field === 'minHeightPx')
-      ? Math.max(0, Number(value) || 0)
-      : value
-    setThemeConfig((curr) => ({
-      ...curr,
-      bubbles: {
-        ...curr.bubbles,
-        [key]: {
-          ...(curr.bubbles[key] || {}),
-          [field]: normalizedValue,
-        },
-      },
-    }))
-  }
-
-  function removeBubble(key: string) {
-    setThemeConfig((curr) => {
-      const next = { ...curr.bubbles }
-      delete next[key]
-      return { ...curr, bubbles: next }
-    })
-  }
-
-  function addBubble() {
-    const key = `dashboard.card.custom-${Date.now()}`
-    updateBubble(key, 'label', 'Nouvelle bulle')
-  }
-
-  function updateCustomBubble(id: string, field: keyof UiCustomDashboardBubble, value: string) {
-    setThemeConfig((curr) => ({
-      ...curr,
-      customDashboardBubbles: curr.customDashboardBubbles.map((entry) => (entry.id === id ? { ...entry, [field]: value } : entry)),
-    }))
-  }
-
-  function saveEdit() {
-    if (!editingSourceText || !adminCreds) return
-    const nextValue = editingDraft
-    const nextOverrides = { ...overrides, [editingSourceText]: nextValue }
-    setOverrides(nextOverrides)
-    writeOverrides(nextOverrides)
-    setEditingSourceText(null)
-    setEditingDraft('')
-
-    void upsertOverrideOnline(editingSourceText, nextValue, adminCreds)
-      .then((count) => {
-        setDbStatus('Sauvegarde en ligne active')
-        setDbCount(count)
-      })
-      .catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
-  }
+  }, [modMode, adminCreds, visualState.entries, draggingExtraId, pathname])
 
   const overrideCount = useMemo(() => {
-    const textCount = Object.keys(overrides).filter((key) => key !== UI_THEME_CONFIG_KEY).length
+    const textCount = Object.keys(overrides).filter((key) => key !== VISUAL_EDITOR_KEY).length
     return dbCount || textCount
   }, [dbCount, overrides])
+
+  const pageExtra = useMemo(() => visualState.extra.filter((entry) => entry.page === pathname), [visualState.extra, pathname])
+
+  const persistVisualState = async (nextState: VisualState) => {
+    if (!adminCreds) return
+    const serialized = JSON.stringify(nextState)
+    const nextOverrides = { ...overrides, [VISUAL_EDITOR_KEY]: serialized }
+    setOverrides(nextOverrides)
+    writeOverrides(nextOverrides)
+    try {
+      const count = await upsertOverrideOnline(VISUAL_EDITOR_KEY, serialized, adminCreds)
+      setDbStatus('Sauvegarde en ligne active')
+      setDbCount(count)
+    } catch (error: unknown) {
+      setDbStatus(`Erreur base : ${error instanceof Error ? error.message : 'inconnue'}`)
+    }
+  }
+
+  const saveEntry = async () => {
+    if (!editingEntry || !adminCreds) return
+    const normalizedEntry: VisualEntry = {
+      ...editingEntry,
+      text: editingDraft,
+      style: normalizeStyle(editingEntry.style),
+    }
+
+    const nextState: VisualState = {
+      ...visualState,
+      entries: [
+        ...visualState.entries.filter((entry) => !(entry.id === normalizedEntry.id || (entry.page === normalizedEntry.page && entry.domPath === normalizedEntry.domPath))),
+        normalizedEntry,
+      ],
+    }
+
+    setVisualState(nextState)
+    setEditingEntry(null)
+    setEditingDraft('')
+    await persistVisualState(nextState)
+  }
+
+  const removeEntry = async () => {
+    if (!editingEntry || !adminCreds) return
+    const nextState: VisualState = {
+      ...visualState,
+      entries: visualState.entries.filter((entry) => entry.id !== editingEntry.id),
+    }
+    setVisualState(nextState)
+    setEditingEntry(null)
+    setEditingDraft('')
+    await persistVisualState(nextState)
+  }
+
+  const addExtraText = async () => {
+    if (!adminCreds) return
+    const nextEntry: ExtraEntry = {
+      id: makeId('extra'),
+      page: pathname,
+      text: 'Nouveau texte',
+      style: normalizeStyle({ ...defaultStyle, x: 20, y: 20, padding: 4 }),
+    }
+    const nextState: VisualState = { ...visualState, extra: [...visualState.extra, nextEntry] }
+    setVisualState(nextState)
+    await persistVisualState(nextState)
+  }
+
+  const saveExtra = async (entry: ExtraEntry) => {
+    if (!adminCreds) return
+    const nextState: VisualState = {
+      ...visualState,
+      extra: visualState.extra.map((it) => (it.id === entry.id ? entry : it)),
+    }
+    setVisualState(nextState)
+    await persistVisualState(nextState)
+  }
+
+  const removeExtra = async (id: string) => {
+    if (!adminCreds) return
+    const nextState: VisualState = {
+      ...visualState,
+      extra: visualState.extra.filter((it) => it.id !== id),
+    }
+    setVisualState(nextState)
+    await persistVisualState(nextState)
+  }
 
   const handleLogin = async () => {
     const creds = { username: username.trim(), password: password.trim() }
@@ -349,14 +594,14 @@ export function SiteTextModWidget() {
     if (!adminCreds) return
     const cleared = {}
     setOverrides(cleared)
-    setThemeConfig(defaultUiThemeConfig)
+    setVisualState({ entries: [], extra: [] })
     writeOverrides(cleared)
     void resetOverridesOnline(adminCreds)
       .then(() => {
         setDbStatus('Sauvegarde en ligne active')
         setDbCount(0)
       })
-      .catch((e: unknown) => setDbStatus(`Erreur base : ${e instanceof Error ? e.message : 'inconnue'}`))
+      .catch((error: unknown) => setDbStatus(`Erreur base : ${error instanceof Error ? error.message : 'inconnue'}`))
       .finally(() => {
         setConfirmResetOpen(false)
         window.location.reload()
@@ -365,6 +610,57 @@ export function SiteTextModWidget() {
 
   return (
     <>
+      {pageExtra.map((entry) => (
+        <div
+          key={entry.id}
+          data-mod-widget="true"
+          onPointerDown={(event) => {
+            if (!modMode || !isAdmin) return
+            setDraggingExtraId(entry.id)
+            dragStartRef.current = {
+              x: event.clientX,
+              y: event.clientY,
+              initialX: entry.style.x,
+              initialY: entry.style.y,
+            }
+          }}
+          className={`fixed z-[95] ${modMode && isAdmin ? 'cursor-move' : ''}`}
+          style={{
+            left: 0,
+            top: 0,
+            transform: `translate(${entry.style.x}px, ${entry.style.y}px)`,
+            fontSize: `${entry.style.fontSize}px`,
+            color: entry.style.color,
+            textAlign: entry.style.align,
+            marginTop: `${entry.style.marginTop}px`,
+            padding: `${entry.style.padding}px`,
+            maxWidth: '90vw',
+          }}
+        >
+          <div className="rounded-md border border-white/15 bg-black/35 px-2 py-1">
+            <div
+              contentEditable={modMode && isAdmin}
+              suppressContentEditableWarning
+              onBlur={(event) => {
+                void saveExtra({ ...entry, text: event.currentTarget.textContent || '' })
+              }}
+            >
+              {entry.text}
+            </div>
+            {modMode && isAdmin ? (
+              <button
+                type="button"
+                onClick={() => { void removeExtra(entry.id) }}
+                className="mt-1 inline-flex items-center gap-1 rounded border border-rose-300/40 bg-rose-500/20 px-1.5 py-0.5 text-[10px]"
+              >
+                <Trash2 className="h-3 w-3" />
+                Suppr.
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ))}
+
       <button
         data-mod-widget="true"
         type="button"
@@ -400,134 +696,42 @@ export function SiteTextModWidget() {
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="font-semibold">Mode modification avancé</p>
+              <p className="font-semibold">Mode édition visuelle</p>
               <p className="text-white/70">Textes sauvegardés : {overrideCount}</p>
               <p className="text-[11px] text-cyan-200">{dbStatus}</p>
-              <button type="button" onClick={() => setModMode((value) => !value)} className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1">{modMode ? 'Désactiver la modification de textes' : 'Activer la modification de textes'}</button>
-              <button type="button" onClick={() => setThemeEditorOpen(true)} className="w-full rounded-md border border-indigo-400/40 bg-indigo-600/20 px-2 py-1 font-semibold">Ouvrir le studio Bulles & Icônes</button>
-              <button type="button" onClick={() => setConfirmResetOpen(true)} className="w-full rounded-md border border-amber-400/40 bg-amber-600/20 px-2 py-1">Réinitialiser les overrides</button>
-              <button type="button" onClick={() => { setIsAdmin(false); setModMode(false); setAdminCreds(null) }} className="w-full rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Déconnexion</button>
-              <p className="text-[11px] text-white/60">Astuce: en mode texte actif, clique sur un texte pour le modifier.</p>
+              <button type="button" onClick={() => setModMode((value) => !value)} className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1">{modMode ? 'Désactiver le mode édition' : 'Activer le mode édition'}</button>
+              <button type="button" onClick={() => { void addExtraText() }} className="w-full rounded-md border border-cyan-300/40 bg-cyan-500/20 px-2 py-1 inline-flex items-center justify-center gap-1"><Plus className="h-3.5 w-3.5" />Ajouter un texte</button>
+              <button type="button" onClick={() => setConfirmResetOpen(true)} className="w-full rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Réinitialiser tous les overrides</button>
+              <button type="button" onClick={() => { setIsAdmin(false); setAdminCreds(null); setModMode(false); setOpen(false) }} className="w-full rounded-md border border-white/20 bg-black/40 px-2 py-1">Se déconnecter</button>
+              <p className="text-[10px] text-white/60">Astuce : mode édition actif → clique un texte pour éditer contenu/style et glisse les textes ajoutés.</p>
             </div>
           )}
         </div>
       ) : null}
 
-      {themeEditorOpen ? (
-        <div data-mod-widget="true" className="fixed inset-0 z-[140] bg-black/75 p-4" onClick={() => setThemeEditorOpen(false)}>
-          <div className="mx-auto h-full w-full max-w-6xl overflow-auto rounded-2xl border border-white/20 bg-slate-950/95 p-4 text-xs text-white" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <p className="text-lg font-semibold">Studio Bulles & Icônes (admin)</p>
-                <p className="text-white/60">Palette globale, icônes, ajout de bulles dashboard. Sauvegarde en direct.</p>
-              </div>
-              <button type="button" onClick={() => setThemeEditorOpen(false)} className="rounded-md border border-white/20 bg-white/10 px-3 py-1">Fermer</button>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <section className="rounded-xl border border-white/15 bg-white/[0.03] p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="font-semibold">Bulles existantes</p>
-                  <button type="button" onClick={addBubble} className="rounded-md border border-emerald-400/40 bg-emerald-600/20 px-2 py-1">+ Ajouter clé bulle</button>
-                </div>
-                <div className="space-y-2">
-                  {Object.keys(themeConfig.bubbles).sort().map((key) => {
-                    const entry = themeConfig.bubbles[key]
-                    return (
-                      <div key={key} className="rounded-lg border border-white/10 bg-black/20 p-2">
-                        <input value={key} readOnly className="w-full rounded border border-white/15 bg-black/40 px-2 py-1 text-[11px]" />
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                          <input value={entry.label || ''} onChange={(e) => updateBubble(key, 'label', e.target.value)} placeholder="Label" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-                          <select value={entry.icon || ''} onChange={(e) => updateBubble(key, 'icon', e.target.value)} className="rounded border border-white/15 bg-black/40 px-2 py-1">
-                            <option value="">Icône par défaut</option>
-                            {ICON_OPTIONS.map((icon) => <option key={icon} value={icon}>{icon}</option>)}
-                          </select>
-                        </div>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                          <label className="text-[11px]">Fond<input type="color" value={entry.bgColor || '#1f2937'} onChange={(e) => updateBubble(key, 'bgColor', e.target.value)} className="mt-1 h-8 w-full rounded" /></label>
-                          <label className="text-[11px]">Bordure<input type="color" value={entry.borderColor || '#374151'} onChange={(e) => updateBubble(key, 'borderColor', e.target.value)} className="mt-1 h-8 w-full rounded" /></label>
-                          <label className="text-[11px]">Texte<input type="color" value={entry.textColor || '#ffffff'} onChange={(e) => updateBubble(key, 'textColor', e.target.value)} className="mt-1 h-8 w-full rounded" /></label>
-                        </div>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                          <input type="number" min={0} value={entry.minWidthPx ?? ''} onChange={(e) => updateBubble(key, 'minWidthPx', Math.max(0, Number(e.target.value) || 0))} placeholder="Largeur min (px)" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-                          <input type="number" min={0} value={entry.minHeightPx ?? ''} onChange={(e) => updateBubble(key, 'minHeightPx', Math.max(0, Number(e.target.value) || 0))} placeholder="Hauteur min (px)" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-                        </div>
-                        <button type="button" onClick={() => removeBubble(key)} className="mt-2 rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Supprimer cette clé</button>
-                      </div>
-                    )
-                  })}
-                </div>
-              </section>
-
-              <section className="rounded-xl border border-white/15 bg-white/[0.03] p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="font-semibold">Nouvelles bulles dashboard</p>
-                  <button type="button" onClick={() => setThemeConfig((curr) => ({ ...curr, customDashboardBubbles: [...curr.customDashboardBubbles, createCustomBubble()] }))} className="rounded-md border border-cyan-400/40 bg-cyan-600/20 px-2 py-1">+ Ajouter bulle</button>
-                </div>
-                <div className="space-y-2">
-                  {themeConfig.customDashboardBubbles.map((entry) => (
-                    <div key={entry.id} className="rounded-lg border border-white/10 bg-black/20 p-2">
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <input value={entry.title} onChange={(e) => updateCustomBubble(entry.id, 'title', e.target.value)} placeholder="Titre" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-                        <input value={entry.href} onChange={(e) => updateCustomBubble(entry.id, 'href', e.target.value)} placeholder="Lien" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-                        <input value={entry.value || ''} onChange={(e) => updateCustomBubble(entry.id, 'value', e.target.value)} placeholder="Valeur affichée" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-                        <select value={entry.icon || ''} onChange={(e) => updateCustomBubble(entry.id, 'icon', e.target.value)} className="rounded border border-white/15 bg-black/40 px-2 py-1">
-                          {ICON_OPTIONS.map((icon) => <option key={icon} value={icon}>{icon}</option>)}
-                        </select>
-                      </div>
-                      <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                        <label className="text-[11px]">Fond<input type="color" value={entry.bgColor || '#1f2937'} onChange={(e) => updateCustomBubble(entry.id, 'bgColor', e.target.value)} className="mt-1 h-8 w-full rounded" /></label>
-                        <label className="text-[11px]">Bordure<input type="color" value={entry.borderColor || '#374151'} onChange={(e) => updateCustomBubble(entry.id, 'borderColor', e.target.value)} className="mt-1 h-8 w-full rounded" /></label>
-                        <label className="text-[11px]">Texte<input type="color" value={entry.textColor || '#ffffff'} onChange={(e) => updateCustomBubble(entry.id, 'textColor', e.target.value)} className="mt-1 h-8 w-full rounded" /></label>
-                      </div>
-                      <button type="button" onClick={() => setThemeConfig((curr) => ({ ...curr, customDashboardBubbles: curr.customDashboardBubbles.filter((it) => it.id !== entry.id) }))} className="mt-2 rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Supprimer</button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {editingSourceText ? (
-        <div data-mod-widget="true" className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4" onClick={() => { setEditingSourceText(null); setEditingDraft('') }}>
+      {editingEntry ? (
+        <div data-mod-widget="true" className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4" onClick={() => { setEditingEntry(null); setEditingDraft('') }}>
           <div className="w-full max-w-xl rounded-xl border border-white/20 bg-slate-950/95 p-3 text-xs text-white" onClick={(event) => event.stopPropagation()}>
             <p className="mb-2 font-semibold">Modifier ce texte</p>
-            <p className="mb-2 rounded-md border border-white/10 bg-white/5 p-2 text-[11px] text-white/70">Original: {editingSourceText}</p>
+            <p className="mb-2 rounded-md border border-white/10 bg-white/5 p-2 text-[11px] text-white/70">Original: {editingEntry.sourceText}</p>
             <textarea value={editingDraft} onChange={(event) => setEditingDraft(event.target.value)} className="min-h-[120px] w-full rounded-md border border-white/20 bg-black/50 px-2 py-1.5 text-sm" />
-            <div className="mt-3 flex justify-end gap-2">
-              <button type="button" onClick={() => { setEditingSourceText(null); setEditingDraft('') }} className="rounded-md border border-white/20 bg-white/10 px-3 py-1">Annuler</button>
-              <button type="button" onClick={saveEdit} disabled={!editingDraft.trim()} className="rounded-md border border-emerald-400/40 bg-emerald-600/20 px-3 py-1 disabled:opacity-50">Enregistrer</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
-      {editingBubbleKey ? (
-        <div data-mod-widget="true" className="fixed inset-0 z-[125] grid place-items-center bg-black/70 p-4" onClick={() => { setEditingBubbleKey(null); setEditingBubbleDraft({}) }}>
-          <div className="w-full max-w-xl rounded-xl border border-white/20 bg-slate-950/95 p-3 text-xs text-white" onClick={(event) => event.stopPropagation()}>
-            <p className="mb-2 font-semibold">Modifier la bulle</p>
-            <p className="mb-2 rounded-md border border-white/10 bg-white/5 p-2 text-[11px] text-white/70">Clé: {editingBubbleKey}</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <input value={editingBubbleDraft.label || ''} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, label: e.target.value }))} placeholder="Label" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-              <select value={editingBubbleDraft.icon || ''} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, icon: e.target.value || undefined }))} className="rounded border border-white/15 bg-black/40 px-2 py-1">
-                <option value="">Icône par défaut</option>
-                {ICON_OPTIONS.map((icon) => <option key={icon} value={icon}>{icon}</option>)}
-              </select>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="space-y-1"><span>Taille</span><input type="number" min={10} max={72} value={editingEntry.style.fontSize} onChange={(event) => setEditingEntry((curr) => curr ? ({ ...curr, style: normalizeStyle({ ...curr.style, fontSize: Number(event.target.value) }) }) : curr)} className="w-full rounded border border-white/15 bg-black/40 px-2 py-1" /></label>
+              <label className="space-y-1"><span>Couleur</span><input type="color" value={editingEntry.style.color} onChange={(event) => setEditingEntry((curr) => curr ? ({ ...curr, style: normalizeStyle({ ...curr.style, color: event.target.value }) }) : curr)} className="h-8 w-full rounded" /></label>
+              <label className="space-y-1"><span>Alignement</span><select value={editingEntry.style.align} onChange={(event) => setEditingEntry((curr) => curr ? ({ ...curr, style: normalizeStyle({ ...curr.style, align: event.target.value as EditableAlign }) }) : curr)} className="w-full rounded border border-white/15 bg-black/40 px-2 py-1"><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></label>
+              <label className="space-y-1"><span>Margin top</span><input type="number" min={-200} max={200} value={editingEntry.style.marginTop} onChange={(event) => setEditingEntry((curr) => curr ? ({ ...curr, style: normalizeStyle({ ...curr.style, marginTop: Number(event.target.value) }) }) : curr)} className="w-full rounded border border-white/15 bg-black/40 px-2 py-1" /></label>
+              <label className="space-y-1"><span>Padding</span><input type="number" min={0} max={120} value={editingEntry.style.padding} onChange={(event) => setEditingEntry((curr) => curr ? ({ ...curr, style: normalizeStyle({ ...curr.style, padding: Number(event.target.value) }) }) : curr)} className="w-full rounded border border-white/15 bg-black/40 px-2 py-1" /></label>
+              <label className="space-y-1"><span>Position X</span><input type="number" min={-1200} max={1200} value={editingEntry.style.x} onChange={(event) => setEditingEntry((curr) => curr ? ({ ...curr, style: normalizeStyle({ ...curr.style, x: Number(event.target.value) }) }) : curr)} className="w-full rounded border border-white/15 bg-black/40 px-2 py-1" /></label>
+              <label className="space-y-1"><span>Position Y</span><input type="number" min={-1200} max={1200} value={editingEntry.style.y} onChange={(event) => setEditingEntry((curr) => curr ? ({ ...curr, style: normalizeStyle({ ...curr.style, y: Number(event.target.value) }) }) : curr)} className="w-full rounded border border-white/15 bg-black/40 px-2 py-1" /></label>
             </div>
-            <div className="mt-2 grid gap-2 sm:grid-cols-3">
-              <label className="text-[11px]">Fond<input type="color" value={editingBubbleDraft.bgColor || '#1f2937'} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, bgColor: e.target.value }))} className="mt-1 h-8 w-full rounded" /></label>
-              <label className="text-[11px]">Bordure<input type="color" value={editingBubbleDraft.borderColor || '#374151'} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, borderColor: e.target.value }))} className="mt-1 h-8 w-full rounded" /></label>
-              <label className="text-[11px]">Texte<input type="color" value={editingBubbleDraft.textColor || '#ffffff'} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, textColor: e.target.value }))} className="mt-1 h-8 w-full rounded" /></label>
-            </div>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <input type="number" min={0} value={editingBubbleDraft.minWidthPx ?? ''} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, minWidthPx: Math.max(0, Number(e.target.value) || 0) }))} placeholder="Largeur min (px)" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-              <input type="number" min={0} value={editingBubbleDraft.minHeightPx ?? ''} onChange={(e) => setEditingBubbleDraft((curr) => ({ ...curr, minHeightPx: Math.max(0, Number(e.target.value) || 0) }))} placeholder="Hauteur min (px)" className="rounded border border-white/15 bg-black/40 px-2 py-1" />
-            </div>
-            <div className="mt-3 flex justify-end gap-2">
-              <button type="button" onClick={() => { setEditingBubbleKey(null); setEditingBubbleDraft({}) }} className="rounded-md border border-white/20 bg-white/10 px-3 py-1">Annuler</button>
-              <button type="button" onClick={saveBubbleEdit} className="rounded-md border border-emerald-400/40 bg-emerald-600/20 px-3 py-1">Enregistrer</button>
+
+            <div className="mt-3 flex justify-between gap-2">
+              <button type="button" onClick={() => { void removeEntry() }} className="rounded-md border border-rose-400/40 bg-rose-600/20 px-3 py-1 inline-flex items-center gap-1"><Trash2 className="h-3.5 w-3.5" />Supprimer</button>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setEditingEntry(null); setEditingDraft('') }} className="rounded-md border border-white/20 bg-white/10 px-3 py-1">Annuler</button>
+                <button type="button" onClick={() => { void saveEntry() }} disabled={!editingDraft.trim()} className="rounded-md border border-emerald-400/40 bg-emerald-600/20 px-3 py-1 disabled:opacity-50">Enregistrer</button>
+              </div>
             </div>
           </div>
         </div>
@@ -536,7 +740,7 @@ export function SiteTextModWidget() {
       <ConfirmDialog
         open={confirmResetOpen}
         title="Réinitialiser les overrides ?"
-        description="Cette action efface tous les overrides personnalisés (textes + bulles) en base."
+        description="Cette action efface tous les overrides personnalisés de textes en base."
         confirmLabel="Réinitialiser"
         onCancel={() => setConfirmResetOpen(false)}
         onConfirm={applyClearOverrides}

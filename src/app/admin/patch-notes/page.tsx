@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getTenantSession } from '@/lib/tenantSession'
 import { createPatchNote, deletePatchNote, listPatchNotesAdmin, updatePatchNote, type PatchNote } from '@/lib/communicationApi'
+import { PageHeader } from '@/components/PageHeader'
 import { PatchNoteModal } from '@/components/ui/PatchNoteModal'
 
 function formatDate(value: string) {
@@ -198,7 +199,7 @@ export default function AdminPatchNotesPage() {
     <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-3xl font-semibold">Patch notes</h1>
+          <PageHeader title="Patch notes" />
           <button onClick={() => setCreating(true)} className="h-10 rounded-2xl border border-white/15 bg-white/[0.09] px-4 text-sm font-semibold hover:bg-white/[0.14]">Créer</button>
         </div>
 
