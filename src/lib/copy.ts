@@ -132,7 +132,6 @@ const PAGE_LABELS: Array<{ prefix: string; label: string }> = [
 
 type PageContext = {
   label: string
-  subLabel?: string
 }
 
 const PAGE_SUBLABELS: Array<{ prefix: string; subLabel: string }> = [
@@ -148,8 +147,7 @@ export function resolvePageContext(pathname: string): PageContext {
   const subMatch = PAGE_SUBLABELS.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
 
   return {
-    label: match?.label || 'Page',
-    subLabel: subMatch?.subLabel,
+    label: subMatch?.subLabel || match?.label || 'Page',
   }
 }
 
