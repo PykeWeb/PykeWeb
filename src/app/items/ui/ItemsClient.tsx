@@ -14,11 +14,14 @@ import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
 import { getCategoryLabel, getTypeFilterOptions, getTypeLabel, matchesTypeFilter, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
+import { markStockOutNote } from '@/lib/financeStockFlow'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = UnifiedTypeFilterValue
 type ItemsView = 'catalog' | 'tools'
+
+const TYPE_FILTER_VALUES: TypeFilter[] = ['all', 'objects', 'equipment', 'weapon', 'ammo', 'weapon_accessory', 'seed', 'pouch', 'drug_material', 'product', 'other']
 
 type PlantationRecipe = {
   key: string
@@ -136,6 +139,12 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
     return getTypeFilterOptions(category)
   }, [category])
 
+  const availableTypeValues = useMemo(() => typeOptions.map((option) => option.value), [typeOptions])
+
+  useEffect(() => {
+    if (!availableTypeValues.includes(type)) setType('all')
+  }, [availableTypeValues, type])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items.filter((it) => {
@@ -150,10 +159,14 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   useEffect(() => {
     const viewParam = searchParams.get('view')
     const categoryParam = searchParams.get('category')
-    if (viewParam === 'tools') setView('tools')
-    if (viewParam === 'catalog') setView('catalog')
-    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(categoryParam)) setCategory(categoryParam as CategoryFilter)
-  }, [searchParams])
+    const typeParam = searchParams.get('type')
+    const queryParam = searchParams.get('q')
+
+    setView(viewParam === 'tools' ? 'tools' : viewParam === 'catalog' ? 'catalog' : defaultView)
+    setCategory(categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(categoryParam) ? categoryParam as CategoryFilter : 'all')
+    setType(typeParam && TYPE_FILTER_VALUES.includes(typeParam as TypeFilter) ? typeParam as TypeFilter : 'all')
+    setQuery(queryParam || '')
+  }, [defaultView, searchParams])
 
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
@@ -211,6 +224,15 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   const selectedCalculatorRuns = selectedCalculatorRecipe ? (plantationRuns[selectedCalculatorRecipe.key] || '1') : '1'
   const selectedCalculatorOutput = selectedCalculatorRecipe ? (plantationOutputPerRun[selectedCalculatorRecipe.key] || String(selectedCalculatorRecipe.default_output_per_run)) : '1'
 
+  const selectedOutputItem = useMemo(() => {
+    if (!selectedCalculatorRecipe) return null
+    const exact = findItemByName(selectedCalculatorRecipe.output_name)
+    if (exact) return exact
+
+    const normalizedOutput = normalizeItemName(selectedCalculatorRecipe.output_name)
+    return items.find((item) => normalizeItemName(item.name).includes(normalizedOutput) || normalizedOutput.includes(normalizeItemName(item.name))) || null
+  }, [findItemByName, items, selectedCalculatorRecipe])
+
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
     const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
     const outputPerRun = Math.max(0, Math.floor(Number(plantationOutputPerRun[recipe.key] || recipe.default_output_per_run) || recipe.default_output_per_run))
@@ -220,20 +242,13 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       return
     }
 
-    const required = recipe.requirements.map((req) => ({ ...req, total: req.qty * runs, item: findItemByName(req.name) }))
-    const missingRequired = required.filter((req) => !req.item).map((req) => req.name)
-    if (missingRequired.length > 0) {
-      toast.error(`Items manquants dans le catalogue: ${missingRequired.join(', ')}`)
-      return
-    }
-
-    const stockMissing = required
-      .filter((req) => (req.item?.stock || 0) < req.total)
-      .map((req) => `${req.name} (stock ${req.item?.stock || 0}, besoin ${req.total})`)
-    if (stockMissing.length > 0) {
-      toast.error(`Stock insuffisant: ${stockMissing.join(' · ')}`)
-      return
-    }
+    const required = recipe.requirements.map((req) => {
+      const item = findItemForLabel(req.name)
+      const total = req.qty * runs
+      const available = Math.max(0, Number(item?.stock || 0))
+      const removable = Math.min(total, available)
+      return { ...req, item, total, available, removable }
+    })
 
     const outputItem = findItemByName(recipe.output_name)
     if (!outputItem) {
@@ -241,17 +256,23 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       return
     }
 
+    const missingCatalog = required.filter((req) => !req.item).map((req) => req.name)
+    const partialStock = required
+      .filter((req) => req.item && req.removable < req.total)
+      .map((req) => `${req.name} (${req.removable}/${req.total})`)
+
     setRealizingRecipeKey(recipe.key)
     try {
       for (const req of required) {
+        if (!req.item || req.removable <= 0) continue
         await createFinanceTransaction({
-          item_id: req.item!.id,
+          item_id: req.item.id,
           mode: 'sell',
-          quantity: req.total,
+          quantity: req.removable,
           unit_price: 0,
           counterparty: 'Plantation',
-          notes: `${recipe.title} x${runs}`,
-          payment_mode: 'stock_out',
+          notes: markStockOutNote(`${recipe.title} x${runs}`),
+          payment_mode: 'other',
         })
       }
 
@@ -266,13 +287,16 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       })
 
       await refresh()
+      if (missingCatalog.length > 0 || partialStock.length > 0) {
+        toast.warning('Certains éléments nécessaires étaient manquants dans le stock, mais la plantation a été enregistrée.')
+      }
       toast.success(`Plantation réalisée: +${outputPerRun * runs} ${recipe.output_name}`)
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Impossible de réaliser la plantation.')
     } finally {
       setRealizingRecipeKey(null)
     }
-  }, [findItemByName, plantationOutputPerRun, plantationRuns, refresh])
+  }, [findItemByName, findItemForLabel, plantationOutputPerRun, plantationRuns, refresh])
 
 
   const adjustPlantationField = useCallback((
@@ -370,24 +394,24 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
             })}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[280px]" />
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {typeOptions.map((opt) => (
-              <TabPill key={opt.value} active={type === opt.value} onClick={() => setType(opt.value as TypeFilter)}>
-                {opt.label}
-              </TabPill>
-            ))}
-            <div className="ml-auto">
-              <Link href="/items/nouveau">
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="h-10 min-w-[240px] flex-1" />
+              <Link href="/items/nouveau" className="ml-auto shrink-0">
                 <PrimaryButton>{copy.common.createItem}</PrimaryButton>
               </Link>
             </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {typeOptions.map((opt) => (
+                <TabPill key={opt.value} active={type === opt.value} onClick={() => setType(opt.value as TypeFilter)}>
+                  {opt.label}
+                </TabPill>
+              ))}
+            </div>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
+          <div className="mt-2 overflow-hidden rounded-2xl border border-white/10">
             {filtered.length === 0 ? <div className="p-6 text-center text-sm text-white/60">Aucun item trouvé pour ces filtres.</div> : null}
             <table className="w-full text-sm">
               <thead className="bg-white/[0.03] text-white/70">
@@ -429,8 +453,8 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       ) : (
         <div className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <h3 className="mb-3 text-sm font-semibold">Calculateur drogue (Items)</h3>
-            <div className="grid gap-3 md:grid-cols-3">
+            <p className="text-sm font-semibold">Calculateur drogue (Items)</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs text-white/60">Mode</label>
                 <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
@@ -497,45 +521,65 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
               })}
             </div>
             {selectedCalculatorRecipe ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <label className="text-xs text-white/65">
-                  Nb plantations
-                  <div className="mt-1 flex items-center gap-1">
-                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', -1, 0)}>-</SecondaryButton>
-                    <Input
-                      value={selectedCalculatorRuns}
-                      onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
-                      inputMode="numeric"
-                      className="h-9 rounded-lg px-2 text-sm"
-                    />
-                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', 1, 0)}>+</SecondaryButton>
+              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <div className="h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                    {selectedOutputItem?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={selectedOutputItem.image_url} alt={selectedOutputItem.name} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-white/40">
+                        <ImageIcon className="h-4 w-4" />
+                      </div>
+                    )}
                   </div>
-                </label>
-                <label className="text-xs text-white/65">
-                  Production reçue / plantation
-                  <div className="mt-1 flex items-center gap-1">
-                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', -1, selectedCalculatorRecipe.default_output_per_run)}>-</SecondaryButton>
-                    <Input
-                      value={selectedCalculatorOutput}
-                      onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
-                      inputMode="numeric"
-                      className="h-9 rounded-lg px-2 text-sm"
-                    />
-                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', 1, selectedCalculatorRecipe.default_output_per_run)}>+</SecondaryButton>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-white/60">Item produit</p>
+                    <p className="truncate text-sm font-semibold text-white">{selectedOutputItem?.name || selectedCalculatorRecipe.output_name}</p>
                   </div>
-                </label>
+                </div>
+
+                <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" aria-hidden="true" />
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <label className="text-xs text-white/65">
+                    Graines
+                    <div className="mt-1 flex items-center gap-1">
+                      <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', -1, 0)}>-</SecondaryButton>
+                      <Input
+                        value={selectedCalculatorRuns}
+                        onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
+                        inputMode="numeric"
+                        className="h-9 rounded-lg px-2 text-sm"
+                      />
+                      <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', 1, 0)}>+</SecondaryButton>
+                    </div>
+                  </label>
+                  <label className="text-xs text-white/65">
+                    Production
+                    <div className="mt-1 flex items-center gap-1">
+                      <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', -1, selectedCalculatorRecipe.default_output_per_run)}>-</SecondaryButton>
+                      <Input
+                        value={selectedCalculatorOutput}
+                        onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
+                        inputMode="numeric"
+                        className="h-9 rounded-lg px-2 text-sm"
+                      />
+                      <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', 1, selectedCalculatorRecipe.default_output_per_run)}>+</SecondaryButton>
+                    </div>
+                  </label>
+                </div>
+
+                <PrimaryButton
+                  className="mt-3 w-full"
+                  disabled={realizingRecipeKey === selectedCalculatorRecipe.key}
+                  onClick={() => { void realizePlantation(selectedCalculatorRecipe) }}
+                >
+                  {realizingRecipeKey === selectedCalculatorRecipe.key ? 'Validation...' : 'Plantation réalisée'}
+                </PrimaryButton>
               </div>
             ) : null}
             {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
-            {selectedCalculatorRecipe ? (
-              <PrimaryButton
-                className="mt-3 w-full"
-                disabled={realizingRecipeKey === selectedCalculatorRecipe.key}
-                onClick={() => { void realizePlantation(selectedCalculatorRecipe) }}
-              >
-                {realizingRecipeKey === selectedCalculatorRecipe.key ? 'Validation...' : 'Plantation réalisée'}
-              </PrimaryButton>
-            ) : null}
           </div>
 
         </div>
@@ -552,7 +596,13 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
               <div className="mt-4 grid gap-2">
                 <SecondaryButton
                   onClick={() => {
-                    router.push(`/items/modifier/${encodeURIComponent(itemActionEntry.id)}`)
+                    const params = new URLSearchParams()
+                    if (view !== 'catalog') params.set('view', view)
+                    if (category !== 'all') params.set('category', category)
+                    if (type !== 'all') params.set('type', type)
+                    if (query.trim()) params.set('q', query.trim())
+                    const suffix = params.toString()
+                    router.push(`/items/modifier/${encodeURIComponent(itemActionEntry.id)}${suffix ? `?${suffix}` : ''}`)
                     setItemActionEntry(null)
                   }}
                 >

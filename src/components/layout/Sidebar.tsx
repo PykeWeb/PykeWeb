@@ -2,10 +2,11 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill } from 'lucide-react'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
+import { resolvePageContext } from '@/lib/copy'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
@@ -35,9 +36,9 @@ const NavItem = ({ href, label, icon, active }: { href: string; label: string; i
 
 export function Sidebar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
-  const [groupBadge, setGroupBadge] = useState('GROUPE')
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
   const [isChef, setIsChef] = useState(false)
@@ -46,13 +47,13 @@ export function Sidebar() {
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
+  const pageContext = useMemo(() => resolvePageContext(pathname, searchParams.get('mode')), [pathname, searchParams])
 
   useEffect(() => {
     const session = getTenantSession()
     const nextGroupName = session?.groupName || 'Groupe'
     const nextGroupBadge = session?.groupBadge || 'GROUPE'
     setGroupName(nextGroupName)
-    setGroupBadge(nextGroupBadge)
     setIsAdmin(isAdminTenantSession(session))
     setIsMember(isMemberTenantSession(session))
     setIsChef(session?.role === 'chef')
@@ -94,10 +95,10 @@ export function Sidebar() {
     const dateLabel = new Date(accessInfo.paid_until).toLocaleDateString('fr-FR')
 
     if (daysLeft <= 10) {
-      return { label: `Valide jusqu’au ${dateLabel}`, className: 'border-rose-300/35 bg-rose-500/20 text-rose-100' }
+      return { label: dateLabel, className: 'border-amber-300/35 bg-amber-500/22 text-amber-100' }
     }
 
-    return { label: `Valide jusqu’au ${dateLabel}`, className: 'border-emerald-300/35 bg-emerald-500/20 text-emerald-100' }
+    return { label: dateLabel, className: 'border-amber-300/35 bg-amber-500/22 text-amber-100' }
   }, [accessInfo])
 
   const defaultUserLinks: NavLink[] = [
@@ -138,43 +139,85 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-glow">
-        <div className="flex items-center gap-4">
-          <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-            <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-          </div>
-          <div>
-            <p className="text-2xl font-semibold leading-tight">{labels.site_name || BRAND.name}</p>
-            <p className="text-base text-white/70">{labels.site_tagline || BRAND.tagline}</p>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-white/60">Groupe</p>
-            <button
-              type="button"
-              onClick={() => {
-                clearTenantSession()
-                void clearTenantSessionOnServer().finally(() => {
-                  window.location.href = '/login'
-                })
-              }}
-              className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/90 transition hover:bg-white/10"
-            >
-              Déconnexion
-            </button>
-          </div>
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-xl font-semibold tracking-tight">{groupName}</p>
-            <div className="flex items-center gap-2">
-              {roleLabel ? <span className="inline-flex shrink-0 rounded-full border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1 text-xs font-semibold text-cyan-100">{roleLabel}</span> : null}
-              <div className="inline-flex shrink-0 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white/90 backdrop-blur-sm">{groupBadge}</div>
+      <div className="rounded-[2rem] border border-[#5b6fc7]/28 bg-gradient-to-br from-[#11173a]/95 via-[#101633]/95 to-[#0b1027]/96 p-5 shadow-[0_16px_42px_rgba(4,8,28,0.58)] backdrop-blur-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/18 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.14)]">
+              <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[1.85rem] font-semibold leading-[0.98] tracking-tight text-white">{labels.site_name || BRAND.name}</p>
+              <p className="mt-1 inline-flex items-center gap-1.5 text-[0.9rem] text-white/68">
+                <Sparkles className="h-3.5 w-3.5 text-cyan-200/75" />
+                {labels.nav_dashboard || 'Dashboard'}
+              </p>
             </div>
           </div>
-          <div className="mt-4 border-t border-white/10 pt-3">
-            <p className="text-sm text-white/55">Accès</p>
-            <p className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${accessStatus.className}`}>{accessStatus.label}</p>
+          <button
+            type="button"
+            aria-label="Déconnexion"
+            title="Déconnexion"
+            onClick={() => {
+              clearTenantSession()
+              void clearTenantSessionOnServer().finally(() => {
+                window.location.href = '/login'
+              })
+            }}
+            className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/18 bg-white/[0.09] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-white/30 hover:bg-white/[0.14]"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-gradient-to-br from-white/[0.075] via-white/[0.04] to-white/[0.02] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_24px_rgba(4,8,28,0.34)]">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+              <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
+                <Shield className="h-3.5 w-3.5" />
+                Groupe
+              </p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">{groupName}</span></p>
+            </div>
+
+            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+              <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
+                <PanelsTopLeft className="h-3.5 w-3.5" />
+                Type
+              </p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">PF</span></p>
+            </div>
+
+            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+              <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
+                <Users className="h-3.5 w-3.5" />
+                Users
+              </p>
+              <p className="mt-2 text-sm text-white/72">-</p>
+            </div>
+
+            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+              <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
+                <BadgeCheck className="h-3.5 w-3.5" />
+                Rôle
+              </p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]"><span className="max-w-[10rem] truncate">{roleLabel || 'Admin'}</span></p>
+            </div>
+
+            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+              <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
+                <KeyRound className="h-3.5 w-3.5" />
+                Licence
+              </p>
+              <p className={`mt-2 inline-flex h-8 max-w-full items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}><span className="max-w-[10rem] truncate">{accessStatus.label}</span></p>
+            </div>
+
+            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+              <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
+                <PanelsTopLeft className="h-3.5 w-3.5" />
+                Page
+              </p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.18)]"><span className="max-w-[10rem] truncate">{pageContext.label}</span></p>
+            </div>
           </div>
         </div>
       </div>

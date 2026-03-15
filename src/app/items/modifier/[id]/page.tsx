@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { ItemForm } from '@/components/ui/ItemForm'
 import { listCatalogItemsUnified, updateCatalogItem } from '@/lib/itemsApi'
@@ -10,6 +10,7 @@ import type { CatalogItem } from '@/lib/types/itemsFinance'
 export default function EditItemPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [items, setItems] = useState<CatalogItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,6 +34,17 @@ export default function EditItemPage() {
     }
   }, [params.id])
 
+
+  const backToItemsPath = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    const allowed = new Set(['view', 'category', 'type', 'q'])
+    Array.from(params.keys()).forEach((key) => {
+      if (!allowed.has(key)) params.delete(key)
+    })
+    const query = params.toString()
+    return query ? `/items?${query}` : '/items'
+  }, [searchParams])
+
   const item = useMemo(() => {
     if (!items) return null
     return items.find((entry) => entry.id === decodedId) ?? null
@@ -55,12 +67,12 @@ export default function EditItemPage() {
         initialItem={item}
         submitLabel="Enregistrer les modifications"
         panelClassName="border-slate-700 bg-slate-900 shadow-[0_20px_45px_rgba(0,0,0,0.45)]"
-        onCancel={() => router.push('/items')}
+        onCancel={() => router.push(backToItemsPath)}
         onSave={async (payload) => {
           try {
             await updateCatalogItem({ ...payload, id: item.id })
             toast.success('Item modifié.')
-            router.push('/items')
+            router.push(backToItemsPath)
             router.refresh()
           } catch (saveError: unknown) {
             toast.error(saveError instanceof Error ? saveError.message : "Impossible de modifier l'item.")

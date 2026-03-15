@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
+import { markStockOutNote } from '@/lib/financeStockFlow'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
@@ -42,8 +43,8 @@ export default function FinanceSortiesPage() {
             quantity: payload.quantity,
             unit_price: 0,
             counterparty: payload.counterparty,
-            notes: reason,
-            payment_mode: 'stock_out',
+            notes: markStockOutNote(reason),
+            payment_mode: 'other',
           })
           toast.success(copy.finance.stockFlow.stockOutSaved)
           router.push('/finance')

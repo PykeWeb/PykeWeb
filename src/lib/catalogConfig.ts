@@ -68,11 +68,9 @@ export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: U
 
 export function matchesTypeFilter(item: CatalogItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
   if (selectedType === 'all') return true
-  if (selectedCategory === 'all') {
-    if (selectedType === 'objects') return item.category === 'objects'
-    if (selectedType === 'equipment') return item.category === 'equipment'
-    if (selectedType === 'other') return item.category === 'custom'
-  }
+  if (selectedType === 'objects') return item.category === 'objects'
+  if (selectedType === 'equipment') return item.category === 'equipment'
+  if (selectedType === 'other' && selectedCategory === 'all') return item.category === 'custom'
   return normalizeItemType(item.item_type, item.category) === selectedType
 }
 
@@ -87,6 +85,23 @@ const legacyToCanonicalCategory: Record<string, ItemCategory> = {
   weapons: 'weapons',
   drugs: 'drugs',
   custom: 'custom',
+  objet: 'objects',
+  objets: 'objects',
+  arme: 'weapons',
+  armes: 'weapons',
+  equipement: 'equipment',
+  drogue: 'drugs',
+  drogues: 'drugs',
+  autre: 'custom',
+  autres: 'custom',
+}
+
+function normalizeCategoryKey(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 }
 
 const legacyTypeMap: Record<string, ItemType> = {
@@ -107,7 +122,7 @@ const legacyTypeMap: Record<string, ItemType> = {
 
 export function normalizeCatalogCategory(raw: string | null): ItemCategory | null {
   if (!raw) return null
-  return legacyToCanonicalCategory[raw.toLowerCase()] ?? null
+  return legacyToCanonicalCategory[normalizeCategoryKey(raw)] ?? null
 }
 
 export function normalizeItemType(raw: string | null, category: ItemCategory): ItemType {
@@ -116,9 +131,11 @@ export function normalizeItemType(raw: string | null, category: ItemCategory): I
   const categoryMapped =
     category === 'drugs' && normalized === 'accessory'
       ? 'drug_material'
-      : category === 'equipment' && normalized === 'accessory'
-        ? 'equipment'
-        : normalized
+      : category === 'drugs' && normalized === 'equipment'
+        ? 'product'
+        : category === 'equipment' && normalized === 'accessory'
+          ? 'equipment'
+          : normalized
   const allowed = new Set(categoryTypeOptions[category].map((opt) => opt.value))
   if (allowed.has(categoryMapped)) return categoryMapped
   if (allowed.has('other')) return 'other'
@@ -129,12 +146,14 @@ export function getCategoryLabel(category: ItemCategory): string {
   return itemCategoryOptions.find((option) => option.value === category)?.label ?? 'Autres'
 }
 
-export function getTypeLabel(type: ItemType, category?: ItemCategory): string {
-  if (category) {
-    const scoped = categoryTypeOptions[category].find((option) => option.value === type)
+export function getTypeLabel(type: ItemType, category?: ItemCategory | string | null): string {
+  const normalizedCategory = normalizeCatalogCategory(typeof category === 'string' ? category : (category || null))
+  if (normalizedCategory === 'drugs') return 'Production'
+  if (normalizedCategory) {
+    const scoped = categoryTypeOptions[normalizedCategory].find((option) => option.value === type)
     if (scoped) return scoped.label
-    const normalized = normalizeItemType(type, category)
-    const normalizedScoped = categoryTypeOptions[category].find((option) => option.value === normalized)
+    const normalized = normalizeItemType(type, normalizedCategory)
+    const normalizedScoped = categoryTypeOptions[normalizedCategory].find((option) => option.value === normalized)
     if (normalizedScoped) return normalizedScoped.label
   }
   const globalLabels: Record<ItemType, string> = {
