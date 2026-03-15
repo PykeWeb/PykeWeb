@@ -370,24 +370,24 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
             })}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="w-[280px]" />
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {typeOptions.map((opt) => (
-              <TabPill key={opt.value} active={type === opt.value} onClick={() => setType(opt.value as TypeFilter)}>
-                {opt.label}
-              </TabPill>
-            ))}
-            <div className="ml-auto">
-              <Link href="/items/nouveau">
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" className="h-10 min-w-[240px] flex-1" />
+              <Link href="/items/nouveau" className="ml-auto shrink-0">
                 <PrimaryButton>{copy.common.createItem}</PrimaryButton>
               </Link>
             </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {typeOptions.map((opt) => (
+                <TabPill key={opt.value} active={type === opt.value} onClick={() => setType(opt.value as TypeFilter)}>
+                  {opt.label}
+                </TabPill>
+              ))}
+            </div>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
+          <div className="mt-2 overflow-hidden rounded-2xl border border-white/10">
             {filtered.length === 0 ? <div className="p-6 text-center text-sm text-white/60">Aucun item trouvé pour ces filtres.</div> : null}
             <table className="w-full text-sm">
               <thead className="bg-white/[0.03] text-white/70">

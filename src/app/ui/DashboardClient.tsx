@@ -441,7 +441,7 @@ export function DashboardClient() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_332px]">
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           {!uiLayoutsReady ? Array.from({ length: 4 }).map((_, idx) => (
