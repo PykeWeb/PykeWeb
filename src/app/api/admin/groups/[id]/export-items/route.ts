@@ -165,7 +165,16 @@ async function listGroupItems(groupId: string): Promise<ExportableGroupItem[]> {
   }
 
   for (const row of drugRows) {
-    const itemType = row.type === 'pouch' ? 'pouch' : row.type === 'seed' || row.type === 'planting' ? 'seed' : 'drug'
+    const rawType = String(row.type || '').toLowerCase().trim()
+    const itemType = rawType === 'pouch'
+      ? 'pouch'
+      : rawType === 'seed'
+        ? 'seed'
+        : rawType === 'planting'
+          ? 'drug_material'
+          : rawType === 'drug' || rawType === 'product' || rawType === 'production' || rawType === 'output' || rawType === 'equipment'
+            ? 'product'
+            : 'drug_material'
     const key = normalizeKey('drugs', row.name)
     if (seen.has(key)) continue
     items.push({

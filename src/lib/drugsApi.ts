@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
+import type { ItemType } from '@/lib/types/itemsFinance'
 
 export type DrugKind = 'drug' | 'seed' | 'planting' | 'pouch' | 'other'
 
@@ -15,6 +16,23 @@ export type DbDrugItem = {
 }
 
 const BUCKET = 'drug-images'
+
+function normalizeDrugKind(raw: string | null | undefined): DrugKind {
+  const value = (raw || '').toLowerCase().trim()
+  if (value === 'seed') return 'seed'
+  if (value === 'pouch') return 'pouch'
+  if (value === 'planting' || value === 'drug_material' || value === 'material' || value === 'recipe' || value === 'input') return 'planting'
+  if (value === 'drug' || value === 'product' || value === 'production' || value === 'output' || value === 'equipment') return 'drug'
+  return 'other'
+}
+
+function drugKindToCatalogItemType(kind: DrugKind): ItemType {
+  if (kind === 'seed') return 'seed'
+  if (kind === 'pouch') return 'pouch'
+  if (kind === 'planting') return 'drug_material'
+  if (kind === 'drug') return 'product'
+  return 'other'
+}
 
 function getExt(file: File) {
   const byName = file.name.split('.').pop()?.toLowerCase()
@@ -36,7 +54,16 @@ export async function listDrugItems(): Promise<DbDrugItem[]> {
   const hiddenNames = new Set(((hiddenRes.data ?? []) as { name: string }[]).map((h) => (h.name || '').toLowerCase()))
   const names = new Set(locals.map((w) => (w.name || '').toLowerCase()))
   const visibleLocals = locals.filter((w) => !hiddenNames.has((w.name || '').toLowerCase()))
-  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({ id: `global:${g.global_item_id ?? g.id}`, type: (g.item_type || 'other') as DrugKind, name: g.name, price: Number(g.price ?? 0), description: g.description, image_url: g.image_url, stock: 0, created_at: g.created_at })) as DbDrugItem[]
+  const globals = (Array.isArray(globalRes) ? globalRes : []).map((g: any) => ({
+    id: `global:${g.global_item_id ?? g.id}`,
+    type: normalizeDrugKind(g.item_type),
+    name: g.name,
+    price: Number(g.price ?? 0),
+    description: g.description,
+    image_url: g.image_url,
+    stock: 0,
+    created_at: g.created_at,
+  })) as DbDrugItem[]
   return [...visibleLocals, ...globals.filter((g) => !names.has((g.name || '').toLowerCase()) && !hiddenNames.has((g.name || '').toLowerCase()))]
 }
 
@@ -137,7 +164,7 @@ async function ensureLocalDrugItem(itemId: string) {
     .from('drug_items')
     .insert({
       group_id: currentGroupId(),
-      type: (globalItem.item_type || 'other') as DrugKind,
+      type: normalizeDrugKind(globalItem.item_type),
       name: globalItem.name,
       price: Number(globalItem.price ?? 0),
       description: globalItem.description ?? null,
@@ -192,7 +219,14 @@ export async function updateDrugItem(args: {
   if (args.id.startsWith('global:')) {
     const res = await fetch('/api/catalog/overrides', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ global_item_id: args.id.replace('global:', ''), override_name: args.name, override_price: args.price, override_item_type: args.type, override_quantity: quantity, is_hidden: false }),
+      body: JSON.stringify({
+        global_item_id: args.id.replace('global:', ''),
+        override_name: args.name,
+        override_price: args.price,
+        override_item_type: drugKindToCatalogItemType(args.type),
+        override_quantity: quantity,
+        is_hidden: false,
+      }),
     })
     if (!res.ok) throw new Error(await res.text())
     return

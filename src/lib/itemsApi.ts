@@ -195,9 +195,11 @@ type LegacyDrugRow = {
 }
 
 function normalizeLegacyDrugType(raw: string | null): ItemType {
-  if (raw === 'seed' || raw === 'planting') return 'seed'
-  if (raw === 'pouch') return 'pouch'
-  if (raw === 'drug') return 'product'
+  const value = (raw || '').toLowerCase().trim()
+  if (value === 'seed') return 'seed'
+  if (value === 'pouch') return 'pouch'
+  if (value === 'drug' || value === 'product' || value === 'production' || value === 'output' || value === 'equipment') return 'product'
+  if (value === 'planting' || value === 'recipe' || value === 'material' || value === 'drug_material') return 'drug_material'
   return 'drug_material'
 }
 

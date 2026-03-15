@@ -105,9 +105,11 @@ function normalizeCategoryKey(raw: string): string {
 }
 
 const legacyTypeMap: Record<string, ItemType> = {
+  drug: 'product',
   input: 'other',
   output: 'product',
   production: 'product',
+  planting: 'drug_material',
   consumable: 'consumable',
   weapon: 'weapon',
   equipment: 'equipment',
@@ -151,15 +153,16 @@ export function getTypeLabel(type: ItemType, category?: ItemCategory | string | 
   const normalizedCategory = normalizeCatalogCategory(rawCategory)
   const normalizedCategoryKey = rawCategory ? normalizeCategoryKey(rawCategory) : null
 
-  if (normalizedCategory === 'drugs' || (normalizedCategory == null && normalizedCategoryKey?.includes('drog'))) {
-    return 'Production'
-  }
   if (normalizedCategory) {
-    const scoped = categoryTypeOptions[normalizedCategory].find((option) => option.value === type)
+    const normalizedType = normalizeItemType(type, normalizedCategory)
+    const scoped = categoryTypeOptions[normalizedCategory].find((option) => option.value === normalizedType)
     if (scoped) return scoped.label
-    const normalized = normalizeItemType(type, normalizedCategory)
-    const normalizedScoped = categoryTypeOptions[normalizedCategory].find((option) => option.value === normalized)
-    if (normalizedScoped) return normalizedScoped.label
+  }
+
+  if (normalizedCategory == null && normalizedCategoryKey?.includes('drog')) {
+    const normalizedDrugType = normalizeItemType(type, 'drugs')
+    const scopedDrug = categoryTypeOptions.drugs.find((option) => option.value === normalizedDrugType)
+    if (scopedDrug) return scopedDrug.label
   }
   const globalLabels: Record<ItemType, string> = {
     accessory: 'Matériels',
