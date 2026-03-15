@@ -90,11 +90,18 @@ const legacyToCanonicalCategory: Record<string, ItemCategory> = {
   arme: 'weapons',
   armes: 'weapons',
   equipement: 'equipment',
-  équipement: 'equipment',
   drogue: 'drugs',
   drogues: 'drugs',
   autre: 'custom',
   autres: 'custom',
+}
+
+function normalizeCategoryKey(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 }
 
 const legacyTypeMap: Record<string, ItemType> = {
@@ -115,7 +122,7 @@ const legacyTypeMap: Record<string, ItemType> = {
 
 export function normalizeCatalogCategory(raw: string | null): ItemCategory | null {
   if (!raw) return null
-  return legacyToCanonicalCategory[raw.toLowerCase()] ?? null
+  return legacyToCanonicalCategory[normalizeCategoryKey(raw)] ?? null
 }
 
 export function normalizeItemType(raw: string | null, category: ItemCategory): ItemType {
