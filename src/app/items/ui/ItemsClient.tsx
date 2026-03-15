@@ -162,11 +162,11 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
     const typeParam = searchParams.get('type')
     const queryParam = searchParams.get('q')
 
-    setView(viewParam === 'tools' ? 'tools' : 'catalog')
+    setView(viewParam === 'tools' ? 'tools' : viewParam === 'catalog' ? 'catalog' : defaultView)
     setCategory(categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(categoryParam) ? categoryParam as CategoryFilter : 'all')
     setType(typeParam && TYPE_FILTER_VALUES.includes(typeParam as TypeFilter) ? typeParam as TypeFilter : 'all')
     setQuery(queryParam || '')
-  }, [searchParams])
+  }, [defaultView, searchParams])
 
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
   const drugCalculator = useMemo(() => buildDrugCalculatorResult(calcMode, Math.max(1, Math.floor(calcQuantity || 1)), drugItems), [calcMode, calcQuantity, drugItems])
