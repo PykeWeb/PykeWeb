@@ -442,7 +442,8 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       ) : (
         <div className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="grid gap-3 md:grid-cols-3">
+            <p className="text-sm font-semibold">Calculateur drogue (Items)</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs text-white/60">Mode</label>
                 <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
