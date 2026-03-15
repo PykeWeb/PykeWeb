@@ -224,6 +224,15 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   const selectedCalculatorRuns = selectedCalculatorRecipe ? (plantationRuns[selectedCalculatorRecipe.key] || '1') : '1'
   const selectedCalculatorOutput = selectedCalculatorRecipe ? (plantationOutputPerRun[selectedCalculatorRecipe.key] || String(selectedCalculatorRecipe.default_output_per_run)) : '1'
 
+  const selectedOutputItem = useMemo(() => {
+    if (!selectedCalculatorRecipe) return null
+    const exact = findItemByName(selectedCalculatorRecipe.output_name)
+    if (exact) return exact
+
+    const normalizedOutput = normalizeItemName(selectedCalculatorRecipe.output_name)
+    return items.find((item) => normalizeItemName(item.name).includes(normalizedOutput) || normalizedOutput.includes(normalizeItemName(item.name))) || null
+  }, [findItemByName, items, selectedCalculatorRecipe])
+
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
     const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
     const outputPerRun = Math.max(0, Math.floor(Number(plantationOutputPerRun[recipe.key] || recipe.default_output_per_run) || recipe.default_output_per_run))
@@ -233,20 +242,13 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       return
     }
 
-    const required = recipe.requirements.map((req) => ({ ...req, total: req.qty * runs, item: findItemByName(req.name) }))
-    const missingRequired = required.filter((req) => !req.item).map((req) => req.name)
-    if (missingRequired.length > 0) {
-      toast.error(`Items manquants dans le catalogue: ${missingRequired.join(', ')}`)
-      return
-    }
-
-    const stockMissing = required
-      .filter((req) => (req.item?.stock || 0) < req.total)
-      .map((req) => `${req.name} (stock ${req.item?.stock || 0}, besoin ${req.total})`)
-    if (stockMissing.length > 0) {
-      toast.error(`Stock insuffisant: ${stockMissing.join(' · ')}`)
-      return
-    }
+    const required = recipe.requirements.map((req) => {
+      const item = findItemForLabel(req.name)
+      const total = req.qty * runs
+      const available = Math.max(0, Number(item?.stock || 0))
+      const removable = Math.min(total, available)
+      return { ...req, item, total, available, removable }
+    })
 
     const outputItem = findItemByName(recipe.output_name)
     if (!outputItem) {
@@ -254,13 +256,19 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       return
     }
 
+    const missingCatalog = required.filter((req) => !req.item).map((req) => req.name)
+    const partialStock = required
+      .filter((req) => req.item && req.removable < req.total)
+      .map((req) => `${req.name} (${req.removable}/${req.total})`)
+
     setRealizingRecipeKey(recipe.key)
     try {
       for (const req of required) {
+        if (!req.item || req.removable <= 0) continue
         await createFinanceTransaction({
-          item_id: req.item!.id,
+          item_id: req.item.id,
           mode: 'sell',
-          quantity: req.total,
+          quantity: req.removable,
           unit_price: 0,
           counterparty: 'Plantation',
           notes: markStockOutNote(`${recipe.title} x${runs}`),
@@ -279,13 +287,16 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       })
 
       await refresh()
+      if (missingCatalog.length > 0 || partialStock.length > 0) {
+        toast.warning('Certains éléments nécessaires étaient manquants dans le stock, mais la plantation a été enregistrée.')
+      }
       toast.success(`Plantation réalisée: +${outputPerRun * runs} ${recipe.output_name}`)
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Impossible de réaliser la plantation.')
     } finally {
       setRealizingRecipeKey(null)
     }
-  }, [findItemByName, plantationOutputPerRun, plantationRuns, refresh])
+  }, [findItemByName, findItemForLabel, plantationOutputPerRun, plantationRuns, refresh])
 
 
   const adjustPlantationField = useCallback((
@@ -510,9 +521,27 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
               })}
             </div>
             {selectedCalculatorRecipe ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <label className="text-xs text-white/65">
-                  Nb plantations
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <div className="h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                    {selectedOutputItem?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={selectedOutputItem.image_url} alt={selectedOutputItem.name} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-white/40">
+                        <ImageIcon className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-white/60">Item produit</p>
+                    <p className="truncate text-sm font-semibold text-white">{selectedOutputItem?.name || selectedCalculatorRecipe.output_name}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="text-xs text-white/65">
+                    Nb plantations
                   <div className="mt-1 flex items-center gap-1">
                     <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', -1, 0)}>-</SecondaryButton>
                     <Input
@@ -536,7 +565,8 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                     />
                     <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', 1, selectedCalculatorRecipe.default_output_per_run)}>+</SecondaryButton>
                   </div>
-                </label>
+                  </label>
+                </div>
               </div>
             ) : null}
             {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
