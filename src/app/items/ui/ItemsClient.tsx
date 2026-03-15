@@ -542,8 +542,8 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                 <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" aria-hidden="true" />
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <label className="min-w-0 text-xs text-white/65">
-                    Graines
+                  <div className="min-w-0 text-xs text-white/65">
+                    <p>Graines</p>
                     <div className="mt-1 flex w-full items-center gap-1">
                       <SecondaryButton type="button" className="h-9 shrink-0 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', -1, 0)}>-</SecondaryButton>
                       <Input
@@ -554,9 +554,9 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                       />
                       <SecondaryButton type="button" className="h-9 shrink-0 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', 1, 0)}>+</SecondaryButton>
                     </div>
-                  </label>
-                  <label className="min-w-0 text-xs text-white/65">
-                    Production
+                  </div>
+                  <div className="min-w-0 text-xs text-white/65">
+                    <p>Production</p>
                     <div className="mt-1 flex w-full items-center gap-1">
                       <SecondaryButton type="button" className="h-9 shrink-0 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', -1, selectedCalculatorRecipe.default_output_per_run)}>-</SecondaryButton>
                       <Input
@@ -567,7 +567,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                       />
                       <SecondaryButton type="button" className="h-9 shrink-0 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', 1, selectedCalculatorRecipe.default_output_per_run)}>+</SecondaryButton>
                     </div>
-                  </label>
+                  </div>
                 </div>
 
                 <PrimaryButton
