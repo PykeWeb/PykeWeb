@@ -223,6 +223,10 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   const selectedCalculatorRecipe = useMemo(() => plantationRecipes.find((recipe) => recipe.key === (calcMode === 'coke' ? 'coke-leaf' : 'meth')) || null, [calcMode])
   const selectedCalculatorRuns = selectedCalculatorRecipe ? (plantationRuns[selectedCalculatorRecipe.key] || '1') : '1'
   const selectedCalculatorOutput = selectedCalculatorRecipe ? (plantationOutputPerRun[selectedCalculatorRecipe.key] || String(selectedCalculatorRecipe.default_output_per_run)) : '1'
+  const selectedProductionFieldLabel = useMemo(() => {
+    if (!selectedCalculatorRecipe) return 'Production'
+    return selectedCalculatorRecipe.key === 'coke-leaf' ? 'Production (feuilles)' : 'Production (sortie)'
+  }, [selectedCalculatorRecipe])
 
   const selectedOutputItem = useMemo(() => {
     if (!selectedCalculatorRecipe) return null
@@ -556,7 +560,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                     </div>
                   </div>
                   <div className="min-w-0 text-xs text-white/65">
-                    <p>Production</p>
+                    <p>{selectedProductionFieldLabel}</p>
                     <div className="mt-1 flex w-full items-center gap-1">
                       <SecondaryButton type="button" className="h-9 shrink-0 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', -1, selectedCalculatorRecipe.default_output_per_run)}>-</SecondaryButton>
                       <Input
