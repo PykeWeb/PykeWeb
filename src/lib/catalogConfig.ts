@@ -85,6 +85,16 @@ const legacyToCanonicalCategory: Record<string, ItemCategory> = {
   weapons: 'weapons',
   drugs: 'drugs',
   custom: 'custom',
+  objet: 'objects',
+  objets: 'objects',
+  arme: 'weapons',
+  armes: 'weapons',
+  equipement: 'equipment',
+  équipement: 'equipment',
+  drogue: 'drugs',
+  drogues: 'drugs',
+  autre: 'custom',
+  autres: 'custom',
 }
 
 const legacyTypeMap: Record<string, ItemType> = {
@@ -129,13 +139,14 @@ export function getCategoryLabel(category: ItemCategory): string {
   return itemCategoryOptions.find((option) => option.value === category)?.label ?? 'Autres'
 }
 
-export function getTypeLabel(type: ItemType, category?: ItemCategory): string {
-  if (category === 'drugs') return 'Production'
-  if (category) {
-    const scoped = categoryTypeOptions[category].find((option) => option.value === type)
+export function getTypeLabel(type: ItemType, category?: ItemCategory | string | null): string {
+  const normalizedCategory = normalizeCatalogCategory(typeof category === 'string' ? category : (category || null))
+  if (normalizedCategory === 'drugs') return 'Production'
+  if (normalizedCategory) {
+    const scoped = categoryTypeOptions[normalizedCategory].find((option) => option.value === type)
     if (scoped) return scoped.label
-    const normalized = normalizeItemType(type, category)
-    const normalizedScoped = categoryTypeOptions[category].find((option) => option.value === normalized)
+    const normalized = normalizeItemType(type, normalizedCategory)
+    const normalizedScoped = categoryTypeOptions[normalizedCategory].find((option) => option.value === normalized)
     if (normalizedScoped) return normalizedScoped.label
   }
   const globalLabels: Record<ItemType, string> = {
