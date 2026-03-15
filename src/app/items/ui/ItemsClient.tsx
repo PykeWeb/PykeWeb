@@ -40,7 +40,7 @@ const plantationRecipes: PlantationRecipe[] = [
   {
     key: 'coke-leaf',
     title: 'Plantation coke (1 pot)',
-    subtitle: "1 pot + 1 graine + 1 fertilisant + 3 bouteilles d'eau = 1 feuille",
+    subtitle: "1 pot + 1 graine + 1 fertilisant + 3 bouteilles d'eau = 10 feuilles",
     requirements: [
       { name: 'Pot', qty: 1 },
       { name: 'Graine de coke', qty: 1 },
@@ -48,7 +48,7 @@ const plantationRecipes: PlantationRecipe[] = [
       { name: "Bouteille d'eau", qty: 3 },
     ],
     output_name: 'Feuille de Cocaïne',
-    default_output_per_run: 1,
+    default_output_per_run: 10,
   },
   {
     key: 'meth',
