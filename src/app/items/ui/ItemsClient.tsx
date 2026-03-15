@@ -521,7 +521,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
               })}
             </div>
             {selectedCalculatorRecipe ? (
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                 <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <div className="h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
                     {selectedOutputItem?.image_url ? (
@@ -539,46 +539,45 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                   </div>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <label className="text-xs text-white/65">
-                    Nb plantations
-                  <div className="mt-1 flex items-center gap-1">
-                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', -1, 0)}>-</SecondaryButton>
-                    <Input
-                      value={selectedCalculatorRuns}
-                      onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
-                      inputMode="numeric"
-                      className="h-9 rounded-lg px-2 text-sm"
-                    />
-                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', 1, 0)}>+</SecondaryButton>
-                  </div>
-                </label>
-                <label className="text-xs text-white/65">
-                  Production reçue / plantation
-                  <div className="mt-1 flex items-center gap-1">
-                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', -1, selectedCalculatorRecipe.default_output_per_run)}>-</SecondaryButton>
-                    <Input
-                      value={selectedCalculatorOutput}
-                      onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
-                      inputMode="numeric"
-                      className="h-9 rounded-lg px-2 text-sm"
-                    />
-                    <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', 1, selectedCalculatorRecipe.default_output_per_run)}>+</SecondaryButton>
-                  </div>
+                    Graines
+                    <div className="mt-1 flex items-center gap-1">
+                      <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', -1, 0)}>-</SecondaryButton>
+                      <Input
+                        value={selectedCalculatorRuns}
+                        onChange={(event) => setPlantationRuns((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
+                        inputMode="numeric"
+                        className="h-9 rounded-lg px-2 text-sm"
+                      />
+                      <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'runs', 1, 0)}>+</SecondaryButton>
+                    </div>
+                  </label>
+                  <label className="text-xs text-white/65">
+                    Production
+                    <div className="mt-1 flex items-center gap-1">
+                      <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', -1, selectedCalculatorRecipe.default_output_per_run)}>-</SecondaryButton>
+                      <Input
+                        value={selectedCalculatorOutput}
+                        onChange={(event) => setPlantationOutputPerRun((curr) => ({ ...curr, [selectedCalculatorRecipe.key]: event.target.value }))}
+                        inputMode="numeric"
+                        className="h-9 rounded-lg px-2 text-sm"
+                      />
+                      <SecondaryButton className="h-9 rounded-lg px-3" onClick={() => adjustPlantationField(selectedCalculatorRecipe.key, 'output', 1, selectedCalculatorRecipe.default_output_per_run)}>+</SecondaryButton>
+                    </div>
                   </label>
                 </div>
+
+                <PrimaryButton
+                  className="mt-3 w-full"
+                  disabled={realizingRecipeKey === selectedCalculatorRecipe.key}
+                  onClick={() => { void realizePlantation(selectedCalculatorRecipe) }}
+                >
+                  {realizingRecipeKey === selectedCalculatorRecipe.key ? 'Validation...' : 'Plantation réalisée'}
+                </PrimaryButton>
               </div>
             ) : null}
             {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
-            {selectedCalculatorRecipe ? (
-              <PrimaryButton
-                className="mt-3 w-full"
-                disabled={realizingRecipeKey === selectedCalculatorRecipe.key}
-                onClick={() => { void realizePlantation(selectedCalculatorRecipe) }}
-              >
-                {realizingRecipeKey === selectedCalculatorRecipe.key ? 'Validation...' : 'Plantation réalisée'}
-              </PrimaryButton>
-            ) : null}
           </div>
 
         </div>

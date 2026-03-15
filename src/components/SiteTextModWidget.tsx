@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { ClipboardList, Plus, Settings2, Trash2 } from 'lucide-react'
+import { ClipboardList, Settings2, Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
@@ -544,18 +544,6 @@ export function SiteTextModWidget() {
     await persistVisualState(nextState)
   }
 
-  const addExtraText = async () => {
-    if (!adminCreds) return
-    const nextEntry: ExtraEntry = {
-      id: makeId('extra'),
-      page: pathname,
-      text: 'Nouveau texte',
-      style: normalizeStyle({ ...defaultStyle, x: 20, y: 20, padding: 4 }),
-    }
-    const nextState: VisualState = { ...visualState, extra: [...visualState.extra, nextEntry] }
-    setVisualState(nextState)
-    await persistVisualState(nextState)
-  }
 
   const saveExtra = async (entry: ExtraEntry) => {
     if (!adminCreds) return
@@ -700,7 +688,6 @@ export function SiteTextModWidget() {
               <p className="text-white/70">Textes sauvegardés : {overrideCount}</p>
               <p className="text-[11px] text-cyan-200">{dbStatus}</p>
               <button type="button" onClick={() => setModMode((value) => !value)} className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1">{modMode ? 'Désactiver le mode édition' : 'Activer le mode édition'}</button>
-              <button type="button" onClick={() => { void addExtraText() }} className="w-full rounded-md border border-cyan-300/40 bg-cyan-500/20 px-2 py-1 inline-flex items-center justify-center gap-1"><Plus className="h-3.5 w-3.5" />Ajouter un texte</button>
               <button type="button" onClick={() => setConfirmResetOpen(true)} className="w-full rounded-md border border-rose-400/40 bg-rose-600/20 px-2 py-1">Réinitialiser tous les overrides</button>
               <button type="button" onClick={() => { setIsAdmin(false); setAdminCreds(null); setModMode(false); setOpen(false) }} className="w-full rounded-md border border-white/20 bg-black/40 px-2 py-1">Se déconnecter</button>
               <p className="text-[10px] text-white/60">Astuce : mode édition actif → clique un texte pour éditer contenu/style et glisse les textes ajoutés.</p>
