@@ -147,8 +147,13 @@ export function getCategoryLabel(category: ItemCategory): string {
 }
 
 export function getTypeLabel(type: ItemType, category?: ItemCategory | string | null): string {
-  const normalizedCategory = normalizeCatalogCategory(typeof category === 'string' ? category : (category || null))
-  if (normalizedCategory === 'drugs') return 'Production'
+  const rawCategory = typeof category === 'string' ? category : (category || null)
+  const normalizedCategory = normalizeCatalogCategory(rawCategory)
+  const normalizedCategoryKey = rawCategory ? normalizeCategoryKey(rawCategory) : null
+
+  if (normalizedCategory === 'drugs' || (normalizedCategory == null && normalizedCategoryKey?.includes('drog'))) {
+    return 'Production'
+  }
   if (normalizedCategory) {
     const scoped = categoryTypeOptions[normalizedCategory].find((option) => option.value === type)
     if (scoped) return scoped.label
