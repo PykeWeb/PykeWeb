@@ -128,6 +128,7 @@ export function getCategoryLabel(category: ItemCategory): string {
 }
 
 export function getTypeLabel(type: ItemType, category?: ItemCategory): string {
+  if (category === 'drugs') return 'Production'
   if (category) {
     const scoped = categoryTypeOptions[category].find((option) => option.value === type)
     if (scoped) return scoped.label
