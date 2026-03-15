@@ -21,6 +21,8 @@ type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = UnifiedTypeFilterValue
 type ItemsView = 'catalog' | 'tools'
 
+const TYPE_FILTER_VALUES: TypeFilter[] = ['all', 'objects', 'equipment', 'weapon', 'ammo', 'weapon_accessory', 'seed', 'pouch', 'drug_material', 'product', 'other']
+
 type PlantationRecipe = {
   key: string
   title: string
@@ -137,6 +139,12 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
     return getTypeFilterOptions(category)
   }, [category])
 
+  const availableTypeValues = useMemo(() => typeOptions.map((option) => option.value), [typeOptions])
+
+  useEffect(() => {
+    if (!availableTypeValues.includes(type)) setType('all')
+  }, [availableTypeValues, type])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items.filter((it) => {
@@ -151,9 +159,13 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   useEffect(() => {
     const viewParam = searchParams.get('view')
     const categoryParam = searchParams.get('category')
-    if (viewParam === 'tools') setView('tools')
-    if (viewParam === 'catalog') setView('catalog')
-    if (categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(categoryParam)) setCategory(categoryParam as CategoryFilter)
+    const typeParam = searchParams.get('type')
+    const queryParam = searchParams.get('q')
+
+    setView(viewParam === 'tools' ? 'tools' : 'catalog')
+    setCategory(categoryParam && ['objects', 'weapons', 'equipment', 'drugs', 'custom'].includes(categoryParam) ? categoryParam as CategoryFilter : 'all')
+    setType(typeParam && TYPE_FILTER_VALUES.includes(typeParam as TypeFilter) ? typeParam as TypeFilter : 'all')
+    setQuery(queryParam || '')
   }, [searchParams])
 
   const drugItems = useMemo(() => items.filter((item) => item.category === 'drugs').map((item) => ({ name: item.name, price: item.buy_price })), [items])
@@ -552,7 +564,13 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
               <div className="mt-4 grid gap-2">
                 <SecondaryButton
                   onClick={() => {
-                    router.push(`/items/modifier/${encodeURIComponent(itemActionEntry.id)}`)
+                    const params = new URLSearchParams()
+                    if (view !== 'catalog') params.set('view', view)
+                    if (category !== 'all') params.set('category', category)
+                    if (type !== 'all') params.set('type', type)
+                    if (query.trim()) params.set('q', query.trim())
+                    const suffix = params.toString()
+                    router.push(`/items/modifier/${encodeURIComponent(itemActionEntry.id)}${suffix ? `?${suffix}` : ''}`)
                     setItemActionEntry(null)
                   }}
                 >

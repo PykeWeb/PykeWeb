@@ -68,11 +68,9 @@ export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: U
 
 export function matchesTypeFilter(item: CatalogItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
   if (selectedType === 'all') return true
-  if (selectedCategory === 'all') {
-    if (selectedType === 'objects') return item.category === 'objects'
-    if (selectedType === 'equipment') return item.category === 'equipment'
-    if (selectedType === 'other') return item.category === 'custom'
-  }
+  if (selectedType === 'objects') return item.category === 'objects'
+  if (selectedType === 'equipment') return item.category === 'equipment'
+  if (selectedType === 'other' && selectedCategory === 'all') return item.category === 'custom'
   return normalizeItemType(item.item_type, item.category) === selectedType
 }
 
