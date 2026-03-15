@@ -103,8 +103,11 @@ function getExt(file: File) {
 }
 
 function mapCatalogItem(row: CatalogItemRow): CatalogItem {
+  const category = normalizeCatalogCategory(String(row.category || '')) || row.category
   return {
     ...row,
+    category,
+    item_type: normalizeItemType(row.item_type, category),
     buy_price: toNonNegative(row.buy_price),
     sell_price: toNonNegative(row.sell_price),
     internal_value: toNonNegative(row.internal_value),
