@@ -114,9 +114,11 @@ export function normalizeItemType(raw: string | null, category: ItemCategory): I
   const categoryMapped =
     category === 'drugs' && normalized === 'accessory'
       ? 'drug_material'
-      : category === 'equipment' && normalized === 'accessory'
-        ? 'equipment'
-        : normalized
+      : category === 'drugs' && normalized === 'equipment'
+        ? 'product'
+        : category === 'equipment' && normalized === 'accessory'
+          ? 'equipment'
+          : normalized
   const allowed = new Set(categoryTypeOptions[category].map((opt) => opt.value))
   if (allowed.has(categoryMapped)) return categoryMapped
   if (allowed.has('other')) return 'other'
