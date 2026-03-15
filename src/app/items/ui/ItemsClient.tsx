@@ -539,6 +539,8 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
                   </div>
                 </div>
 
+                <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" aria-hidden="true" />
+
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <label className="text-xs text-white/65">
                     Graines
