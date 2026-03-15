@@ -14,6 +14,7 @@ import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
 import { getCategoryLabel, getTypeFilterOptions, getTypeLabel, matchesTypeFilter, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
+import { markStockOutNote } from '@/lib/financeStockFlow'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
@@ -250,8 +251,8 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
           quantity: req.total,
           unit_price: 0,
           counterparty: 'Plantation',
-          notes: `${recipe.title} x${runs}`,
-          payment_mode: 'stock_out',
+          notes: markStockOutNote(`${recipe.title} x${runs}`),
+          payment_mode: 'other',
         })
       }
 
