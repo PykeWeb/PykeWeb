@@ -225,7 +225,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
   const selectedCalculatorOutput = selectedCalculatorRecipe ? (plantationOutputPerRun[selectedCalculatorRecipe.key] || String(selectedCalculatorRecipe.default_output_per_run)) : '1'
   const selectedProductionFieldLabel = useMemo(() => {
     if (!selectedCalculatorRecipe) return 'Production'
-    return selectedCalculatorRecipe.key === 'coke-leaf' ? 'Production (feuilles)' : 'Production (sortie)'
+    return selectedCalculatorRecipe.key === 'coke-leaf' ? 'Production totale (feuilles)' : 'Production totale (sortie)'
   }, [selectedCalculatorRecipe])
 
   const selectedOutputItem = useMemo(() => {
@@ -239,7 +239,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
 
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
     const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
-    const outputPerRun = Math.max(0, Math.floor(Number(plantationOutputPerRun[recipe.key] || recipe.default_output_per_run) || recipe.default_output_per_run))
+    const outputQuantity = Math.max(0, Math.floor(Number(plantationOutputPerRun[recipe.key] || recipe.default_output_per_run) || recipe.default_output_per_run))
 
     if (runs <= 0) {
       toast.error('Indique un nombre de plantations supérieur à 0.')
@@ -283,7 +283,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       await createFinanceTransaction({
         item_id: outputItem.id,
         mode: 'buy',
-        quantity: outputPerRun * runs,
+        quantity: outputQuantity,
         unit_price: 0,
         counterparty: 'Plantation',
         notes: `${recipe.title} x${runs}`,
@@ -294,7 +294,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       if (missingCatalog.length > 0 || partialStock.length > 0) {
         toast.warning('Certains éléments nécessaires étaient manquants dans le stock, mais la plantation a été enregistrée.')
       }
-      toast.success(`Plantation réalisée: +${outputPerRun * runs} ${recipe.output_name}`)
+      toast.success(`Plantation réalisée: +${outputQuantity} ${recipe.output_name}`)
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Impossible de réaliser la plantation.')
     } finally {
