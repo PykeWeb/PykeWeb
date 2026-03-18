@@ -294,8 +294,8 @@ export function FinanceItemTradeModal({
                 <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="Nom / société" className="h-10" />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-white/60">Raison / note</label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Pourquoi cette opération ?" className="h-10" />
+                <label className="mb-1 block text-xs text-white/60">Membre</label>
+                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Quel membre du groupe a réalisé la transaction" className="h-10" />
               </div>
             </div>
 
