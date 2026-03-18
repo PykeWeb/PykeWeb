@@ -745,29 +745,68 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
   return mapCatalogItem(inserted)
 }
 
+function toNullableString(value: string | null | undefined) {
+  const normalized = String(value ?? '').trim()
+  return normalized.length ? normalized : null
+}
+
 export async function updateCatalogItem(args: UpdateCatalogItemInput) {
   const resolved = await ensureCatalogItemId(args.id)
-  const { data: current } = await supabase
+  const groupId = currentGroupId()
+  const { data: current, error: currentError } = await supabase
     .from('catalog_items')
-    .select('name,internal_id,category')
-    .eq('group_id', currentGroupId())
+    .select('id,name,description,category,item_type,buy_price,sell_price,stock,fivem_item_id,internal_id')
+    .eq('group_id', groupId)
     .eq('id', resolved)
-    .maybeSingle<{ name: string; internal_id: string | null; category: ItemCategory }>()
+    .maybeSingle<{
+      id: string
+      name: string
+      description: string | null
+      category: ItemCategory
+      item_type: ItemType | null
+      buy_price: number | string | null
+      sell_price: number | string | null
+      stock: number | string | null
+      fivem_item_id: string | null
+      internal_id: string | null
+    }>()
+
+  if (currentError) throw currentError
+  if (!current) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
+
+  const nextPayload = {
+    name: args.name.trim(),
+    category: args.category,
+    item_type: normalizeItemType(args.item_type, args.category),
+    description: toNullableString(args.description),
+    buy_price: toNonNegative(args.buy_price),
+    sell_price: toNonNegative(args.sell_price),
+    stock: toNonNegative(args.stock),
+    fivem_item_id: toNullableString(args.fivem_item_id),
+  }
+
+  const hasDataChange = (
+    current.name !== nextPayload.name ||
+    current.category !== nextPayload.category ||
+    normalizeItemType(current.item_type, current.category) !== nextPayload.item_type ||
+    toNullableString(current.description) !== nextPayload.description ||
+    toNonNegative(current.buy_price) !== nextPayload.buy_price ||
+    toNonNegative(current.sell_price) !== nextPayload.sell_price ||
+    toNonNegative(current.stock) !== nextPayload.stock ||
+    toNullableString(current.fivem_item_id) !== nextPayload.fivem_item_id
+  )
+
+  if (!hasDataChange && !args.imageFile) {
+    throw new Error('Aucune modification détectée.')
+  }
 
   const { data, error } = await supabase
     .from('catalog_items')
     .update({
-      name: args.name,
-      category: args.category,
-      item_type: normalizeItemType(args.item_type, args.category),
-      description: args.description || null,
-      buy_price: toNonNegative(args.buy_price),
-      sell_price: toNonNegative(args.sell_price),
-      stock: toNonNegative(args.stock),
-      fivem_item_id: args.fivem_item_id || null,
+      ...nextPayload,
       updated_at: new Date().toISOString(),
     })
-    .eq('group_id', currentGroupId())
+    .eq('group_id', groupId)
     .eq('id', resolved)
     .select('id')
 
@@ -787,7 +826,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
     const { error: imageUpdateError } = await supabase
       .from('catalog_items')
       .update({ image_url: publicData.publicUrl, updated_at: new Date().toISOString() })
-      .eq('group_id', currentGroupId())
+      .eq('group_id', groupId)
       .eq('id', resolved)
 
     if (imageUpdateError) throw imageUpdateError
@@ -795,13 +834,46 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
 
   await upsertLegacyMirror({
     category: args.category,
-    name: args.name,
-    description: args.description,
+    name: nextPayload.name,
+    description: nextPayload.description,
     buy_price: args.buy_price,
     stock: args.stock,
     item_type: args.item_type,
     lookupName: current?.name,
   })
+
+  const { data: refreshed, error: refreshError } = await supabase
+    .from('catalog_items')
+    .select('name,buy_price,sell_price,stock,category,item_type,fivem_item_id,description')
+    .eq('group_id', groupId)
+    .eq('id', resolved)
+    .single<{
+      name: string
+      buy_price: number | string | null
+      sell_price: number | string | null
+      stock: number | string | null
+      category: ItemCategory
+      item_type: ItemType | null
+      fivem_item_id: string | null
+      description: string | null
+    }>()
+
+  if (refreshError) throw refreshError
+
+  const updateApplied = (
+    refreshed.name === nextPayload.name &&
+    refreshed.category === nextPayload.category &&
+    normalizeItemType(refreshed.item_type, refreshed.category) === nextPayload.item_type &&
+    toNullableString(refreshed.description) === nextPayload.description &&
+    toNonNegative(refreshed.buy_price) === nextPayload.buy_price &&
+    toNonNegative(refreshed.sell_price) === nextPayload.sell_price &&
+    toNonNegative(refreshed.stock) === nextPayload.stock &&
+    toNullableString(refreshed.fivem_item_id) === nextPayload.fivem_item_id
+  )
+
+  if (!updateApplied) {
+    throw new Error("La mise à jour n'a pas été appliquée correctement.")
+  }
 }
 
 export async function deleteCatalogItem(itemId: string) {

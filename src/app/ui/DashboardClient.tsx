@@ -20,6 +20,7 @@ type Tx = {
   source: string
   entry_id: string
   type: 'purchase' | 'stock_in' | 'sale' | 'stock_out'
+  category: FinanceCategory
   total: number | null
   counterparty: string | null
   created_at: string
@@ -28,7 +29,8 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
-type ActivityView = 'summary' | 'transactions' | 'expenses'
+type ActivityView = 'summary' | 'transactions' | 'expenses' | 'stock'
+type StockActivityCategory = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs'
 
 type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items' | 'calculator' | 'plantations'
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
@@ -60,10 +62,10 @@ const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
   { key: 'plantations', title: 'Plantations', subtitle: 'Drogues & plantations', href: '/drogues', icon: Pill },
 ]
 const CARD_OPTIONS: CardOption[] = [
-  { key: 'catObjects', title: 'Objets', href: '/items?category=objects', icon: Box, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.objects)) },
-  { key: 'catWeapons', title: 'Armes', href: '/items?category=weapons', icon: Swords, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.weapons)) },
-  { key: 'catEquipment', title: 'Équipement', href: '/items?category=equipment', icon: Shield, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.equipment)) },
-  { key: 'catDrugs', title: 'Drogues', href: '/items?category=drugs', icon: Pill, getValue: (v) => (v.loading ? '—' : String(v.categoryCounts.drugs)) },
+  { key: 'catObjects', title: 'Achat', href: '/finance/achat-vente?mode=buy', icon: ArrowDownRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
+  { key: 'catWeapons', title: 'Vente', href: '/finance/achat-vente?mode=sell', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
+  { key: 'catEquipment', title: 'Entrée', href: '/finance/entree-sortie?mode=buy', icon: ArrowDownRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.stock_in)) },
+  { key: 'catDrugs', title: 'Sortie', href: '/finance/entree-sortie?mode=sell', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.stock_out)) },
   { key: 'mvExpense', title: 'Dépenses', href: '/finance?type=expense', icon: Wallet, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.expense)) },
   { key: 'mvPurchase', title: 'Achats', href: '/finance?type=purchase', icon: ShoppingCart, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
   { key: 'mvSale', title: 'Ventes', href: '/finance?type=sale', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
@@ -109,6 +111,7 @@ export function DashboardClient() {
   const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>(createEmptyCategoryCounts)
   const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>(createEmptyMovementCounts)
   const [activityView, setActivityView] = useState<ActivityView>('summary')
+  const [stockActivityCategory, setStockActivityCategory] = useState<StockActivityCategory>('all')
   const [pauseAutoUntil, setPauseAutoUntil] = useState(0)
   const [ticketKind, setTicketKind] = useState<'bug' | 'message'>('bug')
   const [ticketMessage, setTicketMessage] = useState('')
@@ -258,6 +261,7 @@ export function DashboardClient() {
             source: entry.source,
             entry_id: entry.id,
             type: entry.movement_type === 'purchase' ? 'purchase' : entry.movement_type === 'stock_in' ? 'stock_in' : entry.movement_type === 'stock_out' ? 'stock_out' : 'sale',
+            category: entry.category,
             total: entry.amount ?? null,
             counterparty: entry.member_name || null,
             created_at: entry.created_at,
@@ -321,7 +325,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'transactions', 'expenses']
+    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'stock']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -362,6 +366,10 @@ export function DashboardClient() {
       totalAmountExpenses,
     }
   }, [financeMovementCounts, recentExpenses, recentTx])
+
+  const stockActivityRows = useMemo(() => (
+    recentTx.filter((tx) => (stockActivityCategory === 'all' ? true : tx.category === stockActivityCategory))
+  ), [recentTx, stockActivityCategory])
 
 
 
@@ -520,6 +528,7 @@ export function DashboardClient() {
               { key: 'summary', label: 'Résumé', active: 'border-violet-300/65 bg-gradient-to-r from-violet-500/35 to-fuchsia-500/30 text-violet-50', idle: 'border-violet-300/25 bg-violet-500/10 text-violet-100/85 hover:bg-violet-500/18' },
               { key: 'transactions', label: 'Transactions', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
               { key: 'expenses', label: 'Dépenses', active: 'border-amber-300/65 bg-gradient-to-r from-amber-500/35 to-orange-500/30 text-amber-50', idle: 'border-amber-300/25 bg-amber-500/10 text-amber-100/85 hover:bg-amber-500/18' },
+              { key: 'stock', label: 'Stock', active: 'border-emerald-300/65 bg-gradient-to-r from-emerald-500/35 to-teal-500/30 text-emerald-50', idle: 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100/85 hover:bg-emerald-500/18' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -621,6 +630,68 @@ export function DashboardClient() {
                   </Link>
                 ))
               )
+            ) : null}
+            {activityView === 'stock' ? (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'all', label: 'Tous' },
+                    { key: 'objects', label: 'Objets' },
+                    { key: 'weapons', label: 'Armes' },
+                    { key: 'equipment', label: 'Équipement' },
+                    { key: 'drugs', label: 'Drogues' },
+                  ].map((pill) => (
+                    <button
+                      key={pill.key}
+                      type="button"
+                      onClick={() => setStockActivityCategory(pill.key as StockActivityCategory)}
+                      className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                        stockActivityCategory === pill.key
+                          ? 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/30 to-blue-500/28 text-cyan-50'
+                          : 'border-white/15 bg-white/[0.04] text-white/75 hover:bg-white/[0.09]'
+                      }`}
+                    >
+                      {pill.label}
+                    </button>
+                  ))}
+                </div>
+                {stockActivityRows.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité stock pour ce filtre.</div>
+                ) : (
+                  stockActivityRows.map((t) => (
+                    <Link href={`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`} key={`stock-${t.id}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                          {t.item_image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={t.item_image_url} alt={t.counterparty || 'Stock'} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            <span
+                              className={`mr-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
+                                t.type === 'purchase' || t.type === 'stock_in'
+                                  ? 'border-emerald-300/40 bg-emerald-500/10 text-emerald-100'
+                                  : 'border-orange-300/40 bg-orange-500/10 text-orange-100'
+                              }`}
+                            >
+                              {t.type === 'purchase' || t.type === 'stock_in' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                              {t.type === 'purchase' || t.type === 'stock_in' ? 'Entrée' : 'Sortie'}
+                            </span>
+                            {t.counterparty ? `• ${t.counterparty}` : '• Interlocuteur non renseigné'}
+                          </p>
+                          <p className="text-xs text-white/60">{new Date(t.created_at).toLocaleString()}</p>
+                          <p className="truncate text-xs text-white/50">{t.transaction_items?.map((item) => `${item.name_snapshot || 'Item'} x${Math.max(1, Number(item.quantity) || 1)}`).join(' · ') || 'Aucun item lié'}</p>
+                        </div>
+                      </div>
+                      <div className="text-sm font-semibold text-white/80">{t.total ?? '—'}</div>
+                    </Link>
+                  ))
+                )}
+              </>
             ) : null}
           </div>
         </Panel>
