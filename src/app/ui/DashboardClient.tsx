@@ -32,6 +32,7 @@ type Tx = {
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
 type ActivityView = 'summary' | 'transactions' | 'expenses' | 'stock'
 type StockActivityCategory = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs'
+type StockBubbleKey = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom'
 
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
@@ -79,6 +80,15 @@ function createEmptyCategoryCounts(): Record<FinanceCategory, number> {
 
 function createEmptyMovementCounts(): Record<FinanceMovementType, number> {
   return { expense: 0, purchase: 0, stock_in: 0, sale: 0, stock_out: 0 }
+}
+
+function stockCategoryLabel(key: StockBubbleKey) {
+  if (key === 'all') return 'Tous'
+  if (key === 'objects') return 'Objets'
+  if (key === 'weapons') return 'Armes'
+  if (key === 'equipment') return 'Équipement'
+  if (key === 'drugs') return 'Drogues'
+  return 'Autres'
 }
 
 export function DashboardClient() {
@@ -647,16 +657,17 @@ export function DashboardClient() {
           </div>
           <p className="mt-1 text-sm text-white/60">Vue stock en temps réel (source Items)</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {[
-              { key: 'all', label: 'Tous', value: financeCategoryCounts.objects + financeCategoryCounts.weapons + financeCategoryCounts.equipment + financeCategoryCounts.drugs + financeCategoryCounts.custom, icon: Shapes, href: '/items?category=all' },
-              { key: 'objects', label: 'Objets', value: financeCategoryCounts.objects, icon: Box, href: '/items?category=objects' },
-              { key: 'weapons', label: 'Armes', value: financeCategoryCounts.weapons, icon: Swords, href: '/items?category=weapons' },
-              { key: 'equipment', label: 'Équipement', value: financeCategoryCounts.equipment, icon: Shield, href: '/items?category=equipment' },
-              { key: 'drugs', label: 'Drogues', value: financeCategoryCounts.drugs, icon: Pill, href: '/items?category=drugs' },
-              { key: 'custom', label: 'Autres', value: financeCategoryCounts.custom, icon: Shapes, href: '/items?category=custom' },
-            ].map((card) => {
+            {([
+              { key: 'all', value: financeCategoryCounts.objects + financeCategoryCounts.weapons + financeCategoryCounts.equipment + financeCategoryCounts.drugs + financeCategoryCounts.custom, icon: Shapes, href: '/items?category=all' },
+              { key: 'objects', value: financeCategoryCounts.objects, icon: Box, href: '/items?category=objects' },
+              { key: 'weapons', value: financeCategoryCounts.weapons, icon: Swords, href: '/items?category=weapons' },
+              { key: 'equipment', value: financeCategoryCounts.equipment, icon: Shield, href: '/items?category=equipment' },
+              { key: 'drugs', value: financeCategoryCounts.drugs, icon: Pill, href: '/items?category=drugs' },
+              { key: 'custom', value: financeCategoryCounts.custom, icon: Shapes, href: '/items?category=custom' },
+            ] as { key: StockBubbleKey; value: number; icon: LucideIcon; href: string }[]).map((card) => {
               const Icon = card.icon
               const override = themeConfig.bubbles[`items.category.${card.key}`]
+              const label = stockCategoryLabel(card.key)
               return (
                 <Link
                   key={card.key}
@@ -681,7 +692,7 @@ export function DashboardClient() {
                   }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs text-white/70">{card.key === 'custom' ? 'Autres' : card.label}</p>
+                    <p className="text-xs text-white/70">{label}</p>
                     <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80">
                       <Icon className="h-3.5 w-3.5" />
                     </div>
