@@ -15,6 +15,7 @@ import { copy } from '@/lib/copy'
 import { buildDrugCalculatorResult, type DrugCalcMode } from '@/lib/drugCalculator'
 import { getCategoryLabel, getTypeFilterOptions, getTypeLabel, matchesTypeFilter, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { markStockOutNote } from '@/lib/financeStockFlow'
+import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type CategoryFilter = 'all' | ItemCategory
@@ -77,11 +78,17 @@ const plantationDefaultOutputPerRun = plantationRecipes.reduce<Record<string, st
 }, {})
 
 
-export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?: ItemsView }) {
+export default function ItemsClient({
+  defaultView = 'catalog',
+  initialCategory = 'all',
+}: {
+  defaultView?: ItemsView
+  initialCategory?: CategoryFilter
+}) {
   const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<CatalogItem[]>([])
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<CategoryFilter>('all')
+  const [category, setCategory] = useState<CategoryFilter>(initialCategory)
   const [type, setType] = useState<TypeFilter>('all')
   const [view, setView] = useState<ItemsView>(defaultView)
   const [itemActionEntry, setItemActionEntry] = useState<{ id: string; name: string } | null>(null)
@@ -134,6 +141,10 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [refresh, view])
+
+  useEffect(() => {
+    setCategory(initialCategory)
+  }, [initialCategory])
 
   const typeOptions = useMemo(() => {
     return getTypeFilterOptions(category)
@@ -316,22 +327,7 @@ export default function ItemsClient({ defaultView = 'catalog' }: { defaultView?:
     setter((prev) => ({ ...prev, [key]: String(next) }))
   }, [plantationOutputPerRun, plantationRuns])
 
-  const categoryCounts = useMemo(() => {
-    const sumStock = (predicate: (category: string) => boolean) =>
-      items.reduce((total, item) => {
-        if (!predicate(item.category)) return total
-        return total + Math.max(0, Number(item.stock) || 0)
-      }, 0)
-
-    return {
-      objects: sumStock((category) => category === 'objects'),
-      weapons: sumStock((category) => category === 'weapons'),
-      equipment: sumStock((category) => category === 'equipment'),
-      drugs: sumStock((category) => category === 'drugs'),
-      other: sumStock((category) => category === 'custom'),
-      all: sumStock(() => true),
-    }
-  }, [items])
+  const categoryCounts = useMemo(() => computeItemStockCategoryStats(items), [items])
 
   return (
     <Panel className={view === 'tools' ? 'border-0 bg-transparent p-0 shadow-none' : undefined}>

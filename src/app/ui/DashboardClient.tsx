@@ -13,6 +13,7 @@ import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } fr
 import { getFinanceListImage } from '@/lib/financeVisuals'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
+import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
 type Tx = {
@@ -32,7 +33,6 @@ type Expense = { id: string; item_label: string; total: number; quantity: number
 type ActivityView = 'summary' | 'transactions' | 'expenses' | 'stock'
 type StockActivityCategory = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs'
 
-type QuickActionKey = 'newExpense' | 'itemCreate' | 'itemTrade' | 'finance' | 'items' | 'calculator' | 'plantations'
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
 type DashboardMetrics = {
@@ -41,7 +41,6 @@ type DashboardMetrics = {
   movementCounts: Record<FinanceMovementType, number>
 }
 
-type QuickActionOption = { key: QuickActionKey; title: string; subtitle: string; href: string; icon: LucideIcon }
 type CardOption = { key: CardKey; title: string; href: string; icon: LucideIcon; getValue: (metrics: DashboardMetrics) => string }
 
 type BubbleStyle = {
@@ -52,15 +51,6 @@ type BubbleStyle = {
   iconColor?: string
 }
 
-const QUICK_ACTION_OPTIONS: QuickActionOption[] = [
-  { key: 'newExpense', title: 'Nouvelle dépense', subtitle: 'Créer une dépense Finance', href: '/finance/depense/nouveau', icon: Wallet },
-  { key: 'itemCreate', title: 'Créer un item', subtitle: 'Nouveau dans le catalogue', href: '/items/nouveau', icon: PlusCircle },
-  { key: 'itemTrade', title: 'Achat/Vente items', subtitle: 'Achat et sortie de stock', href: '/items/achat-vente', icon: Receipt },
-  { key: 'finance', title: 'Espace Finance', subtitle: 'Voir toutes les opérations', href: '/finance', icon: Wallet },
-  { key: 'items', title: 'Espace Items', subtitle: 'Voir le catalogue items', href: '/items', icon: Box },
-  { key: 'calculator', title: 'Calculateur', subtitle: 'Outils de calcul', href: '/drogues', icon: Shapes },
-  { key: 'plantations', title: 'Plantations', subtitle: 'Drogues & plantations', href: '/drogues', icon: Pill },
-]
 const CARD_OPTIONS: CardOption[] = [
   { key: 'catObjects', title: 'Achat', href: '/finance/achat-vente?mode=buy', icon: ArrowDownRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.purchase)) },
   { key: 'catWeapons', title: 'Vente', href: '/finance/achat-vente?mode=sell', icon: ArrowUpRight, getValue: (v) => (v.loading ? '—' : String(v.movementCounts.sale)) },
@@ -73,17 +63,6 @@ const CARD_OPTIONS: CardOption[] = [
 ]
 
 const DEFAULT_DASHBOARD_CARDS: CardKey[] = ['catObjects', 'catWeapons', 'catEquipment', 'catDrugs']
-
-
-function quickActionTone(key: QuickActionKey) {
-  if (key === 'newExpense') return { card: 'border-rose-300/30 from-rose-500/14 to-red-500/14 hover:from-rose-500/26 hover:to-red-500/22', icon: 'border-rose-300/45 bg-rose-500/25 text-rose-50' }
-  if (key === 'itemCreate') return { card: 'border-emerald-300/30 from-emerald-500/14 to-teal-500/14 hover:from-emerald-500/26 hover:to-teal-500/22', icon: 'border-emerald-300/45 bg-emerald-500/25 text-emerald-50' }
-  if (key === 'itemTrade') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
-  if (key === 'finance') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
-  if (key === 'items') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
-  if (key === 'calculator') return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
-  return { card: 'border-cyan-300/30 from-cyan-500/14 to-blue-500/14 hover:from-cyan-500/26 hover:to-blue-500/22', icon: 'border-cyan-300/45 bg-cyan-500/25 text-cyan-50' }
-}
 
 function mergeCardOrder(order: CardKey[] | null | undefined): CardKey[] {
   const allowed = new Set(CARD_OPTIONS.map((option) => option.key))
@@ -121,10 +100,7 @@ export function DashboardClient() {
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
   const cardLongPressTimerRef = useRef<number | null>(null)
   const longPressTriggeredRef = useRef(false)
-  const [quickActions, setQuickActions] = useState<QuickActionKey[]>(['newExpense', 'itemCreate', 'itemTrade', 'finance', 'items'])
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
-  const [quickModalOpen, setQuickModalOpen] = useState(false)
-  const [quickRemoveMode, setQuickRemoveMode] = useState(false)
   const [uiLayoutsReady, setUiLayoutsReady] = useState(false)
   const [cardManagerOpen, setCardManagerOpen] = useState(false)
   const [cardPickerSlot, setCardPickerSlot] = useState<number | null>(null)
@@ -186,17 +162,7 @@ export function DashboardClient() {
     let alive = true
     ;(async () => {
       try {
-        const [quickRes, cardsRes] = await Promise.all([
-          fetch('/api/ui-layouts?page_key=dashboard.quick_actions', { cache: 'no-store' }),
-          fetch('/api/ui-layouts?page_key=dashboard.cards', { cache: 'no-store' }),
-        ])
-        if (quickRes.ok) {
-          const data = await quickRes.json()
-          if (Array.isArray(data.order) && data.order.length) {
-            const next = data.order.filter((key: unknown): key is QuickActionKey => QUICK_ACTION_OPTIONS.some((option) => option.key === key))
-            if (next.length && alive) setQuickActions(next)
-          }
-        }
+        const cardsRes = await fetch('/api/ui-layouts?page_key=dashboard.cards', { cache: 'no-store' })
         if (cardsRes.ok) {
           const data = await cardsRes.json()
           if (Array.isArray(data.order) && data.order.length) {
@@ -213,12 +179,7 @@ export function DashboardClient() {
     }
   }, [])
 
-  async function persistLayouts(nextQuick = quickActions, nextCards = dashboardCards) {
-    await fetch('/api/ui-layouts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ page_key: 'dashboard.quick_actions', order: nextQuick, scope_type: 'group' }),
-    })
+  async function persistLayouts(nextCards = dashboardCards) {
     await fetch('/api/ui-layouts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -236,17 +197,15 @@ export function DashboardClient() {
 
         if (!alive) return
 
+        const stockCategoryStats = computeItemStockCategoryStats(catalogItems)
         const categoryCounts = createEmptyCategoryCounts()
         const movementCounts = createEmptyMovementCounts()
 
-        for (const item of catalogItems) {
-          const stockValue = Math.max(0, Number(item.stock) || 0)
-          if (item.category === 'objects' || item.category === 'weapons' || item.category === 'equipment' || item.category === 'drugs' || item.category === 'custom') {
-            categoryCounts[item.category] += stockValue
-          } else {
-            categoryCounts.other += stockValue
-          }
-        }
+        categoryCounts.objects = stockCategoryStats.objects
+        categoryCounts.weapons = stockCategoryStats.weapons
+        categoryCounts.equipment = stockCategoryStats.equipment
+        categoryCounts.drugs = stockCategoryStats.drugs
+        categoryCounts.custom = stockCategoryStats.other
 
         for (const entry of financeEntries) {
           movementCounts[entry.movement_type] += 1
@@ -371,27 +330,6 @@ export function DashboardClient() {
     recentTx.filter((tx) => (stockActivityCategory === 'all' ? true : tx.category === stockActivityCategory))
   ), [recentTx, stockActivityCategory])
 
-
-
-
-  function addQuickAction(actionKey: QuickActionKey) {
-    const selected = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey)
-    if (!selected || quickActions.includes(actionKey)) return
-    const next = [...quickActions, selected.key]
-    setQuickActions(next)
-    setQuickModalOpen(false)
-    void persistLayouts(next, dashboardCards)
-  }
-
-  function removeQuickAction(actionKey: QuickActionKey) {
-    const next = quickActions.filter((key) => key !== actionKey)
-    setQuickActions(next)
-    void persistLayouts(next, dashboardCards)
-  }
-
-
-
-
   function onCardPointerDown() {
     longPressTriggeredRef.current = false
     if (cardLongPressTimerRef.current) window.clearTimeout(cardLongPressTimerRef.current)
@@ -423,7 +361,7 @@ export function DashboardClient() {
     const finalOrder = [...unique, ...missing].slice(0, DEFAULT_DASHBOARD_CARDS.length)
     setDashboardCards(finalOrder)
     setCardPickerSlot(null)
-    void persistLayouts(quickActions, finalOrder)
+    void persistLayouts(finalOrder)
   }
 
   function moveDashboardCard(index: number, direction: 'up' | 'down') {
@@ -433,7 +371,7 @@ export function DashboardClient() {
     const [entry] = next.splice(index, 1)
     next.splice(targetIndex, 0, entry)
     setDashboardCards(next)
-    void persistLayouts(quickActions, next)
+    void persistLayouts(next)
   }
 
   function onSupportPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
@@ -701,85 +639,62 @@ export function DashboardClient() {
       <div className="flex h-full flex-col gap-4">
         <Panel>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Quick actions</h3>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setQuickModalOpen(true)} className="rounded-md border border-sky-300/60 bg-sky-500/25 px-2 text-xs font-semibold text-sky-50">+</button>
-              <button type="button" onClick={() => setQuickRemoveMode((v) => !v)} className="rounded-md border border-rose-300/60 bg-rose-500/30 px-2 text-xs font-semibold text-rose-50">−</button>
-            </div>
+            <h3 className="text-sm font-semibold">Stock par catégorie</h3>
+            <Link href="/items" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
+              Ouvrir Items
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
-          <p className="mt-1 text-sm text-white/60">Raccourcis utiles</p>
-          <div className="mt-3 space-y-2">
-            {!uiLayoutsReady ? Array.from({ length: 3 }).map((_, idx) => (
-              <div key={`quick-skeleton-${idx}`} className="h-[62px] rounded-xl border border-white/10 bg-white/[0.03] animate-pulse" />
-            )) : null}
-            {uiLayoutsReady ? quickActions.map((actionKey, idx) => {
-              const action = QUICK_ACTION_OPTIONS.find((a) => a.key === actionKey) || QUICK_ACTION_OPTIONS[idx]
-              if (!action) return null
-              const override = getBubbleOverride(`dashboard.quick.${action.key}`)
-              const Icon = (override?.icon && iconByName[override.icon]) ? iconByName[override.icon] : action.icon
-              const tone = quickActionTone(action.key)
+          <p className="mt-1 text-sm text-white/60">Vue stock en temps réel (source Items)</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {[
+              { key: 'all', label: 'Tous', value: financeCategoryCounts.objects + financeCategoryCounts.weapons + financeCategoryCounts.equipment + financeCategoryCounts.drugs + financeCategoryCounts.custom, icon: Shapes, href: '/items?category=all' },
+              { key: 'objects', label: 'Objets', value: financeCategoryCounts.objects, icon: Box, href: '/items?category=objects' },
+              { key: 'weapons', label: 'Armes', value: financeCategoryCounts.weapons, icon: Swords, href: '/items?category=weapons' },
+              { key: 'equipment', label: 'Équipement', value: financeCategoryCounts.equipment, icon: Shield, href: '/items?category=equipment' },
+              { key: 'drugs', label: 'Drogues', value: financeCategoryCounts.drugs, icon: Pill, href: '/items?category=drugs' },
+              { key: 'custom', label: 'Autres', value: financeCategoryCounts.custom, icon: Shapes, href: '/items?category=custom' },
+            ].map((card) => {
+              const Icon = card.icon
+              const override = themeConfig.bubbles[`items.category.${card.key}`]
               return (
                 <Link
-                  key={`${action.key}-${idx}`}
-                  href={action.href}
-                  className={`group flex items-center justify-between rounded-xl border bg-gradient-to-r px-3 py-2.5 transition ${tone.card}`}
-                  style={{ background: override?.bgColor || undefined, borderColor: override?.borderColor || undefined, color: override?.textColor || undefined }}
+                  key={card.key}
+                  href={card.href}
+                  className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
+                    card.key === 'objects'
+                      ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'
+                      : card.key === 'weapons'
+                        ? 'border-rose-300/20 bg-rose-500/[0.06] hover:bg-rose-500/[0.13]'
+                        : card.key === 'equipment'
+                          ? 'border-amber-300/20 bg-amber-700/[0.16] hover:bg-amber-700/[0.24]'
+                          : card.key === 'drugs'
+                            ? 'border-emerald-300/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.13]'
+                            : card.key === 'custom'
+                              ? 'border-slate-300/20 bg-slate-500/[0.06] hover:bg-slate-500/[0.13]'
+                              : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                  }`}
+                  style={{
+                    background: override?.bgColor || undefined,
+                    borderColor: override?.borderColor || undefined,
+                    color: override?.textColor || undefined,
+                  }}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${tone.icon}`} style={{ background: override?.iconBgColor || undefined, color: override?.iconColor || undefined, borderColor: override?.borderColor || undefined }}><Icon className="h-4 w-4" /></span>
-                    <div>
-                      <p className="text-sm font-medium">{override?.label || action.title}</p>
-                      <p className="text-xs text-white/60">{action.subtitle}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs text-white/70">{card.label}</p>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80">
+                      <Icon className="h-3.5 w-3.5" />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {quickRemoveMode ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          removeQuickAction(action.key)
-                        }}
-                        className="rounded-md border border-rose-300/60 bg-gradient-to-r from-rose-600/50 to-orange-500/35 px-1.5 py-0.5 text-[10px] text-rose-50"
-                      >
-                        Retirer
-                      </button>
-                    ) : null}
-                    <ChevronRight className="h-4 w-4 text-white/60" />
-                  </div>
+                  <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
                 </Link>
               )
-            }) : null}
+            })}
           </div>
         </Panel>
 
       </div>
     </div>
-      {quickModalOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/20 bg-slate-950/95 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Ajouter un raccourci</h3>
-              <button type="button" onClick={() => setQuickModalOpen(false)} className="rounded-md border border-white/10 bg-white/5 p-1"><X className="h-3.5 w-3.5" /></button>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {QUICK_ACTION_OPTIONS.map((opt) => {
-                const Icon = opt.icon
-                const disabled = quickActions.includes(opt.key)
-                return (
-                  <button key={opt.key} type="button" disabled={disabled} onClick={() => addQuickAction(opt.key)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-left disabled:opacity-40">
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10"><Icon className="h-4 w-4" /></span>
-                    <div>
-                      <p className="text-sm font-medium">{opt.title}</p>
-                      <p className="text-xs text-white/60">{disabled ? 'Déjà ajouté' : opt.subtitle}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      ) : null}
 
 
       {cardManagerOpen ? (
