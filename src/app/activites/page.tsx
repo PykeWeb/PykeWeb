@@ -18,6 +18,7 @@ import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
+import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
 
 type SelectedLine = { itemId: string; quantity: number }
 type SelectionStep = 'equipment' | 'objects'
@@ -242,7 +243,10 @@ export default function ActivitesPage() {
     <div className="space-y-6">
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
+          <div className="space-y-2">
+            <ActivitiesCategoryTabs active="activites" />
+            <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
+          </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>

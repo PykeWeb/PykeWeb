@@ -12,6 +12,7 @@ import { getTenantSession } from '@/lib/tenantSession'
 import { listCatalogItems } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
+import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
 
 type GroupedMember = {
   memberName: string
@@ -102,7 +103,10 @@ export default function ActivitesGestionChefPage() {
       <PageHeader title={`${copy.activities.title} • Gestion chef`} subtitle="Toutes les activités centralisées par membre avec preuves et reset hebdo." />
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-        <ActivitiesPageTabs active="chef" />
+        <div className="space-y-2">
+          <ActivitiesCategoryTabs active="activites" />
+          <ActivitiesPageTabs active="chef" />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">

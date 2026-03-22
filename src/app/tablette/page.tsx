@@ -10,6 +10,7 @@ import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { clearTenantSession, clearTenantSessionOnServer, saveTenantSession } from '@/lib/tenantSession'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
+import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
 
 type AtelierResponse = {
   today: string
@@ -133,6 +134,9 @@ export default function TablettePage() {
     <Panel>
       <div className="space-y-4">
         <div>
+          <div className="mb-3">
+            <ActivitiesCategoryTabs active="tablette" />
+          </div>
           <PageHeader title="Tablette" subtitle="Quota journalier par membre (00:00 → 00:00). Un membre ne peut valider qu’une fois par jour." />
         </div>
 

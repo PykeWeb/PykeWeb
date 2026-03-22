@@ -19,7 +19,11 @@ export function getDefaultRouteForSession(session: TenantSession) {
 
   const allowedPrefixes = expandAccessPrefixes(session.allowedPrefixes ?? [])
   if (allowedPrefixes.includes('/')) return '/'
-  if (allowedPrefixes.length > 0) return allowedPrefixes[0]
+  if (allowedPrefixes.length > 0) {
+    const first = allowedPrefixes[0]
+    if (first === '/operations') return '/activites'
+    return first
+  }
 
   if (isMemberTenantSession(session)) return '/tablette'
   return '/'

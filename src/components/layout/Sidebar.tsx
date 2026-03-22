@@ -44,7 +44,7 @@ export function Sidebar() {
   const [isMember, setIsMember] = useState(false)
   const [isChef, setIsChef] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
-  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'drogues', 'tablette'])
+  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'drogues', 'group', 'activites'])
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
@@ -108,9 +108,8 @@ export function Sidebar() {
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     ...(!isChef ? [{ id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') } as NavLink] : []),
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
-    { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
+    { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },
     { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
-    { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
   ]
 
   const hasFullAccess = allowedPrefixes.includes('/')
@@ -134,8 +133,7 @@ export function Sidebar() {
         : isMember
           ? [
             { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
-            { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') },
-            { id: 'tablette', href: '/tablette', label: labels.nav_tablette || 'Tablette', icon: <Smartphone className="h-5 w-5" />, active: pathname.startsWith('/tablette') },
+            { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },
           ]
           : defaultUserLinks
 
