@@ -1,4 +1,4 @@
-export type GroupMemberGrade = {
+export type GroupMemberRole = {
   id: string
   group_id: string
   name: string
@@ -6,6 +6,9 @@ export type GroupMemberGrade = {
   created_at: string
   updated_at: string
 }
+
+// Compat alias kept to avoid breaking older imports.
+export type GroupMemberGrade = GroupMemberRole
 
 export type GroupMember = {
   id: string
@@ -15,7 +18,7 @@ export type GroupMember = {
   grade_id: string | null
   created_at: string
   updated_at: string
-  grade: GroupMemberGrade | null
+  grade: GroupMemberRole | null
 }
 
 export type GroupMemberCandidate = {
@@ -24,7 +27,7 @@ export type GroupMemberCandidate = {
 }
 
 export type GroupMembersGradesPayload = {
-  grades: GroupMemberGrade[]
+  grades: GroupMemberRole[]
   members: GroupMember[]
   playerCandidates: GroupMemberCandidate[]
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { assertAdminSession } from '@/server/auth/admin'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import type { GroupMember, GroupMemberCandidate, GroupMemberGrade } from '@/lib/types/groupMembers'
+import type { GroupMember, GroupMemberCandidate, GroupMemberRole } from '@/lib/types/groupMembers'
 
 type GroupRow = { id: string; login: string }
 
@@ -15,13 +15,32 @@ type MemberRow = {
   updated_at: string
 }
 
-type GradeRow = {
+type RoleRow = {
   id: string
   group_id: string
   name: string
   permissions: string[] | null
   created_at: string
   updated_at: string
+}
+
+const ROLE_TABLE_CANDIDATES = ['group_roles', 'group_member_grades'] as const
+type RoleTableName = typeof ROLE_TABLE_CANDIDATES[number]
+
+function isMissingTableError(message: string) {
+  return /does not exist|relation .* does not exist|Could not find the table/i.test(message)
+}
+
+async function resolveRoleTableName(): Promise<RoleTableName> {
+  const supabase = getSupabaseAdmin()
+
+  for (const tableName of ROLE_TABLE_CANDIDATES) {
+    const { error } = await supabase.from(tableName).select('id').limit(1)
+    if (!error) return tableName
+    if (!isMissingTableError(error.message)) throw new Error(error.message)
+  }
+
+  throw new Error("Structure rôles introuvable. Lancez les migrations Supabase pour créer 'group_roles' ou 'group_member_grades'.")
 }
 
 async function resolveGroupId(rawId: string): Promise<string | null> {
@@ -65,8 +84,7 @@ async function readPlayerCandidates(groupId: string): Promise<GroupMemberCandida
       .limit(200)
 
     if (error) {
-      const isMissingTable = /does not exist|relation .* does not exist|Could not find the table/i.test(error.message)
-      if (isMissingTable) return
+      if (isMissingTableError(error.message)) return
       throw new Error(error.message)
     }
 
@@ -91,12 +109,12 @@ async function readPlayerCandidates(groupId: string): Promise<GroupMemberCandida
     .map((name) => ({ value: name, label: name }))
 }
 
-async function fetchPayload(groupId: string) {
+async function fetchPayload(groupId: string, roleTableName: RoleTableName) {
   const supabase = getSupabaseAdmin()
 
-  const [{ data: gradesRows, error: gradesError }, { data: memberRows, error: membersError }, playerCandidates] = await Promise.all([
+  const [{ data: roleRows, error: rolesError }, { data: memberRows, error: membersError }, playerCandidates] = await Promise.all([
     supabase
-      .from('group_member_grades')
+      .from(roleTableName)
       .select('id,group_id,name,permissions,created_at,updated_at')
       .eq('group_id', groupId)
       .order('created_at', { ascending: true }),
@@ -108,22 +126,22 @@ async function fetchPayload(groupId: string) {
     readPlayerCandidates(groupId),
   ])
 
-  if (gradesError) throw new Error(gradesError.message)
+  if (rolesError) throw new Error(rolesError.message)
   if (membersError) throw new Error(membersError.message)
 
-  const grades: GroupMemberGrade[] = ((gradesRows ?? []) as GradeRow[]).map((row) => ({
+  const roles: GroupMemberRole[] = ((roleRows ?? []) as RoleRow[]).map((row) => ({
     ...row,
     permissions: normalizePermissions(row.permissions),
   }))
 
-  const gradeById = new Map(grades.map((grade) => [grade.id, grade]))
+  const roleById = new Map(roles.map((role) => [role.id, role]))
 
   const members: GroupMember[] = ((memberRows ?? []) as MemberRow[]).map((row) => ({
     ...row,
-    grade: row.grade_id ? (gradeById.get(row.grade_id) ?? null) : null,
+    grade: row.grade_id ? (roleById.get(row.grade_id) ?? null) : null,
   }))
 
-  return { grades, members, playerCandidates }
+  return { grades: roles, members, playerCandidates }
 }
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -132,7 +150,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const groupId = await resolveGroupId(params.id)
     if (!groupId) return NextResponse.json({ error: 'Groupe introuvable.' }, { status: 404 })
 
-    const payload = await fetchPayload(groupId)
+    const roleTableName = await resolveRoleTableName()
+    const payload = await fetchPayload(groupId, roleTableName)
     return NextResponse.json(payload)
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Erreur serveur' }, { status: 400 })
@@ -148,19 +167,20 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const body = (await request.json()) as Record<string, unknown>
     const entity = String(body.entity || '')
     const supabase = getSupabaseAdmin()
+    const roleTableName = await resolveRoleTableName()
 
     if (entity === 'grade') {
       const name = typeof body.name === 'string' ? body.name.trim() : ''
       const permissions = normalizePermissions(body.permissions)
-      if (!name) return NextResponse.json({ error: 'Nom du grade requis.' }, { status: 400 })
+      if (!name) return NextResponse.json({ error: 'Nom du rôle requis.' }, { status: 400 })
 
-      const { error } = await supabase.from('group_member_grades').insert({
+      const { error } = await supabase.from(roleTableName).insert({
         group_id: groupId,
         name,
         permissions,
       })
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-      return NextResponse.json(await fetchPayload(groupId))
+      return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
 
     if (entity === 'member') {
@@ -171,14 +191,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
 
       if (gradeId) {
-        const { data: gradeExists, error: gradeError } = await supabase
-          .from('group_member_grades')
+        const { data: roleExists, error: roleError } = await supabase
+          .from(roleTableName)
           .select('id')
           .eq('id', gradeId)
           .eq('group_id', groupId)
           .maybeSingle()
-        if (gradeError) return NextResponse.json({ error: gradeError.message }, { status: 400 })
-        if (!gradeExists) return NextResponse.json({ error: 'Grade introuvable pour ce groupe.' }, { status: 400 })
+        if (roleError) return NextResponse.json({ error: roleError.message }, { status: 400 })
+        if (!roleExists) return NextResponse.json({ error: 'Rôle introuvable pour ce groupe.' }, { status: 400 })
       }
 
       const { error } = await supabase.from('group_members').insert({
@@ -188,7 +208,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         grade_id: gradeId || null,
       })
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-      return NextResponse.json(await fetchPayload(groupId))
+      return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
 
     return NextResponse.json({ error: 'Entity non supportée.' }, { status: 400 })
@@ -209,20 +229,21 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (!id) return NextResponse.json({ error: 'ID requis.' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
+    const roleTableName = await resolveRoleTableName()
 
     if (entity === 'grade') {
       const patch = body.patch as Record<string, unknown> | undefined
       const name = typeof patch?.name === 'string' ? patch.name.trim() : ''
       const permissions = normalizePermissions(patch?.permissions)
-      if (!name) return NextResponse.json({ error: 'Nom du grade requis.' }, { status: 400 })
+      if (!name) return NextResponse.json({ error: 'Nom du rôle requis.' }, { status: 400 })
 
       const { error } = await supabase
-        .from('group_member_grades')
+        .from(roleTableName)
         .update({ name, permissions })
         .eq('id', id)
         .eq('group_id', groupId)
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-      return NextResponse.json(await fetchPayload(groupId))
+      return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
 
     if (entity === 'member') {
@@ -233,14 +254,14 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
 
       if (gradeId) {
-        const { data: gradeExists, error: gradeError } = await supabase
-          .from('group_member_grades')
+        const { data: roleExists, error: roleError } = await supabase
+          .from(roleTableName)
           .select('id')
           .eq('id', gradeId)
           .eq('group_id', groupId)
           .maybeSingle()
-        if (gradeError) return NextResponse.json({ error: gradeError.message }, { status: 400 })
-        if (!gradeExists) return NextResponse.json({ error: 'Grade introuvable pour ce groupe.' }, { status: 400 })
+        if (roleError) return NextResponse.json({ error: roleError.message }, { status: 400 })
+        if (!roleExists) return NextResponse.json({ error: 'Rôle introuvable pour ce groupe.' }, { status: 400 })
       }
 
       const { error } = await supabase
@@ -253,7 +274,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         .eq('id', id)
         .eq('group_id', groupId)
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-      return NextResponse.json(await fetchPayload(groupId))
+      return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
 
     return NextResponse.json({ error: 'Entity non supportée.' }, { status: 400 })
@@ -274,15 +295,16 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     if (!id) return NextResponse.json({ error: 'ID requis.' }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
+    const roleTableName = await resolveRoleTableName()
 
     if (entity === 'grade') {
       const { error } = await supabase
-        .from('group_member_grades')
+        .from(roleTableName)
         .delete()
         .eq('id', id)
         .eq('group_id', groupId)
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-      return NextResponse.json(await fetchPayload(groupId))
+      return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
 
     if (entity === 'member') {
@@ -292,7 +314,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         .eq('id', id)
         .eq('group_id', groupId)
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-      return NextResponse.json(await fetchPayload(groupId))
+      return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
 
     return NextResponse.json({ error: 'Entity non supportée.' }, { status: 400 })

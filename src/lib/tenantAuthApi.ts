@@ -59,17 +59,6 @@ export async function deleteTenantGroup(id: string) {
   if (!res.ok) throw new Error(await readApiError(res))
 }
 
-export type ExportableGroupItem = {
-  id: string
-  name: string
-  category: string
-  item_type: string | null
-  buy_price: number
-  stock: number
-  image_url: string | null
-  description: string | null
-}
-
 export async function getTenantGroup(id: string) {
   const res = await fetch(`/api/admin/groups/${id}`, withTenantSessionHeader({ cache: 'no-store' }))
   if (!res.ok) throw new Error(await readApiError(res))
@@ -82,22 +71,6 @@ export async function resetTenantGroupData(id: string) {
     method: 'POST',
   })
   if (!res.ok) throw new Error(await readApiError(res))
-}
-
-export async function exportGroupCatalogItems(id: string) {
-  const res = await fetch(`/api/admin/groups/${id}/export-items`, withTenantSessionHeader({ cache: 'no-store' }))
-  if (!res.ok) throw new Error(await readApiError(res))
-  return (await res.json()) as ExportableGroupItem[]
-}
-
-export async function importGroupItemsToAdminObjects(id: string, items: ExportableGroupItem[]) {
-  const res = await fetch(`/api/admin/groups/${id}/export-items`, {
-    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
-    method: 'POST',
-    body: JSON.stringify({ items }),
-  })
-  if (!res.ok) throw new Error(await readApiError(res))
-  return (await res.json()) as { ok: boolean; inserted: number; updated: number }
 }
 
 export async function loginTenant(login: string, password: string, remember = true) {
