@@ -650,10 +650,16 @@ export function DashboardClient() {
         <Panel>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">Stock par catégorie</h3>
-            <Link href="/items" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
-              Ouvrir Items
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link href="/coke/preparer" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/25 bg-cyan-500/12 px-2.5 py-1 text-xs text-cyan-50 hover:bg-cyan-500/20">
+                Session coke
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link href="/items" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
+                Ouvrir Items
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
           <p className="mt-1 text-sm text-white/60">Vue stock en temps réel (source Items)</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
