@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { assertAdminSession } from '@/server/auth/admin'
+import { getSessionFromRequest } from '@/server/auth/session'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { isAdminSession } from '@/lib/tenantSessionShared'
 import type { GroupMember, GroupMemberCandidate, GroupMemberRole } from '@/lib/types/groupMembers'
 
 type GroupRow = { id: string; login: string }
@@ -62,6 +63,25 @@ async function resolveGroupId(rawId: string): Promise<string | null> {
 
   if (byLoginError) throw new Error(byLoginError.message)
   return byLogin?.id ?? null
+}
+
+function canManageGroupFromSession(session: { allowedPrefixes?: string[] } | null) {
+  const prefixes = Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : []
+  return prefixes.includes('/') || prefixes.includes('/group')
+}
+
+async function assertGroupMembersRolesAccess(request: Request, rawGroupId: string) {
+  const session = await getSessionFromRequest(request)
+  if (!session) throw new Error('Session invalide')
+
+  const groupId = await resolveGroupId(rawGroupId)
+  if (!groupId) return { groupId: null as string | null }
+
+  if (isAdminSession(session)) return { groupId }
+  if (session.groupId !== groupId) throw new Error('Accès refusé à ce groupe.')
+  if (!canManageGroupFromSession(session)) throw new Error('Permission insuffisante pour gérer les membres et rôles.')
+
+  return { groupId }
 }
 
 function normalizePermissions(value: unknown): string[] {
@@ -146,8 +166,7 @@ async function fetchPayload(groupId: string, roleTableName: RoleTableName) {
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    await assertAdminSession(request)
-    const groupId = await resolveGroupId(params.id)
+    const { groupId } = await assertGroupMembersRolesAccess(request, params.id)
     if (!groupId) return NextResponse.json({ error: 'Groupe introuvable.' }, { status: 404 })
 
     const roleTableName = await resolveRoleTableName()
@@ -160,8 +179,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    await assertAdminSession(request)
-    const groupId = await resolveGroupId(params.id)
+    const { groupId } = await assertGroupMembersRolesAccess(request, params.id)
     if (!groupId) return NextResponse.json({ error: 'Groupe introuvable.' }, { status: 404 })
 
     const body = (await request.json()) as Record<string, unknown>
@@ -219,8 +237,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
-    await assertAdminSession(request)
-    const groupId = await resolveGroupId(params.id)
+    const { groupId } = await assertGroupMembersRolesAccess(request, params.id)
     if (!groupId) return NextResponse.json({ error: 'Groupe introuvable.' }, { status: 404 })
 
     const body = (await request.json()) as Record<string, unknown>
@@ -285,8 +302,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
-    await assertAdminSession(request)
-    const groupId = await resolveGroupId(params.id)
+    const { groupId } = await assertGroupMembersRolesAccess(request, params.id)
     if (!groupId) return NextResponse.json({ error: 'Groupe introuvable.' }, { status: 404 })
 
     const body = (await request.json()) as Record<string, unknown>

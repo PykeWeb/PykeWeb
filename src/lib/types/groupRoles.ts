@@ -13,6 +13,7 @@ export type GroupRolesConfig = {
 
 export const ROLE_ACCESS_OPTIONS = [
   { label: 'Dashboard', prefix: '/' },
+  { label: 'Gestion groupe', prefix: '/group' },
   { label: 'Finance', prefix: '/finance' },
   { label: 'Dépenses', prefix: '/depenses' },
   { label: 'Items', prefix: '/items' },

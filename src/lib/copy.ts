@@ -121,6 +121,7 @@ const PAGE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/items', label: 'Items' },
   { prefix: '/drogues', label: 'Drogues' },
   { prefix: '/tablette', label: 'Tablette' },
+  { prefix: '/group', label: 'Gestion groupe' },
   { prefix: '/activites', label: 'Activités' },
   { prefix: '/armes', label: 'Armes' },
   { prefix: '/objets', label: 'Objets' },
