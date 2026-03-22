@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
 import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
+import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
 import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
@@ -58,7 +59,7 @@ export function Sidebar() {
     setIsMember(isMemberTenantSession(session))
     setIsChef(session?.role === 'chef')
     setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Admin' : ''))
-    setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
+    setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? expandAccessPrefixes(session.allowedPrefixes) : [])
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
     setIsPwrGroup(scope.includes('pwr'))
   }, [])

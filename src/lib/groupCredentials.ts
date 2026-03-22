@@ -1,6 +1,7 @@
 import {
   DEFAULT_CHEF_PREFIXES,
   DEFAULT_MEMBER_PREFIXES,
+  normalizeRolePrefixes,
   type GroupRoleDefinition,
   type GroupRolesConfig,
 } from '@/lib/types/groupRoles'
@@ -21,8 +22,9 @@ type EncodedCredentials = {
 
 function normalizeAllowedPrefixes(value: unknown, fallback: string[]) {
   if (!Array.isArray(value)) return [...fallback]
-  const unique = Array.from(new Set(value.filter((entry): entry is string => typeof entry === 'string').map((entry) => entry.trim()).filter(Boolean)))
-  return unique.length > 0 ? unique : [...fallback]
+  const unique = value.filter((entry): entry is string => typeof entry === 'string')
+  const normalized = normalizeRolePrefixes(unique)
+  return normalized.length > 0 ? normalized : [...fallback]
 }
 
 function normalizeRoleDefinition(input: Partial<GroupRoleDefinition>, fallbackKey: string, fallbackName: string, fallbackPrefixes: string[]) {

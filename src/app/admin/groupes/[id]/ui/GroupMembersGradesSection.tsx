@@ -10,7 +10,7 @@ import {
   updateGroupMember,
   updateGroupMemberGrade,
 } from '@/lib/tenantAuthApi'
-import { ROLE_ACCESS_OPTIONS } from '@/lib/types/groupRoles'
+import { expandAccessPrefixes, GROUP_OPERATIONS_PREFIX, normalizeRolePrefixes, ROLE_ACCESS_OPTIONS } from '@/lib/types/groupRoles'
 import type { GroupMember, GroupMemberCandidate, GroupMemberRole, GroupMembersGradesPayload } from '@/lib/types/groupMembers'
 
 type Props = {
@@ -38,7 +38,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [playerCandidates, setPlayerCandidates] = useState<GroupMemberCandidate[]>([])
 
   const [newRoleName, setNewRoleName] = useState('')
-  const [newRolePermissions, setNewRolePermissions] = useState<string[]>(['/tablette'])
+  const [newRolePermissions, setNewRolePermissions] = useState<string[]>([GROUP_OPERATIONS_PREFIX])
 
   const [selectedPlayerName, setSelectedPlayerName] = useState('')
   const [customPlayerName, setCustomPlayerName] = useState('')
@@ -74,9 +74,14 @@ export function GroupMembersGradesSection({ groupId }: Props) {
 
   function toggleNewRolePermission(prefix: string) {
     setNewRolePermissions((prev) => {
-      const exists = prev.includes(prefix)
-      const next = exists ? prev.filter((entry) => entry !== prefix) : [...prev, prefix]
-      return next.length > 0 ? next : ['/tablette']
+      const expanded = expandAccessPrefixes(prev)
+      const exists = expanded.includes(prefix)
+      let next = exists ? prev.filter((entry) => entry !== prefix) : [...prev, prefix]
+      if (prefix === GROUP_OPERATIONS_PREFIX) {
+        next = next.filter((entry) => entry !== '/tablette' && entry !== '/activites')
+      }
+      const normalized = normalizeRolePrefixes(next)
+      return normalized.length > 0 ? normalized : [GROUP_OPERATIONS_PREFIX]
     })
   }
 
@@ -87,9 +92,14 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   function toggleRolePermission(id: string, prefix: string) {
     setRoles((prev) => prev.map((role) => {
       if (role.id !== id) return role
-      const exists = role.permissions.includes(prefix)
-      const next = exists ? role.permissions.filter((entry) => entry !== prefix) : [...role.permissions, prefix]
-      return { ...role, permissions: next.length > 0 ? next : ['/tablette'] }
+      const expanded = expandAccessPrefixes(role.permissions)
+      const exists = expanded.includes(prefix)
+      let next = exists ? role.permissions.filter((entry) => entry !== prefix) : [...role.permissions, prefix]
+      if (prefix === GROUP_OPERATIONS_PREFIX) {
+        next = next.filter((entry) => entry !== '/tablette' && entry !== '/activites')
+      }
+      const normalized = normalizeRolePrefixes(next)
+      return { ...role, permissions: normalized.length > 0 ? normalized : [GROUP_OPERATIONS_PREFIX] }
     }))
   }
 
@@ -110,7 +120,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       })
       applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
       setNewRoleName('')
-      setNewRolePermissions(['/tablette'])
+      setNewRolePermissions([GROUP_OPERATIONS_PREFIX])
       setError(null)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Création du rôle impossible.')
@@ -229,7 +239,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
               <input value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} placeholder="Nom du rôle" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
               <div className="flex flex-wrap gap-2">
                 {ROLE_ACCESS_OPTIONS.map((option) => {
-                  const selected = newRolePermissions.includes('/') || newRolePermissions.includes(option.prefix)
+                  const selected = newRolePermissions.includes('/') || expandAccessPrefixes(newRolePermissions).includes(option.prefix)
                   return (
                     <label key={`new-role-${option.prefix}`} className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs ${selected ? 'border-cyan-300/35 bg-cyan-500/20 text-cyan-100' : 'border-white/12 bg-white/[0.04] text-white/70'}`}>
                       <input type="checkbox" checked={selected} onChange={() => toggleNewRolePermission(option.prefix)} className="h-3.5 w-3.5" />
@@ -278,7 +288,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {ROLE_ACCESS_OPTIONS.map((option) => {
-                  const selected = role.permissions.includes('/') || role.permissions.includes(option.prefix)
+                  const selected = role.permissions.includes('/') || expandAccessPrefixes(role.permissions).includes(option.prefix)
                   return (
                     <label key={`${role.id}-${option.prefix}`} className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs ${selected ? 'border-cyan-300/35 bg-cyan-500/20 text-cyan-100' : 'border-white/12 bg-white/[0.04] text-white/70'}`}>
                       <input type="checkbox" checked={selected} onChange={() => toggleRolePermission(role.id, option.prefix)} className="h-3.5 w-3.5" />

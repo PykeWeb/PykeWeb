@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/server/auth/session'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { isAdminSession } from '@/lib/tenantSessionShared'
+import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 import type { GroupMember, GroupMemberCandidate, GroupMemberRole } from '@/lib/types/groupMembers'
 
 type GroupRow = { id: string; login: string }
@@ -66,7 +67,8 @@ async function resolveGroupId(rawId: string): Promise<string | null> {
 }
 
 function canManageGroupFromSession(session: { allowedPrefixes?: string[] } | null) {
-  const prefixes = Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : []
+  const rawPrefixes = Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : []
+  const prefixes = expandAccessPrefixes(rawPrefixes)
   return prefixes.includes('/') || prefixes.includes('/group')
 }
 
