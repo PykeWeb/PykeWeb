@@ -691,12 +691,9 @@ export default function ItemsClient({
                   >
                     Copier le prévu vers la clôture
                   </SecondaryButton>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
-                  <p className="text-sm font-semibold">Ressources nécessaires (prévision)</p>
-                  <p className="mt-1 text-xs text-white/60">Lisible en un coup d’œil : besoin, stock, manque, PU et coût du manque.</p>
-                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-cyan-200/30 to-transparent" />
+                  <p className="mt-3 text-xs font-medium text-cyan-100/90">Ressources nécessaires (prévision)</p>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
                     {cokeResourceCards.map((entry) => (
                       <div key={entry.key} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.03] p-3 text-sm">
                         <div className="flex items-center gap-2">
@@ -729,17 +726,32 @@ export default function ItemsClient({
                   <p className="mt-1 text-xs text-amber-100/80">Saisie réelle (consommé/perdu/récupéré) — c’est cette étape qui met à jour le stock.</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {[
-                      { label: 'Graines réellement utilisées', value: cokeRealSeeds, setter: setCokeRealSeeds },
-                      { label: 'Pots réellement utilisés', value: cokeRealPots, setter: setCokeRealPots },
-                      { label: 'Fertilisant réellement utilisé', value: cokeRealFertilizer, setter: setCokeRealFertilizer },
-                      { label: 'Eaux réellement utilisées', value: cokeRealWater, setter: setCokeRealWater },
-                      { label: 'Lampes réellement utilisées / perdues', value: cokeRealLamps, setter: setCokeRealLamps },
-                      { label: 'Feuilles réellement récupérées', value: cokeRealLeaves, setter: setCokeRealLeaves },
+                      { label: 'Graines réellement utilisées', value: cokeRealSeeds, setter: setCokeRealSeeds, itemLabel: 'Graine de coke' },
+                      { label: 'Pots réellement utilisés', value: cokeRealPots, setter: setCokeRealPots, itemLabel: 'Pot' },
+                      { label: 'Fertilisant réellement utilisé', value: cokeRealFertilizer, setter: setCokeRealFertilizer, itemLabel: 'Fertilisant' },
+                      { label: 'Eaux réellement utilisées', value: cokeRealWater, setter: setCokeRealWater, itemLabel: "Bouteille d'eau" },
+                      { label: 'Lampes réellement utilisées / perdues', value: cokeRealLamps, setter: setCokeRealLamps, itemLabel: 'Lampe' },
+                      { label: 'Feuilles réellement récupérées', value: cokeRealLeaves, setter: setCokeRealLeaves, itemLabel: 'Feuille de Cocaïne' },
                     ].map((field) => (
-                      <div key={field.label}>
-                        <p className="mb-1 text-xs text-white/65">{field.label}</p>
-                        <Input value={field.value} onChange={(event) => field.setter(event.target.value)} inputMode="numeric" className="h-9 rounded-lg text-sm" />
-                      </div>
+                      (() => {
+                        const fieldItem = findItemForLabel(field.itemLabel)
+                        return (
+                          <div key={field.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                                {fieldItem?.image_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={fieldItem.image_url} alt={field.itemLabel} className="h-full w-full object-cover" loading="lazy" />
+                                ) : (
+                                  <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>
+                                )}
+                              </div>
+                              <p className="text-xs text-white/75">{field.label}</p>
+                            </div>
+                            <Input value={field.value} onChange={(event) => field.setter(event.target.value)} inputMode="numeric" className="mt-2 h-9 rounded-lg text-sm" />
+                          </div>
+                        )
+                      })()
                     ))}
                   </div>
 
@@ -758,7 +770,7 @@ export default function ItemsClient({
                           const delta = row.real - row.planned
                           const deltaText = `${delta > 0 ? '+' : ''}${delta}`
                           return (
-                            <tr key={row.key}>
+                            <tr key={row.key} className={delta < 0 ? 'bg-rose-500/[0.07]' : 'bg-emerald-500/[0.05]'}>
                               <td className="px-2 py-1.5">{row.label}</td>
                               <td className="px-2 py-1.5 text-right">{row.planned}</td>
                               <td className="px-2 py-1.5 text-right">{row.real}</td>
