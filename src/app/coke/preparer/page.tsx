@@ -62,7 +62,7 @@ export default function CokePreparePage() {
       <Panel>
         <div className="space-y-4">
           <div className="flex items-center gap-3 rounded-2xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/16 to-blue-500/10 p-4">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06]"><Leaf className="h-6 w-6 text-cyan-100" /></div>
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.08]"><Leaf className="h-5 w-5 text-emerald-100" /></div>
             <div>
               <p className="text-lg font-semibold">Préparer une session coke</p>
               <p className="text-sm text-white/70">Prévision complète avant départ (sans impact stock).</p>
