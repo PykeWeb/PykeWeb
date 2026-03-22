@@ -37,6 +37,11 @@ function normalizeItemName(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
+function formatPrice(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return `${value.toFixed(2)} $`
+}
+
 const plantationRecipes: PlantationRecipe[] = [
   {
     key: 'coke-leaf',
@@ -207,12 +212,17 @@ export default function ItemsClient({
   const findItemForLabel = useCallback((label: string) => {
     const aliases: Record<string, string[]> = {
       "bouteille d'eau": ["bouteille d'eau", "eau"],
+      eaux: ["eau", "bouteille d'eau"],
+      "graine de coke": ["graine de coke", 'graine', 'graines', 'seed'],
       "machine de meth": ["machine de meth", "meth"],
       fertilisant: ["fertilisant", "engrais"],
       pot: ["pot", "pots"],
       lampe: ["lampe", "lampes"],
       table: ["table", "tables"],
       batterie: ["batterie", "batteries"],
+      'meth brut': ['meth brut', 'meth'],
+      ammoniaque: ['ammoniaque'],
+      methylamine: ['methylamine'],
     }
     const normalized = normalizeItemName(label)
     const candidates = aliases[normalized] || [normalized]
@@ -222,8 +232,13 @@ export default function ItemsClient({
       if (exact) return exact
     }
 
+    for (const candidate of candidates) {
+      const contains = items.find((item) => normalizeItemName(item.name).includes(candidate) || candidate.includes(normalizeItemName(item.name)))
+      if (contains) return contains
+    }
+
     return null
-  }, [itemsByNormalizedName])
+  }, [items, itemsByNormalizedName])
 
 
   const calculatorTotals = useMemo(() => {
@@ -288,6 +303,31 @@ export default function ItemsClient({
     { key: 'lamps', label: 'Lampes', planned: cokePlannedSession.lamps, real: cokeRealSession.lamps },
     { key: 'leaves', label: 'Feuilles', planned: cokePlannedSession.leaves, real: cokeRealSession.leaves },
   ]), [cokePlannedSession, cokeRealSession])
+
+  const cokeResourceCards = useMemo(() => ([
+    { key: 'seed', label: 'Graine de coke', planned: cokePlannedSession.seeds },
+    { key: 'pot', label: 'Pot', planned: cokePlannedSession.pots },
+    { key: 'fert', label: 'Fertilisant', planned: cokePlannedSession.fertilizer },
+    { key: 'water', label: "Bouteille d'eau", planned: cokePlannedSession.water },
+    { key: 'lamp', label: 'Lampe', planned: cokePlannedSession.lamps },
+  ].map((entry) => {
+    const item = findItemForLabel(entry.label)
+    const stock = Math.max(0, Number(item?.stock || 0))
+    const missing = Math.max(0, entry.planned - stock)
+    const unitPrice = item?.buy_price ?? null
+    const missingCost = unitPrice == null ? null : missing * unitPrice
+    return { ...entry, item, stock, missing, unitPrice, missingCost }
+  })), [cokePlannedSession.fertilizer, cokePlannedSession.lamps, cokePlannedSession.pots, cokePlannedSession.seeds, cokePlannedSession.water, findItemForLabel])
+
+  const missingEstimatedCost = useMemo(() => (
+    drugCalculator.requirements.reduce((sum, req) => {
+      if (req.unitPrice == null) return sum
+      const item = findItemForLabel(req.label)
+      const stock = Math.max(0, Number(item?.stock || 0))
+      const missing = Math.max(0, req.qty - stock)
+      return sum + (missing * req.unitPrice)
+    }, 0)
+  ), [drugCalculator.requirements, findItemForLabel])
 
   const applyCokeSessionClosure = useCallback(async () => {
     const transactions = [
@@ -573,14 +613,27 @@ export default function ItemsClient({
                       inputMode="numeric"
                     />
                   </div>
-                  <div className="min-w-[180px]">
-                    <label className="mb-1 block text-xs text-white/60">Total connu</label>
-                    <div className="flex h-10 items-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 text-sm">
-                      <span className="font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</span>
-                    </div>
-                  </div>
                 </>
               ) : null}
+            </div>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-cyan-100/80">Items requis (total)</p>
+                <p className="text-xl font-semibold">{calculatorTotals.totalRequiredItems}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-emerald-100/80">Stock cumulé (items liés)</p>
+                <p className="text-xl font-semibold">{calculatorTotals.withStock}</p>
+              </div>
+              <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-rose-100/80">Manque estimé</p>
+                <p className="text-xl font-semibold">{calculatorTotals.totalMissing}</p>
+              </div>
+              <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 px-3 py-2 text-sm">
+                <p className="text-xs text-violet-100/80">Total connu</p>
+                <p className="text-xl font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</p>
+              </div>
             </div>
 
             {calcMode === 'coke' ? (
@@ -638,6 +691,37 @@ export default function ItemsClient({
                   >
                     Copier le prévu vers la clôture
                   </SecondaryButton>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+                  <p className="text-sm font-semibold">Ressources nécessaires (prévision)</p>
+                  <p className="mt-1 text-xs text-white/60">Lisible en un coup d’œil : besoin, stock, manque, PU et coût du manque.</p>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {cokeResourceCards.map((entry) => (
+                      <div key={entry.key} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.03] p-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                            {entry.item?.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={entry.item.image_url} alt={entry.label} className="h-full w-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium">{entry.label}</p>
+                            <p className="text-xs text-white/60">Manque estimé: <span className={`font-semibold ${entry.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{entry.missing}</span></p>
+                          </div>
+                        </div>
+                        <div className="mt-2 grid gap-1.5 text-xs">
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Besoin total</span><span className="font-semibold">{entry.planned}</span></div>
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Stock actuel</span><span className="font-semibold">{entry.stock}</span></div>
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">PU</span><span className="font-semibold">{formatPrice(entry.unitPrice)}</span></div>
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Coût manque</span><span className="font-semibold">{formatPrice(entry.missingCost)}</span></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-amber-300/20 bg-amber-500/[0.06] p-3 sm:p-4">
@@ -699,25 +783,12 @@ export default function ItemsClient({
                   <p className="text-sm font-semibold text-violet-50">Session meth · calculateur classique</p>
                   <p className="mt-1 text-xs text-violet-100/80">Mode rapide : estimation + sortie/entrée stock via “Plantation réalisée”.</p>
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm">
-                    <p className="text-xs text-cyan-100/80">Items requis (total)</p>
-                    <p className="text-xl font-semibold">{calculatorTotals.totalRequiredItems}</p>
-                  </div>
-                  <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm">
-                    <p className="text-xs text-emerald-100/80">Stock cumulé (items liés)</p>
-                    <p className="text-xl font-semibold">{calculatorTotals.withStock}</p>
-                  </div>
-                  <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-sm">
-                    <p className="text-xs text-rose-100/80">Manque estimé</p>
-                    <p className="text-xl font-semibold">{calculatorTotals.totalMissing}</p>
-                  </div>
-                </div>
                 <div className="mt-3 grid gap-2 md:grid-cols-2">
                   {drugCalculator.requirements.map((req) => {
                     const requirementItem = findItemForLabel(req.label)
                     const stock = Math.max(0, Number(requirementItem?.stock || 0))
                     const missing = Math.max(0, req.qty - stock)
+                    const missingCost = req.unitPrice == null ? null : missing * req.unitPrice
                     return (
                       <div key={req.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.03] px-3 py-2 text-sm">
                         <div className="flex items-center gap-2">
@@ -739,10 +810,15 @@ export default function ItemsClient({
                           <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Manque</span><span className={`font-semibold ${missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{missing}</span></div>
                           <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">PU</span><span className="font-semibold">{req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</span></div>
                           <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Sous-total</span><span className="font-semibold">{req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</span></div>
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Coût manque</span><span className="font-semibold">{formatPrice(missingCost)}</span></div>
                         </div>
                       </div>
                     )
                   })}
+                </div>
+                <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-sm">
+                  <p className="text-xs text-amber-100/80">Coût estimé des ressources manquantes</p>
+                  <p className="text-lg font-semibold">{formatPrice(missingEstimatedCost)}</p>
                 </div>
               </>
             ) : null}
