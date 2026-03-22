@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { Copy, Eye, EyeOff, KeyRound, RefreshCw, Save, Shield, Trash2, UserCircle2 } from 'lucide-react'
 import {
   createGroupMember,
   createGroupMemberGrade,
@@ -323,36 +324,86 @@ export function GroupMembersGradesSection({ groupId }: Props) {
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
         <h3 className="text-xl font-semibold">Membres existants</h3>
-        <div className="mt-3 space-y-3">
+        <p className="mt-1 text-sm text-white/70">Chaque membre dispose de sa carte dédiée pour modifier son accès, mot de passe et permissions en un coup d’œil.</p>
+        <div className="mt-4 space-y-4">
           {members.length === 0 ? <p className="text-sm text-white/60">Aucun membre pour ce groupe.</p> : null}
           {members.map((member) => (
-            <div key={member.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="grid gap-2 md:grid-cols-[1.1fr_1fr_1fr_1fr_auto_auto] md:items-center">
-                <input value={member.player_name} onChange={(e) => updateMemberDraft(member.id, { player_name: e.target.value })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" placeholder="Nom du membre" />
-                <input value={member.player_identifier ?? ''} onChange={(e) => updateMemberDraft(member.id, { player_identifier: e.target.value || null })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" placeholder="Identifiant" />
-                <div className="flex items-center gap-2">
-                  <input
-                    value={member.password ?? ''}
-                    onChange={(e) => updateMemberDraft(member.id, { password: e.target.value || null })}
-                    type={memberPasswordVisible[member.id] ? 'text' : 'password'}
-                    className="h-10 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm"
-                    placeholder="Mot de passe"
-                  />
-                  <button type="button" onClick={() => setMemberPasswordVisible((prev) => ({ ...prev, [member.id]: !prev[member.id] }))} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-2 text-xs hover:bg-white/[0.12]">{memberPasswordVisible[member.id] ? 'Masquer' : 'Voir'}</button>
-                  <button type="button" onClick={() => updateMemberDraft(member.id, { password: generatePassword({ avoidAmbiguous: true }) })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-2 text-xs hover:bg-white/[0.12]">Gen</button>
-                  <button type="button" onClick={() => void copyToClipboard(member.password || '')} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-2 text-xs hover:bg-white/[0.12]">Copier</button>
+            <div key={member.id} className="rounded-2xl border border-white/20 bg-gradient-to-br from-slate-900/70 via-slate-800/55 to-slate-900/75 p-4 shadow-[0_10px_35px_rgba(0,0,0,0.35)] md:p-5">
+              <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-200/30 bg-cyan-500/15 text-cyan-100">
+                    <UserCircle2 className="h-6 w-6" />
+                  </span>
+                  <div>
+                    <label className="text-[11px] uppercase tracking-wide text-white/60">Nom du membre</label>
+                    <input value={member.player_name} onChange={(e) => updateMemberDraft(member.id, { player_name: e.target.value })} className="mt-1 h-10 w-full min-w-[220px] rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Nom du membre" />
+                  </div>
                 </div>
-                <select value={member.grade_id ?? ''} onChange={(e) => updateMemberDraft(member.id, { grade_id: e.target.value || null })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm">
-                  {roleOptions.map((opt) => (
-                    <option key={`${member.id}-${opt.value || 'none'}`} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <label className="inline-flex items-center gap-2 text-xs text-white/70">
-                  <input type="checkbox" checked={member.is_admin} onChange={(e) => updateMemberDraft(member.id, { is_admin: e.target.checked })} className="h-4 w-4" />
-                  Admin
-                </label>
-                <button disabled={busy} onClick={() => void saveMember(member)} className="h-10 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 text-sm text-cyan-50 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50">Enregistrer</button>
-                <button disabled={busy} onClick={() => void removeMember(member.id)} className="h-10 rounded-xl border border-rose-300/35 bg-rose-500/15 px-3 text-sm text-rose-100 hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-50">Supprimer</button>
+                <div className="w-full max-w-[280px]">
+                  <label className="text-[11px] uppercase tracking-wide text-white/60">Identifiant</label>
+                  <input value={member.player_identifier ?? ''} onChange={(e) => updateMemberDraft(member.id, { player_identifier: e.target.value || null })} className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Identifiant membre" />
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+                <div>
+                  <label className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/65">
+                    <KeyRound className="h-3.5 w-3.5" />
+                    Mot de passe
+                  </label>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+                    <input
+                      value={member.password ?? ''}
+                      onChange={(e) => updateMemberDraft(member.id, { password: e.target.value || null })}
+                      type={memberPasswordVisible[member.id] ? 'text' : 'password'}
+                      className="h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none"
+                      placeholder="Mot de passe membre"
+                    />
+                    <button type="button" onClick={() => setMemberPasswordVisible((prev) => ({ ...prev, [member.id]: !prev[member.id] }))} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20">
+                      {memberPasswordVisible[member.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      {memberPasswordVisible[member.id] ? 'Masquer' : 'Voir'}
+                    </button>
+                    <button type="button" onClick={() => updateMemberDraft(member.id, { password: generatePassword({ avoidAmbiguous: true }) })} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20">
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Générer
+                    </button>
+                    <button type="button" onClick={() => void copyToClipboard(member.password || '')} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20">
+                      <Copy className="h-3.5 w-3.5" />
+                      Copier
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  <div>
+                    <label className="text-[11px] uppercase tracking-wide text-white/60">Rôle</label>
+                    <select value={member.grade_id ?? ''} onChange={(e) => updateMemberDraft(member.id, { grade_id: e.target.value || null })} className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white focus:border-cyan-300/50 focus:outline-none">
+                      {roleOptions.map((opt) => (
+                        <option key={`${member.id}-${opt.value || 'none'}`} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="rounded-xl border border-white/15 bg-black/20 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-white/60">Droits</p>
+                    <label className="mt-1 inline-flex items-center gap-2 text-sm text-white/90">
+                      <input type="checkbox" checked={member.is_admin} onChange={(e) => updateMemberDraft(member.id, { is_admin: e.target.checked })} className="h-4 w-4 rounded border-white/30 bg-black/25" />
+                      <Shield className="h-4 w-4 text-amber-300" />
+                      Membre admin
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-white/10 pt-4">
+                <button disabled={busy} onClick={() => void saveMember(member)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-cyan-300/45 bg-cyan-500/20 px-4 text-sm font-medium text-cyan-50 hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50">
+                  <Save className="h-4 w-4" />
+                  Enregistrer
+                </button>
+                <button disabled={busy} onClick={() => void removeMember(member.id)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-300/50 bg-rose-500/20 px-4 text-sm font-medium text-rose-100 hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:opacity-50">
+                  <Trash2 className="h-4 w-4" />
+                  Supprimer
+                </button>
               </div>
             </div>
           ))}
