@@ -61,8 +61,8 @@ export default function AdminDashboardPage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         <Link href="/admin/groupes" className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow transition hover:bg-white/[0.09]">
-          <h2 className="text-lg font-semibold">Admin groups</h2>
-          <p className="mt-2 text-sm text-white/70">Gérer les accès, identifiants et expirations.</p>
+          <h2 className="text-lg font-semibold">Groupes clients</h2>
+          <p className="mt-2 text-sm text-white/70">Accéder à la gestion du groupe, puis à “Membres & Rôles”.</p>
         </Link>
         <Link href="/admin/support" className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-glow transition hover:bg-white/[0.09]">
           <h2 className="text-lg font-semibold">Support</h2>

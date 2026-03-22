@@ -196,7 +196,12 @@ export default function AdminGroupDetailsPage() {
       <div id="section-general" className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <PageHeader title={`Gestion : ${group.name}${group.badge ? ` (${group.badge})` : ''}`} subtitle="Modifier, sécurité, activation et reset sans suppression." size="compact" />
-          <Link href="/admin/groupes" className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Retour</Link>
+          <div className="flex flex-wrap gap-2">
+            <a href="#section-members-roles" className="inline-flex h-10 items-center rounded-2xl border border-cyan-300/30 bg-cyan-500/12 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20">
+              Ouvrir Membres & Rôles
+            </a>
+            <Link href="/admin/groupes" className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Retour</Link>
+          </div>
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">

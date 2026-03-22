@@ -166,7 +166,7 @@ export default function AdminGroupsPage() {
         <div className="flex items-start justify-between gap-3">
           <PageHeader
             title="Admin • Gestion des groupes"
-            subtitle="Un bouton unique “Gérer” par groupe pour accéder à la fiche complète."
+            subtitle="Accès direct à la fiche groupe et au bloc Membres & Rôles."
             size="compact"
           />
           <button
@@ -203,9 +203,14 @@ export default function AdminGroupsPage() {
                     <td className="px-4 py-3">{group.active ? 'Oui' : 'Non'}</td>
                     <td className="px-4 py-3">{group.paid_until ? new Date(group.paid_until).toLocaleDateString('fr-FR') : '—'}</td>
                     <td className="px-4 py-3 text-right">
-                      <Link href={`/admin/groupes/${group.id}`} className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">
-                        Gérer
-                      </Link>
+                      <div className="flex justify-end gap-2">
+                        <Link href={`/admin/groupes/${group.id}`} className="inline-flex h-10 items-center rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">
+                          Gérer groupe
+                        </Link>
+                        <Link href={`/admin/groupes/${group.id}#section-members-roles`} className="inline-flex h-10 items-center rounded-2xl border border-cyan-300/30 bg-cyan-500/12 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20">
+                          Membres & Rôles
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
