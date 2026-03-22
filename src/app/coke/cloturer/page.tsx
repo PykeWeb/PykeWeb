@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Image as ImageIcon, Leaf } from 'lucide-react'
+import { Image as ImageIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
+import { CokeSessionHeader } from '@/components/coke/CokeSessionHeader'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
@@ -115,6 +117,8 @@ export default function CokeClosePage() {
           notes: 'Clôture session coke',
           payment_mode: 'other',
         })
+      } else if (!outputItem && leavesQty > 0) {
+        toast.error("Item introuvable: Feuille de Cocaïne")
       }
 
       window.localStorage.removeItem(COKE_SESSION_STORAGE_KEY)
@@ -141,13 +145,7 @@ export default function CokeClosePage() {
           <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm">Aucune session préparée trouvée. <Link className="underline" href="/coke/preparer">Préparer une session</Link>.</div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-amber-500/16 to-orange-500/10 p-4">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.08]"><Leaf className="h-5 w-5 text-emerald-100" /></div>
-              <div>
-                <p className="text-lg font-semibold">Clôturer une session coke</p>
-                <p className="text-sm text-white/70">Saisie réelle et mise à jour stock.</p>
-              </div>
-            </div>
+            <CokeSessionHeader title="Clôturer une session coke" subtitle="Saisie réelle et mise à jour stock." tone="amber" />
 
             <div className="grid gap-2 text-sm sm:grid-cols-3">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">Graines prévues: <span className="font-semibold">{plan.seeds}</span></div>

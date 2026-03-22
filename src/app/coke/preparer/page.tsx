@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Image as ImageIcon, Leaf } from 'lucide-react'
+import { Image as ImageIcon } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
+import { CokeSessionHeader } from '@/components/coke/CokeSessionHeader'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
@@ -61,13 +62,7 @@ export default function CokePreparePage() {
       <PageHeader title="Préparer une session coke" subtitle="Prépare ta session avant de partir en plantation" />
       <Panel>
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/16 to-blue-500/10 p-4">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.08]"><Leaf className="h-5 w-5 text-emerald-100" /></div>
-            <div>
-              <p className="text-lg font-semibold">Préparer une session coke</p>
-              <p className="text-sm text-white/70">Prévision complète avant départ (sans impact stock).</p>
-            </div>
-          </div>
+          <CokeSessionHeader title="Préparer une session coke" subtitle="Prévision complète avant départ (sans impact stock)." tone="cyan" />
 
           <div className="grid gap-2 sm:grid-cols-2">
             <div><p className="mb-1 text-xs text-white/65">Graines prévues</p><Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="numeric" className="h-10 rounded-lg" /></div>
