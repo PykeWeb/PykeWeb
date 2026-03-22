@@ -557,75 +557,53 @@ export default function ItemsClient({
       ) : (
         <div className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-sm font-semibold">Calculateur drogue (Items)</p>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="min-w-[220px] flex-1">
                 <label className="mb-1 block text-xs text-white/60">Mode</label>
                 <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-white/60">Quantité</label>
-                <input
-                  value={String(calcQuantity)}
-                  onChange={(e) => setCalcQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-                  className="h-10 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm"
-                  inputMode="numeric"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-white/60">Total connu</label>
-                <div className="flex h-10 items-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 text-sm">
-                  <span className="font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</span>
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm">
-                <p className="text-xs text-cyan-100/80">Items requis (total)</p>
-                <p className="text-xl font-semibold">{calculatorTotals.totalRequiredItems}</p>
-              </div>
-              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm">
-                <p className="text-xs text-emerald-100/80">Stock cumulé (items liés)</p>
-                <p className="text-xl font-semibold">{calculatorTotals.withStock}</p>
-              </div>
-              <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-sm">
-                <p className="text-xs text-rose-100/80">Manque estimé</p>
-                <p className="text-xl font-semibold">{calculatorTotals.totalMissing}</p>
-              </div>
-            </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {drugCalculator.requirements.map((req) => {
-                const requirementItem = findItemForLabel(req.label)
-                const stock = Math.max(0, Number(requirementItem?.stock || 0))
-                const missing = Math.max(0, req.qty - stock)
-                return (
-                  <div key={req.label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-                        {requirementItem?.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={requirementItem.image_url} alt={req.label} className="h-full w-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center text-white/40">
-                            <ImageIcon className="h-3.5 w-3.5" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="font-medium">{req.label}</div>
-                    </div>
-                    <div className="mt-2 grid gap-1.5 text-xs">
-                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Besoin total</span><span className="font-semibold">{req.qty}</span></div>
-                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Stock actuel</span><span className="font-semibold">{stock}</span></div>
-                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Manque</span><span className={`font-semibold ${missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{missing}</span></div>
-                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">PU</span><span className="font-semibold">{req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</span></div>
-                      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Sous-total</span><span className="font-semibold">{req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</span></div>
+              {calcMode === 'meth' ? (
+                <>
+                  <div className="min-w-[180px]">
+                    <label className="mb-1 block text-xs text-white/60">Quantité</label>
+                    <input
+                      value={String(calcQuantity)}
+                      onChange={(e) => setCalcQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                      className="h-10 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm"
+                      inputMode="numeric"
+                    />
+                  </div>
+                  <div className="min-w-[180px]">
+                    <label className="mb-1 block text-xs text-white/60">Total connu</label>
+                    <div className="flex h-10 items-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 text-sm">
+                      <span className="font-semibold">{drugCalculator.totalKnown.toFixed(2)} $</span>
                     </div>
                   </div>
-                )
-              })}
+                </>
+              ) : null}
             </div>
-            {selectedCalculatorRecipe && calcMode === 'coke' ? (
+
+            {calcMode === 'coke' ? (
               <div className="mt-3 space-y-3">
+                <div className="rounded-2xl border border-cyan-300/30 bg-gradient-to-br from-cyan-500/16 via-blue-500/10 to-transparent p-3 sm:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/15 bg-white/[0.06]">
+                      {selectedOutputItem?.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={selectedOutputItem.image_url} alt="Session coke" className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-white/60">
+                          <Pill className="h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold text-cyan-50">Session coke</p>
+                      <p className="text-xs text-cyan-100/85">Prépare, suis et clôture une session de plantation</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.06] p-3 sm:p-4">
                   <p className="text-sm font-semibold text-cyan-50">Préparer une session coke</p>
                   <p className="mt-1 text-xs text-cyan-100/80">Bloc d’estimation (prévu) — ne modifie pas le stock.</p>
@@ -714,7 +692,62 @@ export default function ItemsClient({
                 </div>
               </div>
             ) : null}
-            {selectedCalculatorRecipe && calcMode !== 'coke' ? (
+
+            {calcMode === 'meth' ? (
+              <>
+                <div className="mt-3 rounded-2xl border border-violet-300/20 bg-gradient-to-br from-violet-500/14 via-indigo-500/10 to-transparent p-3 sm:p-4">
+                  <p className="text-sm font-semibold text-violet-50">Session meth · calculateur classique</p>
+                  <p className="mt-1 text-xs text-violet-100/80">Mode rapide : estimation + sortie/entrée stock via “Plantation réalisée”.</p>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm">
+                    <p className="text-xs text-cyan-100/80">Items requis (total)</p>
+                    <p className="text-xl font-semibold">{calculatorTotals.totalRequiredItems}</p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm">
+                    <p className="text-xs text-emerald-100/80">Stock cumulé (items liés)</p>
+                    <p className="text-xl font-semibold">{calculatorTotals.withStock}</p>
+                  </div>
+                  <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-sm">
+                    <p className="text-xs text-rose-100/80">Manque estimé</p>
+                    <p className="text-xl font-semibold">{calculatorTotals.totalMissing}</p>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {drugCalculator.requirements.map((req) => {
+                    const requirementItem = findItemForLabel(req.label)
+                    const stock = Math.max(0, Number(requirementItem?.stock || 0))
+                    const missing = Math.max(0, req.qty - stock)
+                    return (
+                      <div key={req.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.03] px-3 py-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                            {requirementItem?.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={requirementItem.image_url} alt={req.label} className="h-full w-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="grid h-full w-full place-items-center text-white/40">
+                                <ImageIcon className="h-4 w-4" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="font-medium">{req.label}</div>
+                        </div>
+                        <div className="mt-2 grid gap-1.5 text-xs">
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Besoin total</span><span className="font-semibold">{req.qty}</span></div>
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Stock actuel</span><span className="font-semibold">{stock}</span></div>
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Manque</span><span className={`font-semibold ${missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{missing}</span></div>
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">PU</span><span className="font-semibold">{req.unitPrice == null ? '—' : `${req.unitPrice.toFixed(2)} $`}</span></div>
+                          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"><span className="text-white/70">Sous-total</span><span className="font-semibold">{req.subtotal == null ? '—' : `${req.subtotal.toFixed(2)} $`}</span></div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            ) : null}
+
+            {selectedCalculatorRecipe && calcMode === 'meth' ? (
               <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                 <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <div className="h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
