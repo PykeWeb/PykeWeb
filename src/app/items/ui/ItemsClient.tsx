@@ -98,6 +98,15 @@ export default function ItemsClient({
   const [plantationRuns, setPlantationRuns] = useState<Record<string, string>>(plantationDefaultRuns)
   const [plantationOutputPerRun, setPlantationOutputPerRun] = useState<Record<string, string>>(plantationDefaultOutputPerRun)
   const [realizingRecipeKey, setRealizingRecipeKey] = useState<string | null>(null)
+  const [cokePlannedSeeds, setCokePlannedSeeds] = useState('1')
+  const [cokePlannedZones, setCokePlannedZones] = useState('1')
+  const [cokeRealSeeds, setCokeRealSeeds] = useState('1')
+  const [cokeRealPots, setCokeRealPots] = useState('1')
+  const [cokeRealFertilizer, setCokeRealFertilizer] = useState('1')
+  const [cokeRealWater, setCokeRealWater] = useState('3')
+  const [cokeRealLamps, setCokeRealLamps] = useState('2')
+  const [cokeRealLeaves, setCokeRealLeaves] = useState('1')
+  const [closingCokeSession, setClosingCokeSession] = useState(false)
   const searchParams = useSearchParams()
   const router = useRouter()
   const refreshInFlightRef = useRef(false)
@@ -247,6 +256,101 @@ export default function ItemsClient({
     const normalizedOutput = normalizeItemName(selectedCalculatorRecipe.output_name)
     return items.find((item) => normalizeItemName(item.name).includes(normalizedOutput) || normalizedOutput.includes(normalizeItemName(item.name))) || null
   }, [findItemByName, items, selectedCalculatorRecipe])
+
+  const cokePlannedSession = useMemo(() => {
+    const seeds = Math.max(0, Math.floor(Number(cokePlannedSeeds) || 0))
+    const zones = Math.max(0, Math.floor(Number(cokePlannedZones) || 0))
+    return {
+      seeds,
+      zones,
+      pots: seeds,
+      fertilizer: seeds,
+      water: seeds * 3,
+      lamps: zones * 2,
+      leaves: seeds,
+    }
+  }, [cokePlannedSeeds, cokePlannedZones])
+
+  const cokeRealSession = useMemo(() => ({
+    seeds: Math.max(0, Math.floor(Number(cokeRealSeeds) || 0)),
+    pots: Math.max(0, Math.floor(Number(cokeRealPots) || 0)),
+    fertilizer: Math.max(0, Math.floor(Number(cokeRealFertilizer) || 0)),
+    water: Math.max(0, Math.floor(Number(cokeRealWater) || 0)),
+    lamps: Math.max(0, Math.floor(Number(cokeRealLamps) || 0)),
+    leaves: Math.max(0, Math.floor(Number(cokeRealLeaves) || 0)),
+  }), [cokeRealFertilizer, cokeRealLamps, cokeRealLeaves, cokeRealPots, cokeRealSeeds, cokeRealWater])
+
+  const cokeComparisonRows = useMemo(() => ([
+    { key: 'seeds', label: 'Graines', planned: cokePlannedSession.seeds, real: cokeRealSession.seeds },
+    { key: 'pots', label: 'Pots', planned: cokePlannedSession.pots, real: cokeRealSession.pots },
+    { key: 'fertilizer', label: 'Fertilisant', planned: cokePlannedSession.fertilizer, real: cokeRealSession.fertilizer },
+    { key: 'water', label: 'Eaux', planned: cokePlannedSession.water, real: cokeRealSession.water },
+    { key: 'lamps', label: 'Lampes', planned: cokePlannedSession.lamps, real: cokeRealSession.lamps },
+    { key: 'leaves', label: 'Feuilles', planned: cokePlannedSession.leaves, real: cokeRealSession.leaves },
+  ]), [cokePlannedSession, cokeRealSession])
+
+  const applyCokeSessionClosure = useCallback(async () => {
+    const transactions = [
+      { label: 'Graine de coke', quantity: cokeRealSession.seeds },
+      { label: 'Pot', quantity: cokeRealSession.pots },
+      { label: 'Fertilisant', quantity: cokeRealSession.fertilizer },
+      { label: "Bouteille d'eau", quantity: cokeRealSession.water },
+      { label: 'Lampe', quantity: cokeRealSession.lamps },
+    ]
+
+    const outputItem = findItemByName('Feuille de Cocaïne')
+    if (!outputItem) {
+      toast.error("Item introuvable: Feuille de Cocaïne")
+      return
+    }
+
+    const missingItems = transactions
+      .filter((entry) => entry.quantity > 0)
+      .map((entry) => ({ ...entry, item: findItemForLabel(entry.label) }))
+      .filter((entry) => !entry.item)
+
+    if (missingItems.length > 0) {
+      toast.error(`Items introuvables: ${missingItems.map((entry) => entry.label).join(', ')}`)
+      return
+    }
+
+    setClosingCokeSession(true)
+    try {
+      for (const entry of transactions) {
+        if (entry.quantity <= 0) continue
+        const item = findItemForLabel(entry.label)
+        if (!item) continue
+        await createFinanceTransaction({
+          item_id: item.id,
+          mode: 'sell',
+          quantity: entry.quantity,
+          unit_price: 0,
+          counterparty: 'Session coke',
+          notes: markStockOutNote('Clôture session coke (réel)'),
+          payment_mode: 'other',
+        })
+      }
+
+      if (cokeRealSession.leaves > 0) {
+        await createFinanceTransaction({
+          item_id: outputItem.id,
+          mode: 'buy',
+          quantity: cokeRealSession.leaves,
+          unit_price: 0,
+          counterparty: 'Session coke',
+          notes: 'Clôture session coke (réel)',
+          payment_mode: 'other',
+        })
+      }
+
+      await refresh()
+      toast.success('Session coke clôturée avec les valeurs réelles.')
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Impossible de clôturer la session coke.')
+    } finally {
+      setClosingCokeSession(false)
+    }
+  }, [cokeRealSession.fertilizer, cokeRealSession.lamps, cokeRealSession.leaves, cokeRealSession.pots, cokeRealSession.seeds, cokeRealSession.water, findItemByName, findItemForLabel, refresh])
 
   const realizePlantation = useCallback(async (recipe: PlantationRecipe) => {
     const runs = Math.max(0, Math.floor(Number(plantationRuns[recipe.key] || 0) || 0))
@@ -520,7 +624,97 @@ export default function ItemsClient({
                 )
               })}
             </div>
-            {selectedCalculatorRecipe ? (
+            {selectedCalculatorRecipe && calcMode === 'coke' ? (
+              <div className="mt-3 space-y-3">
+                <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.06] p-3 sm:p-4">
+                  <p className="text-sm font-semibold text-cyan-50">Préparer une session coke</p>
+                  <p className="mt-1 text-xs text-cyan-100/80">Bloc d’estimation (prévu) — ne modifie pas le stock.</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-xs text-white/65">Graines prévues</p>
+                      <Input value={cokePlannedSeeds} onChange={(event) => setCokePlannedSeeds(event.target.value)} inputMode="numeric" className="h-9 rounded-lg text-sm" />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-xs text-white/65">Zones prévues</p>
+                      <Input value={cokePlannedZones} onChange={(event) => setCokePlannedZones(event.target.value)} inputMode="numeric" className="h-9 rounded-lg text-sm" />
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">Pots nécessaires: <span className="font-semibold">{cokePlannedSession.pots}</span></div>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">Fertilisant nécessaire: <span className="font-semibold">{cokePlannedSession.fertilizer}</span></div>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">Eau nécessaire: <span className="font-semibold">{cokePlannedSession.water}</span></div>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">Lampes nécessaires: <span className="font-semibold">{cokePlannedSession.lamps}</span></div>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 sm:col-span-2">Feuilles théoriques: <span className="font-semibold">{cokePlannedSession.leaves}</span></div>
+                  </div>
+                  <SecondaryButton
+                    type="button"
+                    className="mt-3"
+                    onClick={() => {
+                      setCokeRealSeeds(String(cokePlannedSession.seeds))
+                      setCokeRealPots(String(cokePlannedSession.pots))
+                      setCokeRealFertilizer(String(cokePlannedSession.fertilizer))
+                      setCokeRealWater(String(cokePlannedSession.water))
+                      setCokeRealLamps(String(cokePlannedSession.lamps))
+                      setCokeRealLeaves(String(cokePlannedSession.leaves))
+                    }}
+                  >
+                    Copier le prévu vers la clôture
+                  </SecondaryButton>
+                </div>
+
+                <div className="rounded-2xl border border-amber-300/20 bg-amber-500/[0.06] p-3 sm:p-4">
+                  <p className="text-sm font-semibold text-amber-50">Clôturer une session coke</p>
+                  <p className="mt-1 text-xs text-amber-100/80">Saisie réelle (consommé/perdu/récupéré) — c’est cette étape qui met à jour le stock.</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {[
+                      { label: 'Graines réellement utilisées', value: cokeRealSeeds, setter: setCokeRealSeeds },
+                      { label: 'Pots réellement utilisés', value: cokeRealPots, setter: setCokeRealPots },
+                      { label: 'Fertilisant réellement utilisé', value: cokeRealFertilizer, setter: setCokeRealFertilizer },
+                      { label: 'Eaux réellement utilisées', value: cokeRealWater, setter: setCokeRealWater },
+                      { label: 'Lampes réellement utilisées / perdues', value: cokeRealLamps, setter: setCokeRealLamps },
+                      { label: 'Feuilles réellement récupérées', value: cokeRealLeaves, setter: setCokeRealLeaves },
+                    ].map((field) => (
+                      <div key={field.label}>
+                        <p className="mb-1 text-xs text-white/65">{field.label}</p>
+                        <Input value={field.value} onChange={(event) => field.setter(event.target.value)} inputMode="numeric" className="h-9 rounded-lg text-sm" />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
+                    <table className="w-full text-xs sm:text-sm">
+                      <thead className="bg-white/[0.03] text-white/70">
+                        <tr>
+                          <th className="px-2 py-2 text-left">Ressource</th>
+                          <th className="px-2 py-2 text-right">Prévu</th>
+                          <th className="px-2 py-2 text-right">Réel</th>
+                          <th className="px-2 py-2 text-right">Écart</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/10">
+                        {cokeComparisonRows.map((row) => {
+                          const delta = row.real - row.planned
+                          const deltaText = `${delta > 0 ? '+' : ''}${delta}`
+                          return (
+                            <tr key={row.key}>
+                              <td className="px-2 py-1.5">{row.label}</td>
+                              <td className="px-2 py-1.5 text-right">{row.planned}</td>
+                              <td className="px-2 py-1.5 text-right">{row.real}</td>
+                              <td className={`px-2 py-1.5 text-right font-semibold ${delta > 0 ? 'text-emerald-200' : delta < 0 ? 'text-rose-200' : 'text-white/70'}`}>{deltaText}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <PrimaryButton className="mt-3 w-full" disabled={closingCokeSession} onClick={() => { void applyCokeSessionClosure() }}>
+                    {closingCokeSession ? 'Clôture en cours...' : 'Valider la clôture (réel)'}
+                  </PrimaryButton>
+                </div>
+              </div>
+            ) : null}
+            {selectedCalculatorRecipe && calcMode !== 'coke' ? (
               <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                 <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <div className="h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
