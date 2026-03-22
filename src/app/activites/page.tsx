@@ -19,6 +19,7 @@ import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
 import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
+import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 
 type SelectedLine = { itemId: string; quantity: number }
 type SelectionStep = 'equipment' | 'objects'
@@ -99,7 +100,8 @@ export default function ActivitesPage() {
 
   useEffect(() => {
     const session = getTenantSession()
-    setCanSeeChefTab(Boolean(session?.isAdmin || session?.role === 'chef'))
+    const allowed = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
+    setCanSeeChefTab(Boolean(session?.isAdmin || allowed.includes('/') || allowed.includes('/activites/gestion-chef')))
     void refresh()
     void listCatalogItems().then(setCatalogItems).catch(() => setCatalogItems([]))
   }, [])
@@ -166,6 +168,12 @@ export default function ActivitesPage() {
   }, [selectedEquipmentLines, allowedEquipmentItems])
 
   const estimatedThisSubmission = useMemo(() => selectedObjectRows.reduce((sum, row) => sum + row.salary, 0), [selectedObjectRows])
+  const activitiesBubbleStats = useMemo(() => {
+    const entries = data?.entries ?? []
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const today = entries.filter((entry) => String(entry.created_at).slice(0, 10) === todayIso).length
+    return { today, week: entries.length }
+  }, [data?.entries])
 
 
   function addLine(setter: Dispatch<SetStateAction<SelectedLine[]>>, itemId: string) {
@@ -244,7 +252,7 @@ export default function ActivitesPage() {
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-2">
-            <ActivitiesCategoryTabs active="activites" />
+            <ActivitiesCategoryTabs active="activites" activitiesStats={activitiesBubbleStats} />
             <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
           </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">

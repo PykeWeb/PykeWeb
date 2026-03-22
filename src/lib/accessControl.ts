@@ -34,6 +34,9 @@ export function canAccessPath(session: TenantSession, pathname: string) {
   if (PUBLIC_PATHS.includes(pathname)) return true
 
   const allowedPrefixes = expandAccessPrefixes(session.allowedPrefixes ?? [])
+  if (pathname === '/activites/gestion-chef' || pathname.startsWith('/activites/gestion-chef/')) {
+    return allowedPrefixes.includes('/') || allowedPrefixes.includes('/activites/gestion-chef')
+  }
   if (allowedPrefixes.length > 0) return isMemberRouteAllowed(pathname, allowedPrefixes)
 
   if (!isMemberTenantSession(session)) return true

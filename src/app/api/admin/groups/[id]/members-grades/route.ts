@@ -12,6 +12,8 @@ type MemberRow = {
   group_id: string
   player_name: string
   player_identifier: string | null
+  password: string | null
+  is_admin: boolean
   grade_id: string | null
   created_at: string
   updated_at: string
@@ -142,7 +144,7 @@ async function fetchPayload(groupId: string, roleTableName: RoleTableName) {
       .order('created_at', { ascending: true }),
     supabase
       .from('group_members')
-      .select('id,group_id,player_name,player_identifier,grade_id,created_at,updated_at')
+      .select('id,group_id,player_name,player_identifier,password,is_admin,grade_id,created_at,updated_at')
       .eq('group_id', groupId)
       .order('created_at', { ascending: true }),
     readPlayerCandidates(groupId),
@@ -206,6 +208,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (entity === 'member') {
       const playerName = typeof body.player_name === 'string' ? body.player_name.trim() : ''
       const playerIdentifier = typeof body.player_identifier === 'string' ? body.player_identifier.trim() : ''
+      const password = typeof body.password === 'string' ? body.password.trim() : ''
+      const isAdmin = Boolean(body.is_admin)
       const gradeId = typeof body.grade_id === 'string' ? body.grade_id.trim() : ''
 
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
@@ -225,6 +229,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         group_id: groupId,
         player_name: playerName,
         player_identifier: playerIdentifier || null,
+        password: password || null,
+        is_admin: isAdmin,
         grade_id: gradeId || null,
       })
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
@@ -269,6 +275,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       const patch = body.patch as Record<string, unknown> | undefined
       const playerName = typeof patch?.player_name === 'string' ? patch.player_name.trim() : ''
       const playerIdentifier = typeof patch?.player_identifier === 'string' ? patch.player_identifier.trim() : ''
+      const password = typeof patch?.password === 'string' ? patch.password.trim() : ''
+      const isAdmin = Boolean(patch?.is_admin)
       const gradeId = typeof patch?.grade_id === 'string' ? patch.grade_id.trim() : ''
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
 
@@ -288,6 +296,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         .update({
           player_name: playerName,
           player_identifier: playerIdentifier || null,
+          password: password || null,
+          is_admin: isAdmin,
           grade_id: gradeId || null,
         })
         .eq('id', id)

@@ -12,6 +12,7 @@ import {
 } from '@/lib/tenantAuthApi'
 import { expandAccessPrefixes, GROUP_OPERATIONS_PREFIX, normalizeRolePrefixes, ROLE_ACCESS_OPTIONS } from '@/lib/types/groupRoles'
 import type { GroupMember, GroupMemberCandidate, GroupMemberRole, GroupMembersGradesPayload } from '@/lib/types/groupMembers'
+import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 
 type Props = {
   groupId: string
@@ -43,7 +44,10 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [selectedPlayerName, setSelectedPlayerName] = useState('')
   const [customPlayerName, setCustomPlayerName] = useState('')
   const [newMemberIdentifier, setNewMemberIdentifier] = useState('')
+  const [newMemberPassword, setNewMemberPassword] = useState('')
+  const [newMemberIsAdmin, setNewMemberIsAdmin] = useState(false)
   const [newMemberRoleId, setNewMemberRoleId] = useState('')
+  const [memberPasswordVisible, setMemberPasswordVisible] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     let alive = true
@@ -173,12 +177,16 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       const payload = await createGroupMember(groupId, {
         player_name: chosenName,
         player_identifier: newMemberIdentifier.trim() || null,
+        password: newMemberPassword.trim() || null,
+        is_admin: newMemberIsAdmin,
         grade_id: newMemberRoleId || null,
       })
       applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
       setSelectedPlayerName('')
       setCustomPlayerName('')
       setNewMemberIdentifier('')
+      setNewMemberPassword('')
+      setNewMemberIsAdmin(false)
       setNewMemberRoleId('')
       setError(null)
     } catch (e: unknown) {
@@ -198,6 +206,8 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       const payload = await updateGroupMember(groupId, member.id, {
         player_name: member.player_name.trim(),
         player_identifier: member.player_identifier?.trim() || null,
+        password: member.password?.trim() || null,
+        is_admin: member.is_admin,
         grade_id: member.grade_id || null,
       })
       applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
@@ -264,6 +274,15 @@ export function GroupMembersGradesSection({ groupId }: Props) {
               </select>
               <input value={customPlayerName} onChange={(e) => setCustomPlayerName(e.target.value)} placeholder="Ou saisir manuellement le nom" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
               <input value={newMemberIdentifier} onChange={(e) => setNewMemberIdentifier(e.target.value)} placeholder="Identifiant joueur (optionnel)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                <input value={newMemberPassword} onChange={(e) => setNewMemberPassword(e.target.value)} type="password" placeholder="Mot de passe membre (optionnel)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+                <button type="button" onClick={() => setNewMemberPassword(generatePassword({ avoidAmbiguous: true }))} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Générer</button>
+                <button type="button" onClick={() => void copyToClipboard(newMemberPassword)} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
+              </div>
+              <label className="inline-flex items-center gap-2 text-xs text-white/70">
+                <input type="checkbox" checked={newMemberIsAdmin} onChange={(e) => setNewMemberIsAdmin(e.target.checked)} className="h-4 w-4" />
+                Créer un membre admin (accès total)
+              </label>
               <select value={newMemberRoleId} onChange={(e) => setNewMemberRoleId(e.target.value)} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm">
                 {roleOptions.map((opt) => (
                   <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>
@@ -308,14 +327,30 @@ export function GroupMembersGradesSection({ groupId }: Props) {
           {members.length === 0 ? <p className="text-sm text-white/60">Aucun membre pour ce groupe.</p> : null}
           {members.map((member) => (
             <div key={member.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="grid gap-2 md:grid-cols-[1.2fr_1fr_1fr_auto_auto] md:items-center">
+              <div className="grid gap-2 md:grid-cols-[1.1fr_1fr_1fr_1fr_auto_auto] md:items-center">
                 <input value={member.player_name} onChange={(e) => updateMemberDraft(member.id, { player_name: e.target.value })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" placeholder="Nom du membre" />
                 <input value={member.player_identifier ?? ''} onChange={(e) => updateMemberDraft(member.id, { player_identifier: e.target.value || null })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" placeholder="Identifiant" />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={member.password ?? ''}
+                    onChange={(e) => updateMemberDraft(member.id, { password: e.target.value || null })}
+                    type={memberPasswordVisible[member.id] ? 'text' : 'password'}
+                    className="h-10 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm"
+                    placeholder="Mot de passe"
+                  />
+                  <button type="button" onClick={() => setMemberPasswordVisible((prev) => ({ ...prev, [member.id]: !prev[member.id] }))} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-2 text-xs hover:bg-white/[0.12]">{memberPasswordVisible[member.id] ? 'Masquer' : 'Voir'}</button>
+                  <button type="button" onClick={() => updateMemberDraft(member.id, { password: generatePassword({ avoidAmbiguous: true }) })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-2 text-xs hover:bg-white/[0.12]">Gen</button>
+                  <button type="button" onClick={() => void copyToClipboard(member.password || '')} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-2 text-xs hover:bg-white/[0.12]">Copier</button>
+                </div>
                 <select value={member.grade_id ?? ''} onChange={(e) => updateMemberDraft(member.id, { grade_id: e.target.value || null })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm">
                   {roleOptions.map((opt) => (
                     <option key={`${member.id}-${opt.value || 'none'}`} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+                <label className="inline-flex items-center gap-2 text-xs text-white/70">
+                  <input type="checkbox" checked={member.is_admin} onChange={(e) => updateMemberDraft(member.id, { is_admin: e.target.checked })} className="h-4 w-4" />
+                  Admin
+                </label>
                 <button disabled={busy} onClick={() => void saveMember(member)} className="h-10 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 text-sm text-cyan-50 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50">Enregistrer</button>
                 <button disabled={busy} onClick={() => void removeMember(member.id)} className="h-10 rounded-xl border border-rose-300/35 bg-rose-500/15 px-3 text-sm text-rose-100 hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-50">Supprimer</button>
               </div>

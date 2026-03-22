@@ -60,6 +60,12 @@ export default function TablettePage() {
     if (!normalized) return false
     return runs.some((row) => row.day_key === today && row.member_name.trim().toLowerCase() === normalized)
   }, [memberName, runs, today])
+  const tabletteBubbleStats = useMemo(() => {
+    return {
+      today: stats?.today.runs ?? 0,
+      week: stats?.week.runs ?? runs.length,
+    }
+  }, [stats, runs.length])
 
   const forceLogout = useCallback(async () => {
     clearTenantSession()
@@ -135,7 +141,7 @@ export default function TablettePage() {
       <div className="space-y-4">
         <div>
           <div className="mb-3">
-            <ActivitiesCategoryTabs active="tablette" />
+            <ActivitiesCategoryTabs active="tablette" tabletteStats={tabletteBubbleStats} />
           </div>
           <PageHeader title="Tablette" subtitle="Quota journalier par membre (00:00 → 00:00). Un membre ne peut valider qu’une fois par jour." />
         </div>

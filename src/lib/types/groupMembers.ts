@@ -15,6 +15,8 @@ export type GroupMember = {
   group_id: string
   player_name: string
   player_identifier: string | null
+  password: string | null
+  is_admin: boolean
   grade_id: string | null
   created_at: string
   updated_at: string

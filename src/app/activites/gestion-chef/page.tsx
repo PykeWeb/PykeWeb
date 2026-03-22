@@ -13,6 +13,7 @@ import { listCatalogItems } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
 import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
+import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 
 type GroupedMember = {
   memberName: string
@@ -46,7 +47,8 @@ export default function ActivitesGestionChefPage() {
 
   useEffect(() => {
     const session = getTenantSession()
-    const isChef = Boolean(session?.isAdmin || session?.role === 'chef')
+    const allowed = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
+    const isChef = Boolean(session?.isAdmin || allowed.includes('/') || allowed.includes('/activites/gestion-chef'))
     if (!isChef) {
       window.location.href = '/activites'
       return
@@ -97,6 +99,12 @@ export default function ActivitesGestionChefPage() {
 
   const groupedForChef = useMemo(() => groupEntriesByMember(data?.entries ?? []), [data?.entries])
   const catalogItemMap = useMemo(() => new Map(catalogItems.map((item) => [item.id, item])), [catalogItems])
+  const activitiesBubbleStats = useMemo(() => {
+    const entries = data?.entries ?? []
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const today = entries.filter((entry) => String(entry.created_at).slice(0, 10) === todayIso).length
+    return { today, week: entries.length }
+  }, [data?.entries])
 
   return (
     <div className="space-y-6">
@@ -104,7 +112,7 @@ export default function ActivitesGestionChefPage() {
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
         <div className="space-y-2">
-          <ActivitiesCategoryTabs active="activites" />
+          <ActivitiesCategoryTabs active="activites" activitiesStats={activitiesBubbleStats} />
           <ActivitiesPageTabs active="chef" />
         </div>
       </section>
