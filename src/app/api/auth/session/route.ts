@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { getSessionFromRequest } from '@/server/auth/session'
 import {
   encodeTenantSession,
+  isAdminSession,
   isValidTenantSession,
   TENANT_SESSION_COOKIE_KEY,
   TENANT_SESSION_VERSION,
@@ -15,6 +18,70 @@ function cookieOptions(remember = true) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
   }
+}
+
+type GroupAccessRow = {
+  id: string
+  name: string
+  badge: string | null
+  active: boolean
+  paid_until: string | null
+}
+
+function clearCookieOn(response: NextResponse) {
+  response.cookies.set(TENANT_SESSION_COOKIE_KEY, '', {
+    path: '/',
+    maxAge: 0,
+    sameSite: 'lax',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+  })
+}
+
+export async function GET(request: Request) {
+  const session = await getSessionFromRequest(request)
+  if (!session) {
+    const response = NextResponse.json({ error: 'Session invalide' }, { status: 401 })
+    clearCookieOn(response)
+    return response
+  }
+
+  if (isAdminSession(session)) {
+    const normalizedAdmin = { ...session, v: TENANT_SESSION_VERSION }
+    const response = NextResponse.json({ ok: true, session: normalizedAdmin })
+    response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(normalizedAdmin), cookieOptions(true))
+    return response
+  }
+
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('tenant_groups')
+    .select('id,name,badge,active,paid_until')
+    .eq('id', session.groupId)
+    .maybeSingle<GroupAccessRow>()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data || !data.active) {
+    const response = NextResponse.json({ error: 'Accès groupe désactivé.' }, { status: 403 })
+    clearCookieOn(response)
+    return response
+  }
+  if (data.paid_until && new Date(data.paid_until).getTime() < Date.now()) {
+    const response = NextResponse.json({ error: 'Accès expiré (paiement en retard).' }, { status: 403 })
+    clearCookieOn(response)
+    return response
+  }
+
+  const normalized: TenantSessionPayload = {
+    ...session,
+    groupName: data.name,
+    groupBadge: data.badge,
+    v: TENANT_SESSION_VERSION,
+  }
+
+  const response = NextResponse.json({ ok: true, session: normalized })
+  response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(normalized), cookieOptions(true))
+  return response
 }
 
 export async function POST(request: Request) {

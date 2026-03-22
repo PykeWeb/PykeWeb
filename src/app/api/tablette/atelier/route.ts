@@ -27,12 +27,31 @@ type TabletOptionRow = {
   sort_order: number | null
 }
 
+type GroupAccessRow = {
+  active: boolean
+  paid_until: string | null
+}
+
+class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message
   if (typeof error === 'object' && error && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
     return (error as { message: string }).message
   }
   return 'Erreur serveur.'
+}
+
+function toStatusCode(error: unknown) {
+  if (error instanceof ApiError) return error.status
+  return 400
 }
 
 function toSafeQty(value: unknown, max = 2): number {
@@ -78,6 +97,21 @@ async function getGlobalTabletOptions(): Promise<TabletCatalogItemConfig[]> {
   }))
 
   return normalizeTabletOptions(options)
+}
+
+async function assertGroupTabletAccess(groupId: string) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('tenant_groups')
+    .select('active,paid_until')
+    .eq('id', groupId)
+    .maybeSingle<GroupAccessRow>()
+
+  if (error) throw new ApiError(error.message, 500)
+  if (!data || !data.active) throw new ApiError('Accès groupe désactivé.', 403)
+  if (data.paid_until && new Date(data.paid_until).getTime() < Date.now()) {
+    throw new ApiError('Accès expiré (paiement en retard).', 403)
+  }
 }
 
 async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qty: number) {
@@ -181,6 +215,7 @@ function buildGroupStats(runs: TabletDailyRun[]): GroupTabletStats {
 export async function GET(request: Request) {
   try {
     const session = await requireGroupSession(request)
+    await assertGroupTabletAccess(session.groupId)
     const supabase = getSupabaseAdmin()
     const today = toDayKey()
 
@@ -202,13 +237,14 @@ export async function GET(request: Request) {
       stats: buildGroupStats(runs),
     })
   } catch (error: unknown) {
-    return NextResponse.json({ error: toErrorMessage(error) }, { status: 400 })
+    return NextResponse.json({ error: toErrorMessage(error) }, { status: toStatusCode(error) })
   }
 }
 
 export async function POST(request: Request) {
   try {
     const session = await requireGroupSession(request)
+    await assertGroupTabletAccess(session.groupId)
     const body = (await request.json()) as TabletSubmitPayload
     const member = normalizeMemberName(body.member_name)
     if (!member.raw) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
@@ -284,6 +320,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(inserted)
   } catch (error: unknown) {
-    return NextResponse.json({ error: toErrorMessage(error) }, { status: 400 })
+    return NextResponse.json({ error: toErrorMessage(error) }, { status: toStatusCode(error) })
   }
 }

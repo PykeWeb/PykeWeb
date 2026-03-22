@@ -1,13 +1,14 @@
 'use client'
 
 import { Image as ImageIcon } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
+import { clearTenantSession, clearTenantSessionOnServer, saveTenantSession } from '@/lib/tenantSession'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
 
 type AtelierResponse = {
@@ -59,12 +60,42 @@ export default function TablettePage() {
     return runs.some((row) => row.day_key === today && row.member_name.trim().toLowerCase() === normalized)
   }, [memberName, runs, today])
 
-  async function load() {
+  const forceLogout = useCallback(async () => {
+    clearTenantSession()
+    await clearTenantSessionOnServer().catch(() => undefined)
+    window.location.href = '/login'
+  }, [])
+
+  const syncTabletSession = useCallback(async () => {
+    const res = await fetch('/api/auth/session', withTenantSessionHeader({ cache: 'no-store' }))
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        await forceLogout()
+        return false
+      }
+      const payload = (await res.json().catch(() => null)) as { error?: string } | null
+      throw new Error(payload?.error || 'Synchronisation de session impossible.')
+    }
+
+    const payload = (await res.json()) as { session?: { groupId: string; groupName: string; groupBadge?: string | null; isAdmin?: boolean; role?: string; roleLabel?: string; allowedPrefixes?: string[] } }
+    if (payload.session) {
+      saveTenantSession(payload.session, true)
+    }
+    return true
+  }, [forceLogout])
+
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
+      const ok = await syncTabletSession()
+      if (!ok) return
       const res = await fetch('/api/tablette/atelier', withTenantSessionHeader({ cache: 'no-store' }))
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          await forceLogout()
+          return
+        }
         const payload = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(payload?.error || 'Impossible de charger la tablette.')
       }
@@ -85,11 +116,11 @@ export default function TablettePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [forceLogout, syncTabletSession])
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [load])
 
   function resetForm() {
     setMemberName('')
@@ -164,6 +195,8 @@ export default function TablettePage() {
                 setError(null)
                 setSuccess(null)
                 try {
+                  const ok = await syncTabletSession()
+                  if (!ok) return
                   const res = await fetch('/api/tablette/atelier', {
                     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
                     method: 'POST',
@@ -171,6 +204,10 @@ export default function TablettePage() {
                   })
 
                   if (!res.ok) {
+                    if (res.status === 401 || res.status === 403) {
+                      await forceLogout()
+                      return
+                    }
                     const payload = (await res.json().catch(() => null)) as { error?: string } | null
                     throw new Error(payload?.error || 'Validation impossible.')
                   }
