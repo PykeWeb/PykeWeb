@@ -152,6 +152,18 @@ export default function ItemsClient({
   }, [initialCategory])
 
   const typeOptions = useMemo(() => {
+    if (category === 'objects') {
+      return [
+        { value: 'all' as const, label: 'Tous' },
+        { value: 'objects' as const, label: 'Objets' },
+      ]
+    }
+    if (category === 'custom') {
+      return [
+        { value: 'all' as const, label: 'Tous' },
+        { value: 'other' as const, label: 'Autres' },
+      ]
+    }
     return getTypeFilterOptions(category)
   }, [category])
 
