@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/server/auth/session'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { isAdminSession } from '@/lib/tenantSessionShared'
 import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 import type { GroupMember, GroupMemberCandidate, GroupMemberRole } from '@/lib/types/groupMembers'
 
@@ -81,7 +80,6 @@ async function assertGroupMembersRolesAccess(request: Request, rawGroupId: strin
   const groupId = await resolveGroupId(rawGroupId)
   if (!groupId) return { groupId: null as string | null }
 
-  if (isAdminSession(session)) return { groupId }
   if (session.groupId !== groupId) throw new Error('Accès refusé à ce groupe.')
   if (!canManageGroupFromSession(session)) throw new Error('Permission insuffisante pour gérer les membres et rôles.')
 
