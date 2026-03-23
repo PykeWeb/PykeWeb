@@ -57,6 +57,13 @@ export default function CokePreparePage() {
     return { ...entry, item, stock, missing, missingCost: pu == null ? null : missing * pu, pu }
   })), [items, plan.fertilizer, plan.lamps, plan.pots, plan.seeds, plan.water])
 
+  const totals = useMemo(() => {
+    const totalMissingCost = resources.reduce((sum, entry) => sum + (entry.missingCost ?? 0), 0)
+    const totalPlannedCostKnown = resources.reduce((sum, entry) => sum + ((entry.pu == null ? 0 : entry.qty * entry.pu)), 0)
+    const missingPriceLabels = resources.filter((entry) => entry.pu == null).map((entry) => entry.label)
+    return { totalMissingCost, totalPlannedCostKnown, missingPriceLabels }
+  }, [resources])
+
   return (
     <div className="space-y-4">
       <PageHeader title="Préparer une session coke" subtitle="Prépare ta session avant de partir en plantation" />
@@ -75,6 +82,18 @@ export default function CokePreparePage() {
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">Eau: <span className="font-semibold">{plan.water}</span></div>
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">Lampes: <span className="font-semibold">{plan.lamps}</span></div>
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">Feuilles théoriques: <span className="font-semibold">{plan.theoreticalLeaves}</span></div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
+              <p className="text-xs text-cyan-100/85">Coût total session (quantités prévues)</p>
+              <p className="mt-1 text-lg font-semibold">{formatPrice(totals.totalPlannedCostKnown)}</p>
+            </div>
+            <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
+              <p className="text-xs text-amber-100/85">Coût total du manque à acheter</p>
+              <p className="mt-1 text-lg font-semibold">{formatPrice(totals.totalMissingCost)}</p>
+              {totals.missingPriceLabels.length > 0 ? <p className="mt-1 text-[11px] text-amber-100/75">Prix manquant: {totals.missingPriceLabels.join(', ')}</p> : null}
+            </div>
           </div>
 
           <div className="grid gap-2 md:grid-cols-2">
@@ -113,6 +132,7 @@ export default function CokePreparePage() {
               Démarrer la session
             </PrimaryButton>
             <Link href="/items?view=tools"><SecondaryButton>Retour calculateur</SecondaryButton></Link>
+            <Link href="/drogues/benefice"><SecondaryButton>Bénéfice drogue</SecondaryButton></Link>
           </div>
         </div>
       </Panel>

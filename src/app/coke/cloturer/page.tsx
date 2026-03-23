@@ -27,6 +27,11 @@ function findItem(items: CatalogItem[], label: string) {
   }) || null
 }
 
+function formatPrice(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return `${value.toFixed(2)} $`
+}
+
 export default function CokeClosePage() {
   const router = useRouter()
   const [items, setItems] = useState<CatalogItem[]>([])
@@ -137,6 +142,29 @@ export default function CokeClosePage() {
     { label: 'Feuilles récupérées', value: realLeaves, set: setRealLeaves, itemLabel: 'Feuille de Cocaïne' },
   ]
 
+  const sessionTotals = useMemo(() => {
+    const consumables = [
+      { label: 'Graine de coke', quantity: Math.max(0, Math.floor(Number(realSeeds) || 0)) },
+      { label: 'Pot', quantity: Math.max(0, Math.floor(Number(realPots) || 0)) },
+      { label: 'Fertilisant', quantity: Math.max(0, Math.floor(Number(realFertilizer) || 0)) },
+      { label: "Bouteille d'eau", quantity: Math.max(0, Math.floor(Number(realWater) || 0)) },
+      { label: 'Lampe', quantity: Math.max(0, Math.floor(Number(realLamps) || 0)) },
+    ]
+    const leavesQty = Math.max(0, Math.floor(Number(realLeaves) || 0))
+
+    const totalConsumablesCost = consumables.reduce((sum, row) => {
+      const item = findItem(items, row.label)
+      const pu = Number(item?.buy_price ?? 0)
+      return sum + row.quantity * (Number.isFinite(pu) ? pu : 0)
+    }, 0)
+
+    const outputItem = findItem(items, 'Feuille de Cocaïne')
+    const sellPrice = Number(outputItem?.sell_price ?? outputItem?.buy_price ?? 0)
+    const outputValue = leavesQty * (Number.isFinite(sellPrice) ? sellPrice : 0)
+    const gross = outputValue - totalConsumablesCost
+    return { totalConsumablesCost, outputValue, gross }
+  }, [items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
+
   return (
     <div className="space-y-4">
       <PageHeader title="Clôturer une session coke" subtitle="Entre les résultats réels de ta session" />
@@ -187,10 +215,26 @@ export default function CokeClosePage() {
               </table>
             </div>
 
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
+                <p className="text-xs text-amber-100/85">Coût total réel consommables</p>
+                <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.totalConsumablesCost)}</p>
+              </div>
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
+                <p className="text-xs text-cyan-100/85">Valeur des feuilles récupérées</p>
+                <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
+                <p className="text-xs text-emerald-100/85">Marge brute session</p>
+                <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.gross)}</p>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <PrimaryButton disabled={saving} onClick={() => { void submit() }}>{saving ? 'Validation...' : 'Valider la session'}</PrimaryButton>
               <Link href="/coke/preparer"><SecondaryButton>Retour préparer</SecondaryButton></Link>
               <Link href="/drogues"><SecondaryButton>Retour au calculateur</SecondaryButton></Link>
+              <Link href="/drogues/benefice"><SecondaryButton>Bénéfice drogue</SecondaryButton></Link>
             </div>
           </div>
         )}
