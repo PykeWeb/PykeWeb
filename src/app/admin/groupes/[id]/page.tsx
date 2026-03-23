@@ -7,7 +7,6 @@ import { Copy, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { deleteTenantGroup, getTenantGroup, resetTenantGroupData, updateTenantGroup, type TenantGroup } from '@/lib/tenantAuthApi'
 import { getTenantSession } from '@/lib/tenantSession'
 import { toast } from 'sonner'
-import { GroupMembersGradesSection } from './ui/GroupMembersGradesSection'
 import { PageHeader } from '@/components/PageHeader'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 
@@ -267,7 +266,12 @@ export default function AdminGroupDetailsPage() {
         </div>
       </div>
 
-      <GroupMembersGradesSection groupId={group.id} />
+      <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+        <p className="font-semibold">Gestion interne déléguée au Boss du groupe</p>
+        <p className="mt-1 text-cyan-50/85">
+          Les rôles et membres internes se gèrent directement depuis l’espace client du groupe, menu <span className="font-semibold">“Gestion du groupe”</span>.
+        </p>
+      </div>
 
       {error ? <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
     </div>
