@@ -154,7 +154,7 @@ export function ItemForm({
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-white/70">{card.label}</p>
+                      <p className="text-xs text-white/70" data-mod-source={`itemForm.category.${card.key}.label`}>{card.label}</p>
                       <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                     </div>
                   </button>
@@ -167,7 +167,12 @@ export function ItemForm({
             <label className="mb-2 block text-xs text-white/60">{copy.itemForm.labels.type}</label>
             <div className="flex flex-wrap gap-2">
               {typeOptions.map((option) => (
-                <TabPill key={option.value} active={itemType === option.value} onClick={() => setItemType(option.value as ItemType)}>
+                <TabPill
+                  key={option.value}
+                  active={itemType === option.value}
+                  onClick={() => setItemType(option.value as ItemType)}
+                  data-mod-source={`itemForm.type.${category}.${option.value}`}
+                >
                   {option.label}
                 </TabPill>
               ))}
