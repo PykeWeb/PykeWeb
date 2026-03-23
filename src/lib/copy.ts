@@ -118,6 +118,7 @@ const PAGE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/finance/stats-interlocuteurs', label: 'Stats' },
   { prefix: '/finance/depense', label: 'Dépense' },
   { prefix: '/finance', label: 'Finance' },
+  { prefix: '/activites/depense', label: 'Dépense' },
   { prefix: '/items', label: 'Items' },
   { prefix: '/drogues', label: 'Drogues' },
   { prefix: '/tablette', label: 'Tablette' },

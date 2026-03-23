@@ -1,7 +1,5 @@
-'use client'
-
-import { NouvelleDepenseForm } from '@/components/ui/NouvelleDepenseForm'
+import { redirect } from 'next/navigation'
 
 export default function NouvelleDepenseFinancePage() {
-  return <NouvelleDepenseForm backHref="/finance" successHref="/finance" title="" actionsPlacement="top-right" />
+  redirect('/activites/depense/nouveau')
 }

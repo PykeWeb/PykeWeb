@@ -59,7 +59,7 @@ export function Sidebar() {
     setIsAdmin(isAdminTenantSession(session))
     setIsMember(isMemberTenantSession(session))
     setIsChef(session?.role === 'chef')
-    setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Admin' : ''))
+    setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Boss' : ''))
     setMemberName(session?.memberName || (session?.role === 'chef' ? 'Boss' : session?.roleLabel || 'Membre'))
     setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? expandAccessPrefixes(session.allowedPrefixes) : [])
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
@@ -108,9 +108,9 @@ export function Sidebar() {
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
     { id: 'group', href: '/group', label: 'Gestion du groupe', icon: <Users className="h-5 w-5" />, active: pathname.startsWith('/group') },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
-    ...(!isChef ? [{ id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') } as NavLink] : []),
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
     { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },
+    ...(!isChef ? [{ id: 'depense', href: '/activites/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites/depense') || pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') } as NavLink] : []),
     { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
   ]
 
@@ -134,8 +134,8 @@ export function Sidebar() {
         ? []
         : isMember
           ? [
-            { id: 'depense', href: '/finance/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
             { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },
+            { id: 'depense', href: '/activites/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites/depense') || pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
           ]
           : defaultUserLinks
 
@@ -202,7 +202,7 @@ export function Sidebar() {
                 <BadgeCheck className="h-3.5 w-3.5" />
                 Rôle
               </p>
-              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]"><span className="max-w-[10rem] truncate">{roleLabel || 'Admin'}</span></p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]"><span className="max-w-[10rem] truncate">{roleLabel || 'Boss'}</span></p>
             </div>
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">

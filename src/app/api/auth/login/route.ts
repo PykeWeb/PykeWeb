@@ -47,6 +47,11 @@ function isAdminGroup(group: Pick<GroupRow, 'login' | 'badge' | 'name'>) {
     || group.name.trim().toLowerCase() === 'administration'
 }
 
+function normalizeRoleLabel(role: { key: string; name: string }) {
+  if (role.key === 'chef') return 'Boss'
+  return role.name
+}
+
 function cookieOptions(remember = true) {
   return {
     path: '/',
@@ -162,8 +167,8 @@ export async function POST(request: Request) {
       groupBadge: isAdmin ? 'ADMIN' : data.badge,
       isAdmin,
       role: isAdmin ? 'chef' : role.key,
-      roleLabel: isAdmin ? 'Administration' : role.name,
-      memberName: isAdmin ? 'Administration' : (groupByMemberLogin?.member.player_name || (role.key === 'chef' ? 'Boss' : role.name || 'Membre')),
+      roleLabel: isAdmin ? 'Administration' : normalizeRoleLabel(role),
+      memberName: isAdmin ? 'Administration' : (groupByMemberLogin?.member.player_name || (role.key === 'chef' ? 'Boss' : normalizeRoleLabel(role) || 'Membre')),
       allowedPrefixes: isAdmin ? ['/'] : role.allowedPrefixes,
     }
 

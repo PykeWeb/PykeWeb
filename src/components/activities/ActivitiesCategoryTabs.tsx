@@ -43,7 +43,7 @@ export function ActivitiesCategoryTabs({
             key={item.key}
             href={item.href}
             className={[
-              'group relative overflow-hidden rounded-3xl border p-5 shadow-[0_10px_35px_rgba(0,0,0,0.35)] transition duration-200',
+              'group relative min-h-[128px] overflow-hidden rounded-3xl border p-5 shadow-[0_10px_35px_rgba(0,0,0,0.35)] transition duration-200',
               'hover:scale-[1.02] hover:shadow-[0_15px_45px_rgba(56,189,248,0.18)]',
               selected
                 ? 'border-cyan-300/60 bg-gradient-to-br from-cyan-500/28 via-sky-500/18 to-violet-500/22 text-white'
@@ -67,9 +67,7 @@ export function ActivitiesCategoryTabs({
                 </span>
                 <div>
                   <p className="text-base font-semibold tracking-wide">{item.label}</p>
-                  <p className={`text-xs ${selected ? 'text-cyan-100/85' : 'text-white/65'}`}>
-                    {selected ? 'Section active' : 'Ouvrir la section'}
-                  </p>
+                  <p className={`text-xs ${selected ? 'text-cyan-100/85' : 'text-white/65'}`}>Navigation rapide</p>
                 </div>
               </div>
               <div className="grid min-w-[132px] gap-2 text-right">

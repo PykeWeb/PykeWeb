@@ -30,7 +30,7 @@ export default function GroupSettingsPage() {
     setGroupId(session.groupId)
     setGroupName(session.groupName || 'Groupe')
     setGroupBadge(session.groupBadge || null)
-    setRoleLabel(session.roleLabel || (session.role === 'chef' ? 'Admin groupe' : session.role === 'member' ? 'Membre' : ''))
+    setRoleLabel(session.roleLabel || (session.role === 'chef' ? 'Boss' : session.role === 'member' ? 'Membre' : ''))
 
     getCurrentGroupAccessInfo()
       .then((data) => setAccessInfo(data ? { paid_until: data.paid_until, active: data.active } : null))
