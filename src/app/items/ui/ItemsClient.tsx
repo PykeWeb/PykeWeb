@@ -408,7 +408,7 @@ export default function ItemsClient({
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs text-white/70">{card.label}</p>
+                    <p className="text-xs text-white/70" data-mod-source={`items.category.${card.key}.label`}>{card.label}</p>
                     <div className="rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-white/80"><Icon className="h-3.5 w-3.5" /></div>
                   </div>
                   <p className="mt-5 text-2xl font-semibold leading-none">{card.value}</p>
@@ -427,7 +427,12 @@ export default function ItemsClient({
 
             <div className="flex flex-wrap items-center gap-2">
               {typeOptions.map((opt) => (
-                <TabPill key={opt.value} active={type === opt.value} onClick={() => setType(opt.value as TypeFilter)}>
+                <TabPill
+                  key={opt.value}
+                  active={type === opt.value}
+                  onClick={() => setType(opt.value as TypeFilter)}
+                  data-mod-source={`items.type.${category}.${opt.value}`}
+                >
                   {opt.label}
                 </TabPill>
               ))}
