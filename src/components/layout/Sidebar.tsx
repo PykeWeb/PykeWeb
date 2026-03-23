@@ -40,7 +40,6 @@ export function Sidebar() {
   const [groupName, setGroupName] = useState('Groupe')
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
-  const [isChef, setIsChef] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'drogues', 'group', 'activites'])
   const [isPwrGroup, setIsPwrGroup] = useState(false)
@@ -55,7 +54,6 @@ export function Sidebar() {
     setGroupName(nextGroupName)
     setIsAdmin(isAdminTenantSession(session))
     setIsMember(isMemberTenantSession(session))
-    setIsChef(session?.role === 'chef')
     setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Boss' : ''))
     setMemberName(session?.memberName || (session?.role === 'chef' ? 'Boss' : session?.roleLabel || 'Membre'))
     setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? expandAccessPrefixes(session.allowedPrefixes) : [])
@@ -107,7 +105,6 @@ export function Sidebar() {
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
     { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },
-    ...(!isChef ? [{ id: 'depense', href: '/activites/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites/depense') || pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') } as NavLink] : []),
     { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
   ]
 
@@ -132,7 +129,6 @@ export function Sidebar() {
         : isMember
           ? [
             { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },
-            { id: 'depense', href: '/activites/depense/nouveau', label: 'Dépense', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites/depense') || pathname.startsWith('/finance/depense') || pathname.startsWith('/depenses') },
           ]
           : defaultUserLinks
 

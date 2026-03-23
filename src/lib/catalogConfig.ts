@@ -94,8 +94,8 @@ const legacyToCanonicalCategory: Record<string, ItemCategory> = {
   drogues: 'drugs',
   autre: 'custom',
   autres: 'custom',
-  other: 'objects',
-  misc: 'objects',
+  other: 'custom',
+  misc: 'custom',
 }
 
 function normalizeCategoryKey(raw: string): string {
