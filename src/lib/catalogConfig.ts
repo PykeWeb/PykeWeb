@@ -10,7 +10,7 @@ export const itemCategoryOptions: { value: ItemCategory; label: string }[] = [
 
 export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label: string }[]> = {
   objects: [
-    { value: 'other', label: 'Objets' },
+    { value: 'objects', label: 'Objets' },
   ],
   weapons: [
     { value: 'weapon', label: 'Armes' },
@@ -107,6 +107,7 @@ function normalizeCategoryKey(raw: string): string {
 }
 
 const legacyTypeMap: Record<string, ItemType> = {
+  objects: 'objects',
   drug: 'product',
   input: 'other',
   output: 'product',
@@ -133,7 +134,9 @@ export function normalizeItemType(raw: string | null, category: ItemCategory): I
   const value = (raw ?? '').toLowerCase().trim()
   const normalized = legacyTypeMap[value] ?? (value as ItemType)
   const categoryMapped =
-    category === 'drugs' && normalized === 'accessory'
+    category === 'objects' && normalized === 'other'
+      ? 'objects'
+      : category === 'drugs' && normalized === 'accessory'
       ? 'drug_material'
       : category === 'drugs' && normalized === 'equipment'
         ? 'product'
@@ -167,6 +170,7 @@ export function getTypeLabel(type: ItemType, category?: ItemCategory | string | 
     if (scopedDrug) return scopedDrug.label
   }
   const globalLabels: Record<ItemType, string> = {
+    objects: 'Objets',
     accessory: 'Matériels',
     tool: 'Outils',
     consumable: 'Consommable',

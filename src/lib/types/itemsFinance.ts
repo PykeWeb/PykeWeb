@@ -1,6 +1,7 @@
 export type ItemCategory = 'objects' | 'weapons' | 'drugs' | 'equipment' | 'custom'
 
 export type ItemType =
+  | 'objects'
   | 'accessory'
   | 'tool'
   | 'consumable'
