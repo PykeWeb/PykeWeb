@@ -244,6 +244,10 @@ function getCatalogMergeKey(input: { name: string; internal_id?: string | null }
   return `name:${input.name.trim().toLowerCase()}`
 }
 
+function getCatalogNameKey(name: string) {
+  return `name:${name.trim().toLowerCase()}`
+}
+
 export async function listCatalogItemsUnified(includeInactive = false): Promise<CatalogItem[]> {
   const groupId = currentGroupId()
   const catalogQuery = supabase.from('catalog_items').select('*').eq('group_id', groupId)
@@ -279,8 +283,12 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
   if (overridesRes.error) throw overridesRes.error
 
   const catalogItems = (catalogRes.data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
-  const byName = new Set(catalogItems.map((x) => getCatalogMergeKey(x)))
-  const hiddenNames = new Set(((hiddenRes.data ?? []) as { name: string; category: ItemCategory }[]).map((x) => getCatalogMergeKey({ name: x.name })))
+  const byName = new Set<string>()
+  for (const item of catalogItems) {
+    byName.add(getCatalogMergeKey(item))
+    byName.add(getCatalogNameKey(item.name))
+  }
+  const hiddenNames = new Set(((hiddenRes.data ?? []) as { name: string; category: ItemCategory }[]).map((x) => getCatalogNameKey(x.name)))
 
   const legacyObjects = (objectsRes.data ?? []).map((row) => {
     const r = row as LegacyObjectRow
@@ -349,7 +357,8 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
 
   const mergedLegacy = [...legacyObjects, ...legacyWeapons, ...legacyEquipment, ...legacyDrugs].filter((item) => {
     const key = getCatalogMergeKey(item)
-    return !byName.has(key) && !hiddenNames.has(key)
+    const nameKey = getCatalogNameKey(item.name)
+    return !byName.has(key) && !byName.has(nameKey) && !hiddenNames.has(nameKey)
   })
 
   const overrideMap = new Map(((overridesRes.data ?? []) as GlobalCatalogOverrideRow[]).map((row) => [row.global_item_id, row]))
@@ -361,7 +370,8 @@ export async function listCatalogItemsUnified(includeInactive = false): Promise<
       const name = (override?.override_name || row.name || '').trim()
       if (!name) return null
       const key = getCatalogMergeKey({ name, internal_id: row.internal_id || null })
-      if (byName.has(key) || hiddenNames.has(key)) return null
+      const nameKey = getCatalogNameKey(name)
+      if (byName.has(key) || byName.has(nameKey) || hiddenNames.has(nameKey)) return null
       const buyPrice = toNonNegative(override?.override_price ?? row.price ?? 0)
       const itemTypeRaw = (override?.override_item_type || row.item_type || 'other') as ItemType
       const itemType = normalizeItemType(itemTypeRaw, category)
