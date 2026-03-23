@@ -13,7 +13,7 @@ export type ItemStockCategoryStats = {
 export function computeItemStockCategoryStats(items: CatalogItem[]): ItemStockCategoryStats {
   const sumStock = (predicate: (category: CatalogItem['category']) => boolean) => (
     items.reduce((total, item) => {
-      const category = normalizeCatalogCategory(String(item.category || '')) || 'custom'
+      const category = normalizeCatalogCategory(String(item.category || '')) || 'objects'
       if (!predicate(category)) return total
       return total + Math.max(0, Number(item.stock) || 0)
     }, 0)

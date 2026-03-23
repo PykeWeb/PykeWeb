@@ -166,6 +166,27 @@ async function fetchPayload(groupId: string, roleTableName: RoleTableName) {
   return { grades: roles, members, playerCandidates }
 }
 
+async function hasIdentifierPasswordConflict(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  playerIdentifier: string,
+  password: string,
+  options?: { excludeMemberId?: string | null; excludeGroupId?: string | null },
+) {
+  let query = supabase
+    .from('group_members')
+    .select('id,group_id')
+    .eq('player_identifier', playerIdentifier)
+    .eq('password', password)
+    .limit(1)
+
+  if (options?.excludeMemberId) query = query.neq('id', options.excludeMemberId)
+  if (options?.excludeGroupId) query = query.neq('group_id', options.excludeGroupId)
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return (data ?? []).length > 0
+}
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const { groupId } = await assertGroupMembersRolesAccess(request, params.id)
@@ -213,6 +234,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
       if (!playerIdentifier) return NextResponse.json({ error: 'Identifiant requis.' }, { status: 400 })
       if (!password) return NextResponse.json({ error: 'Mot de passe requis.' }, { status: 400 })
+      const hasConflict = await hasIdentifierPasswordConflict(supabase, playerIdentifier, password, { excludeGroupId: groupId })
+      if (hasConflict) {
+        return NextResponse.json({ error: 'Ce mot de passe pour cet identifiant est déjà utilisé par un autre groupe. Utilisez un mot de passe unique.' }, { status: 400 })
+      }
 
       if (gradeId) {
         const { data: roleExists, error: roleError } = await supabase
@@ -279,6 +304,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       const isAdmin = Boolean(patch?.is_admin)
       const gradeId = typeof patch?.grade_id === 'string' ? patch.grade_id.trim() : ''
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
+      if (!playerIdentifier) return NextResponse.json({ error: 'Identifiant requis.' }, { status: 400 })
+      if (!password) return NextResponse.json({ error: 'Mot de passe requis.' }, { status: 400 })
+      const hasConflict = await hasIdentifierPasswordConflict(supabase, playerIdentifier, password, { excludeMemberId: id, excludeGroupId: groupId })
+      if (hasConflict) {
+        return NextResponse.json({ error: 'Ce mot de passe pour cet identifiant est déjà utilisé par un autre groupe. Utilisez un mot de passe unique.' }, { status: 400 })
+      }
 
       if (gradeId) {
         const { data: roleExists, error: roleError } = await supabase

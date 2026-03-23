@@ -53,8 +53,7 @@ async function fetchGlobalCatalogItems(): Promise<GlobalCatalogRow[]> {
   const rows = (await response.json()) as GlobalCatalogApiRow[]
   return rows
     .map((row) => {
-      const category = normalizeCatalogCategory(row.category)
-      if (!category) return null
+      const category = normalizeCatalogCategory(row.category) || 'objects'
       return {
         id: row.global_item_id || row.id.replace(/^global:/, ''),
         category,
@@ -103,7 +102,7 @@ function getExt(file: File) {
 }
 
 function mapCatalogItem(row: CatalogItemRow): CatalogItem {
-  const category = normalizeCatalogCategory(String(row.category || '')) || 'custom'
+  const category = normalizeCatalogCategory(String(row.category || '')) || 'objects'
   return {
     ...row,
     category,

@@ -111,7 +111,7 @@ async function findGroupByMemberLogin(login: string, password: string) {
   if (membersError) throw new Error(membersError.message)
   const matchedMembers = (members ?? []) as GroupMemberRow[]
   if (matchedMembers.length === 0) return null
-  if (matchedMembers.length > 1) throw new Error('Identifiant membre ambigu. Utilisez un identifiant unique.')
+  if (matchedMembers.length > 1) throw new Error('Ce mot de passe pour cet identifiant est déjà utilisé par un autre groupe. Utilisez un mot de passe unique.')
 
   const member = matchedMembers[0]
   const { data: group, error: groupError } = await supabase
