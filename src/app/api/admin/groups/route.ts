@@ -272,7 +272,53 @@ export async function DELETE(request: Request) {
     await assertAdminSession(request)
     const body = await request.json()
     const supabase = getSupabaseAdmin()
-    const { error } = await supabase.from(TABLE).delete().eq('id', String(body.id))
+    const groupId = String(body.id || '').trim()
+    if (!groupId) return NextResponse.json({ error: 'ID groupe manquant.' }, { status: 400 })
+
+    const deleteGroupScoped = async (table: string) => {
+      const { error } = await supabase.from(table).delete().eq('group_id', groupId)
+      if (!error) return
+      if (isMissingTableError(error.message)) return
+      throw new Error(`${table}: ${error.message}`)
+    }
+
+    const cleanupTables = [
+      'catalog_items_group_overrides',
+      'finance_transactions',
+      'expenses',
+      'transaction_items',
+      'stock_movements',
+      'transactions',
+      'weapon_loans',
+      'weapon_stock_movements',
+      'drug_stock_movements',
+      'objects',
+      'weapons',
+      'equipment',
+      'drug_items',
+      'catalog_items',
+      'support_tickets',
+      'user_preferences',
+      'group_members',
+    ]
+
+    for (const table of cleanupTables) {
+      await deleteGroupScoped(table)
+    }
+
+    for (const roleTable of ROLE_TABLE_CANDIDATES) {
+      const { error } = await supabase.from(roleTable).delete().eq('group_id', groupId)
+      if (!error) break
+      if (!isMissingTableError(error.message)) throw new Error(`${roleTable}: ${error.message}`)
+    }
+
+    const { error: layoutErr } = await supabase.from('ui_layouts').delete().eq('scope_type', 'group').eq('scope_id', groupId)
+    if (layoutErr && !isMissingTableError(layoutErr.message)) throw new Error(`ui_layouts: ${layoutErr.message}`)
+
+    const { error: textsErr } = await supabase.from('ui_texts').delete().eq('scope', 'group').eq('group_id', groupId)
+    if (textsErr && !isMissingTableError(textsErr.message)) throw new Error(`ui_texts: ${textsErr.message}`)
+
+    const { error } = await supabase.from(TABLE).delete().eq('id', groupId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {

@@ -60,11 +60,13 @@ export function ItemForm({
       setErrors({})
       setFormError(null)
       const uniqueInternalId = await makeUniqueInternalId(name, initialItem?.internal_id)
+      const resolvedCategory: ItemCategory = category === 'objects' && itemType === 'other' ? 'custom' : category
+      const resolvedItemType = normalizeItemType(itemType, resolvedCategory)
 
       await onSave({
         name: name.trim(),
-        category,
-        item_type: normalizeItemType(itemType, category),
+        category: resolvedCategory,
+        item_type: resolvedItemType,
         internal_id: uniqueInternalId,
         description: description.trim() || null,
         imageFile,
@@ -78,7 +80,7 @@ export function ItemForm({
         stackable: initialItem?.stackable ?? true,
         max_stack: initialItem?.max_stack ?? 100,
         weight: initialItem?.weight ?? null,
-        fivem_item_id: category === 'weapons' ? weaponId.trim() || null : null,
+        fivem_item_id: resolvedCategory === 'weapons' ? weaponId.trim() || null : null,
       })
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : copy.itemForm.errors.createFailed)
