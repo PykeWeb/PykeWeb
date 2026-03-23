@@ -2,11 +2,10 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
-import { resolvePageContext } from '@/lib/copy'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
@@ -37,7 +36,6 @@ const NavItem = ({ href, label, icon, active }: { href: string; label: string; i
 
 export function Sidebar() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
   const [isAdmin, setIsAdmin] = useState(false)
@@ -49,7 +47,6 @@ export function Sidebar() {
   const [roleLabel, setRoleLabel] = useState('')
   const [memberName, setMemberName] = useState('Boss')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
-  const pageContext = useMemo(() => resolvePageContext(pathname, searchParams.get('mode')), [pathname, searchParams])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -213,13 +210,15 @@ export function Sidebar() {
               <p className={`mt-2 inline-flex h-8 max-w-full items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}><span className="max-w-[10rem] truncate">{accessStatus.label}</span></p>
             </div>
 
-            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+            <Link href="/group" className="group flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center transition hover:border-cyan-300/35 hover:bg-cyan-500/12">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
                 <PanelsTopLeft className="h-3.5 w-3.5" />
-                Page
+                Gestion
               </p>
-              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.18)]"><span className="max-w-[10rem] truncate">{pageContext.label}</span></p>
-            </div>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.18)]">
+                <span className="max-w-[10rem] truncate">Gestion du groupe</span>
+              </p>
+            </Link>
           </div>
         </div>
       </div>
