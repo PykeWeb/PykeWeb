@@ -182,10 +182,10 @@ export default function FinanceClient() {
 
       <div className="mt-4 mb-3 flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/activites/depense/nouveau"><SecondaryButton>Nouvelle dépense (Activités)</SecondaryButton></Link>
           <Link href="/finance/achat-vente"><SecondaryButton>Achat / Vente</SecondaryButton></Link>
-          <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats interlocuteurs</SecondaryButton></Link>
           <Link href="/finance/entree-sortie"><SecondaryButton>{copy.finance.stockFlow.stockInOutButton}</SecondaryButton></Link>
+          <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats Groupes</SecondaryButton></Link>
+          <Link href="/activites/depense/nouveau"><SecondaryButton>Dépense</SecondaryButton></Link>
         </div>
         <SearchInput
           value={q}

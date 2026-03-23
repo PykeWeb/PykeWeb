@@ -12,7 +12,7 @@ import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
-import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, Bug, MessageSquare, LifeBuoy, Info, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
+import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 
@@ -649,7 +649,7 @@ export function DashboardClient() {
       <div className="flex h-full flex-col gap-4">
         <Panel>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Stock par catégorie</h3>
+            <h3 className="text-base font-semibold tracking-wide">Stocks</h3>
             <div className="flex items-center gap-1">
               <Link href="/coke/preparer" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/25 bg-cyan-500/12 px-2.5 py-1 text-xs text-cyan-50 hover:bg-cyan-500/20">
                 Session coke
@@ -773,14 +773,6 @@ export function DashboardClient() {
           </div>
         </div>
       ) : null}
-      <Link
-        href="/tablette/paiement"
-        className="fixed bottom-3 left-[92px] z-40 inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/70 px-2 py-1 text-[10px] text-white/80 hover:bg-black/90"
-      >
-        <Info className="h-3 w-3" />
-        Info
-      </Link>
-
       <button
         type="button"
         onClick={() => setSupportOpen((value) => !value)}
