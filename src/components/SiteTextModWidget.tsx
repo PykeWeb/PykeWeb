@@ -253,6 +253,12 @@ function isProtectedModSource(value: string | null | undefined): boolean {
   )
 }
 
+function hasProtectedSourceInSubtree(element: HTMLElement): boolean {
+  if (isProtectedModSource(element.dataset.modSource?.trim())) return true
+  const nodes = element.querySelectorAll<HTMLElement>('[data-mod-source]')
+  return Array.from(nodes).some((node) => isProtectedModSource(node.dataset.modSource?.trim()))
+}
+
 function getDomPath(element: HTMLElement): string {
   const segments: string[] = []
   let current: HTMLElement | null = element
@@ -313,7 +319,7 @@ function applyOverrides(overrides: Overrides, visual: VisualState, pathname: str
 
     const forcedSource = element.dataset.modSource?.trim()
     if (forcedSource && forcedSource !== entry.sourceText) continue
-    if (isProtectedModSource(forcedSource)) continue
+    if (isProtectedModSource(forcedSource) || hasProtectedSourceInSubtree(element)) continue
     if (!element.textContent?.includes(entry.sourceText) && !element.textContent?.includes(entry.text)) continue
 
     element.textContent = entry.text
@@ -333,6 +339,7 @@ function getEditableTarget(target: EventTarget | null): { text: string; element:
 
   let current: HTMLElement | null = target
   while (current && current !== document.body) {
+    if (hasProtectedSourceInSubtree(current)) return null
     if (current.childNodes.length) {
       const directTextNode = Array.from(current.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
       if (directTextNode) {
