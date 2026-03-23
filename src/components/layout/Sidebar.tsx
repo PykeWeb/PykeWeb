@@ -202,13 +202,13 @@ export function Sidebar() {
               <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]"><span className="max-w-[10rem] truncate">{roleLabel || 'Boss'}</span></p>
             </div>
 
-            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+            <Link href="/tablette/paiement" className="group flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center transition hover:border-amber-300/35 hover:bg-amber-500/12">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
                 <KeyRound className="h-3.5 w-3.5" />
                 Licence
               </p>
               <p className={`mt-2 inline-flex h-8 max-w-full items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}><span className="max-w-[10rem] truncate">{accessStatus.label}</span></p>
-            </div>
+            </Link>
 
             <Link href="/group" className="group flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center transition hover:border-cyan-300/35 hover:bg-cyan-500/12">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ClipboardList, Receipt, Smartphone } from 'lucide-react'
+import { ClipboardList, Smartphone } from 'lucide-react'
 
 type BubbleStats = {
   today?: number
@@ -12,12 +12,10 @@ export function ActivitiesCategoryTabs({
   active,
   activitiesStats,
   tabletteStats,
-  depenseStats,
 }: {
-  active: 'activites' | 'tablette' | 'depense'
+  active: 'activites' | 'tablette'
   activitiesStats?: BubbleStats
   tabletteStats?: BubbleStats
-  depenseStats?: BubbleStats
 }) {
   const items = [
     {
@@ -34,17 +32,10 @@ export function ActivitiesCategoryTabs({
       icon: <Smartphone className="h-5 w-5" />,
       stats: tabletteStats,
     },
-    {
-      key: 'depense' as const,
-      href: '/activites/depense/nouveau',
-      label: 'Dépense',
-      icon: <Receipt className="h-5 w-5" />,
-      stats: depenseStats,
-    },
   ]
 
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2">
       {items.map((item) => {
         const selected = active === item.key
         return (

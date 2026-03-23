@@ -103,7 +103,7 @@ function getExt(file: File) {
 }
 
 function mapCatalogItem(row: CatalogItemRow): CatalogItem {
-  const category = normalizeCatalogCategory(String(row.category || '')) || row.category
+  const category = normalizeCatalogCategory(String(row.category || '')) || 'custom'
   return {
     ...row,
     category,

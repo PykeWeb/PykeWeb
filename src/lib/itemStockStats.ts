@@ -1,4 +1,5 @@
 import type { CatalogItem } from '@/lib/types/itemsFinance'
+import { normalizeCatalogCategory } from '@/lib/catalogConfig'
 
 export type ItemStockCategoryStats = {
   all: number
@@ -12,7 +13,8 @@ export type ItemStockCategoryStats = {
 export function computeItemStockCategoryStats(items: CatalogItem[]): ItemStockCategoryStats {
   const sumStock = (predicate: (category: CatalogItem['category']) => boolean) => (
     items.reduce((total, item) => {
-      if (!predicate(item.category)) return total
+      const category = normalizeCatalogCategory(String(item.category || '')) || 'custom'
+      if (!predicate(category)) return total
       return total + Math.max(0, Number(item.stock) || 0)
     }, 0)
   )
