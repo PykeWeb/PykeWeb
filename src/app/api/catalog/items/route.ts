@@ -5,6 +5,7 @@ import { normalizeCatalogCategory } from '@/lib/catalogConfig'
 
 type GlobalCatalogRow = {
   id: string
+  internal_id?: string | null
   category: string
   name: string
   price: number | null
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
         return {
           id: `global:${g.id}`,
           global_item_id: g.id,
+          internal_id: g.internal_id ?? null,
           category: g.category,
           name: ov?.override_name ?? g.name,
           price: ov?.override_price ?? g.price,

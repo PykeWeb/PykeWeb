@@ -24,6 +24,7 @@ type CatalogItemRow = Omit<CatalogItem, 'buy_price' | 'sell_price' | 'internal_v
 type GlobalCatalogApiRow = {
   id: string
   global_item_id?: string
+  internal_id?: string | null
   category: string
   name: string
   price: number | null
@@ -47,6 +48,7 @@ async function fetchGlobalCatalogItems(): Promise<GlobalCatalogRow[]> {
       const category = normalizeCatalogCategory(row.category) || 'objects'
       return {
         id: row.global_item_id || row.id.replace(/^global:/, ''),
+        internal_id: row.internal_id ?? null,
         category,
         item_type: normalizeItemType(row.item_type, category) as ItemType | null,
         name: row.name,
@@ -121,6 +123,7 @@ export async function listCatalogItems(includeInactive = false): Promise<Catalog
 
 type GlobalCatalogRow = {
   id: string
+  internal_id?: string | null
   category: ItemCategory
   item_type: ItemType | null
   name: string
@@ -680,6 +683,7 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
   const isAdminSession = typeof window !== 'undefined' && Boolean(getTenantSession()?.isAdmin)
   if (group_id === 'admin' || isAdminSession) {
     const globalPayload = {
+      internal_id: inserted.internal_id,
       category: args.category,
       item_type: normalizeItemType(args.item_type, args.category),
       name: args.name,
@@ -704,7 +708,12 @@ export async function createCatalogItem(args: CreateCatalogItemInput) {
     } catch (globalApiError) {
       const { error: globalError } = await supabase.from('catalog_items_global').insert(globalPayload)
       if (globalError) {
-        console.warn('[items:create] global insert skipped', globalError.message, globalApiError)
+        const fallbackPayload = { ...globalPayload } as Record<string, unknown>
+        delete fallbackPayload.internal_id
+        const { error: globalFallbackError } = await supabase.from('catalog_items_global').insert(fallbackPayload)
+        if (globalFallbackError) {
+          console.warn('[items:create] global insert skipped', globalFallbackError.message, globalApiError)
+        }
       }
     }
   }
@@ -860,19 +869,32 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
     const { data: existingGlobal, error: globalLookupError } = await supabase
       .from('catalog_items_global')
       .select('id')
-      .eq('name', current.name)
-      .eq('category', current.category)
+      .eq('internal_id', current.internal_id || '')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle<{ id: string }>()
 
     if (globalLookupError) throw new Error(`catalog_items_global lookup: ${globalLookupError.message}`)
 
-    if (existingGlobal?.id) {
+    let globalRowId = existingGlobal?.id ?? null
+    if (!globalRowId) {
+      const { data: byNameGlobal, error: byNameLookupError } = await supabase
+        .from('catalog_items_global')
+        .select('id')
+        .eq('name', current.name)
+        .eq('category', current.category)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<{ id: string }>()
+      if (byNameLookupError) throw new Error(`catalog_items_global fallback lookup: ${byNameLookupError.message}`)
+      globalRowId = byNameGlobal?.id ?? null
+    }
+
+    if (globalRowId) {
       const { error: globalUpdateError } = await supabase
         .from('catalog_items_global')
         .update(globalPayload)
-        .eq('id', existingGlobal.id)
+        .eq('id', globalRowId)
       if (globalUpdateError) throw new Error(`catalog_items_global update: ${globalUpdateError.message}`)
     } else {
       const { error: globalInsertError } = await supabase.from('catalog_items_global').insert(globalPayload)
@@ -902,6 +924,18 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
         .eq('is_active', true)
       if (candidateError) throw new Error(`catalog_items propagation lookup: ${candidateError.message}`)
       candidates.push(...((data ?? []) as typeof candidates))
+    }
+
+    const { data: byNameCandidates, error: byNameCandidateError } = await supabase
+      .from('catalog_items')
+      .select('id,name,description,category,item_type,buy_price,sell_price,stock,fivem_item_id,internal_id,image_url')
+      .neq('group_id', 'admin')
+      .eq('name', current.name)
+      .eq('category', current.category)
+      .eq('is_active', true)
+    if (byNameCandidateError) throw new Error(`catalog_items propagation fallback lookup: ${byNameCandidateError.message}`)
+    for (const row of ((byNameCandidates ?? []) as typeof candidates)) {
+      if (!candidates.some((entry) => entry.id === row.id)) candidates.push(row)
     }
 
     for (const row of candidates) {
@@ -1028,7 +1062,7 @@ async function ensureCatalogItemId(itemId: string): Promise<string> {
     const name = (override?.override_name || globalRow.name || '').trim()
     if (!name) throw new Error('Nom item global invalide.')
 
-    const internal_id = await makeUniqueInternalId(name, `global-${globalId}`)
+    const internal_id = await makeUniqueInternalId(name, (globalRow.internal_id || '').trim() || `global-${globalId}`)
     const buyPrice = toNonNegative(override?.override_price ?? globalRow.price ?? 0)
     const itemTypeRaw = (override?.override_item_type || globalRow.item_type || 'other') as ItemType
 
