@@ -211,6 +211,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       const gradeId = typeof body.grade_id === 'string' ? body.grade_id.trim() : ''
 
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
+      if (!playerIdentifier) return NextResponse.json({ error: 'Identifiant requis.' }, { status: 400 })
+      if (!password) return NextResponse.json({ error: 'Mot de passe requis.' }, { status: 400 })
 
       if (gradeId) {
         const { data: roleExists, error: roleError } = await supabase

@@ -156,14 +156,12 @@ async function seedCatalogForGroup(groupId: string) {
   if (existingError) throw new Error(existingError.message)
   if ((existing ?? []).length > 0) return
 
-  const [{ data: globalRows, error: globalError }, { data: adminRows, error: adminError }] = await Promise.all([
-    supabase.from('catalog_items_global').select('*').order('created_at', { ascending: true }),
-    supabase.from('catalog_items').select('*').eq('group_id', 'admin').eq('is_active', true).order('created_at', { ascending: true }),
-  ])
+  const { data: globalRows, error: globalError } = await supabase
+    .from('catalog_items_global')
+    .select('*')
+    .order('created_at', { ascending: true })
   if (globalError) throw new Error(globalError.message)
-  if (adminError) throw new Error(adminError.message)
-
-  const seeds = (globalRows ?? []).length > 0 ? (globalRows ?? []) : (adminRows ?? [])
+  const seeds = globalRows ?? []
   if (seeds.length === 0) return
 
   const payload = seeds.map((row, index) => {
@@ -234,6 +232,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let createdGroupId: string | null = null
   try {
     await assertAdminSession(request)
     const body = normalizePayload(await request.json())
@@ -244,11 +243,19 @@ export async function POST(request: Request) {
       .insert(body)
       .select('id,name,badge,login,password,active,paid_until,created_at')
       .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      const isDuplicateLogin = error.code === '23505' || /duplicate key value/i.test(error.message)
+      return NextResponse.json({ error: isDuplicateLogin ? 'Cet identifiant de groupe existe déjà.' : error.message }, { status: isDuplicateLogin ? 400 : 500 })
+    }
+    createdGroupId = (data as GroupRecord).id
     await createBossAccessForGroup(data as GroupRecord)
     await seedCatalogForGroup((data as GroupRecord).id)
     return NextResponse.json(normalizeGroupRecord(data as GroupRecord))
   } catch (e: unknown) {
+    if (createdGroupId) {
+      const supabase = getSupabaseAdmin()
+      await supabase.from(TABLE).delete().eq('id', createdGroupId)
+    }
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Erreur' }, { status: 400 })
   }
 }

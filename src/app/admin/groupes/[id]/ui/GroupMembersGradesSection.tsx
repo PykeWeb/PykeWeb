@@ -170,16 +170,26 @@ export function GroupMembersGradesSection({ groupId }: Props) {
 
   async function createMemberEntry() {
     const chosenName = customPlayerName.trim() || selectedPlayerName.trim()
-    if (!chosenName) {
-      setError('Sélectionnez ou saisissez un joueur.')
+    const identifier = newMemberIdentifier.trim()
+    const password = newMemberPassword.trim()
+
+    if (!identifier) {
+      setError('Identifiant requis.')
       return
     }
+
+    if (!password) {
+      setError('Mot de passe requis.')
+      return
+    }
+
+    const resolvedName = chosenName || identifier
     try {
       setBusy(true)
       const payload = await createGroupMember(groupId, {
-        player_name: chosenName,
-        player_identifier: newMemberIdentifier.trim() || null,
-        password: newMemberPassword.trim() || null,
+        player_name: resolvedName,
+        player_identifier: identifier,
+        password,
         is_admin: newMemberIsAdmin,
         grade_id: newMemberRoleId || null,
       })
@@ -275,14 +285,15 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                   <option key={candidate.value} value={candidate.value}>{candidate.label}</option>
                 ))}
               </select>
-              <input value={customPlayerName} onChange={(e) => setCustomPlayerName(e.target.value)} placeholder="Ou saisir manuellement le nom" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
-              <input value={newMemberIdentifier} onChange={(e) => setNewMemberIdentifier(e.target.value)} placeholder="Identifiant joueur (optionnel)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+              <input value={customPlayerName} onChange={(e) => setCustomPlayerName(e.target.value)} placeholder="Nom joueur (optionnel)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+              <input value={newMemberIdentifier} onChange={(e) => setNewMemberIdentifier(e.target.value)} placeholder="Identifiant (requis)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
               <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
-                <input value={newMemberPassword} onChange={(e) => setNewMemberPassword(e.target.value)} type={newMemberPasswordVisible ? 'text' : 'password'} placeholder="Mot de passe membre (optionnel)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+                <input value={newMemberPassword} onChange={(e) => setNewMemberPassword(e.target.value)} type={newMemberPasswordVisible ? 'text' : 'password'} placeholder="Mot de passe (requis)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
                 <button type="button" onClick={() => setNewMemberPasswordVisible((v) => !v)} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">{newMemberPasswordVisible ? 'Masquer' : 'Voir'}</button>
                 <button type="button" onClick={() => setNewMemberPassword(generatePassword({ avoidAmbiguous: true }))} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Générer</button>
                 <button type="button" onClick={() => void copyToClipboard(newMemberPassword)} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
               </div>
+              <p className="text-[11px] text-white/55">Si le nom joueur est vide, l’identifiant sera utilisé comme nom.</p>
               <label className="inline-flex items-center gap-2 text-xs text-white/70">
                 <input type="checkbox" checked={newMemberIsAdmin} onChange={(e) => setNewMemberIsAdmin(e.target.checked)} className="h-4 w-4" />
                 Créer un membre admin (accès total)
