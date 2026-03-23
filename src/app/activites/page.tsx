@@ -13,7 +13,7 @@ import {
   type ActivityObjectLineInput,
   type ActivityType,
 } from '@/lib/types/activities'
-import { listCatalogItems } from '@/lib/itemsApi'
+import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
@@ -103,7 +103,7 @@ export default function ActivitesPage() {
     const allowed = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
     setCanSeeChefTab(Boolean(session?.isAdmin || allowed.includes('/') || allowed.includes('/activites/gestion-chef')))
     void refresh()
-    void listCatalogItems().then(setCatalogItems).catch(() => setCatalogItems([]))
+    void listCatalogItemsUnified().then(setCatalogItems).catch(() => setCatalogItems([]))
   }, [])
 
   useEffect(() => {

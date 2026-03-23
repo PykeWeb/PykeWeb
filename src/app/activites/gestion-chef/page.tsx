@@ -9,7 +9,7 @@ import { listActivities, resetActivitiesCurrentWeek, updateActivitySettings, typ
 import type { ActivityEntry } from '@/lib/types/activities'
 import { copy } from '@/lib/copy'
 import { getTenantSession } from '@/lib/tenantSession'
-import { listCatalogItems } from '@/lib/itemsApi'
+import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { ActivitiesPageTabs } from '@/components/activities/ActivitiesPageTabs'
 import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
@@ -54,7 +54,7 @@ export default function ActivitesGestionChefPage() {
       return
     }
     void refresh()
-    void listCatalogItems().then(setCatalogItems).catch(() => setCatalogItems([]))
+    void listCatalogItemsUnified().then(setCatalogItems).catch(() => setCatalogItems([]))
   }, [])
 
   async function refresh() {

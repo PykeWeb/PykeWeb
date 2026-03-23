@@ -134,6 +134,70 @@ async function createBossAccessForGroup(group: Pick<GroupRecord, 'id' | 'login' 
   if (memberError) throw new Error(memberError.message)
 }
 
+function toInternalId(name: string, category: string, fallbackIndex: number) {
+  const normalized = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return normalized ? `seed-${category}-${normalized}-${fallbackIndex}` : `seed-item-${fallbackIndex}`
+}
+
+async function seedCatalogForGroup(groupId: string) {
+  const supabase = getSupabaseAdmin()
+
+  const { data: existing, error: existingError } = await supabase
+    .from('catalog_items')
+    .select('id')
+    .eq('group_id', groupId)
+    .limit(1)
+
+  if (existingError) throw new Error(existingError.message)
+  if ((existing ?? []).length > 0) return
+
+  const [{ data: globalRows, error: globalError }, { data: adminRows, error: adminError }] = await Promise.all([
+    supabase.from('catalog_items_global').select('*').order('created_at', { ascending: true }),
+    supabase.from('catalog_items').select('*').eq('group_id', 'admin').eq('is_active', true).order('created_at', { ascending: true }),
+  ])
+  if (globalError) throw new Error(globalError.message)
+  if (adminError) throw new Error(adminError.message)
+
+  const seeds = (globalRows ?? []).length > 0 ? (globalRows ?? []) : (adminRows ?? [])
+  if (seeds.length === 0) return
+
+  const payload = seeds.map((row, index) => {
+    const source = row as Record<string, unknown>
+    const category = String(source.category || 'objects')
+    const name = String(source.name || '').trim()
+    return {
+      group_id: groupId,
+      internal_id: String(source.internal_id || toInternalId(name, category, index + 1)),
+      name: name || `Item ${index + 1}`,
+      category,
+      item_type: String(source.item_type || 'other'),
+      description: (source.description as string | null) ?? null,
+      image_url: (source.image_url as string | null) ?? null,
+      buy_price: Number(source.price ?? source.buy_price ?? 0) || 0,
+      sell_price: Number(source.price ?? source.sell_price ?? source.buy_price ?? 0) || 0,
+      internal_value: Number(source.internal_value ?? 0) || 0,
+      show_in_finance: source.show_in_finance == null ? true : Boolean(source.show_in_finance),
+      is_active: true,
+      stock: Number(source.default_quantity ?? source.stock ?? 0) || 0,
+      low_stock_threshold: Number(source.low_stock_threshold ?? 0) || 0,
+      stackable: source.stackable == null ? true : Boolean(source.stackable),
+      max_stack: Number(source.max_stack ?? 100) || 100,
+      weight: source.weight == null ? null : Number(source.weight) || 0,
+      fivem_item_id: (source.weapon_id as string | null) ?? (source.fivem_item_id as string | null) ?? null,
+      hash: (source.hash as string | null) ?? null,
+      rarity: (source.rarity as string | null) ?? null,
+    }
+  })
+
+  const { error: insertError } = await supabase.from('catalog_items').insert(payload)
+  if (insertError) throw new Error(insertError.message)
+}
+
 async function ensurePwrGroup() {
   const supabase = getSupabaseAdmin()
   const { error } = await supabase
@@ -182,6 +246,7 @@ export async function POST(request: Request) {
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     await createBossAccessForGroup(data as GroupRecord)
+    await seedCatalogForGroup((data as GroupRecord).id)
     return NextResponse.json(normalizeGroupRecord(data as GroupRecord))
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Erreur' }, { status: 400 })
