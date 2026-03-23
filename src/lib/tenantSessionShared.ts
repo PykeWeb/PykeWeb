@@ -8,6 +8,7 @@ export type TenantSessionPayload = {
   isAdmin?: boolean
   role?: TenantRole
   roleLabel?: string
+  memberName?: string
   allowedPrefixes?: string[]
 }
 
@@ -23,6 +24,7 @@ export function isValidTenantSession(session: TenantSessionPayload | null): sess
 
   if (session.role && typeof session.role !== 'string') return false
   if (session.roleLabel && typeof session.roleLabel !== 'string') return false
+  if (session.memberName && typeof session.memberName !== 'string') return false
   if (session.allowedPrefixes && !Array.isArray(session.allowedPrefixes)) return false
   if (Array.isArray(session.allowedPrefixes) && session.allowedPrefixes.some((entry) => typeof entry !== 'string')) return false
 

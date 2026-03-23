@@ -47,6 +47,7 @@ export function Sidebar() {
   const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'drogues', 'group', 'activites'])
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
+  const [memberName, setMemberName] = useState('Boss')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
   const pageContext = useMemo(() => resolvePageContext(pathname, searchParams.get('mode')), [pathname, searchParams])
 
@@ -59,6 +60,7 @@ export function Sidebar() {
     setIsMember(isMemberTenantSession(session))
     setIsChef(session?.role === 'chef')
     setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Admin' : ''))
+    setMemberName(session?.memberName || (session?.role === 'chef' ? 'Boss' : session?.roleLabel || 'Membre'))
     setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? expandAccessPrefixes(session.allowedPrefixes) : [])
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
     setIsPwrGroup(scope.includes('pwr'))
@@ -192,7 +194,7 @@ export function Sidebar() {
                 <Users className="h-3.5 w-3.5" />
                 Users
               </p>
-              <p className="mt-2 text-sm text-white/72">-</p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-white/18 bg-white/[0.08] px-3 text-sm font-semibold text-white/92"><span className="max-w-[10rem] truncate">{memberName || 'Boss'}</span></p>
             </div>
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">

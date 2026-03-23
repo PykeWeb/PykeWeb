@@ -46,6 +46,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [customPlayerName, setCustomPlayerName] = useState('')
   const [newMemberIdentifier, setNewMemberIdentifier] = useState('')
   const [newMemberPassword, setNewMemberPassword] = useState('')
+  const [newMemberPasswordVisible, setNewMemberPasswordVisible] = useState(false)
   const [newMemberIsAdmin, setNewMemberIsAdmin] = useState(false)
   const [newMemberRoleId, setNewMemberRoleId] = useState('')
   const [memberPasswordVisible, setMemberPasswordVisible] = useState<Record<string, boolean>>({})
@@ -187,6 +188,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       setCustomPlayerName('')
       setNewMemberIdentifier('')
       setNewMemberPassword('')
+      setNewMemberPasswordVisible(false)
       setNewMemberIsAdmin(false)
       setNewMemberRoleId('')
       setError(null)
@@ -275,8 +277,9 @@ export function GroupMembersGradesSection({ groupId }: Props) {
               </select>
               <input value={customPlayerName} onChange={(e) => setCustomPlayerName(e.target.value)} placeholder="Ou saisir manuellement le nom" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
               <input value={newMemberIdentifier} onChange={(e) => setNewMemberIdentifier(e.target.value)} placeholder="Identifiant joueur (optionnel)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                <input value={newMemberPassword} onChange={(e) => setNewMemberPassword(e.target.value)} type="password" placeholder="Mot de passe membre (optionnel)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+                <input value={newMemberPassword} onChange={(e) => setNewMemberPassword(e.target.value)} type={newMemberPasswordVisible ? 'text' : 'password'} placeholder="Mot de passe membre (optionnel)" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+                <button type="button" onClick={() => setNewMemberPasswordVisible((v) => !v)} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">{newMemberPasswordVisible ? 'Masquer' : 'Voir'}</button>
                 <button type="button" onClick={() => setNewMemberPassword(generatePassword({ avoidAmbiguous: true }))} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Générer</button>
                 <button type="button" onClick={() => void copyToClipboard(newMemberPassword)} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Copier</button>
               </div>

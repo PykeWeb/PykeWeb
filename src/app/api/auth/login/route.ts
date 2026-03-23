@@ -35,6 +35,7 @@ type GroupMemberRow = {
 }
 
 type RoleRow = {
+  name: string
   permissions: string[] | null
 }
 
@@ -65,21 +66,21 @@ function isMissingTableError(message: string) {
   return /does not exist|relation .* does not exist|Could not find the table/i.test(message)
 }
 
-async function resolveMemberRolePermissions(groupId: string, gradeId: string | null) {
-  if (!gradeId) return []
+async function resolveMemberRoleInfo(groupId: string, gradeId: string | null) {
+  if (!gradeId) return { name: 'Membre', permissions: [] as string[] }
   const supabase = getSupabaseAdmin()
   for (const tableName of ROLE_TABLE_CANDIDATES) {
     const { data, error } = await supabase
       .from(tableName)
-      .select('permissions')
+      .select('name,permissions')
       .eq('group_id', groupId)
       .eq('id', gradeId)
       .maybeSingle<RoleRow>()
 
-    if (!error) return normalizePermissions(data?.permissions)
+    if (!error) return { name: data?.name || 'Membre', permissions: normalizePermissions(data?.permissions) }
     if (!isMissingTableError(error.message)) throw new Error(error.message)
   }
-  return []
+  return { name: 'Membre', permissions: [] as string[] }
 }
 
 async function findGroupByPrimaryLogin(login: string) {
@@ -117,14 +118,14 @@ async function findGroupByMemberLogin(login: string, password: string) {
   if (groupError) throw new Error(groupError.message)
   if (!group) return null
 
-  const prefixes = member.is_admin ? ['/'] : await resolveMemberRolePermissions(group.id, member.grade_id)
+  const roleInfo = member.is_admin ? { name: 'Boss', permissions: ['/'] } : await resolveMemberRoleInfo(group.id, member.grade_id)
   return {
     group,
     member,
     role: {
       key: member.is_admin ? 'boss' : 'member',
-      name: member.is_admin ? 'Boss' : 'Membre',
-      allowedPrefixes: prefixes.length > 0 ? prefixes : ['/tablette'],
+      name: roleInfo.name || 'Membre',
+      allowedPrefixes: roleInfo.permissions.length > 0 ? roleInfo.permissions : ['/tablette'],
     },
   }
 }
@@ -162,6 +163,7 @@ export async function POST(request: Request) {
       isAdmin,
       role: isAdmin ? 'chef' : role.key,
       roleLabel: isAdmin ? 'Administration' : role.name,
+      memberName: isAdmin ? 'Administration' : (groupByMemberLogin?.member.player_name || (role.key === 'chef' ? 'Boss' : role.name || 'Membre')),
       allowedPrefixes: isAdmin ? ['/'] : role.allowedPrefixes,
     }
 

@@ -37,7 +37,6 @@ export default function AdminGroupDetailsPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [groupPasswordVisible, setGroupPasswordVisible] = useState(false)
-  const [memberPasswordVisible, setMemberPasswordVisible] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!groupId) return
@@ -151,7 +150,7 @@ export default function AdminGroupDetailsPage() {
           </label>
         </div>
 
-        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <div className="mt-3">
           <div className="rounded-2xl border border-white/15 bg-white/[0.04] p-3">
             <label className="mb-1 block text-xs uppercase tracking-wide text-white/65">Mot de passe chef</label>
             <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
@@ -188,53 +187,6 @@ export default function AdminGroupDetailsPage() {
                   const value = input instanceof HTMLInputElement ? input.value : ''
                   const copied = await copyToClipboard(value)
                   if (copied) toast.success('Mot de passe chef copié.')
-                  else toast.error('Impossible de copier.')
-                }}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.07] px-3 text-xs text-white/90 hover:bg-white/[0.14]"
-              >
-                <Copy className="h-3.5 w-3.5" />
-                Copier
-              </button>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/15 bg-white/[0.04] p-3">
-            <label className="mb-1 block text-xs uppercase tracking-wide text-white/65">Mot de passe membre (global)</label>
-            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
-              <input
-                defaultValue={group.password_member || ''}
-                type={memberPasswordVisible ? 'text' : 'password'}
-                onBlur={(e) => void savePatch({ password_member: e.target.value.trim() || null })}
-                className="h-10 w-full rounded-xl border border-white/15 bg-black/20 px-3 text-sm text-white"
-                placeholder="Optionnel"
-              />
-              <button type="button" onClick={() => setMemberPasswordVisible((v) => !v)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.07] px-3 text-xs text-white/90 hover:bg-white/[0.14]">
-                {memberPasswordVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                {memberPasswordVisible ? 'Masquer' : 'Voir'}
-              </button>
-              <button
-                type="button"
-                onClick={async (event) => {
-                  const container = event.currentTarget.closest('div')
-                  const input = container?.querySelector('input')
-                  if (!(input instanceof HTMLInputElement)) return
-                  const next = generatePassword({ avoidAmbiguous: true })
-                  input.value = next
-                  await savePatch({ password_member: next })
-                }}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.07] px-3 text-xs text-white/90 hover:bg-white/[0.14]"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Générer
-              </button>
-              <button
-                type="button"
-                onClick={async (event) => {
-                  const container = event.currentTarget.closest('div')
-                  const input = container?.querySelector('input')
-                  const value = input instanceof HTMLInputElement ? input.value : ''
-                  const copied = await copyToClipboard(value)
-                  if (copied) toast.success('Mot de passe membre copié.')
                   else toast.error('Impossible de copier.')
                 }}
                 className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.07] px-3 text-xs text-white/90 hover:bg-white/[0.14]"
