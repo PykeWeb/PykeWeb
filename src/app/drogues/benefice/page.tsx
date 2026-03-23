@@ -37,7 +37,8 @@ export default function DroguesBeneficePage() {
   const [brickTaxPercent, setBrickTaxPercent] = useState('5')
   const [pouchesPerBrick, setPouchesPerBrick] = useState('10')
   const [brickTransformCost, setBrickTransformCost] = useState('0')
-  const [pouchTransformCost, setPouchTransformCost] = useState('0')
+  const [pouchTransformCost, setPouchTransformCost] = useState('150')
+  const [pouchTransformBatchSize, setPouchTransformBatchSize] = useState('10')
   const [pouchSalePrice, setPouchSalePrice] = useState('0')
   const [items, setItems] = useState<CatalogItem[]>([])
 
@@ -64,7 +65,8 @@ export default function DroguesBeneficePage() {
     const taxRate = Math.min(100, taxPercent) / 100
     const brickCost = Math.max(0, Number(brickTransformCost) || 0)
     const pouchPerBrick = Math.max(0, Number(pouchesPerBrick) || 0)
-    const pouchCost = Math.max(0, Number(pouchTransformCost) || 0)
+    const pouchCostPerBatch = Math.max(0, Number(pouchTransformCost) || 0)
+    const pouchBatchSize = Math.max(1, Number(pouchTransformBatchSize) || 1)
     const unitSale = Math.max(0, Number(pouchSalePrice) || 0)
 
     const requiredPots = seedQty
@@ -81,7 +83,7 @@ export default function DroguesBeneficePage() {
     const totalSeedCost = seedQty * unitSeedPrice
     const totalGrowCost = (requiredPots * unitPot) + (requiredFertilizer * unitFertilizer) + (requiredWater * unitWater) + (requiredLamps * unitLamp)
     const totalBrickCost = totalBricks * brickCost
-    const totalPouchCost = totalPouches * pouchCost
+    const totalPouchCost = (totalPouches / pouchBatchSize) * pouchCostPerBatch
     const totalCost = totalSeedCost + totalGrowCost + totalBrickCost + totalPouchCost
     const totalRevenue = totalPouches * unitSale
     const profit = totalRevenue - totalCost
@@ -100,11 +102,13 @@ export default function DroguesBeneficePage() {
       totalGrowCost,
       totalBrickCost,
       totalPouchCost,
+      pouchBatchSize,
+      pouchCostPerBatch,
       totalCost,
       totalRevenue,
       profit,
     }
-  }, [brickTaxPercent, brickTransformCost, fertilizerPrice, lampPrice, leavesPerSeed, pouchSalePrice, pouchTransformCost, pouchesPerBrick, potPrice, seedPrice, seeds, waterPrice])
+  }, [brickTaxPercent, brickTransformCost, fertilizerPrice, lampPrice, leavesPerSeed, pouchSalePrice, pouchTransformBatchSize, pouchTransformCost, pouchesPerBrick, potPrice, seedPrice, seeds, waterPrice])
 
   return (
     <div className="space-y-4">
@@ -124,8 +128,9 @@ export default function DroguesBeneficePage() {
           <div><p className="mb-1 text-xs text-white/65">Prix transfo brick (unité)</p><Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" /></div>
 
           <div><p className="mb-1 text-xs text-white/65">Pochons par brick</p><Input value={pouchesPerBrick} onChange={(e) => setPouchesPerBrick(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix transfo pochon (unité)</p><Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" /></div>
+          <div><p className="mb-1 text-xs text-white/65">Prix transfo pochon (par lot)</p><Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix vente pochon (unité)</p><Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" /></div>
+          <div><p className="mb-1 text-xs text-white/65">Taille lot transfo pochon</p><Input value={pouchTransformBatchSize} onChange={(e) => setPouchTransformBatchSize(e.target.value)} inputMode="decimal" /></div>
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -146,6 +151,7 @@ export default function DroguesBeneficePage() {
         <div className="mt-2 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
           <p className="text-xs text-cyan-100/85">Scénario 100 graines (ta règle)</p>
           <p className="font-semibold">100 feuilles ➜ 95 bricks (taxe 5%) ➜ 950 pochons</p>
+          <p className="mt-1 text-xs text-cyan-100/80">Transfo pochon appliquée par lot: {calc.pouchCostPerBatch.toFixed(2)} $ / {calc.pouchBatchSize.toFixed(0)} pochons</p>
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
