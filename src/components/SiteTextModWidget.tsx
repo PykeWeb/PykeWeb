@@ -242,6 +242,16 @@ function shouldSkipNode(parent: Node | null) {
   return parent.isContentEditable
 }
 
+function isProtectedModSource(value: string | null | undefined): boolean {
+  if (!value) return false
+  return (
+    value.startsWith('items.type.')
+    || value.startsWith('items.category.')
+    || value.startsWith('itemForm.type.')
+    || value.startsWith('itemForm.category.')
+  )
+}
+
 function getDomPath(element: HTMLElement): string {
   const segments: string[] = []
   let current: HTMLElement | null = element
@@ -302,6 +312,7 @@ function applyOverrides(overrides: Overrides, visual: VisualState, pathname: str
 
     const forcedSource = element.dataset.modSource?.trim()
     if (forcedSource && forcedSource !== entry.sourceText) continue
+    if (isProtectedModSource(forcedSource)) continue
     if (!element.textContent?.includes(entry.sourceText) && !element.textContent?.includes(entry.text)) continue
 
     element.textContent = entry.text
@@ -317,6 +328,7 @@ function getEditableTarget(target: EventTarget | null): { text: string; element:
 
   const forcedSourceHost = target.closest('[data-mod-source]') as HTMLElement | null
   const forcedSource = forcedSourceHost?.dataset.modSource?.trim()
+  if (isProtectedModSource(forcedSource)) return null
 
   let current: HTMLElement | null = target
   while (current && current !== document.body) {
