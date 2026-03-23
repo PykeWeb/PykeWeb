@@ -722,7 +722,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
   const groupId = currentGroupId()
   const { data: current, error: currentError } = await supabase
     .from('catalog_items')
-    .select('id,name,description,category,item_type,buy_price,sell_price,stock,fivem_item_id,internal_id')
+    .select('id,name,description,category,item_type,buy_price,sell_price,stock,fivem_item_id,internal_id,image_url')
     .eq('group_id', groupId)
     .eq('id', resolved)
     .maybeSingle<{
@@ -736,6 +736,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
       stock: number | string | null
       fivem_item_id: string | null
       internal_id: string | null
+      image_url: string | null
     }>()
 
   if (currentError) throw currentError
@@ -811,7 +812,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
 
   const { data: refreshed, error: refreshError } = await supabase
     .from('catalog_items')
-    .select('name,buy_price,sell_price,stock,category,item_type,fivem_item_id,description')
+    .select('name,buy_price,sell_price,stock,category,item_type,fivem_item_id,description,image_url')
     .eq('group_id', groupId)
     .eq('id', resolved)
     .single<{
@@ -823,6 +824,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
       item_type: ItemType | null
       fivem_item_id: string | null
       description: string | null
+      image_url: string | null
     }>()
 
   if (refreshError) throw refreshError
@@ -840,6 +842,100 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
 
   if (!updateApplied) {
     throw new Error("La mise à jour n'a pas été appliquée correctement.")
+  }
+
+  if (groupId === 'admin') {
+    const globalPayload = {
+      category: refreshed.category,
+      item_type: normalizeItemType(refreshed.item_type, refreshed.category),
+      name: refreshed.name,
+      description: toNullableString(refreshed.description),
+      image_url: toNullableString(refreshed.image_url),
+      price: toNonNegative(refreshed.buy_price),
+      default_quantity: toNonNegative(refreshed.stock),
+      weapon_id: toNullableString(refreshed.fivem_item_id),
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data: existingGlobal, error: globalLookupError } = await supabase
+      .from('catalog_items_global')
+      .select('id')
+      .eq('name', current.name)
+      .eq('category', current.category)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string }>()
+
+    if (globalLookupError) throw new Error(`catalog_items_global lookup: ${globalLookupError.message}`)
+
+    if (existingGlobal?.id) {
+      const { error: globalUpdateError } = await supabase
+        .from('catalog_items_global')
+        .update(globalPayload)
+        .eq('id', existingGlobal.id)
+      if (globalUpdateError) throw new Error(`catalog_items_global update: ${globalUpdateError.message}`)
+    } else {
+      const { error: globalInsertError } = await supabase.from('catalog_items_global').insert(globalPayload)
+      if (globalInsertError) throw new Error(`catalog_items_global insert: ${globalInsertError.message}`)
+    }
+
+    const candidates: Array<{
+      id: string
+      name: string
+      description: string | null
+      category: ItemCategory
+      item_type: ItemType | null
+      buy_price: number | string | null
+      sell_price: number | string | null
+      stock: number | string | null
+      fivem_item_id: string | null
+      internal_id: string | null
+      image_url: string | null
+    }> = []
+
+    if (current.internal_id) {
+      const { data, error: candidateError } = await supabase
+        .from('catalog_items')
+        .select('id,name,description,category,item_type,buy_price,sell_price,stock,fivem_item_id,internal_id,image_url')
+        .neq('group_id', 'admin')
+        .eq('internal_id', current.internal_id)
+        .eq('is_active', true)
+      if (candidateError) throw new Error(`catalog_items propagation lookup: ${candidateError.message}`)
+      candidates.push(...((data ?? []) as typeof candidates))
+    }
+
+    for (const row of candidates) {
+      const untouched =
+        row.name === current.name
+        && row.category === current.category
+        && normalizeItemType(row.item_type, row.category) === normalizeItemType(current.item_type, current.category)
+        && toNullableString(row.description) === toNullableString(current.description)
+        && toNonNegative(row.buy_price) === toNonNegative(current.buy_price)
+        && toNonNegative(row.sell_price) === toNonNegative(current.sell_price)
+        && toNonNegative(row.stock) === toNonNegative(current.stock)
+        && toNullableString(row.fivem_item_id) === toNullableString(current.fivem_item_id)
+        && toNullableString(row.image_url) === toNullableString(current.image_url)
+
+      if (!untouched) continue
+
+      const { error: propagateError } = await supabase
+        .from('catalog_items')
+        .update({
+          name: refreshed.name,
+          category: refreshed.category,
+          item_type: normalizeItemType(refreshed.item_type, refreshed.category),
+          description: toNullableString(refreshed.description),
+          buy_price: toNonNegative(refreshed.buy_price),
+          sell_price: toNonNegative(refreshed.sell_price),
+          stock: toNonNegative(refreshed.stock),
+          fivem_item_id: toNullableString(refreshed.fivem_item_id),
+          image_url: toNullableString(refreshed.image_url),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', row.id)
+
+      if (propagateError) throw new Error(`catalog_items propagation update: ${propagateError.message}`)
+    }
   }
 }
 
