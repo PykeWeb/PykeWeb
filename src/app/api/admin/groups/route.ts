@@ -196,33 +196,14 @@ async function seedCatalogForGroup(groupId: string) {
   if (insertError) throw new Error(insertError.message)
 }
 
-async function ensurePwrGroup() {
-  const supabase = getSupabaseAdmin()
-  const { error } = await supabase
-    .from(TABLE)
-    .upsert(
-      {
-        name: 'PWR',
-        badge: 'PWR',
-        login: 'pwr',
-        password: 'pwr',
-        active: true,
-        paid_until: null,
-      },
-      { onConflict: 'login', ignoreDuplicates: true },
-    )
-
-  if (error) throw new Error(error.message)
-}
-
 export async function GET(request: Request) {
   try {
     await assertAdminSession(request)
-    await ensurePwrGroup()
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from(TABLE)
       .select('id,name,badge,login,password,active,paid_until,created_at')
+      .neq('login', 'pwr')
       .order('created_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json((data ?? []).map((row) => normalizeGroupRecord(row as GroupRecord)))
@@ -236,7 +217,10 @@ export async function POST(request: Request) {
   try {
     await assertAdminSession(request)
     const body = normalizePayload(await request.json())
-    await ensurePwrGroup()
+    const login = typeof body.login === 'string' ? body.login.trim().toLowerCase() : ''
+    if (login === 'pwr') {
+      return NextResponse.json({ error: 'Le login pwr est réservé et désactivé.' }, { status: 400 })
+    }
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from(TABLE)
@@ -264,11 +248,15 @@ export async function PUT(request: Request) {
   try {
     await assertAdminSession(request)
     const body = await request.json() as { id?: string; patch?: Record<string, unknown> }
-    await ensurePwrGroup()
+    const patch = normalizePayload(body.patch || {})
+    const patchLogin = typeof patch.login === 'string' ? patch.login.trim().toLowerCase() : ''
+    if (patchLogin === 'pwr') {
+      return NextResponse.json({ error: 'Le login pwr est réservé et désactivé.' }, { status: 400 })
+    }
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from(TABLE)
-      .update(normalizePayload(body.patch || {}))
+      .update(patch)
       .eq('id', String(body.id))
       .select('id,name,badge,login,password,active,paid_until,created_at')
       .single()
