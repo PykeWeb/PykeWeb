@@ -15,16 +15,16 @@ export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label:
   weapons: [
     { value: 'weapon', label: 'Armes' },
     { value: 'ammo', label: 'Munitions' },
-    { value: 'weapon_accessory', label: "Accessoire d’arme" },
+    { value: 'weapon_accessory', label: 'Modding' },
   ],
   equipment: [
-    { value: 'equipment', label: 'Équipement' },
+    { value: 'equipment', label: 'Équipements' },
   ],
   drugs: [
-    { value: 'seed', label: 'Graine' },
-    { value: 'pouch', label: 'Pochon' },
+    { value: 'seed', label: 'Graines' },
+    { value: 'pouch', label: 'Pochons' },
     { value: 'drug_material', label: 'Matériels' },
-    { value: 'product', label: 'Production' },
+    { value: 'product', label: 'Productions' },
   ],
   custom: [{ value: 'other', label: 'Autres' }],
 }
@@ -47,22 +47,22 @@ export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: U
     return [
       { value: 'all', label: 'Tous' },
       { value: 'objects', label: 'Objets' },
-      { value: 'equipment', label: 'Équipement' },
+      { value: 'equipment', label: 'Équipements' },
       { value: 'weapon', label: 'Armes' },
       { value: 'ammo', label: 'Munitions' },
-      { value: 'weapon_accessory', label: "Accessoire d’arme" },
-      { value: 'seed', label: 'Graine' },
-      { value: 'pouch', label: 'Pochon' },
+      { value: 'weapon_accessory', label: 'Modding' },
+      { value: 'seed', label: 'Graines' },
+      { value: 'pouch', label: 'Pochons' },
       { value: 'drug_material', label: 'Matériels' },
-      { value: 'product', label: 'Production' },
+      { value: 'product', label: 'Productions' },
       { value: 'other', label: 'Autres' },
     ]
   }
 
   if (category === 'objects') return [{ value: 'all', label: 'Tous' }, { value: 'objects', label: 'Objets' }]
-  if (category === 'equipment') return [{ value: 'all', label: 'Tous' }, { value: 'equipment', label: 'Équipement' }]
-  if (category === 'weapons') return [{ value: 'all', label: 'Tous' }, { value: 'weapon', label: 'Armes' }, { value: 'ammo', label: 'Munitions' }, { value: 'weapon_accessory', label: "Accessoire d’arme" }]
-  if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graine' }, { value: 'pouch', label: 'Pochon' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Production' }]
+  if (category === 'equipment') return [{ value: 'all', label: 'Tous' }, { value: 'equipment', label: 'Équipements' }]
+  if (category === 'weapons') return [{ value: 'all', label: 'Tous' }, { value: 'weapon', label: 'Armes' }, { value: 'ammo', label: 'Munitions' }, { value: 'weapon_accessory', label: 'Modding' }]
+  if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graines' }, { value: 'pouch', label: 'Pochons' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Productions' }]
   return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres' }]
 }
 
@@ -177,19 +177,19 @@ export function getTypeLabel(type: ItemType, category?: ItemCategory | string | 
     material: 'Matériau',
     weapon: 'Armes',
     ammo: 'Munitions',
-    weapon_accessory: "Accessoire d’arme",
-    equipment: 'Équipement',
+    weapon_accessory: 'Modding',
+    equipment: 'Équipements',
     outfit: 'Tenue',
     protection: 'Protection',
-    seed: 'Graine',
-    pouch: 'Pochon',
-    product: 'Production',
+    seed: 'Graines',
+    pouch: 'Pochons',
+    product: 'Productions',
     recipe: 'Matériels',
     drug_material: 'Matériels',
     other: 'Autres',
     input: 'Autres',
-    output: 'Production',
-    production: 'Production',
+    output: 'Productions',
+    production: 'Productions',
   }
   return globalLabels[type] ?? 'Autres'
 }
