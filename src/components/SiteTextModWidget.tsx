@@ -247,6 +247,7 @@ function isProtectedModSource(value: string | null | undefined): boolean {
   return (
     value.startsWith('items.type.')
     || value.startsWith('items.category.')
+    || value.startsWith('items.row.')
     || value.startsWith('itemForm.type.')
     || value.startsWith('itemForm.category.')
   )

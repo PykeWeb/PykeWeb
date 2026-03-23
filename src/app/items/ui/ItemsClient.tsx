@@ -468,8 +468,12 @@ export default function ItemsClient({
                       </div>
                     </td>
                     <td className="px-4 py-3 font-semibold">{it.name}</td>
-                    <td className="px-4 py-3">{getCategoryLabel(it.category)}</td>
-                    <td className="px-4 py-3">{getTypeLabel(it.item_type, it.category)}</td>
+                    <td className="px-4 py-3">
+                      <span data-mod-source={`items.row.${it.id}.category`}>{getCategoryLabel(it.category)}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span data-mod-source={`items.row.${it.id}.type`}>{getTypeLabel(it.item_type, it.category)}</span>
+                    </td>
                     <td className="px-4 py-3">{it.stock}</td>
                     <td className="px-4 py-3">{it.buy_price.toFixed(2)} / {it.sell_price.toFixed(2)} $</td>
                   </tr>
