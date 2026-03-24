@@ -55,6 +55,8 @@ export default function CokeClosePage() {
   const [realWater, setRealWater] = useState('0')
   const [realLamps, setRealLamps] = useState('0')
   const [realLeaves, setRealLeaves] = useState('0')
+  const [plannedSeedsInput, setPlannedSeedsInput] = useState('0')
+  const [plannedZonesInput, setPlannedZonesInput] = useState('1')
   const [quickSeeds, setQuickSeeds] = useState('100')
   const [quickZones, setQuickZones] = useState('1')
 
@@ -71,21 +73,37 @@ export default function CokeClosePage() {
       setRealWater(String(parsed.water))
       setRealLamps(String(parsed.lamps))
       setRealLeaves(String(parsed.theoreticalLeaves))
+      setPlannedSeedsInput(String(parsed.seeds))
+      setPlannedZonesInput(String(parsed.zones))
     } catch {
       setPlan(null)
     }
   }, [])
 
+  const applyPlan = (nextPlan: CokeSessionPlan, syncReal = true) => {
+    setPlan(nextPlan)
+    setPlannedSeedsInput(String(nextPlan.seeds))
+    setPlannedZonesInput(String(nextPlan.zones))
+    if (syncReal) {
+      setRealSeeds(String(nextPlan.seeds))
+      setRealPots(String(nextPlan.pots))
+      setRealFertilizer(String(nextPlan.fertilizer))
+      setRealWater(String(nextPlan.water))
+      setRealLamps(String(nextPlan.lamps))
+      setRealLeaves(String(nextPlan.theoreticalLeaves))
+    }
+    window.localStorage.setItem(COKE_SESSION_STORAGE_KEY, JSON.stringify(nextPlan))
+  }
+
+  const refreshPlanFromInputs = () => {
+    const refreshedPlan = buildCokeSessionPlan(Number(plannedSeedsInput), Number(plannedZonesInput))
+    applyPlan(refreshedPlan)
+    toast.success('Prévision session mise à jour.')
+  }
+
   const createQuickPlan = () => {
     const quickPlan = buildCokeSessionPlan(Number(quickSeeds), Number(quickZones))
-    setPlan(quickPlan)
-    setRealSeeds(String(quickPlan.seeds))
-    setRealPots(String(quickPlan.pots))
-    setRealFertilizer(String(quickPlan.fertilizer))
-    setRealWater(String(quickPlan.water))
-    setRealLamps(String(quickPlan.lamps))
-    setRealLeaves(String(quickPlan.theoreticalLeaves))
-    window.localStorage.setItem(COKE_SESSION_STORAGE_KEY, JSON.stringify(quickPlan))
+    applyPlan(quickPlan)
     toast.success('Session rapide préparée. Tu peux clôturer directement ici.')
   }
 
@@ -226,6 +244,35 @@ export default function CokeClosePage() {
     return { totalConsumablesCost, outputValue, gross }
   }, [getConsumableItem, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
+  const plannedResources = useMemo(() => {
+    if (!plan) return []
+    return [
+      { key: 'seed', label: 'Graine de coke', needed: plan.seeds, realValue: realSeeds, setReal: setRealSeeds },
+      { key: 'pot', label: 'Pot', needed: plan.pots, realValue: realPots, setReal: setRealPots },
+      { key: 'fert', label: 'Fertilisant', needed: plan.fertilizer, realValue: realFertilizer, setReal: setRealFertilizer },
+      { key: 'water', label: "Bouteille d'eau", needed: plan.water, realValue: realWater, setReal: setRealWater },
+      { key: 'lamp', label: 'Lampe', needed: plan.lamps, realValue: realLamps, setReal: setRealLamps },
+      { key: 'leaf', label: 'Feuille de Cocaïne', needed: plan.theoreticalLeaves, realValue: realLeaves, setReal: setRealLeaves },
+    ].map((entry) => {
+      const item = entry.label === "Bouteille d'eau"
+        ? findItemByAliases(items, ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water'])
+        : findItem(items, entry.label)
+      const stock = Math.max(0, Number(item?.stock || 0))
+      const missing = Math.max(0, entry.needed - stock)
+      const pu = Number(item?.buy_price ?? 0)
+      return { ...entry, item, stock, missing, pu, missingCost: missing * pu }
+    })
+  }, [items, plan, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
+
+  const plannedEquipmentCost = useMemo(() => (
+    plannedResources
+      .filter((r) => ['pot', 'fert', 'water', 'lamp'].includes(r.key))
+      .reduce((sum, r) => sum + (r.needed * r.pu), 0)
+  ), [plannedResources])
+
+  const seedItem = useMemo(() => findItem(items, 'Graine de coke'), [items])
+  const zoneItem = useMemo(() => findItem(items, 'Lampe'), [items])
+
   return (
     <div className="space-y-4">
       <PageHeader title="Clôturer une session coke" subtitle="Entre les résultats réels de ta session" />
@@ -250,28 +297,68 @@ export default function CokeClosePage() {
             <CokeSessionHeader title="Clôturer une session coke" subtitle="Saisie réelle et mise à jour stock." tone="amber" />
 
             <div className="grid gap-2 text-sm sm:grid-cols-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">Graines prévues: <span className="font-semibold">{plan.seeds}</span></div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">Zones prévues: <span className="font-semibold">{plan.zones}</span></div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2">Lampes prévues: <span className="font-semibold">{plan.lamps}</span></div>
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2">
+                <div className="mb-1 flex items-center gap-2">
+                  <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                    {seedItem?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={seedItem.image_url} alt="Graines prévues" className="h-full w-full object-cover" loading="lazy" />
+                    ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
+                  </div>
+                  <p className="text-xs text-cyan-100/85">Graines prévues</p>
+                </div>
+                <Input value={plannedSeedsInput} onChange={(e) => setPlannedSeedsInput(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+              </div>
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2">
+                <div className="mb-1 flex items-center gap-2">
+                  <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                    {zoneItem?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={zoneItem.image_url} alt="Zones prévues" className="h-full w-full object-cover" loading="lazy" />
+                    ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
+                  </div>
+                  <p className="text-xs text-cyan-100/85">Zones prévues</p>
+                </div>
+                <Input value={plannedZonesInput} onChange={(e) => setPlannedZonesInput(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+              </div>
+              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2">
+                <p className="text-xs text-emerald-100/85">Total prix équipement prévu</p>
+                <p className="mt-1 text-lg font-semibold">{formatPrice(plannedEquipmentCost)}</p>
+                <p className="text-[11px] text-emerald-100/75">Pots + fertilisant + eau + lampes</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <PrimaryButton onClick={refreshPlanFromInputs}>Mettre à jour la prévision</PrimaryButton>
+              <SecondaryButton onClick={() => {
+                setPlan(null)
+                window.localStorage.removeItem(COKE_SESSION_STORAGE_KEY)
+              }}>Quitter (sans valider)</SecondaryButton>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              {closeFields.map((field) => {
-                const item = getItemForField(field.itemLabel)
+            <div className="grid gap-2 md:grid-cols-2">
+              {plannedResources.map((field) => {
                 return (
-                  <div key={field.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-3">
+                  <div key={field.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-3">
                     <div className="mb-2 flex items-center gap-2">
                       <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-                        {item?.image_url ? (
+                        {field.item?.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.image_url} alt={field.itemLabel} className="h-full w-full object-cover" loading="lazy" />
+                          <img src={field.item.image_url} alt={field.label} className="h-full w-full object-cover" loading="lazy" />
                         ) : (
                           <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>
                         )}
                       </div>
                       <p className="text-xs text-white/75">{field.label}</p>
                     </div>
-                    <Input value={field.value} onChange={(e) => field.set(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+                    <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Besoin <span className="float-right font-semibold">{field.needed}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
+                      <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque <span className="float-right font-semibold">{formatPrice(field.missingCost)}</span></div>
+                    </div>
+                    <p className="mb-1 text-[11px] text-white/60">Quantité réelle (modifiable)</p>
+                    <Input value={field.realValue} onChange={(e) => field.setReal(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
                   </div>
                 )
               })}
@@ -305,7 +392,7 @@ export default function CokeClosePage() {
             </div>
 
             <div className="flex gap-2">
-              <PrimaryButton disabled={saving} onClick={() => { void submit() }}>{saving ? 'Validation...' : 'Valider la session'}</PrimaryButton>
+              <PrimaryButton disabled={saving} onClick={() => { void submit() }}>{saving ? 'Validation...' : 'Session faite (mettre à jour stock)'}</PrimaryButton>
               <Link href="/coke/preparer"><SecondaryButton>Retour préparer</SecondaryButton></Link>
               <Link href="/drogues"><SecondaryButton>Retour au calculateur</SecondaryButton></Link>
               <Link href="/drogues/benefice"><SecondaryButton>Bénéfice drogue</SecondaryButton></Link>
