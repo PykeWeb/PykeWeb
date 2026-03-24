@@ -180,11 +180,15 @@ export default function DroguesBeneficePage() {
               </div>
               <p className="text-xs text-cyan-100/85">Nombre de graines</p>
             </div>
-            <Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" />
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setSeeds(String(Math.max(0, (Number(seeds) || 0) - 100)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
+              <Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" />
+              <button type="button" onClick={() => setSeeds(String((Number(seeds) || 0) + 100))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
+            </div>
             <p className="mb-1 mt-2 text-xs text-cyan-100/85">Prix graine (unité)</p>
             <Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" />
           </div>
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
             <div className="mb-1 flex items-center gap-2">
               <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
                 {pouchItem?.image_url ? (
@@ -192,17 +196,18 @@ export default function DroguesBeneficePage() {
                   <img src={pouchItem.image_url} alt="Prix vente pochon" className="h-full w-full object-cover" loading="lazy" />
                 ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
               </div>
-              <p className="text-xs text-cyan-100/85">Prix vente pochon (unité)</p>
+              <p className="text-xs text-emerald-100/85">Pochons récupérés (auto)</p>
             </div>
+            <p className="mb-1 text-lg font-semibold">{roundDisplay(calc.totalPouches)}</p>
+            <p className="text-[11px] text-emerald-100/75">Calculé depuis graines + taxe + pochons/brick.</p>
+            <p className="mb-1 mt-2 text-xs text-emerald-100/85">Prix vente pochon (unité)</p>
             <Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" />
           </div>
-          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
-            <p className="text-xs text-emerald-100/85">Pochons récupérés (auto)</p>
-            <p className="mt-1 text-lg font-semibold">{roundDisplay(calc.totalPouches)}</p>
-            <p className="text-[11px] text-emerald-100/75">Calculé depuis graines + taxe + pochons/brick.</p>
-          </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
-            <p className="mb-1 text-xs text-cyan-100/85">Transfo global (brick + lot)</p>
+            <p className="mb-1 text-xs text-cyan-100/85">Taxe + Transfo global (brick + lot)</p>
+            <p className="mb-1 text-[11px] text-cyan-100/80">Taxe brick (%)</p>
+            <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" />
+            <p className="mb-1 mt-2 text-[11px] text-cyan-100/80">Transfo global</p>
             <Input value={String(globalTransformValue)} onChange={(e) => setGlobalTransform(e.target.value)} inputMode="decimal" />
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <div>
@@ -250,31 +255,15 @@ export default function DroguesBeneficePage() {
           ))}
         </div>
 
-        <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">
-            Taxe brick (%):
-            <div className="mt-1">
-              <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" className="h-8 rounded-md" />
-            </div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Taxe brick (unités): <span className="font-semibold">{calc.taxesOnBricks.toFixed(2)}</span></div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Pochons: <span className="font-semibold">{calc.totalPouches.toFixed(2)}</span></div>
-        </div>
-
         <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/60">Résumé financier</p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût graines</p><p className="font-semibold">{money(calc.totalSeedCost)}</p></div>
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût pousse</p><p className="font-semibold">{money(calc.totalGrowCost)}</p></div>
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo brick</p><p className="font-semibold">{money(calc.totalBrickCost)}</p></div>
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo pochon</p><p className="font-semibold">{money(calc.totalPouchCost)}</p></div>
-          <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-sm"><p className="text-xs text-rose-100/85">Coût total</p><p className="font-semibold">{money(calc.totalCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo global appliqué</p><p className="font-semibold">{money(totalTransformCost)}</p></div>
         </div>
-
-        <div className="mt-2 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
-          <p className="text-xs text-cyan-100/85">Coût transfo global appliqué</p>
-          <p className="text-lg font-semibold">{money(totalTransformCost)}</p>
-          <p className="text-[11px] text-cyan-100/75">Inclut la taxe brick ({brickTaxPercent}%) et la transfo pochon par lot.</p>
-        </div>
+        <div className="mt-2 rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-sm"><p className="text-xs text-rose-100/85">Coût total</p><p className="text-lg font-semibold">{money(calc.totalCost)}</p></div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm"><p className="text-xs text-cyan-100/85">Vente totale pochons</p><p className="text-lg font-semibold">{money(calc.totalRevenue)}</p></div>
