@@ -212,21 +212,58 @@ export default function DroguesBeneficePage() {
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
         </button>
 
-        {showAdvanced ? <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/60">Réglages détaillés</p>
-          <div className="grid gap-3 md:grid-cols-3">
-          <div><p className="mb-1 text-xs text-white/65">Prix graine (unité)</p><Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Zones de culture</p><Input value={growZones} onChange={(e) => setGrowZones(e.target.value)} inputMode="numeric" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Feuilles par graine</p><Input value={leavesPerSeed} onChange={(e) => setLeavesPerSeed(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Taxe brick (%)</p><Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Pochons par brick</p><Input value={pouchesPerBrick} onChange={(e) => setPouchesPerBrick(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix transfo brick (unité)</p><Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix transfo pochon (par lot)</p><Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" /></div>
+        {showAdvanced ? <div className="mb-3 space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-white/60">Réglages détaillés</p>
+
           <div>
-            <p className="mb-1 text-xs text-white/65">Taille lot transfo pochon</p>
-            <Input value={pouchTransformBatchSize} onChange={(e) => setPouchTransformBatchSize(e.target.value)} inputMode="decimal" />
-            <p className="mt-1 text-[11px] text-white/55">Ex: lot = 10 ➜ le coût « transfo pochon (par lot) » est appliqué tous les 10 pochons.</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-100/70">Production</p>
+            <div className="grid gap-2 md:grid-cols-3">
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+                <p className="mb-1 text-xs text-cyan-100/85">Prix graine (unité)</p>
+                <Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" />
+              </div>
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+                <p className="mb-1 text-xs text-cyan-100/85">Zones de culture</p>
+                <Input value={growZones} onChange={(e) => setGrowZones(e.target.value)} inputMode="numeric" />
+              </div>
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+                <p className="mb-1 text-xs text-cyan-100/85">Feuilles par graine</p>
+                <Input value={leavesPerSeed} onChange={(e) => setLeavesPerSeed(e.target.value)} inputMode="decimal" />
+              </div>
+            </div>
           </div>
+
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-100/70">Conversion</p>
+            <div className="grid gap-2 md:grid-cols-3">
+              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+                <p className="mb-1 text-xs text-emerald-100/85">Taxe brick (%)</p>
+                <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" />
+              </div>
+              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+                <p className="mb-1 text-xs text-emerald-100/85">Pochons par brick</p>
+                <Input value={pouchesPerBrick} onChange={(e) => setPouchesPerBrick(e.target.value)} inputMode="decimal" />
+              </div>
+              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+                <p className="mb-1 text-xs text-emerald-100/85">Prix transfo brick (unité)</p>
+                <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-100/70">Conditionnement</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3">
+                <p className="mb-1 text-xs text-amber-100/85">Prix transfo pochon (par lot)</p>
+                <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
+              </div>
+              <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3">
+                <p className="mb-1 text-xs text-amber-100/85">Taille lot transfo pochon</p>
+                <Input value={pouchTransformBatchSize} onChange={(e) => setPouchTransformBatchSize(e.target.value)} inputMode="decimal" />
+                <p className="mt-1 text-[11px] text-amber-100/70">Ex: lot = 10 ➜ coût appliqué tous les 10 pochons.</p>
+              </div>
+            </div>
           </div>
         </div> : null}
 
