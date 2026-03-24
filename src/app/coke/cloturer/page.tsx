@@ -107,7 +107,7 @@ export default function CokeClosePage() {
 
   const refreshPlanFromInputs = () => {
     const refreshedPlan = buildCokeSessionPlan(Number(plannedSeedsInput), Number(plannedZonesInput))
-    applyPlan(refreshedPlan, false)
+    applyPlan(refreshedPlan, true)
   }
 
   useEffect(() => {
