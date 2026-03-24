@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { Image as ImageIcon } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
@@ -60,7 +60,6 @@ export default function DroguesBeneficePage() {
   const [pouchTransformCost, setPouchTransformCost] = useState('0')
   const [pouchSalePrice, setPouchSalePrice] = useState('0')
   const [items, setItems] = useState<CatalogItem[]>([])
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const POUCHES_PER_BRICK = 10
   const POUCH_BATCH_SIZE = 10
@@ -205,79 +204,37 @@ export default function DroguesBeneficePage() {
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <p className="mb-1 text-xs text-cyan-100/85">Transfo global (brick + lot)</p>
             <Input value={String(globalTransformValue)} onChange={(e) => setGlobalTransform(e.target.value)} inputMode="decimal" />
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-[11px] text-cyan-100/80">Prix transfo brick (unité)</p>
+                <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" />
+              </div>
+              <div>
+                <p className="mb-1 text-[11px] text-cyan-100/80">Prix transfo pochon (par lot)</p>
+                <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
+              </div>
+            </div>
             <p className="mt-1 text-[11px] text-cyan-100/75">Regroupe brick + lot. Pochons/brick = 10 (natif), lot pochon = 10 (natif).</p>
           </div>
         </div>
 
-        <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="mb-3 inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/90">
-          Paramètres avancés
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-        </button>
-
-        {showAdvanced ? <div className="mb-3 space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-white/60">Réglages détaillés</p>
-
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-100/70">Production</p>
-            <div className="grid gap-2 md:grid-cols-3">
-              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
-                <p className="mb-1 text-xs text-cyan-100/85">Prix graine (unité)</p>
-                <Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" />
-              </div>
-              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
-                <p className="mb-1 text-xs text-cyan-100/85">Zones de culture</p>
-                <Input value={growZones} onChange={(e) => setGrowZones(e.target.value)} inputMode="numeric" />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-100/70">Conversion</p>
-            <div className="grid gap-2 md:grid-cols-3">
-              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
-                <p className="mb-1 text-xs text-emerald-100/85">Taxe brick (%)</p>
-                <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" />
-              </div>
-              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
-                <p className="mb-1 text-xs text-emerald-100/85">Pochons par brick (natif)</p>
-                <p className="text-sm font-semibold">10</p>
-              </div>
-              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
-                <p className="mb-1 text-xs text-emerald-100/85">Prix transfo brick (unité)</p>
-                <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-100/70">Conditionnement</p>
-            <div className="grid gap-2 md:grid-cols-2">
-              <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3">
-                <p className="mb-1 text-xs text-amber-100/85">Prix transfo pochon (par lot)</p>
-                <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
-              </div>
-              <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3">
-                <p className="mb-1 text-xs text-amber-100/85">Taille lot transfo pochon (natif)</p>
-                <p className="text-sm font-semibold">10</p>
-                <p className="mt-1 text-[11px] text-amber-100/70">Coût appliqué automatiquement tous les 10 pochons.</p>
-              </div>
-            </div>
-          </div>
-        </div> : null}
-
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/60">Ressources nécessaires</p>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-3 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
+        <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-2.5 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
             <div className="mb-2 flex items-center gap-2">
               <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] text-white/70">
                 Z
               </div>
               <p className="text-sm font-medium">Zones de culture</p>
             </div>
-            <p className="text-xs text-white/70">Besoin: <span className="rounded-md bg-cyan-500/15 px-1.5 py-0.5 font-semibold text-cyan-100">{calc.zones}</span></p>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setGrowZones(String(Math.max(1, (Number(growZones) || 1) - 1)))} className="h-8 w-8 rounded-md border border-white/15 bg-white/[0.04] text-base">-</button>
+              <Input value={growZones} onChange={(e) => setGrowZones(e.target.value)} inputMode="numeric" className="h-8 rounded-md" />
+              <button type="button" onClick={() => setGrowZones(String((Number(growZones) || 0) + 1))} className="h-8 w-8 rounded-md border border-white/15 bg-white/[0.04] text-base">+</button>
+            </div>
           </div>
           {resourceCards.map((entry) => (
-            <div key={entry.key} className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-3 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
+            <div key={entry.key} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-2.5 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
               <div className="mb-2 flex items-center gap-2">
                 <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
                   {entry.item?.image_url ? (
@@ -294,16 +251,14 @@ export default function DroguesBeneficePage() {
         </div>
 
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Taxe brick (%): <span className="font-semibold">{Number(brickTaxPercent).toFixed(2)}</span></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">
+            Taxe brick (%):
+            <div className="mt-1">
+              <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" className="h-8 rounded-md" />
+            </div>
+          </div>
           <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Taxe brick (unités): <span className="font-semibold">{calc.taxesOnBricks.toFixed(2)}</span></div>
           <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Pochons: <span className="font-semibold">{calc.totalPouches.toFixed(2)}</span></div>
-        </div>
-
-        <div className="mt-2 rounded-2xl border border-cyan-300/25 bg-gradient-to-r from-cyan-500/15 to-sky-500/10 p-3 text-sm">
-          <p className="text-xs text-cyan-100/85">Scénario 100 graines (ta règle)</p>
-          <p className="font-semibold">100 feuilles ➜ 95 bricks (taxe 5%) ➜ 950 pochons</p>
-          <p className="mt-1 text-xs text-cyan-100/80">Lampes: zones × 2 = {calc.zones} × 2 = {calc.requiredLamps}</p>
-          <p className="mt-1 text-xs text-cyan-100/80">Transfo pochon appliquée par lot: {calc.pouchCostPerBatch.toFixed(2)} $ / {calc.pouchBatchSize.toFixed(0)} pochons</p>
         </div>
 
         <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/60">Résumé financier</p>
