@@ -55,15 +55,15 @@ export default function DroguesBeneficePage() {
   const [waterPrice, setWaterPrice] = useState('0')
   const [lampPrice, setLampPrice] = useState('0')
   const [growZones, setGrowZones] = useState('1')
-  const [leavesPerSeed, setLeavesPerSeed] = useState('1')
   const [brickTaxPercent, setBrickTaxPercent] = useState('5')
-  const [pouchesPerBrick, setPouchesPerBrick] = useState('10')
   const [brickTransformCost, setBrickTransformCost] = useState('0')
   const [pouchTransformCost, setPouchTransformCost] = useState('0')
-  const [pouchTransformBatchSize, setPouchTransformBatchSize] = useState('10')
   const [pouchSalePrice, setPouchSalePrice] = useState('0')
   const [items, setItems] = useState<CatalogItem[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
+
+  const POUCHES_PER_BRICK = 10
+  const POUCH_BATCH_SIZE = 10
 
   useEffect(() => {
     void listCatalogItemsUnified().then((rows) => {
@@ -84,13 +84,13 @@ export default function DroguesBeneficePage() {
     const unitWater = Math.max(0, Number(waterPrice) || 0)
     const unitLamp = Math.max(0, Number(lampPrice) || 0)
     const zones = Math.max(1, Math.floor(Number(growZones) || 1))
-    const leavesSeed = Math.max(0.0001, Number(leavesPerSeed) || 1)
+    const leavesSeed = 1
     const taxPercent = Math.max(0, Number(brickTaxPercent) || 0)
     const taxRate = Math.min(100, taxPercent) / 100
     const brickCost = Math.max(0, Number(brickTransformCost) || 0)
-    const pouchPerBrick = Math.max(0, Number(pouchesPerBrick) || 0)
+    const pouchPerBrick = POUCHES_PER_BRICK
     const pouchCostPerBatch = Math.max(0, Number(pouchTransformCost) || 0)
-    const pouchBatchSize = Math.max(1, Number(pouchTransformBatchSize) || 1)
+    const pouchBatchSize = POUCH_BATCH_SIZE
     const unitSale = Math.max(0, Number(pouchSalePrice) || 0)
 
     const requiredPots = seedQty
@@ -135,7 +135,7 @@ export default function DroguesBeneficePage() {
       totalRevenue,
       profit,
     }
-  }, [brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, leavesPerSeed, pouchSalePrice, pouchTransformBatchSize, pouchTransformCost, pouchesPerBrick, potPrice, seedPrice, seeds, waterPrice])
+  }, [brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, pouchSalePrice, pouchTransformCost, potPrice, seedPrice, seeds, waterPrice])
 
   const resourceCards = useMemo(() => ([
     { key: 'seed', label: 'Graine de coke', qty: calc.requiredPots, unit: Math.max(0, Number(seedPrice) || 0), aliases: ['Graine de coke', 'Graine coke'] },
@@ -182,6 +182,8 @@ export default function DroguesBeneficePage() {
               <p className="text-xs text-cyan-100/85">Nombre de graines</p>
             </div>
             <Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" />
+            <p className="mb-1 mt-2 text-xs text-cyan-100/85">Prix graine (unité)</p>
+            <Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" />
           </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <div className="mb-1 flex items-center gap-2">
@@ -203,7 +205,7 @@ export default function DroguesBeneficePage() {
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <p className="mb-1 text-xs text-cyan-100/85">Transfo global (brick + lot)</p>
             <Input value={String(globalTransformValue)} onChange={(e) => setGlobalTransform(e.target.value)} inputMode="decimal" />
-            <p className="mt-1 text-[11px] text-cyan-100/75">Si tu mets 300, ça applique 150 brick + 150 lot.</p>
+            <p className="mt-1 text-[11px] text-cyan-100/75">Regroupe brick + lot. Pochons/brick = 10 (natif), lot pochon = 10 (natif).</p>
           </div>
         </div>
 
@@ -226,10 +228,6 @@ export default function DroguesBeneficePage() {
                 <p className="mb-1 text-xs text-cyan-100/85">Zones de culture</p>
                 <Input value={growZones} onChange={(e) => setGrowZones(e.target.value)} inputMode="numeric" />
               </div>
-              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
-                <p className="mb-1 text-xs text-cyan-100/85">Feuilles par graine</p>
-                <Input value={leavesPerSeed} onChange={(e) => setLeavesPerSeed(e.target.value)} inputMode="decimal" />
-              </div>
             </div>
           </div>
 
@@ -241,8 +239,8 @@ export default function DroguesBeneficePage() {
                 <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" />
               </div>
               <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
-                <p className="mb-1 text-xs text-emerald-100/85">Pochons par brick</p>
-                <Input value={pouchesPerBrick} onChange={(e) => setPouchesPerBrick(e.target.value)} inputMode="decimal" />
+                <p className="mb-1 text-xs text-emerald-100/85">Pochons par brick (natif)</p>
+                <p className="text-sm font-semibold">10</p>
               </div>
               <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
                 <p className="mb-1 text-xs text-emerald-100/85">Prix transfo brick (unité)</p>
@@ -259,9 +257,9 @@ export default function DroguesBeneficePage() {
                 <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
               </div>
               <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3">
-                <p className="mb-1 text-xs text-amber-100/85">Taille lot transfo pochon</p>
-                <Input value={pouchTransformBatchSize} onChange={(e) => setPouchTransformBatchSize(e.target.value)} inputMode="decimal" />
-                <p className="mt-1 text-[11px] text-amber-100/70">Ex: lot = 10 ➜ coût appliqué tous les 10 pochons.</p>
+                <p className="mb-1 text-xs text-amber-100/85">Taille lot transfo pochon (natif)</p>
+                <p className="text-sm font-semibold">10</p>
+                <p className="mt-1 text-[11px] text-amber-100/70">Coût appliqué automatiquement tous les 10 pochons.</p>
               </div>
             </div>
           </div>
@@ -269,6 +267,15 @@ export default function DroguesBeneficePage() {
 
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/60">Ressources nécessaires</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-3 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] text-white/70">
+                Z
+              </div>
+              <p className="text-sm font-medium">Zones de culture</p>
+            </div>
+            <p className="text-xs text-white/70">Besoin: <span className="rounded-md bg-cyan-500/15 px-1.5 py-0.5 font-semibold text-cyan-100">{calc.zones}</span></p>
+          </div>
           {resourceCards.map((entry) => (
             <div key={entry.key} className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-3 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
               <div className="mb-2 flex items-center gap-2">
@@ -287,8 +294,8 @@ export default function DroguesBeneficePage() {
         </div>
 
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Bricks avant taxe: <span className="font-semibold">{calc.grossBricks.toFixed(2)}</span></div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Taxe brick: <span className="font-semibold">{calc.taxesOnBricks.toFixed(2)}</span></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Taxe brick (%): <span className="font-semibold">{Number(brickTaxPercent).toFixed(2)}</span></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Taxe brick (unités): <span className="font-semibold">{calc.taxesOnBricks.toFixed(2)}</span></div>
           <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Pochons: <span className="font-semibold">{calc.totalPouches.toFixed(2)}</span></div>
         </div>
 
@@ -320,8 +327,8 @@ export default function DroguesBeneficePage() {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href="/drogues"><SecondaryButton>Retour accueil drogues</SecondaryButton></Link>
-          <Link href="/coke/cloturer"><SecondaryButton>Retour sessions drogues</SecondaryButton></Link>
+          <Link href="/drogues"><SecondaryButton>Accueil Drogues</SecondaryButton></Link>
+          <Link href="/coke/cloturer"><SecondaryButton>Sessions Drogues</SecondaryButton></Link>
         </div>
       </Panel>
     </div>
