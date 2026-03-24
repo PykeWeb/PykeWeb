@@ -279,7 +279,7 @@ export default function CokeClosePage() {
       <Panel>
         {!plan ? (
           <div className="space-y-3 rounded-xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm">
-            <p>Aucune session préparée trouvée. Crée une session rapide ci-dessous puis clôture directement.</p>
+            <p>Aucune session préparée trouvée. <Link className="underline" href="/coke/preparer">Préparer une session</Link> ou créer une session rapide ci-dessous.</p>
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
                 <p className="mb-1 text-xs text-amber-100/85">Graines prévues</p>
@@ -393,6 +393,8 @@ export default function CokeClosePage() {
 
             <div className="flex gap-2">
               <PrimaryButton disabled={saving} onClick={() => { void submit() }}>{saving ? 'Validation...' : 'Session faite (mettre à jour stock)'}</PrimaryButton>
+              <Link href="/coke/preparer"><SecondaryButton>Retour préparer</SecondaryButton></Link>
+              <Link href="/drogues"><SecondaryButton>Retour au calculateur</SecondaryButton></Link>
               <Link href="/drogues/benefice"><SecondaryButton>Bénéfice drogue</SecondaryButton></Link>
             </div>
           </div>
