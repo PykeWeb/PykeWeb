@@ -5,8 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/PageHeader'
-import { CokeSessionHeader } from '@/components/coke/CokeSessionHeader'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
@@ -109,9 +107,13 @@ export default function CokeClosePage() {
 
   const refreshPlanFromInputs = () => {
     const refreshedPlan = buildCokeSessionPlan(Number(plannedSeedsInput), Number(plannedZonesInput))
-    applyPlan(refreshedPlan)
-    toast.success('Prévision session mise à jour.')
+    applyPlan(refreshedPlan, false)
   }
+
+  useEffect(() => {
+    refreshPlanFromInputs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plannedSeedsInput, plannedZonesInput])
 
   const rows = useMemo(() => {
     const real = {
@@ -279,11 +281,8 @@ export default function CokeClosePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Clôturer une session coke" subtitle="Entre les résultats réels de ta session" />
       <Panel>
         <div className="space-y-4">
-            <CokeSessionHeader title="Clôturer une session coke" subtitle="Saisie réelle et mise à jour stock." tone="amber" />
-
             <div className="grid gap-2 text-sm sm:grid-cols-3">
               <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2">
                 <div className="mb-1 flex items-center gap-2">
@@ -316,11 +315,10 @@ export default function CokeClosePage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <PrimaryButton onClick={refreshPlanFromInputs}>Mettre à jour la prévision</PrimaryButton>
               <SecondaryButton onClick={() => {
                 setPlan(null)
                 window.localStorage.removeItem(COKE_SESSION_STORAGE_KEY)
-              }}>Quitter (sans valider)</SecondaryButton>
+              }}>Retour</SecondaryButton>
             </div>
 
             <div className="grid gap-2 md:grid-cols-2">
@@ -346,7 +344,25 @@ export default function CokeClosePage() {
                       <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque <span className="float-right font-semibold">{formatPrice(field.missingCost)}</span></div>
                     </div>
                     <p className="mb-1 text-[11px] text-white/60">Quantité réelle (modifiable)</p>
-                    <Input value={field.realValue} onChange={(e) => field.setReal(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => field.setReal(String(Math.max(0, (Number(field.realValue) || 0) - 1)))}
+                        className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
+                        aria-label={`Retirer 1 ${field.label}`}
+                      >
+                        -
+                      </button>
+                      <Input value={field.realValue} onChange={(e) => field.setReal(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => field.setReal(String((Number(field.realValue) || 0) + 1))}
+                        className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
+                        aria-label={`Ajouter 1 ${field.label}`}
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 )
               })}
@@ -381,8 +397,7 @@ export default function CokeClosePage() {
 
             <div className="flex gap-2">
               <PrimaryButton disabled={saving} onClick={() => { void submit() }}>{saving ? 'Validation...' : 'Session faite (mettre à jour stock)'}</PrimaryButton>
-              <Link href="/coke/preparer"><SecondaryButton>Retour préparer</SecondaryButton></Link>
-              <Link href="/drogues"><SecondaryButton>Retour au calculateur</SecondaryButton></Link>
+              <Link href="/drogues"><SecondaryButton>Retour</SecondaryButton></Link>
               <Link href="/drogues/benefice"><SecondaryButton>Bénéfice drogue</SecondaryButton></Link>
             </div>
           </div>
