@@ -164,6 +164,12 @@ export default function DroguesBeneficePage() {
     <div className="space-y-4">
       <PageHeader title="Bénéfice drogue" subtitle="Simule ton coût total et ta marge par session" />
       <Panel>
+        <div className="mb-3 flex flex-wrap gap-2">
+          <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-100">💡 1 zone = 2 lampes</span>
+          <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100">📦 Pochons auto = bricks nets × pochons/brick</span>
+          <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100">🧾 Coût lot pochon appliqué par taille de lot</span>
+        </div>
+
         <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div><p className="mb-1 text-xs text-white/65">Nombre de graines</p><Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix vente pochon (unité)</p><Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" /></div>
@@ -179,12 +185,14 @@ export default function DroguesBeneficePage() {
           </div>
         </div>
 
-        <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="mb-3 inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 text-xs text-white/80">
+        <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="mb-3 inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/90">
           Paramètres avancés
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
         </button>
 
-        {showAdvanced ? <div className="grid gap-3 md:grid-cols-3">
+        {showAdvanced ? <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/60">Réglages détaillés</p>
+          <div className="grid gap-3 md:grid-cols-3">
           <div><p className="mb-1 text-xs text-white/65">Nombre de graines</p><Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix graine (unité)</p><Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix pot (unité)</p><Input value={potPrice} onChange={(e) => setPotPrice(e.target.value)} inputMode="decimal" /></div>
@@ -206,11 +214,13 @@ export default function DroguesBeneficePage() {
             <Input value={pouchTransformBatchSize} onChange={(e) => setPouchTransformBatchSize(e.target.value)} inputMode="decimal" />
             <p className="mt-1 text-[11px] text-white/55">Ex: lot = 10 ➜ le coût « transfo pochon (par lot) » est appliqué tous les 10 pochons.</p>
           </div>
+          </div>
         </div> : null}
 
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/60">Ressources nécessaires</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {resourceCards.map((entry) => (
-            <div key={entry.key} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.03] p-3">
+            <div key={entry.key} className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-3 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
               <div className="mb-2 flex items-center gap-2">
                 <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
                   {entry.item?.image_url ? (
@@ -220,25 +230,26 @@ export default function DroguesBeneficePage() {
                 </div>
                 <p className="text-sm font-medium">{entry.label}</p>
               </div>
-              <p className="text-xs text-white/70">Besoin: <span className="font-semibold text-white">{entry.qty.toFixed(0)}</span></p>
-              <p className="text-xs text-white/70">Sous-total: <span className="font-semibold text-white">{money(entry.subtotal)}</span></p>
+              <p className="text-xs text-white/70">Besoin: <span className="rounded-md bg-cyan-500/15 px-1.5 py-0.5 font-semibold text-cyan-100">{entry.qty.toFixed(0)}</span></p>
+              <p className="text-xs text-white/70">Sous-total: <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-semibold text-emerald-100">{money(entry.subtotal)}</span></p>
             </div>
           ))}
         </div>
 
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Bricks avant taxe: <span className="font-semibold">{calc.grossBricks.toFixed(2)}</span></div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Taxe brick: <span className="font-semibold">{calc.taxesOnBricks.toFixed(2)}</span></div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Pochons: <span className="font-semibold">{calc.totalPouches.toFixed(2)}</span></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Bricks avant taxe: <span className="font-semibold">{calc.grossBricks.toFixed(2)}</span></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Taxe brick: <span className="font-semibold">{calc.taxesOnBricks.toFixed(2)}</span></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm">Pochons: <span className="font-semibold">{calc.totalPouches.toFixed(2)}</span></div>
         </div>
 
-        <div className="mt-2 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
+        <div className="mt-2 rounded-2xl border border-cyan-300/25 bg-gradient-to-r from-cyan-500/15 to-sky-500/10 p-3 text-sm">
           <p className="text-xs text-cyan-100/85">Scénario 100 graines (ta règle)</p>
           <p className="font-semibold">100 feuilles ➜ 95 bricks (taxe 5%) ➜ 950 pochons</p>
           <p className="mt-1 text-xs text-cyan-100/80">Lampes: zones × 2 = {calc.zones} × 2 = {calc.requiredLamps}</p>
           <p className="mt-1 text-xs text-cyan-100/80">Transfo pochon appliquée par lot: {calc.pouchCostPerBatch.toFixed(2)} $ / {calc.pouchBatchSize.toFixed(0)} pochons</p>
         </div>
 
+        <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/60">Résumé financier</p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût graines</p><p className="font-semibold">{money(calc.totalSeedCost)}</p></div>
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût pousse</p><p className="font-semibold">{money(calc.totalGrowCost)}</p></div>
