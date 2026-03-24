@@ -314,13 +314,6 @@ export default function CokeClosePage() {
                 <p className="text-[11px] text-emerald-100/75">Pots + fertilisant + eau + lampes</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <SecondaryButton onClick={() => {
-                setPlan(null)
-                window.localStorage.removeItem(COKE_SESSION_STORAGE_KEY)
-              }}>Retour</SecondaryButton>
-            </div>
-
             <div className="grid gap-2 md:grid-cols-2">
               {plannedResources.map((field) => {
                 return (
