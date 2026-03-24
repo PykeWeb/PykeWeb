@@ -306,7 +306,25 @@ export default function CokeClosePage() {
                   </div>
                   <p className="text-xs text-cyan-100/85">Zones prévues</p>
                 </div>
-                <Input value={plannedZonesInput} onChange={(e) => setPlannedZonesInput(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPlannedZonesInput(String(Math.max(1, (Number(plannedZonesInput) || 1) - 1)))}
+                    className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
+                    aria-label="Retirer 1 zone"
+                  >
+                    -
+                  </button>
+                  <Input value={plannedZonesInput} onChange={(e) => setPlannedZonesInput(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={() => setPlannedZonesInput(String((Number(plannedZonesInput) || 0) + 1))}
+                    className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
+                    aria-label="Ajouter 1 zone"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
               <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2">
                 <p className="text-xs text-emerald-100/85">Total prix équipement prévu</p>
@@ -329,13 +347,20 @@ export default function CokeClosePage() {
                       </div>
                       <p className="text-xs text-white/75">{field.label}</p>
                     </div>
-                    <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
-                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Besoin <span className="float-right font-semibold">{field.needed}</span></div>
-                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
-                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
-                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
-                      <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque <span className="float-right font-semibold">{formatPrice(field.missingCost)}</span></div>
-                    </div>
+                    {field.key === 'leaf' ? (
+                      <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
+                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
+                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
+                      </div>
+                    ) : (
+                      <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
+                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Besoin <span className="float-right font-semibold">{field.needed}</span></div>
+                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
+                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
+                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
+                        <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque <span className="float-right font-semibold">{formatPrice(field.missingCost)}</span></div>
+                      </div>
+                    )}
                     <p className="mb-1 text-[11px] text-white/60">Quantité réelle (modifiable)</p>
                     <div className="flex items-center gap-2">
                       <button

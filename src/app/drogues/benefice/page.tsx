@@ -14,6 +14,10 @@ function money(value: number) {
   return `${value.toFixed(2)} $`
 }
 
+function roundDisplay(value: number) {
+  return Math.round(value).toString()
+}
+
 function normalize(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
@@ -159,23 +163,41 @@ export default function DroguesBeneficePage() {
   }
 
   const totalTransformCost = calc.totalBrickCost + calc.totalPouchCost
+  const seedItem = useMemo(() => findItemByAliases(items, ['Graine de coke', 'Graine coke']), [items])
+  const pouchItem = useMemo(() => findItemByAliases(items, ['Pochon', 'Pochon de coke', 'Sachet', 'Pouch']), [items])
 
   return (
     <div className="space-y-4">
       <PageHeader title="Bénéfice drogue" subtitle="Simule ton coût total et ta marge par session" />
       <Panel>
-        <div className="mb-3 flex flex-wrap gap-2">
-          <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-100">💡 1 zone = 2 lampes</span>
-          <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100">📦 Pochons auto = bricks nets × pochons/brick</span>
-          <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100">🧾 Coût lot pochon appliqué par taille de lot</span>
-        </div>
-
         <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <div><p className="mb-1 text-xs text-white/65">Nombre de graines</p><Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix vente pochon (unité)</p><Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" /></div>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                {seedItem?.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={seedItem.image_url} alt="Nombre de graines" className="h-full w-full object-cover" loading="lazy" />
+                ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
+              </div>
+              <p className="text-xs text-cyan-100/85">Nombre de graines</p>
+            </div>
+            <Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" />
+          </div>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                {pouchItem?.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={pouchItem.image_url} alt="Prix vente pochon" className="h-full w-full object-cover" loading="lazy" />
+                ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
+              </div>
+              <p className="text-xs text-cyan-100/85">Prix vente pochon (unité)</p>
+            </div>
+            <Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" />
+          </div>
           <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
             <p className="text-xs text-emerald-100/85">Pochons récupérés (auto)</p>
-            <p className="mt-1 text-lg font-semibold">{calc.totalPouches.toFixed(2)}</p>
+            <p className="mt-1 text-lg font-semibold">{roundDisplay(calc.totalPouches)}</p>
             <p className="text-[11px] text-emerald-100/75">Calculé depuis graines + taxe + pochons/brick.</p>
           </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
