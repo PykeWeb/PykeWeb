@@ -94,8 +94,9 @@ export default function DroguesBeneficePage() {
     const requiredPots = seedQty
     const requiredFertilizer = seedQty
     const requiredWater = seedQty * 3
+    const lampsFromZones = zones * 2
     const lampNeedFromPlants = Math.ceil(seedQty / plantsPerLight)
-    const requiredLamps = Math.max(zones, lampNeedFromPlants)
+    const requiredLamps = Math.max(lampsFromZones, lampNeedFromPlants)
 
     const totalLeaves = seedQty * leavesSeed
     const grossBricks = totalLeaves
@@ -122,6 +123,7 @@ export default function DroguesBeneficePage() {
       requiredWater,
       requiredLamps,
       zones,
+      lampsFromZones,
       plantsPerLight,
       totalSeedCost,
       totalGrowCost,
@@ -238,7 +240,7 @@ export default function DroguesBeneficePage() {
         <div className="mt-2 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
           <p className="text-xs text-cyan-100/85">Scénario 100 graines (ta règle)</p>
           <p className="font-semibold">100 feuilles ➜ 95 bricks (taxe 5%) ➜ 950 pochons</p>
-          <p className="mt-1 text-xs text-cyan-100/80">Lampes: max(zones, plafond graines / plantes par lampe) = max({calc.zones}, {Math.ceil(Number(seeds) / calc.plantsPerLight) || 0}) = {calc.requiredLamps}</p>
+          <p className="mt-1 text-xs text-cyan-100/80">Lampes: max(zones × 2, plafond graines / plantes par lampe) = max({calc.lampsFromZones}, {Math.ceil(Number(seeds) / calc.plantsPerLight) || 0}) = {calc.requiredLamps}</p>
           <p className="mt-1 text-xs text-cyan-100/80">Transfo pochon appliquée par lot: {calc.pouchCostPerBatch.toFixed(2)} $ / {calc.pouchBatchSize.toFixed(0)} pochons</p>
         </div>
 
