@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { Image as ImageIcon } from 'lucide-react'
+import { DollarSign, Image as ImageIcon, Receipt, TrendingUp } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
@@ -10,8 +10,8 @@ import { SecondaryButton } from '@/components/ui/design-system'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 
-function money(value: number) {
-  return `${value.toFixed(2)} $`
+function moneyInt(value: number) {
+  return `${Math.round(value)} $`
 }
 
 function roundDisplay(value: number) {
@@ -169,7 +169,7 @@ export default function DroguesBeneficePage() {
     <div className="space-y-4">
       <PageHeader title="Bénéfice drogue" subtitle="Simule ton coût total et ta marge par session" />
       <Panel>
-        <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-4 grid items-stretch gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <div className="mb-1 flex items-center gap-2">
               <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
@@ -201,7 +201,11 @@ export default function DroguesBeneficePage() {
             <p className="mb-1 text-lg font-semibold">{roundDisplay(calc.totalPouches)}</p>
             <p className="text-[11px] text-emerald-100/75">Calculé depuis graines + taxe + pochons/brick.</p>
             <p className="mb-1 mt-2 text-xs text-emerald-100/85">Prix vente pochon (unité)</p>
-            <Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" />
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setPouchSalePrice(String(Math.max(0, (Number(pouchSalePrice) || 0) - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
+              <Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" />
+              <button type="button" onClick={() => setPouchSalePrice(String((Number(pouchSalePrice) || 0) + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
+            </div>
           </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <p className="mb-1 text-xs text-cyan-100/85">Taxe + Transfo global (brick + lot)</p>
@@ -250,24 +254,32 @@ export default function DroguesBeneficePage() {
                 <p className="text-sm font-medium">{entry.label}</p>
               </div>
               <p className="text-xs text-white/70">Besoin: <span className="rounded-md bg-cyan-500/15 px-1.5 py-0.5 font-semibold text-cyan-100">{entry.qty.toFixed(0)}</span></p>
-              <p className="text-xs text-white/70">Sous-total: <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-semibold text-emerald-100">{money(entry.subtotal)}</span></p>
+              <p className="text-xs text-white/70">Sous-total: <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-semibold text-emerald-100">{moneyInt(entry.subtotal)}</span></p>
             </div>
           ))}
         </div>
 
         <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/60">Résumé financier</p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût graines</p><p className="font-semibold">{money(calc.totalSeedCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût pousse</p><p className="font-semibold">{money(calc.totalGrowCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo brick</p><p className="font-semibold">{money(calc.totalBrickCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo pochon</p><p className="font-semibold">{money(calc.totalPouchCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo global appliqué</p><p className="font-semibold">{money(totalTransformCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût graines</p><p className="font-semibold">{moneyInt(calc.totalSeedCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût pousse</p><p className="font-semibold">{moneyInt(calc.totalGrowCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo brick</p><p className="font-semibold">{moneyInt(calc.totalBrickCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo pochon</p><p className="font-semibold">{moneyInt(calc.totalPouchCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo global appliqué</p><p className="font-semibold">{moneyInt(totalTransformCost)}</p></div>
         </div>
-        <div className="mt-2 rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-sm"><p className="text-xs text-rose-100/85">Coût total</p><p className="text-lg font-semibold">{money(calc.totalCost)}</p></div>
-
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm"><p className="text-xs text-cyan-100/85">Vente totale pochons</p><p className="text-lg font-semibold">{money(calc.totalRevenue)}</p></div>
-          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm"><p className="text-xs text-emerald-100/85">Bénéfice estimé</p><p className="text-lg font-semibold">{money(calc.profit)}</p></div>
+        <div className="mt-2 grid gap-2 lg:grid-cols-3">
+          <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-2.5 text-sm">
+            <p className="mb-1 flex items-center gap-1.5 text-xs text-rose-100/85"><Receipt className="h-3.5 w-3.5" /> Coût total</p>
+            <p className="text-base font-semibold">{moneyInt(calc.totalCost)}</p>
+          </div>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2.5 text-sm">
+            <p className="mb-1 flex items-center gap-1.5 text-xs text-cyan-100/85"><DollarSign className="h-3.5 w-3.5" /> Vente totale pochons</p>
+            <p className="text-base font-semibold">{moneyInt(calc.totalRevenue)}</p>
+          </div>
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2.5 text-sm">
+            <p className="mb-1 flex items-center gap-1.5 text-xs text-emerald-100/85"><TrendingUp className="h-3.5 w-3.5" /> Bénéfice estimé</p>
+            <p className="text-base font-semibold">{moneyInt(calc.profit)}</p>
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
