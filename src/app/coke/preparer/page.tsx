@@ -18,11 +18,22 @@ function normalize(value: string) {
 }
 
 function findItem(items: CatalogItem[], label: string) {
-  const n = normalize(label)
-  return items.find((item) => {
+  return findItemByAliases(items, [label])
+}
+
+function findItemByAliases(items: CatalogItem[], aliases: string[]) {
+  const normalizedAliases = aliases.map((alias) => normalize(alias))
+  const scored = items.map((item) => {
     const name = normalize(item.name)
-    return name === n || name.includes(n) || n.includes(name)
-  }) || null
+    let score = -1
+    for (const alias of normalizedAliases) {
+      if (name === alias) score = Math.max(score, 100)
+      else if (name.startsWith(`${alias} `) || name.endsWith(` ${alias}`)) score = Math.max(score, 80)
+      else if (alias.length >= 5 && name.includes(alias)) score = Math.max(score, 60)
+    }
+    return { item, score }
+  })
+  return scored.filter((row) => row.score >= 0).sort((a, b) => b.score - a.score)[0]?.item || null
 }
 
 function formatPrice(value: number | null | undefined) {
@@ -50,7 +61,9 @@ export default function CokePreparePage() {
     { key: 'water', label: "Bouteille d'eau", qty: plan.water },
     { key: 'lamp', label: 'Lampe', qty: plan.lamps },
   ].map((entry) => {
-    const item = findItem(items, entry.label)
+    const item = entry.key === 'water'
+      ? findItemByAliases(items, ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water'])
+      : findItem(items, entry.label)
     const stock = Math.max(0, Number(item?.stock || 0))
     const missing = Math.max(0, entry.qty - stock)
     const pu = item?.buy_price ?? null

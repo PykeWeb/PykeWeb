@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Image as ImageIcon } from 'lucide-react'
@@ -20,11 +20,22 @@ function normalize(value: string) {
 }
 
 function findItem(items: CatalogItem[], label: string) {
-  const n = normalize(label)
-  return items.find((item) => {
+  return findItemByAliases(items, [label])
+}
+
+function findItemByAliases(items: CatalogItem[], aliases: string[]) {
+  const normalizedAliases = aliases.map((alias) => normalize(alias))
+  const scored = items.map((item) => {
     const name = normalize(item.name)
-    return name === n || name.includes(n) || n.includes(name)
-  }) || null
+    let score = -1
+    for (const alias of normalizedAliases) {
+      if (name === alias) score = Math.max(score, 100)
+      else if (name.startsWith(`${alias} `) || name.endsWith(` ${alias}`)) score = Math.max(score, 80)
+      else if (alias.length >= 5 && name.includes(alias)) score = Math.max(score, 60)
+    }
+    return { item, score }
+  })
+  return scored.filter((row) => row.score >= 0).sort((a, b) => b.score - a.score)[0]?.item || null
 }
 
 function formatPrice(value: number | null | undefined) {
@@ -97,7 +108,7 @@ export default function CokeClosePage() {
 
       for (const row of consumables) {
         if (row.quantity <= 0) continue
-        const item = findItem(items, row.label)
+        const item = getConsumableItem(row.label)
         if (!item) continue
         await createFinanceTransaction({
           item_id: item.id,
@@ -142,6 +153,18 @@ export default function CokeClosePage() {
     { label: 'Feuilles récupérées', value: realLeaves, set: setRealLeaves, itemLabel: 'Feuille de Cocaïne' },
   ]
 
+  const getItemForField = useCallback((label: string) => (
+    label === "Bouteille d'eau"
+      ? findItemByAliases(items, ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water'])
+      : findItem(items, label)
+  ), [items])
+
+  const getConsumableItem = useCallback((label: string) => (
+    label === "Bouteille d'eau"
+      ? findItemByAliases(items, ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water'])
+      : findItem(items, label)
+  ), [items])
+
   const sessionTotals = useMemo(() => {
     const consumables = [
       { label: 'Graine de coke', quantity: Math.max(0, Math.floor(Number(realSeeds) || 0)) },
@@ -153,7 +176,7 @@ export default function CokeClosePage() {
     const leavesQty = Math.max(0, Math.floor(Number(realLeaves) || 0))
 
     const totalConsumablesCost = consumables.reduce((sum, row) => {
-      const item = findItem(items, row.label)
+      const item = getConsumableItem(row.label)
       const pu = Number(item?.buy_price ?? 0)
       return sum + row.quantity * (Number.isFinite(pu) ? pu : 0)
     }, 0)
@@ -163,7 +186,7 @@ export default function CokeClosePage() {
     const outputValue = leavesQty * (Number.isFinite(sellPrice) ? sellPrice : 0)
     const gross = outputValue - totalConsumablesCost
     return { totalConsumablesCost, outputValue, gross }
-  }, [items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
+  }, [getConsumableItem, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   return (
     <div className="space-y-4">
@@ -183,7 +206,7 @@ export default function CokeClosePage() {
 
             <div className="grid gap-2 sm:grid-cols-2">
               {closeFields.map((field) => {
-                const item = findItem(items, field.itemLabel)
+                const item = getItemForField(field.itemLabel)
                 return (
                   <div key={field.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-3">
                     <div className="mb-2 flex items-center gap-2">
