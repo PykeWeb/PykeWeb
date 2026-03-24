@@ -545,14 +545,11 @@ export default function ItemsClient({
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
-                  <p className="text-sm font-semibold">Flow session coke séparé</p>
-                  <p className="mt-1 text-xs text-white/65">La préparation et la clôture sont maintenant disponibles sur 2 pages dédiées.</p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    <Link href="/coke/preparer">
-                      <PrimaryButton className="w-full">Préparer une session</PrimaryButton>
-                    </Link>
+                  <p className="text-sm font-semibold">Accès rapide</p>
+                  <p className="mt-1 text-xs text-white/65">Utilise uniquement les 2 pages principales : Session Coke et Bénéfice.</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <Link href="/coke/cloturer">
-                      <SecondaryButton className="w-full">Clôturer une session</SecondaryButton>
+                      <PrimaryButton className="w-full">Session Coke</PrimaryButton>
                     </Link>
                     <Link href="/drogues/benefice">
                       <SecondaryButton className="w-full">Bénéfice drogue</SecondaryButton>
