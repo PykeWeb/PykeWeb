@@ -140,6 +140,14 @@ export default function DroguesBeneficePage() {
     subtotal: entry.qty * entry.unit,
   }))), [calc.requiredFertilizer, calc.requiredLamps, calc.requiredPots, calc.requiredWater, fertilizerPrice, items, lampPrice, potPrice, seedPrice, waterPrice])
 
+  const globalTransformInput = useMemo(() => {
+    const brickUnit = Math.max(0, Number(brickTransformCost) || 0)
+    const pouchLot = Math.max(0, Number(pouchTransformCost) || 0)
+    return brickUnit + pouchLot
+  }, [brickTransformCost, pouchTransformCost])
+
+  const totalTransformCost = calc.totalBrickCost + calc.totalPouchCost
+
   return (
     <div className="space-y-4">
       <PageHeader title="Bénéfice drogue" subtitle="Simule ton coût total et ta marge par session" />
@@ -147,7 +155,11 @@ export default function DroguesBeneficePage() {
         <div className="mb-4 grid gap-2 sm:grid-cols-3">
           <div><p className="mb-1 text-xs text-white/65">Nombre de graines</p><Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix vente pochon (unité)</p><Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix transfo pochon (par lot)</p><Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" /></div>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+            <p className="text-xs text-cyan-100/85">Transfo global (brick + lot)</p>
+            <p className="mt-1 text-lg font-semibold">{money(globalTransformInput)}</p>
+            <p className="text-[11px] text-cyan-100/75">Ex: 150 brick + 150 lot = 300</p>
+          </div>
         </div>
 
         <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="mb-3 inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 text-xs text-white/80">
@@ -210,6 +222,12 @@ export default function DroguesBeneficePage() {
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo brick</p><p className="font-semibold">{money(calc.totalBrickCost)}</p></div>
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo pochon</p><p className="font-semibold">{money(calc.totalPouchCost)}</p></div>
           <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-sm"><p className="text-xs text-rose-100/85">Coût total</p><p className="font-semibold">{money(calc.totalCost)}</p></div>
+        </div>
+
+        <div className="mt-2 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
+          <p className="text-xs text-cyan-100/85">Coût transfo global appliqué</p>
+          <p className="text-lg font-semibold">{money(totalTransformCost)}</p>
+          <p className="text-[11px] text-cyan-100/75">Inclut la taxe brick ({brickTaxPercent}%) et la transfo pochon par lot.</p>
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
