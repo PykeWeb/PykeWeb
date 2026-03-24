@@ -57,6 +57,7 @@ export default function DroguesBeneficePage() {
   const [pouchTransformCost, setPouchTransformCost] = useState('0')
   const [pouchTransformBatchSize, setPouchTransformBatchSize] = useState('10')
   const [pouchSalePrice, setPouchSalePrice] = useState('0')
+  const [targetPouches, setTargetPouches] = useState('0')
   const [items, setItems] = useState<CatalogItem[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
 
@@ -154,14 +155,26 @@ export default function DroguesBeneficePage() {
   }
 
   const totalTransformCost = calc.totalBrickCost + calc.totalPouchCost
+  const pouchTargetCalc = useMemo(() => {
+    const target = Math.max(0, Number(targetPouches) || 0)
+    const leavesSeed = Math.max(0.0001, Number(leavesPerSeed) || 1)
+    const taxPercent = Math.max(0, Number(brickTaxPercent) || 0)
+    const taxRate = Math.min(100, taxPercent) / 100
+    const pouchPerBrick = Math.max(0, Number(pouchesPerBrick) || 0)
+    const pouchesPerSeed = leavesSeed * (1 - taxRate) * pouchPerBrick
+    const requiredSeeds = pouchesPerSeed > 0 ? Math.ceil(target / pouchesPerSeed) : 0
+    const delta = calc.totalPouches - target
+    return { target, requiredSeeds, delta }
+  }, [brickTaxPercent, calc.totalPouches, leavesPerSeed, pouchesPerBrick, targetPouches])
 
   return (
     <div className="space-y-4">
       <PageHeader title="Bénéfice drogue" subtitle="Simule ton coût total et ta marge par session" />
       <Panel>
-        <div className="mb-4 grid gap-2 sm:grid-cols-3">
+        <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div><p className="mb-1 text-xs text-white/65">Nombre de graines</p><Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix vente pochon (unité)</p><Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" /></div>
+          <div><p className="mb-1 text-xs text-white/65">Objectif pochons (après taxe)</p><Input value={targetPouches} onChange={(e) => setTargetPouches(e.target.value)} inputMode="decimal" /></div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <p className="mb-1 text-xs text-cyan-100/85">Transfo global (brick + lot)</p>
             <Input value={String(globalTransformValue)} onChange={(e) => setGlobalTransform(e.target.value)} inputMode="decimal" />
@@ -215,6 +228,15 @@ export default function DroguesBeneficePage() {
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Bricks avant taxe: <span className="font-semibold">{calc.grossBricks.toFixed(2)}</span></div>
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Taxe brick: <span className="font-semibold">{calc.taxesOnBricks.toFixed(2)}</span></div>
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">Pochons: <span className="font-semibold">{calc.totalPouches.toFixed(2)}</span></div>
+        </div>
+
+        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">Objectif pochons: <span className="font-semibold">{pouchTargetCalc.target.toFixed(2)}</span></div>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">Graines requises (avec taxe): <span className="font-semibold">{pouchTargetCalc.requiredSeeds.toFixed(0)}</span></div>
+          <button type="button" onClick={() => setSeeds(String(pouchTargetCalc.requiredSeeds))} className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-left text-sm transition hover:bg-cyan-500/20">
+            Appliquer objectif ➜ graines
+            <p className={`text-xs ${pouchTargetCalc.delta < 0 ? 'text-rose-200' : 'text-emerald-200'}`}>Écart actuel: {pouchTargetCalc.delta > 0 ? '+' : ''}{pouchTargetCalc.delta.toFixed(2)} pochons</p>
+          </button>
         </div>
 
         <div className="mt-2 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
