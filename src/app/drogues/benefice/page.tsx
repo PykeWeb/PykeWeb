@@ -199,7 +199,6 @@ export default function DroguesBeneficePage() {
               <p className="text-xs text-emerald-100/85">Pochons récupérés (auto)</p>
             </div>
             <p className="mb-1 text-lg font-semibold">{roundDisplay(calc.totalPouches)}</p>
-            <p className="text-[11px] text-emerald-100/75">Calculé depuis graines + taxe + pochons/brick.</p>
             <p className="mb-1 mt-2 text-xs text-emerald-100/85">Prix vente pochon (unité)</p>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setPouchSalePrice(String(Math.max(0, (Number(pouchSalePrice) || 0) - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
@@ -208,7 +207,6 @@ export default function DroguesBeneficePage() {
             </div>
           </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
-            <p className="mb-1 text-xs text-cyan-100/85">Taxe + Transfo global (brick + lot)</p>
             <p className="mb-1 text-[11px] text-cyan-100/80">Taxe brick (%)</p>
             <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" />
             <p className="mb-1 mt-2 text-[11px] text-cyan-100/80">Transfo global</p>
@@ -223,7 +221,6 @@ export default function DroguesBeneficePage() {
                 <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
               </div>
             </div>
-            <p className="mt-1 text-[11px] text-cyan-100/75">Regroupe brick + lot. Pochons/brick = 10 (natif), lot pochon = 10 (natif).</p>
           </div>
         </div>
 
