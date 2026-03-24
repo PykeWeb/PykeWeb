@@ -13,7 +13,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import { markStockOutNote } from '@/lib/financeStockFlow'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
-import { COKE_SESSION_STORAGE_KEY, type CokeSessionPlan } from '@/lib/cokeSessionStorage'
+import { buildCokeSessionPlan, COKE_SESSION_STORAGE_KEY, type CokeSessionPlan } from '@/lib/cokeSessionStorage'
 
 function normalize(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
@@ -55,6 +55,8 @@ export default function CokeClosePage() {
   const [realWater, setRealWater] = useState('0')
   const [realLamps, setRealLamps] = useState('0')
   const [realLeaves, setRealLeaves] = useState('0')
+  const [quickSeeds, setQuickSeeds] = useState('100')
+  const [quickZones, setQuickZones] = useState('1')
 
   useEffect(() => {
     void listCatalogItemsUnified().then(setItems).catch(() => setItems([]))
@@ -73,6 +75,19 @@ export default function CokeClosePage() {
       setPlan(null)
     }
   }, [])
+
+  const createQuickPlan = () => {
+    const quickPlan = buildCokeSessionPlan(Number(quickSeeds), Number(quickZones))
+    setPlan(quickPlan)
+    setRealSeeds(String(quickPlan.seeds))
+    setRealPots(String(quickPlan.pots))
+    setRealFertilizer(String(quickPlan.fertilizer))
+    setRealWater(String(quickPlan.water))
+    setRealLamps(String(quickPlan.lamps))
+    setRealLeaves(String(quickPlan.theoreticalLeaves))
+    window.localStorage.setItem(COKE_SESSION_STORAGE_KEY, JSON.stringify(quickPlan))
+    toast.success('Session rapide préparée. Tu peux clôturer directement ici.')
+  }
 
   const rows = useMemo(() => {
     if (!plan) return []
@@ -216,7 +231,20 @@ export default function CokeClosePage() {
       <PageHeader title="Clôturer une session coke" subtitle="Entre les résultats réels de ta session" />
       <Panel>
         {!plan ? (
-          <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm">Aucune session préparée trouvée. <Link className="underline" href="/coke/preparer">Préparer une session</Link>.</div>
+          <div className="space-y-3 rounded-xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm">
+            <p>Aucune session préparée trouvée. <Link className="underline" href="/coke/preparer">Préparer une session</Link> ou créer une session rapide ci-dessous.</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs text-amber-100/85">Graines prévues</p>
+                <Input value={quickSeeds} onChange={(e) => setQuickSeeds(e.target.value)} inputMode="numeric" />
+              </div>
+              <div>
+                <p className="mb-1 text-xs text-amber-100/85">Zones prévues</p>
+                <Input value={quickZones} onChange={(e) => setQuickZones(e.target.value)} inputMode="numeric" />
+              </div>
+            </div>
+            <PrimaryButton onClick={createQuickPlan}>Créer puis clôturer ici</PrimaryButton>
+          </div>
         ) : (
           <div className="space-y-4">
             <CokeSessionHeader title="Clôturer une session coke" subtitle="Saisie réelle et mise à jour stock." tone="amber" />
