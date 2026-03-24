@@ -54,7 +54,7 @@ export default function DroguesBeneficePage() {
   const [brickTaxPercent, setBrickTaxPercent] = useState('5')
   const [pouchesPerBrick, setPouchesPerBrick] = useState('10')
   const [brickTransformCost, setBrickTransformCost] = useState('0')
-  const [pouchTransformCost, setPouchTransformCost] = useState('150')
+  const [pouchTransformCost, setPouchTransformCost] = useState('0')
   const [pouchTransformBatchSize, setPouchTransformBatchSize] = useState('10')
   const [pouchSalePrice, setPouchSalePrice] = useState('0')
   const [items, setItems] = useState<CatalogItem[]>([])
@@ -140,11 +140,18 @@ export default function DroguesBeneficePage() {
     subtotal: entry.qty * entry.unit,
   }))), [calc.requiredFertilizer, calc.requiredLamps, calc.requiredPots, calc.requiredWater, fertilizerPrice, items, lampPrice, potPrice, seedPrice, waterPrice])
 
-  const globalTransformInput = useMemo(() => {
+  const globalTransformValue = useMemo(() => {
     const brickUnit = Math.max(0, Number(brickTransformCost) || 0)
     const pouchLot = Math.max(0, Number(pouchTransformCost) || 0)
     return brickUnit + pouchLot
   }, [brickTransformCost, pouchTransformCost])
+
+  const setGlobalTransform = (value: string) => {
+    const total = Math.max(0, Number(value) || 0)
+    const split = total / 2
+    setBrickTransformCost(String(split))
+    setPouchTransformCost(String(split))
+  }
 
   const totalTransformCost = calc.totalBrickCost + calc.totalPouchCost
 
@@ -156,9 +163,9 @@ export default function DroguesBeneficePage() {
           <div><p className="mb-1 text-xs text-white/65">Nombre de graines</p><Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix vente pochon (unité)</p><Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" /></div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
-            <p className="text-xs text-cyan-100/85">Transfo global (brick + lot)</p>
-            <p className="mt-1 text-lg font-semibold">{money(globalTransformInput)}</p>
-            <p className="text-[11px] text-cyan-100/75">Ex: 150 brick + 150 lot = 300</p>
+            <p className="mb-1 text-xs text-cyan-100/85">Transfo global (brick + lot)</p>
+            <Input value={String(globalTransformValue)} onChange={(e) => setGlobalTransform(e.target.value)} inputMode="decimal" />
+            <p className="mt-1 text-[11px] text-cyan-100/75">Si tu mets 300, ça applique 150 brick + 150 lot.</p>
           </div>
         </div>
 
