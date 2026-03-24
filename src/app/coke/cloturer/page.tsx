@@ -95,7 +95,10 @@ export default function CokeClosePage() {
   }, [plan, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   async function submit() {
-    if (!plan) return
+    if (!plan) {
+      toast.error('Aucune session préparée à clôturer.')
+      return
+    }
     setSaving(true)
     try {
       const consumables = [
@@ -138,7 +141,11 @@ export default function CokeClosePage() {
       }
 
       window.localStorage.removeItem(COKE_SESSION_STORAGE_KEY)
+      toast.success('Session coke clôturée et stock mis à jour.')
       router.push('/items?view=tools')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erreur inconnue pendant la validation.'
+      toast.error(`Impossible de valider la session: ${message}`)
     } finally {
       setSaving(false)
     }
