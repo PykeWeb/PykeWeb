@@ -215,22 +215,13 @@ export default function DroguesBeneficePage() {
         {showAdvanced ? <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/60">Réglages détaillés</p>
           <div className="grid gap-3 md:grid-cols-3">
-          <div><p className="mb-1 text-xs text-white/65">Nombre de graines</p><Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix graine (unité)</p><Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix pot (unité)</p><Input value={potPrice} onChange={(e) => setPotPrice(e.target.value)} inputMode="decimal" /></div>
-
-          <div><p className="mb-1 text-xs text-white/65">Prix fertilisant (unité)</p><Input value={fertilizerPrice} onChange={(e) => setFertilizerPrice(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix eau (unité)</p><Input value={waterPrice} onChange={(e) => setWaterPrice(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix lampe (unité)</p><Input value={lampPrice} onChange={(e) => setLampPrice(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Zones de culture</p><Input value={growZones} onChange={(e) => setGrowZones(e.target.value)} inputMode="numeric" /></div>
-
           <div><p className="mb-1 text-xs text-white/65">Feuilles par graine</p><Input value={leavesPerSeed} onChange={(e) => setLeavesPerSeed(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Taxe brick (%)</p><Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix transfo brick (unité)</p><Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" /></div>
-
           <div><p className="mb-1 text-xs text-white/65">Pochons par brick</p><Input value={pouchesPerBrick} onChange={(e) => setPouchesPerBrick(e.target.value)} inputMode="decimal" /></div>
+          <div><p className="mb-1 text-xs text-white/65">Prix transfo brick (unité)</p><Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix transfo pochon (par lot)</p><Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Prix vente pochon (unité)</p><Input value={pouchSalePrice} onChange={(e) => setPouchSalePrice(e.target.value)} inputMode="decimal" /></div>
           <div>
             <p className="mb-1 text-xs text-white/65">Taille lot transfo pochon</p>
             <Input value={pouchTransformBatchSize} onChange={(e) => setPouchTransformBatchSize(e.target.value)} inputMode="decimal" />

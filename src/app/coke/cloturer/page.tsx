@@ -294,7 +294,25 @@ export default function CokeClosePage() {
                   </div>
                   <p className="text-xs text-cyan-100/85">Graines prévues</p>
                 </div>
-                <Input value={plannedSeedsInput} onChange={(e) => setPlannedSeedsInput(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPlannedSeedsInput(String(Math.max(0, (Number(plannedSeedsInput) || 0) - 100)))}
+                    className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
+                    aria-label="Retirer 100 graines"
+                  >
+                    -
+                  </button>
+                  <Input value={plannedSeedsInput} onChange={(e) => setPlannedSeedsInput(e.target.value)} inputMode="numeric" className="h-9 rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={() => setPlannedSeedsInput(String((Number(plannedSeedsInput) || 0) + 100))}
+                    className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
+                    aria-label="Ajouter 100 graines"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
               <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2">
                 <div className="mb-1 flex items-center gap-2">
@@ -350,7 +368,6 @@ export default function CokeClosePage() {
                     {field.key === 'leaf' ? (
                       <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
                         <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
-                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
                       </div>
                     ) : (
                       <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
