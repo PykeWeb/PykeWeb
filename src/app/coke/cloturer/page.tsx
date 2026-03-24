@@ -57,13 +57,25 @@ export default function CokeClosePage() {
   const [realLeaves, setRealLeaves] = useState('0')
   const [plannedSeedsInput, setPlannedSeedsInput] = useState('0')
   const [plannedZonesInput, setPlannedZonesInput] = useState('1')
-  const [quickSeeds, setQuickSeeds] = useState('100')
-  const [quickZones, setQuickZones] = useState('1')
+  const fallbackPlan = useMemo(() => buildCokeSessionPlan(100, 1), [])
+  const activePlan = plan ?? fallbackPlan
 
   useEffect(() => {
     void listCatalogItemsUnified().then(setItems).catch(() => setItems([]))
     const raw = window.localStorage.getItem(COKE_SESSION_STORAGE_KEY)
-    if (!raw) return
+    if (!raw) {
+      setPlan(fallbackPlan)
+      setRealSeeds(String(fallbackPlan.seeds))
+      setRealPots(String(fallbackPlan.pots))
+      setRealFertilizer(String(fallbackPlan.fertilizer))
+      setRealWater(String(fallbackPlan.water))
+      setRealLamps(String(fallbackPlan.lamps))
+      setRealLeaves(String(fallbackPlan.theoreticalLeaves))
+      setPlannedSeedsInput(String(fallbackPlan.seeds))
+      setPlannedZonesInput(String(fallbackPlan.zones))
+      window.localStorage.setItem(COKE_SESSION_STORAGE_KEY, JSON.stringify(fallbackPlan))
+      return
+    }
     try {
       const parsed = JSON.parse(raw) as CokeSessionPlan
       setPlan(parsed)
@@ -76,9 +88,9 @@ export default function CokeClosePage() {
       setPlannedSeedsInput(String(parsed.seeds))
       setPlannedZonesInput(String(parsed.zones))
     } catch {
-      setPlan(null)
+      setPlan(fallbackPlan)
     }
-  }, [])
+  }, [fallbackPlan])
 
   const applyPlan = (nextPlan: CokeSessionPlan, syncReal = true) => {
     setPlan(nextPlan)
@@ -101,14 +113,7 @@ export default function CokeClosePage() {
     toast.success('Prévision session mise à jour.')
   }
 
-  const createQuickPlan = () => {
-    const quickPlan = buildCokeSessionPlan(Number(quickSeeds), Number(quickZones))
-    applyPlan(quickPlan)
-    toast.success('Session rapide préparée. Tu peux clôturer directement ici.')
-  }
-
   const rows = useMemo(() => {
-    if (!plan) return []
     const real = {
       seeds: Math.max(0, Math.floor(Number(realSeeds) || 0)),
       pots: Math.max(0, Math.floor(Number(realPots) || 0)),
@@ -118,14 +123,14 @@ export default function CokeClosePage() {
       leaves: Math.max(0, Math.floor(Number(realLeaves) || 0)),
     }
     return [
-      { key: 'seeds', label: 'Graines', planned: plan.seeds, real: real.seeds },
-      { key: 'pots', label: 'Pots', planned: plan.pots, real: real.pots },
-      { key: 'fert', label: 'Fertilisant', planned: plan.fertilizer, real: real.fertilizer },
-      { key: 'water', label: 'Eau', planned: plan.water, real: real.water },
-      { key: 'lamps', label: 'Lampes', planned: plan.lamps, real: real.lamps },
-      { key: 'leaves', label: 'Feuilles', planned: plan.theoreticalLeaves, real: real.leaves },
+      { key: 'seeds', label: 'Graines', planned: activePlan.seeds, real: real.seeds },
+      { key: 'pots', label: 'Pots', planned: activePlan.pots, real: real.pots },
+      { key: 'fert', label: 'Fertilisant', planned: activePlan.fertilizer, real: real.fertilizer },
+      { key: 'water', label: 'Eau', planned: activePlan.water, real: real.water },
+      { key: 'lamps', label: 'Lampes', planned: activePlan.lamps, real: real.lamps },
+      { key: 'leaves', label: 'Feuilles', planned: activePlan.theoreticalLeaves, real: real.leaves },
     ]
-  }, [plan, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
+  }, [activePlan, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   async function submit() {
     if (!plan) {
@@ -245,14 +250,13 @@ export default function CokeClosePage() {
   }, [getConsumableItem, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   const plannedResources = useMemo(() => {
-    if (!plan) return []
     return [
-      { key: 'seed', label: 'Graine de coke', needed: plan.seeds, realValue: realSeeds, setReal: setRealSeeds },
-      { key: 'pot', label: 'Pot', needed: plan.pots, realValue: realPots, setReal: setRealPots },
-      { key: 'fert', label: 'Fertilisant', needed: plan.fertilizer, realValue: realFertilizer, setReal: setRealFertilizer },
-      { key: 'water', label: "Bouteille d'eau", needed: plan.water, realValue: realWater, setReal: setRealWater },
-      { key: 'lamp', label: 'Lampe', needed: plan.lamps, realValue: realLamps, setReal: setRealLamps },
-      { key: 'leaf', label: 'Feuille de Cocaïne', needed: plan.theoreticalLeaves, realValue: realLeaves, setReal: setRealLeaves },
+      { key: 'seed', label: 'Graine de coke', needed: activePlan.seeds, realValue: realSeeds, setReal: setRealSeeds },
+      { key: 'pot', label: 'Pot', needed: activePlan.pots, realValue: realPots, setReal: setRealPots },
+      { key: 'fert', label: 'Fertilisant', needed: activePlan.fertilizer, realValue: realFertilizer, setReal: setRealFertilizer },
+      { key: 'water', label: "Bouteille d'eau", needed: activePlan.water, realValue: realWater, setReal: setRealWater },
+      { key: 'lamp', label: 'Lampe', needed: activePlan.lamps, realValue: realLamps, setReal: setRealLamps },
+      { key: 'leaf', label: 'Feuille de Cocaïne', needed: activePlan.theoreticalLeaves, realValue: realLeaves, setReal: setRealLeaves },
     ].map((entry) => {
       const item = entry.label === "Bouteille d'eau"
         ? findItemByAliases(items, ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water'])
@@ -262,7 +266,7 @@ export default function CokeClosePage() {
       const pu = Number(item?.buy_price ?? 0)
       return { ...entry, item, stock, missing, pu, missingCost: missing * pu }
     })
-  }, [items, plan, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
+  }, [activePlan, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   const plannedEquipmentCost = useMemo(() => (
     plannedResources
@@ -277,23 +281,7 @@ export default function CokeClosePage() {
     <div className="space-y-4">
       <PageHeader title="Clôturer une session coke" subtitle="Entre les résultats réels de ta session" />
       <Panel>
-        {!plan ? (
-          <div className="space-y-3 rounded-xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm">
-            <p>Aucune session préparée trouvée. <Link className="underline" href="/coke/preparer">Préparer une session</Link> ou créer une session rapide ci-dessous.</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div>
-                <p className="mb-1 text-xs text-amber-100/85">Graines prévues</p>
-                <Input value={quickSeeds} onChange={(e) => setQuickSeeds(e.target.value)} inputMode="numeric" />
-              </div>
-              <div>
-                <p className="mb-1 text-xs text-amber-100/85">Zones prévues</p>
-                <Input value={quickZones} onChange={(e) => setQuickZones(e.target.value)} inputMode="numeric" />
-              </div>
-            </div>
-            <PrimaryButton onClick={createQuickPlan}>Créer puis clôturer ici</PrimaryButton>
-          </div>
-        ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
             <CokeSessionHeader title="Clôturer une session coke" subtitle="Saisie réelle et mise à jour stock." tone="amber" />
 
             <div className="grid gap-2 text-sm sm:grid-cols-3">
@@ -398,7 +386,6 @@ export default function CokeClosePage() {
               <Link href="/drogues/benefice"><SecondaryButton>Bénéfice drogue</SecondaryButton></Link>
             </div>
           </div>
-        )}
       </Panel>
     </div>
   )
