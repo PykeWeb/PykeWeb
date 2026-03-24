@@ -108,15 +108,28 @@ export default function CokeClosePage() {
         { label: "Bouteille d'eau", quantity: Math.max(0, Math.floor(Number(realWater) || 0)) },
         { label: 'Lampe', quantity: Math.max(0, Math.floor(Number(realLamps) || 0)) },
       ]
+      const partialRows: string[] = []
 
       for (const row of consumables) {
         if (row.quantity <= 0) continue
         const item = getConsumableItem(row.label)
-        if (!item) continue
+        if (!item) {
+          partialRows.push(`${row.label}: item introuvable`)
+          continue
+        }
+        const available = Math.max(0, Math.floor(Number(item.stock) || 0))
+        const quantityToSell = Math.min(row.quantity, available)
+        if (quantityToSell <= 0) {
+          partialRows.push(`${row.label}: stock vide`)
+          continue
+        }
+        if (quantityToSell < row.quantity) {
+          partialRows.push(`${row.label}: ${quantityToSell}/${row.quantity}`)
+        }
         await createFinanceTransaction({
           item_id: item.id,
           mode: 'sell',
-          quantity: row.quantity,
+          quantity: quantityToSell,
           unit_price: 0,
           counterparty: 'Session coke',
           notes: markStockOutNote('Clôture session coke'),
@@ -141,6 +154,9 @@ export default function CokeClosePage() {
       }
 
       window.localStorage.removeItem(COKE_SESSION_STORAGE_KEY)
+      if (partialRows.length > 0) {
+        toast.warning(`Clôture partielle (stock ajusté): ${partialRows.join(' • ')}`)
+      }
       toast.success('Session coke clôturée et stock mis à jour.')
       router.push('/items?view=tools')
     } catch (error) {
