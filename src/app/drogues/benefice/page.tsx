@@ -51,7 +51,6 @@ export default function DroguesBeneficePage() {
   const [waterPrice, setWaterPrice] = useState('0')
   const [lampPrice, setLampPrice] = useState('0')
   const [growZones, setGrowZones] = useState('1')
-  const [plantsPerLamp, setPlantsPerLamp] = useState('9')
   const [leavesPerSeed, setLeavesPerSeed] = useState('1')
   const [brickTaxPercent, setBrickTaxPercent] = useState('5')
   const [pouchesPerBrick, setPouchesPerBrick] = useState('10')
@@ -81,7 +80,6 @@ export default function DroguesBeneficePage() {
     const unitWater = Math.max(0, Number(waterPrice) || 0)
     const unitLamp = Math.max(0, Number(lampPrice) || 0)
     const zones = Math.max(1, Math.floor(Number(growZones) || 1))
-    const plantsPerLight = Math.max(1, Number(plantsPerLamp) || 1)
     const leavesSeed = Math.max(0.0001, Number(leavesPerSeed) || 1)
     const taxPercent = Math.max(0, Number(brickTaxPercent) || 0)
     const taxRate = Math.min(100, taxPercent) / 100
@@ -95,8 +93,7 @@ export default function DroguesBeneficePage() {
     const requiredFertilizer = seedQty
     const requiredWater = seedQty * 3
     const lampsFromZones = zones * 2
-    const lampNeedFromPlants = Math.ceil(seedQty / plantsPerLight)
-    const requiredLamps = Math.max(lampsFromZones, lampNeedFromPlants)
+    const requiredLamps = lampsFromZones
 
     const totalLeaves = seedQty * leavesSeed
     const grossBricks = totalLeaves
@@ -124,7 +121,6 @@ export default function DroguesBeneficePage() {
       requiredLamps,
       zones,
       lampsFromZones,
-      plantsPerLight,
       totalSeedCost,
       totalGrowCost,
       totalBrickCost,
@@ -135,7 +131,7 @@ export default function DroguesBeneficePage() {
       totalRevenue,
       profit,
     }
-  }, [brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, leavesPerSeed, plantsPerLamp, pouchSalePrice, pouchTransformBatchSize, pouchTransformCost, pouchesPerBrick, potPrice, seedPrice, seeds, waterPrice])
+  }, [brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, leavesPerSeed, pouchSalePrice, pouchTransformBatchSize, pouchTransformCost, pouchesPerBrick, potPrice, seedPrice, seeds, waterPrice])
 
   const resourceCards = useMemo(() => ([
     { key: 'seed', label: 'Graine de coke', qty: calc.requiredPots, unit: Math.max(0, Number(seedPrice) || 0), aliases: ['Graine de coke', 'Graine coke'] },
@@ -197,7 +193,6 @@ export default function DroguesBeneficePage() {
           <div><p className="mb-1 text-xs text-white/65">Prix eau (unité)</p><Input value={waterPrice} onChange={(e) => setWaterPrice(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Prix lampe (unité)</p><Input value={lampPrice} onChange={(e) => setLampPrice(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Zones de culture</p><Input value={growZones} onChange={(e) => setGrowZones(e.target.value)} inputMode="numeric" /></div>
-          <div><p className="mb-1 text-xs text-white/65">Plantes par lampe</p><Input value={plantsPerLamp} onChange={(e) => setPlantsPerLamp(e.target.value)} inputMode="decimal" /></div>
 
           <div><p className="mb-1 text-xs text-white/65">Feuilles par graine</p><Input value={leavesPerSeed} onChange={(e) => setLeavesPerSeed(e.target.value)} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/65">Taxe brick (%)</p><Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" /></div>
@@ -240,7 +235,7 @@ export default function DroguesBeneficePage() {
         <div className="mt-2 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
           <p className="text-xs text-cyan-100/85">Scénario 100 graines (ta règle)</p>
           <p className="font-semibold">100 feuilles ➜ 95 bricks (taxe 5%) ➜ 950 pochons</p>
-          <p className="mt-1 text-xs text-cyan-100/80">Lampes: max(zones × 2, plafond graines / plantes par lampe) = max({calc.lampsFromZones}, {Math.ceil(Number(seeds) / calc.plantsPerLight) || 0}) = {calc.requiredLamps}</p>
+          <p className="mt-1 text-xs text-cyan-100/80">Lampes: zones × 2 = {calc.zones} × 2 = {calc.requiredLamps}</p>
           <p className="mt-1 text-xs text-cyan-100/80">Transfo pochon appliquée par lot: {calc.pouchCostPerBatch.toFixed(2)} $ / {calc.pouchBatchSize.toFixed(0)} pochons</p>
         </div>
 
