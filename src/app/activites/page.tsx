@@ -254,16 +254,16 @@ export default function ActivitesPage() {
           <div>
             <ActivitiesCategoryTabs active="activites" activitiesStats={activitiesBubbleStats} />
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 md:flex-nowrap">
             <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
             <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+              <div className="flex h-9 items-center rounded-xl border border-white/10 bg-white/[0.04] px-3">
                 <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+              <div className="flex h-9 items-center rounded-xl border border-white/10 bg-white/[0.04] px-3">
                 <p>Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
               </div>
-              <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2">
+              <div className="flex h-9 items-center rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3">
                 <p className="font-semibold text-cyan-50">Salaire: {estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
               </div>
             </div>

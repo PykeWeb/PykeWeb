@@ -38,7 +38,7 @@ function findItemByAliases(items: CatalogItem[], aliases: string[]) {
 
 function formatPrice(value: number | null | undefined) {
   if (value == null || Number.isNaN(value)) return '—'
-  return `${value.toFixed(2)} $`
+  return `${Math.round(value)} $`
 }
 
 function roundDisplay(value: number) {
@@ -57,6 +57,7 @@ export default function CokeClosePage() {
   const [realWater, setRealWater] = useState('0')
   const [realLamps, setRealLamps] = useState('0')
   const [realLeaves, setRealLeaves] = useState('0')
+  const [pouchUnitSale, setPouchUnitSale] = useState('')
   const [plannedSeedsInput, setPlannedSeedsInput] = useState('0')
   const [plannedZonesInput, setPlannedZonesInput] = useState('1')
   const fallbackPlan = useMemo(() => buildCokeSessionPlan(100, 1), [])
@@ -233,6 +234,13 @@ export default function CokeClosePage() {
   ), [items])
   const pouchItem = useMemo(() => findItemByAliases(items, ['Pochon', 'Pochon de coke', 'Sachet', 'Pouch']), [items])
 
+  useEffect(() => {
+    if (pouchUnitSale) return
+    const catalogPouchPrice = Number(pouchItem?.sell_price ?? pouchItem?.buy_price ?? 70)
+    const initial = Number.isFinite(catalogPouchPrice) && catalogPouchPrice > 0 ? catalogPouchPrice : 70
+    setPouchUnitSale(String(Math.round(initial)))
+  }, [pouchItem, pouchUnitSale])
+
   const sessionTotals = useMemo(() => {
     const consumables = [
       { label: 'Graine de coke', quantity: Math.max(0, Math.floor(Number(realSeeds) || 0)) },
@@ -254,12 +262,12 @@ export default function CokeClosePage() {
     const transformCost = 300
     const totalBricksAfterTax = Math.max(0, leavesQty - (leavesQty * brickTaxRate))
     const totalPouches = totalBricksAfterTax * pouchPerBrick
-    const rawPouchUnitPrice = Number(pouchItem?.sell_price ?? pouchItem?.buy_price ?? 70)
+    const rawPouchUnitPrice = Number(pouchUnitSale)
     const pouchUnitPrice = Number.isFinite(rawPouchUnitPrice) && rawPouchUnitPrice > 0 ? rawPouchUnitPrice : 70
     const outputValue = totalPouches * pouchUnitPrice
     const estimatedProfitRecovered = outputValue - totalConsumablesCost - transformCost
     return { totalConsumablesCost, outputValue, estimatedProfitRecovered, totalPouches, pouchUnitPrice, transformCost }
-  }, [getConsumableItem, pouchItem, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
+  }, [getConsumableItem, pouchUnitSale, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   const plannedResources = useMemo(() => {
     return [
@@ -445,7 +453,13 @@ export default function CokeClosePage() {
                   </div>
                   <p className="flex items-center gap-1.5 text-xs text-cyan-100/85"><Coins className="h-3.5 w-3.5" /> Valeur des pochons récupérés</p>
                 </div>
-                <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <p className="text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
+                  <div className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2 py-1">
+                    <span className="text-[11px] text-white/70">$/u</span>
+                    <Input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="decimal" className="h-7 w-16 min-w-0 border-0 bg-transparent p-0 text-right text-xs" />
+                  </div>
+                </div>
                 <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-cyan-100 shadow-lg group-hover:block">
                   PU estimé pochon: {formatPrice(sessionTotals.pouchUnitPrice)}<br />
                   Pochons récupérés (taxe 5%): {roundDisplay(sessionTotals.totalPouches)}
