@@ -465,13 +465,13 @@ export default function CokeClosePage() {
                   </div>
                   <p className="flex items-center gap-1.5 text-xs text-cyan-100/85"><Coins className="h-3.5 w-3.5" /> Valeur des pochons récupérés</p>
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <p className="text-lg font-semibold leading-none">{formatPrice(sessionTotals.outputValue)}</p>
-                  <div className="inline-flex w-auto shrink-0 items-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1">
+                <div className="mt-2 flex flex-col items-center gap-2">
+                  <p className="text-center text-2xl font-semibold leading-none tracking-tight">{formatPrice(sessionTotals.outputValue)}</p>
+                  <div className="inline-flex w-auto shrink-0 items-center gap-1.5 rounded-xl border border-cyan-300/30 bg-cyan-500/12 px-2.5 py-1.5 shadow-[0_0_12px_rgba(34,211,238,0.12)]">
                     <span className="text-[11px] font-semibold text-cyan-100/85">PU</span>
-                    <button type="button" onClick={() => setPouchUnitSale(String(Math.max(1, (Number(pouchUnitSale) || 0) - 5)))} className="grid h-5 w-5 place-items-center rounded border border-white/15 bg-white/[0.06] pb-[1px] text-[10px] text-white/80">-</button>
-                    <input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="numeric" className="h-6 w-14 rounded-md border border-white/15 bg-white/[0.06] px-1 text-center text-[11px] font-semibold text-cyan-50 outline-none focus:border-cyan-200/40" />
-                    <button type="button" onClick={() => setPouchUnitSale(String((Number(pouchUnitSale) || 0) + 5))} className="grid h-5 w-5 place-items-center rounded border border-white/15 bg-white/[0.06] pb-[1px] text-[10px] text-white/80">+</button>
+                    <button type="button" onClick={() => setPouchUnitSale(String(Math.max(1, (Number(pouchUnitSale) || 0) - 5)))} className="grid h-5 w-5 place-items-center rounded-md border border-white/15 bg-white/[0.06] pb-[1px] text-[10px] text-white/85">-</button>
+                    <input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="numeric" className="h-7 w-16 rounded-md border border-white/15 bg-white/[0.06] px-1 text-center text-xs font-semibold text-cyan-50 outline-none focus:border-cyan-200/40" />
+                    <button type="button" onClick={() => setPouchUnitSale(String((Number(pouchUnitSale) || 0) + 5))} className="grid h-5 w-5 place-items-center rounded-md border border-white/15 bg-white/[0.06] pb-[1px] text-[10px] text-white/85">+</button>
                     <span className="text-[11px] text-cyan-100/75">$</span>
                   </div>
                 </div>
