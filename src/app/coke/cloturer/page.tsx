@@ -453,7 +453,7 @@ export default function CokeClosePage() {
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
                 <p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Wallet className="h-3.5 w-3.5" /> Total prix équipement prévu</p>
-                <p className="mt-2 text-lg font-semibold leading-none">{formatPrice(plannedEquipmentCost)}</p>
+                <p className="mt-2 text-center text-lg font-semibold leading-none">{formatPrice(plannedEquipmentCost)}</p>
               </div>
               <div className="group relative rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -469,9 +469,9 @@ export default function CokeClosePage() {
                   <p className="text-lg font-semibold leading-none">{formatPrice(sessionTotals.outputValue)}</p>
                   <div className="inline-flex w-auto shrink-0 items-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1">
                     <span className="text-[11px] font-semibold text-cyan-100/85">PU</span>
-                    <button type="button" onClick={() => setPouchUnitSale(String(Math.max(1, (Number(pouchUnitSale) || 0) - 5)))} className="grid h-4 w-4 place-items-center rounded border border-white/15 bg-white/[0.06] pb-[1px] text-[9px] text-white/80">-</button>
+                    <button type="button" onClick={() => setPouchUnitSale(String(Math.max(1, (Number(pouchUnitSale) || 0) - 5)))} className="grid h-5 w-5 place-items-center rounded border border-white/15 bg-white/[0.06] pb-[1px] text-[10px] text-white/80">-</button>
                     <input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="numeric" className="h-6 w-14 rounded-md border border-white/15 bg-white/[0.06] px-1 text-center text-[11px] font-semibold text-cyan-50 outline-none focus:border-cyan-200/40" />
-                    <button type="button" onClick={() => setPouchUnitSale(String((Number(pouchUnitSale) || 0) + 5))} className="grid h-4 w-4 place-items-center rounded border border-white/15 bg-white/[0.06] pb-[1px] text-[9px] text-white/80">+</button>
+                    <button type="button" onClick={() => setPouchUnitSale(String((Number(pouchUnitSale) || 0) + 5))} className="grid h-5 w-5 place-items-center rounded border border-white/15 bg-white/[0.06] pb-[1px] text-[10px] text-white/80">+</button>
                     <span className="text-[11px] text-cyan-100/75">$</span>
                   </div>
                 </div>
@@ -482,7 +482,7 @@ export default function CokeClosePage() {
               </div>
               <div className="group relative rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
                 <p className="flex items-center gap-1.5 text-xs text-emerald-100/85"><Leaf className="h-3.5 w-3.5" /> Valeur estimée de bénéfice récupéré</p>
-                <p className="mt-2 text-lg font-semibold leading-none">{formatPrice(sessionTotals.estimatedProfitRecovered)}</p>
+                <p className="mt-2 text-center text-lg font-semibold leading-none">{formatPrice(sessionTotals.estimatedProfitRecovered)}</p>
                 <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
                   Vente pochons estimée ({formatPrice(sessionTotals.outputValue)}) - graines ({formatPrice(sessionTotals.seedCost)}) - équipements ({formatPrice(sessionTotals.equipmentCost)}) - transfo feuille→brick ({formatPrice(sessionTotals.leafToBrickTransformCost)}) - transfo brick→pochon ({formatPrice(sessionTotals.brickToPouchTransformCost)})
                 </div>
