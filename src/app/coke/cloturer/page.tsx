@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Image as ImageIcon } from 'lucide-react'
+import { Coins, Image as ImageIcon, Leaf, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
@@ -288,6 +288,7 @@ export default function CokeClosePage() {
 
   const seedItem = useMemo(() => findItem(items, 'Graine de coke'), [items])
   const zoneItem = useMemo(() => findItem(items, 'Lampe'), [items])
+  const leafItem = useMemo(() => findItemByAliases(items, ['Feuille de Cocaïne', 'Feuille de coke', 'Feuille cocaïne']), [items])
 
   return (
     <div className="space-y-4">
@@ -354,10 +355,20 @@ export default function CokeClosePage() {
                   </button>
                 </div>
               </div>
-              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2">
-                <p className="text-xs text-emerald-100/85">Feuille de Cocaïne</p>
+              <div className="group relative rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
+                    {leafItem?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={leafItem.image_url} alt="Feuille de Cocaïne" className="h-full w-full object-cover" loading="lazy" />
+                    ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
+                  </div>
+                  <p className="text-xs text-emerald-100/85">Feuille de Cocaïne</p>
+                </div>
                 <p className="mt-1 text-lg font-semibold">{roundDisplay(activePlan.theoreticalLeaves)}</p>
-                <p className="text-[11px] text-emerald-100/75">Production théorique session</p>
+                <div className="pointer-events-none absolute -top-10 left-2 z-10 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
+                  Production théorique session
+                </div>
               </div>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
@@ -421,10 +432,10 @@ export default function CokeClosePage() {
 
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
-                <p className="text-xs text-amber-100/85">Total prix équipement prévu</p>
+                <p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Wallet className="h-3.5 w-3.5" /> Total prix équipement prévu</p>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(plannedEquipmentCost)}</p>
               </div>
-              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
+              <div className="group relative rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
                     {pouchItem?.image_url ? (
@@ -432,16 +443,20 @@ export default function CokeClosePage() {
                       <img src={pouchItem.image_url} alt="Pochons récupérés" className="h-full w-full object-cover" loading="lazy" />
                     ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
                   </div>
-                  <p className="text-xs text-cyan-100/85">Valeur des pochons récupérés</p>
+                  <p className="flex items-center gap-1.5 text-xs text-cyan-100/85"><Coins className="h-3.5 w-3.5" /> Valeur des pochons récupérés</p>
                 </div>
-                <p className="mt-1 text-xs text-cyan-100/75">PU estimé pochon: {formatPrice(sessionTotals.pouchUnitPrice)} (60-75$)</p>
-                <p className="mt-1 text-xs text-cyan-100/75">Pochons récupérés (taxe 5%): {roundDisplay(sessionTotals.totalPouches)}</p>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
+                <div className="pointer-events-none absolute -top-14 left-2 z-10 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-cyan-100 shadow-lg group-hover:block">
+                  PU estimé pochon: {formatPrice(sessionTotals.pouchUnitPrice)} (60-75$)<br />
+                  Pochons récupérés (taxe 5%): {roundDisplay(sessionTotals.totalPouches)}
+                </div>
               </div>
-              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
-                <p className="text-xs text-emerald-100/85">Valeur estimée de bénéfice récupéré</p>
-                <p className="mt-1 text-xs text-emerald-100/75">Vente pochons estimée - équipement réel - transfo ({formatPrice(sessionTotals.transformCost)})</p>
+              <div className="group relative rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
+                <p className="flex items-center gap-1.5 text-xs text-emerald-100/85"><Leaf className="h-3.5 w-3.5" /> Valeur estimée de bénéfice récupéré</p>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.estimatedProfitRecovered)}</p>
+                <div className="pointer-events-none absolute -top-10 left-2 z-10 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
+                  Vente pochons estimée - équipement réel - transfo ({formatPrice(sessionTotals.transformCost)})
+                </div>
               </div>
             </div>
 
