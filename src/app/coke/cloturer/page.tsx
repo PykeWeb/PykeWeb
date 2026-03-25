@@ -231,6 +231,7 @@ export default function CokeClosePage() {
       ? findItemByAliases(items, ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water'])
       : findItem(items, label)
   ), [items])
+  const pouchItem = useMemo(() => findItemByAliases(items, ['Pochon', 'Pochon de coke', 'Sachet', 'Pouch']), [items])
 
   const sessionTotals = useMemo(() => {
     const consumables = [
@@ -285,7 +286,6 @@ export default function CokeClosePage() {
 
   const seedItem = useMemo(() => findItem(items, 'Graine de coke'), [items])
   const zoneItem = useMemo(() => findItem(items, 'Lampe'), [items])
-  const pouchItem = useMemo(() => findItemByAliases(items, ['Pochon', 'Pochon de coke', 'Sachet', 'Pouch']), [items])
 
   return (
     <div className="space-y-4">
