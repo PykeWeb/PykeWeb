@@ -288,13 +288,25 @@ export default function CokeClosePage() {
       { key: 'lamp', label: 'Lampe', needed: activePlan.lamps, realValue: realLamps, setReal: setRealLamps },
       { key: 'leaf', label: 'Feuille de Cocaïne', needed: activePlan.theoreticalLeaves, realValue: realLeaves, setReal: setRealLeaves },
     ].map((entry) => {
+      const realQty = Math.max(0, Math.floor(Number(entry.realValue) || 0))
       const item = entry.label === "Bouteille d'eau"
         ? findItemByAliases(items, ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water'])
         : findItem(items, entry.label)
       const stock = Math.max(0, Number(item?.stock || 0))
       const missing = Math.max(0, entry.needed - stock)
+      const realMissing = Math.max(0, realQty - stock)
       const pu = Number(item?.buy_price ?? 0)
-      return { ...entry, item, stock, missing, pu, missingCost: missing * pu }
+      return {
+        ...entry,
+        item,
+        stock,
+        missing,
+        realQty,
+        realMissing,
+        pu,
+        missingCost: missing * pu,
+        realMissingCost: realMissing * pu,
+      }
     })
   }, [activePlan, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
@@ -403,9 +415,10 @@ export default function CokeClosePage() {
                     <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Besoin <span className="float-right font-semibold">{field.needed}</span></div>
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
-                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque prévu <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
-                      <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque <span className="float-right font-semibold">{formatPrice(field.missingCost)}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque réel <span className={`float-right font-semibold ${field.realMissing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.realMissing}</span></div>
+                      <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque réel <span className="float-right font-semibold">{formatPrice(field.realMissingCost)}</span></div>
                     </div>
                     <p className="mb-1 text-[11px] text-white/60">Quantité réelle (modifiable)</p>
                     <div className="flex items-center gap-2">
