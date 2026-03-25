@@ -167,14 +167,14 @@ export default function AdminGroupsPage() {
 
         <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-2">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-left text-sm">
+            <table className="w-full table-fixed text-left text-sm">
               <thead className="bg-white/[0.04] text-white/70">
                 <tr>
-                  <th className="px-4 py-3">Groupe</th>
-                  <th className="px-4 py-3">Identifiant</th>
-                  <th className="px-4 py-3">Actif</th>
-                  <th className="px-4 py-3">Payé jusqu’au</th>
-                  <th className="px-4 py-3 text-right">Gestion</th>
+                  <th className="w-[34%] px-4 py-3">Groupe</th>
+                  <th className="w-[16%] px-4 py-3">Identifiant</th>
+                  <th className="w-[12%] px-4 py-3">Actif</th>
+                  <th className="w-[18%] px-4 py-3">Payé jusqu’au</th>
+                  <th className="w-[20%] px-4 py-3 text-right">Gestion</th>
                 </tr>
               </thead>
               <tbody>
