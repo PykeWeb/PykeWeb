@@ -8,7 +8,7 @@ import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsAp
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
 import { markStockInNote, markStockOutNote } from '@/lib/financeStockFlow'
-import { getTenantSession } from '@/lib/tenantSession'
+import { getTenantSession, isSbTenantSession } from '@/lib/tenantSession'
 import { SbEntreeSortieClient } from '@/components/modules/sb/SbEntreeSortieClient'
 
 export default function FinanceEntreeSortiePage() {
@@ -20,8 +20,7 @@ export default function FinanceEntreeSortiePage() {
 
   useEffect(() => {
     const session = getTenantSession()
-    const scope = `${session?.groupName || ''} ${session?.groupBadge || ''}`.toLowerCase()
-    setIsSbGroup(scope.includes('sb'))
+    setIsSbGroup(isSbTenantSession(session))
 
     void listCatalogItemsUnified()
       .then(setInitialItems)

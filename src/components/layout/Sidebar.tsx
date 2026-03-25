@@ -8,7 +8,7 @@ import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession, isMemberTenantSession } from '@/lib/tenantSession'
+import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession, isMemberTenantSession, isSbTenantSession } from '@/lib/tenantSession'
 import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
 import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 import clsx from 'clsx'
@@ -60,7 +60,7 @@ export function Sidebar() {
     setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? expandAccessPrefixes(session.allowedPrefixes) : [])
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
     setIsPwrGroup(scope.includes('pwr'))
-    setIsSbGroup(scope.includes('sb'))
+    setIsSbGroup(isSbTenantSession(session))
   }, [])
 
   useEffect(() => {

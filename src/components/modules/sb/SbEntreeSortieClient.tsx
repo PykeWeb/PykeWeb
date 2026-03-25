@@ -12,7 +12,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import { normalizeCatalogCategory } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
-import { getTenantSession } from '@/lib/tenantSession'
+import { getTenantSession, isSbTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
@@ -48,8 +48,7 @@ export function SbEntreeSortieClient() {
 
   useEffect(() => {
     const session = getTenantSession()
-    const scope = `${session?.groupName || ''} ${session?.groupBadge || ''}`.toLowerCase()
-    if (!scope.includes('sb')) {
+    if (!isSbTenantSession(session)) {
       window.location.href = '/'
       return
     }

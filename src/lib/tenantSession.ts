@@ -19,6 +19,14 @@ export function isMemberTenantSession(session: TenantSession | null | undefined)
   return isMemberSession(session)
 }
 
+export function isSbTenantSession(session: TenantSession | null | undefined) {
+  const groupBadge = String(session?.groupBadge || '').trim().toLowerCase()
+  if (groupBadge === 'sb') return true
+
+  const groupName = String(session?.groupName || '').trim().toLowerCase()
+  return groupName.includes('santa blanca')
+}
+
 const SESSION_VERSION = TENANT_SESSION_VERSION
 const STORAGE_KEY = 'pykeweb:tenant-session:v4'
 const LEGACY_STORAGE_KEYS = ['pykeweb:tenant-session', 'pykeweb:tenant-session:v1', 'pykeweb:tenant-session:v2', 'pykeweb:tenant-session:v3']
