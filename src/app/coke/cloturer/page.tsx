@@ -255,7 +255,7 @@ export default function CokeClosePage() {
     const totalBricksAfterTax = Math.max(0, leavesQty - (leavesQty * brickTaxRate))
     const totalPouches = totalBricksAfterTax * pouchPerBrick
     const rawPouchUnitPrice = Number(pouchItem?.sell_price ?? pouchItem?.buy_price ?? 70)
-    const pouchUnitPrice = Number.isFinite(rawPouchUnitPrice) ? Math.max(0, rawPouchUnitPrice) : 70
+    const pouchUnitPrice = Number.isFinite(rawPouchUnitPrice) && rawPouchUnitPrice > 0 ? rawPouchUnitPrice : 70
     const outputValue = totalPouches * pouchUnitPrice
     const estimatedProfitRecovered = outputValue - totalConsumablesCost - transformCost
     return { totalConsumablesCost, outputValue, estimatedProfitRecovered, totalPouches, pouchUnitPrice, transformCost }
