@@ -251,19 +251,21 @@ export default function ActivitesPage() {
     <div className="space-y-6">
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
         <div className="space-y-3">
-          <div className="space-y-2">
+          <div>
             <ActivitiesCategoryTabs active="activites" activitiesStats={activitiesBubbleStats} />
-            <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
-              <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
-              <p>Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
-            </div>
-            <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2">
-              <p className="font-semibold text-cyan-50">Salaire: {estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
+            <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <p>Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
+              </div>
+              <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2">
+                <p className="font-semibold text-cyan-50">Salaire: {estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+              </div>
             </div>
           </div>
         </div>

@@ -255,7 +255,7 @@ export default function CokeClosePage() {
     const totalBricksAfterTax = Math.max(0, leavesQty - (leavesQty * brickTaxRate))
     const totalPouches = totalBricksAfterTax * pouchPerBrick
     const rawPouchUnitPrice = Number(pouchItem?.sell_price ?? pouchItem?.buy_price ?? 70)
-    const pouchUnitPrice = Math.min(75, Math.max(60, Number.isFinite(rawPouchUnitPrice) ? rawPouchUnitPrice : 70))
+    const pouchUnitPrice = Number.isFinite(rawPouchUnitPrice) ? Math.max(0, rawPouchUnitPrice) : 70
     const outputValue = totalPouches * pouchUnitPrice
     const estimatedProfitRecovered = outputValue - totalConsumablesCost - transformCost
     return { totalConsumablesCost, outputValue, estimatedProfitRecovered, totalPouches, pouchUnitPrice, transformCost }
@@ -447,7 +447,7 @@ export default function CokeClosePage() {
                 </div>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
                 <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-cyan-100 shadow-lg group-hover:block">
-                  PU estimé pochon: {formatPrice(sessionTotals.pouchUnitPrice)} (60-75$)<br />
+                  PU estimé pochon: {formatPrice(sessionTotals.pouchUnitPrice)}<br />
                   Pochons récupérés (taxe 5%): {roundDisplay(sessionTotals.totalPouches)}
                 </div>
               </div>
