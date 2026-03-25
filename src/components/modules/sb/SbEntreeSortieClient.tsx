@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, Loader2, Minus, Plus, Search, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Box, Loader2, Minus, Plus, Search, Shield, Swords, Trash2, Pill, Shapes } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Input } from '@/components/ui/Input'
@@ -43,7 +43,6 @@ export function SbEntreeSortieClient() {
   const [counterparty, setCounterparty] = useState('')
   const [member, setMember] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [lineQuantities, setLineQuantities] = useState<Record<string, number>>({})
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
 
   useEffect(() => {
@@ -85,8 +84,8 @@ export function SbEntreeSortieClient() {
     [selectedItems]
   )
 
-  const addItem = (item: CatalogItem) => {
-    const baseQuantity = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
+  const addItem = (item: CatalogItem, quantityToAdd = 1) => {
+    const baseQuantity = Math.max(1, Math.floor(Number(quantityToAdd) || 1))
     const maxStock = Math.max(0, Number(item.stock || 0))
     const safeQuantity = mode === 'sortie' ? Math.min(baseQuantity, maxStock) : baseQuantity
     if (mode === 'sortie' && safeQuantity <= 0) return
@@ -176,7 +175,24 @@ export function SbEntreeSortieClient() {
           { key: 'drugs', label: 'Drogues', value: stats.drugs },
           { key: 'other', label: 'Autres', value: stats.other },
         ].map((card) => (
-          <button key={card.key} type="button" className="min-h-[92px] rounded-2xl border border-white/12 bg-white/[0.04] px-3 py-3 text-left transition hover:bg-white/[0.08]">
+          <button
+            key={card.key}
+            type="button"
+            onClick={() => setCategory(card.key === 'other' ? 'custom' : card.key as FilterCategory)}
+            className={`min-h-[92px] rounded-2xl border px-3 py-3 text-left transition ${
+              category === (card.key === 'other' ? 'custom' : card.key)
+                ? card.key === 'objects'
+                  ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
+                  : card.key === 'weapons'
+                    ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
+                    : card.key === 'equipment'
+                      ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
+                      : card.key === 'drugs'
+                        ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
+                        : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
+                : 'border-white/12 bg-white/[0.04] hover:bg-white/[0.08]'
+            }`}
+          >
             <p className="text-xs text-white/70">{card.label}</p>
             <p className="mt-4 text-2xl font-semibold leading-none">{card.value}</p>
           </button>
@@ -234,12 +250,23 @@ export function SbEntreeSortieClient() {
             {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
             {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
             {filteredItems.map((item) => {
-              const lineQty = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
+              const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
+              const CategoryIcon =
+                normalizedCategory === 'objects' ? Box
+                  : normalizedCategory === 'weapons' ? Swords
+                    : normalizedCategory === 'equipment' ? Shield
+                      : normalizedCategory === 'drugs' ? Pill
+                        : Shapes
               return (
-                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => addItem(item, 1)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:border-cyan-300/35 hover:bg-cyan-500/[0.08]"
+                >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="relative h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-white/[0.08]">
-                      {item.image_url ? <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="44px" /> : null}
+                    <div className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.08]">
+                      {item.image_url ? <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="44px" /> : <CategoryIcon className="h-5 w-5 text-white/70" />}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-white">{item.name}</p>
@@ -247,30 +274,10 @@ export function SbEntreeSortieClient() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setLineQuantities((prev) => ({ ...prev, [item.id]: Math.max(1, lineQty - 1) }))}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white/90"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <Input
-                      value={lineQty}
-                      onChange={(event) => setLineQuantities((prev) => ({ ...prev, [item.id]: Math.max(1, Math.floor(Number(event.target.value) || 1)) }))}
-                      inputMode="numeric"
-                      className="h-9 w-16 rounded-xl px-2 text-center"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setLineQuantities((prev) => ({ ...prev, [item.id]: lineQty + 1 }))}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white/90"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                    <PrimaryButton onClick={() => addItem(item)} className="h-9 rounded-xl px-4 text-xs">Ajouter</PrimaryButton>
+                  <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+                    Cliquer pour +1
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>
