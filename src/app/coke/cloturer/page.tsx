@@ -463,13 +463,11 @@ export default function CokeClosePage() {
                   </div>
                   <p className="flex items-center gap-1.5 text-xs text-cyan-100/85"><Coins className="h-3.5 w-3.5" /> Valeur des pochons récupérés</p>
                 </div>
-                <div className="mt-1 flex items-center justify-between gap-2">
+                <div className="mt-1 flex items-end justify-between gap-3">
                   <p className="text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
-                  <div className="flex items-center gap-0.5 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-1.5 py-0.5">
+                  <div className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1">
                     <span className="text-[11px] font-semibold text-cyan-100/85">PU</span>
-                    <button type="button" onClick={() => setPouchUnitSale(String(Math.max(1, (Number(pouchUnitSale) || 0) - 5)))} className="grid h-4 w-4 place-items-center rounded border border-white/15 bg-white/[0.06] text-[9px] text-white/80">-</button>
-                    <Input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="numeric" className="h-5 w-8 min-w-0 border-0 bg-transparent p-0 text-right text-[11px] font-semibold text-cyan-50" />
-                    <button type="button" onClick={() => setPouchUnitSale(String((Number(pouchUnitSale) || 0) + 5))} className="grid h-4 w-4 place-items-center rounded border border-white/15 bg-white/[0.06] text-[9px] text-white/80">+</button>
+                    <Input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="numeric" className="h-6 w-12 min-w-0 border-0 bg-transparent p-0 text-center text-[11px] font-semibold text-cyan-50" />
                     <span className="text-[11px] text-cyan-100/75">$</span>
                   </div>
                 </div>
