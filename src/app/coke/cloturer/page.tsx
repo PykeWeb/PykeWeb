@@ -298,12 +298,6 @@ export default function CokeClosePage() {
     })
   }, [activePlan, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
-  const plannedEquipmentCost = useMemo(() => (
-    plannedResources
-      .filter((r) => ['pot', 'fert', 'water', 'lamp'].includes(r.key))
-      .reduce((sum, r) => sum + (r.needed * r.pu), 0)
-  ), [plannedResources])
-
   const seedItem = useMemo(() => findItem(items, 'Graine de coke'), [items])
   const zoneItem = useMemo(() => findItem(items, 'Lampe'), [items])
   const leafItem = useMemo(() => findItemByAliases(items, ['Feuille de Cocaïne', 'Feuille de coke', 'Feuille cocaïne']), [items])
@@ -454,7 +448,7 @@ export default function CokeClosePage() {
               <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
                 <p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Wallet className="h-3.5 w-3.5" /> Total prix équipement prévu</p>
                 <div className="mt-2 flex h-9 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04]">
-                  <p className="text-center text-lg font-semibold leading-none">{formatPrice(plannedEquipmentCost)}</p>
+                  <p className="text-center text-lg font-semibold leading-none">{formatPrice(sessionTotals.equipmentCost)}</p>
                 </div>
               </div>
               <div className="group relative rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
