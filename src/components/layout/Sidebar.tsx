@@ -101,7 +101,6 @@ export function Sidebar() {
 
   const defaultUserLinks: NavLink[] = [
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
-    { id: 'group', href: '/group', label: 'Gestion du groupe', icon: <Users className="h-5 w-5" />, active: pathname.startsWith('/group') },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
     { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },

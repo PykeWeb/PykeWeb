@@ -92,6 +92,7 @@ export default function ItemsClient({
 }) {
   const themeConfig = useUiThemeConfig()
   const [items, setItems] = useState<CatalogItem[]>([])
+  const [catalogReady, setCatalogReady] = useState(false)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<CategoryFilter>(initialCategory)
   const [type, setType] = useState<TypeFilter>('all')
@@ -112,6 +113,7 @@ export default function ItemsClient({
     refreshInFlightRef.current = true
     try {
       setItems(await listCatalogItemsUnified())
+      setCatalogReady(true)
     } finally {
       refreshInFlightRef.current = false
     }
@@ -546,7 +548,6 @@ export default function ItemsClient({
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                   <p className="text-sm font-semibold">Accès rapide</p>
-                  <p className="mt-1 text-xs text-white/65">Utilise uniquement les 2 pages principales : Session Coke et Bénéfice.</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <Link href="/coke/cloturer">
                       <PrimaryButton className="w-full">Session Coke</PrimaryButton>
@@ -556,6 +557,9 @@ export default function ItemsClient({
                     </Link>
                   </div>
                 </div>
+                {!catalogReady ? (
+                  <p className="text-xs text-cyan-100/75">Chargement du catalogue drogue...</p>
+                ) : null}
               </div>
             ) : null}
 
@@ -664,7 +668,7 @@ export default function ItemsClient({
                 </PrimaryButton>
               </div>
             ) : null}
-            {drugCalculator.hasMissingPrices ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
+            {(catalogReady && drugCalculator.hasMissingPrices) ? <p className="mt-2 text-xs text-amber-300">Prix manquants: {drugCalculator.missingPrices.join(', ')}</p> : null}
           </div>
 
         </div>

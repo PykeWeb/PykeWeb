@@ -250,12 +250,12 @@ export default function ActivitesPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glow">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-3">
           <div className="space-y-2">
             <ActivitiesCategoryTabs active="activites" activitiesStats={activitiesBubbleStats} />
             <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
           </div>
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
             </div>

@@ -661,7 +661,6 @@ export function DashboardClient() {
               </Link>
             </div>
           </div>
-          <p className="mt-1 text-sm text-white/60">Vue stock en temps réel (source Items)</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {([
               { key: 'all', value: financeCategoryCounts.objects + financeCategoryCounts.weapons + financeCategoryCounts.equipment + financeCategoryCounts.drugs + financeCategoryCounts.custom, icon: Shapes, href: '/items?category=all' },

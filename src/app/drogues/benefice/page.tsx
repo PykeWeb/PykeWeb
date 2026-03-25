@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { DollarSign, Image as ImageIcon, Receipt, TrendingUp } from 'lucide-react'
+import { Coins, DollarSign, Hammer, Image as ImageIcon, Layers, Receipt, Sprout, TrendingUp } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
@@ -270,11 +270,11 @@ export default function DroguesBeneficePage() {
 
         <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/60">Résumé financier</p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût graines</p><p className="font-semibold">{moneyInt(calc.totalSeedCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût pousse</p><p className="font-semibold">{moneyInt(calc.totalGrowCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo brick</p><p className="font-semibold">{moneyInt(calc.totalBrickCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo pochon</p><p className="font-semibold">{moneyInt(calc.totalPouchCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="text-xs text-amber-100/85">Coût transfo global appliqué</p><p className="font-semibold">{moneyInt(totalTransformCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Coins className="h-3.5 w-3.5" /> Coût graines</p><p className="font-semibold">{moneyInt(calc.totalSeedCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Sprout className="h-3.5 w-3.5" /> Coût pousse</p><p className="font-semibold">{moneyInt(calc.totalGrowCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo brick</p><p className="font-semibold">{moneyInt(calc.totalBrickCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo pochon</p><p className="font-semibold">{moneyInt(calc.totalPouchCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Layers className="h-3.5 w-3.5" /> Coût transfo global appliqué</p><p className="font-semibold">{moneyInt(totalTransformCost)}</p></div>
         </div>
         <div className="mt-2 grid gap-2 lg:grid-cols-3">
           <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-2.5 text-sm">

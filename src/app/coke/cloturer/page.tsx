@@ -366,7 +366,7 @@ export default function CokeClosePage() {
                   <p className="text-xs text-emerald-100/85">Feuille de Cocaïne</p>
                 </div>
                 <p className="mt-1 text-lg font-semibold">{roundDisplay(activePlan.theoreticalLeaves)}</p>
-                <div className="pointer-events-none absolute -top-10 left-2 z-10 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
+                <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
                   Production théorique session
                 </div>
               </div>
@@ -446,7 +446,7 @@ export default function CokeClosePage() {
                   <p className="flex items-center gap-1.5 text-xs text-cyan-100/85"><Coins className="h-3.5 w-3.5" /> Valeur des pochons récupérés</p>
                 </div>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
-                <div className="pointer-events-none absolute -top-14 left-2 z-10 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-cyan-100 shadow-lg group-hover:block">
+                <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-cyan-100 shadow-lg group-hover:block">
                   PU estimé pochon: {formatPrice(sessionTotals.pouchUnitPrice)} (60-75$)<br />
                   Pochons récupérés (taxe 5%): {roundDisplay(sessionTotals.totalPouches)}
                 </div>
@@ -454,7 +454,7 @@ export default function CokeClosePage() {
               <div className="group relative rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
                 <p className="flex items-center gap-1.5 text-xs text-emerald-100/85"><Leaf className="h-3.5 w-3.5" /> Valeur estimée de bénéfice récupéré</p>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.estimatedProfitRecovered)}</p>
-                <div className="pointer-events-none absolute -top-10 left-2 z-10 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
+                <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
                   Vente pochons estimée - équipement réel - transfo ({formatPrice(sessionTotals.transformCost)})
                 </div>
               </div>
