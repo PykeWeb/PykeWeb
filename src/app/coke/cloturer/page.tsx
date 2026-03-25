@@ -453,7 +453,9 @@ export default function CokeClosePage() {
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
                 <p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Wallet className="h-3.5 w-3.5" /> Total prix équipement prévu</p>
-                <p className="mt-2 text-center text-lg font-semibold leading-none">{formatPrice(plannedEquipmentCost)}</p>
+                <div className="mt-2 flex h-9 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04]">
+                  <p className="text-center text-lg font-semibold leading-none">{formatPrice(plannedEquipmentCost)}</p>
+                </div>
               </div>
               <div className="group relative rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -482,7 +484,9 @@ export default function CokeClosePage() {
               </div>
               <div className="group relative rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
                 <p className="flex items-center gap-1.5 text-xs text-emerald-100/85"><Leaf className="h-3.5 w-3.5" /> Valeur estimée de bénéfice récupéré</p>
-                <p className="mt-2 text-center text-lg font-semibold leading-none">{formatPrice(sessionTotals.estimatedProfitRecovered)}</p>
+                <div className="mt-2 flex h-9 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04]">
+                  <p className="text-center text-lg font-semibold leading-none">{formatPrice(sessionTotals.estimatedProfitRecovered)}</p>
+                </div>
                 <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
                   Vente pochons estimée ({formatPrice(sessionTotals.outputValue)}) - graines ({formatPrice(sessionTotals.seedCost)}) - équipements ({formatPrice(sessionTotals.equipmentCost)}) - transfo feuille→brick ({formatPrice(sessionTotals.leafToBrickTransformCost)}) - transfo brick→pochon ({formatPrice(sessionTotals.brickToPouchTransformCost)})
                 </div>
