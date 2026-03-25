@@ -1,0 +1,304 @@
+'use client'
+
+import Image from 'next/image'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp, Loader2, Minus, Plus, Search, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { PageHeader } from '@/components/PageHeader'
+import { Input } from '@/components/ui/Input'
+import { Panel } from '@/components/ui/Panel'
+import { GlassSelect } from '@/components/ui/GlassSelect'
+import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
+import { normalizeCatalogCategory } from '@/lib/catalogConfig'
+import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
+import { getTenantSession } from '@/lib/tenantSession'
+import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
+
+type Mode = 'entree' | 'sortie'
+type FilterCategory = 'all' | ItemCategory
+type SelectedItem = { id: string; name: string; quantity: number; price: number }
+
+const CATEGORY_OPTIONS: { value: FilterCategory; label: string }[] = [
+  { value: 'all', label: 'Tous' },
+  { value: 'objects', label: 'Objets' },
+  { value: 'weapons', label: 'Armes' },
+  { value: 'equipment', label: 'Équipement' },
+  { value: 'drugs', label: 'Drogues' },
+]
+
+const money = (value: number) => `${Math.max(0, value).toFixed(0)} $`
+
+function resolveItemPrice(item: CatalogItem) {
+  return Math.max(0, Number(item.sell_price || item.buy_price || item.internal_value || 0))
+}
+
+export function SbEntreeSortieClient() {
+  const [isReady, setIsReady] = useState(false)
+  const [mode, setMode] = useState<Mode>('entree')
+  const [items, setItems] = useState<CatalogItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState<FilterCategory>('all')
+  const [counterparty, setCounterparty] = useState('')
+  const [member, setMember] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [lineQuantities, setLineQuantities] = useState<Record<string, number>>({})
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
+
+  useEffect(() => {
+    const session = getTenantSession()
+    const scope = `${session?.groupName || ''} ${session?.groupBadge || ''}`.toLowerCase()
+    if (!scope.includes('sb')) {
+      window.location.href = '/'
+      return
+    }
+
+    setIsReady(true)
+    void listCatalogItemsUnified()
+      .then((rows) => setItems(rows))
+      .catch(() => {
+        toast.error('Impossible de charger les articles.')
+        setItems([])
+      })
+      .finally(() => setIsLoading(false))
+  }, [])
+
+  const stats = useMemo(() => computeItemStockCategoryStats(items), [items])
+
+  const filteredItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase()
+    return items.filter((item) => {
+      const normalizedCategory = normalizeCatalogCategory(item.category) || 'objects'
+      if (category !== 'all' && normalizedCategory !== category) return false
+      if (!normalizedQuery) return true
+      return item.name.toLowerCase().includes(normalizedQuery)
+    })
+  }, [items, category, query])
+
+  const total = useMemo(
+    () => selectedItems.reduce((sum, entry) => sum + (entry.price * entry.quantity), 0),
+    [selectedItems]
+  )
+
+  const addItem = (item: CatalogItem) => {
+    const baseQuantity = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
+    if (mode === 'sortie' && baseQuantity > Math.max(0, Number(item.stock || 0))) {
+      toast.error('Quantité supérieure au stock disponible.')
+      return
+    }
+
+    setSelectedItems((prev) => {
+      const index = prev.findIndex((entry) => entry.id === item.id)
+      if (index >= 0) {
+        const next = [...prev]
+        const nextQuantity = next[index].quantity + baseQuantity
+        if (mode === 'sortie' && nextQuantity > Math.max(0, Number(item.stock || 0))) {
+          toast.error('Quantité totale supérieure au stock disponible.')
+          return prev
+        }
+        next[index] = { ...next[index], quantity: nextQuantity }
+        return next
+      }
+      return [...prev, { id: item.id, name: item.name, quantity: baseQuantity, price: resolveItemPrice(item) }]
+    })
+  }
+
+  const removeItem = (itemId: string) => {
+    setSelectedItems((prev) => prev.filter((entry) => entry.id !== itemId))
+  }
+
+  const updateQuantity = (itemId: string, quantity: number) => {
+    setSelectedItems((prev) => prev.map((entry) => (
+      entry.id === itemId ? { ...entry, quantity: Math.max(1, Math.floor(quantity || 1)) } : entry
+    )))
+  }
+
+  const clearTransaction = () => {
+    setSelectedItems([])
+    setCounterparty('')
+    setMember('')
+  }
+
+  const submitTransaction = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Ajoute au moins un article.')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      for (const entry of selectedItems) {
+        const notes = member.trim() ? `Membre: ${member.trim()}` : undefined
+        await createFinanceTransaction({
+          item_id: entry.id,
+          mode: mode === 'entree' ? 'buy' : 'sell',
+          quantity: entry.quantity,
+          unit_price: entry.price,
+          counterparty: counterparty.trim() || undefined,
+          notes,
+          payment_mode: 'other',
+        })
+      }
+
+      toast.success('Transaction enregistrée.')
+      clearTransaction()
+      const refreshed = await listCatalogItemsUnified()
+      setItems(refreshed)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Impossible de valider la transaction.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (!isReady) return null
+
+  return (
+    <div className="space-y-4">
+      <PageHeader title="Entrée / Sortie SB" subtitle="Interface rapide de gestion stock pour le groupe SB." />
+
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {[
+          { key: 'all', label: 'Toutes', value: stats.all },
+          { key: 'objects', label: 'Objets', value: stats.objects },
+          { key: 'weapons', label: 'Armes', value: stats.weapons },
+          { key: 'equipment', label: 'Équipement', value: stats.equipment },
+          { key: 'drugs', label: 'Drogues', value: stats.drugs },
+          { key: 'other', label: 'Autres', value: stats.other },
+        ].map((card) => (
+          <button key={card.key} type="button" className="min-h-[92px] rounded-2xl border border-white/12 bg-white/[0.04] px-3 py-3 text-left transition hover:bg-white/[0.08]">
+            <p className="text-xs text-white/70">{card.label}</p>
+            <p className="mt-4 text-2xl font-semibold leading-none">{card.value}</p>
+          </button>
+        ))}
+      </div>
+
+      <Panel className="space-y-4">
+        <div className="flex justify-center">
+          <div className="inline-flex rounded-full border border-cyan-200/35 bg-[#0c1430]/80 p-1">
+            <button
+              type="button"
+              onClick={() => setMode('entree')}
+              className={`inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-2 text-xl font-semibold transition ${mode === 'entree' ? 'bg-gradient-to-r from-cyan-500/45 to-blue-500/40 text-cyan-50 shadow-[0_0_30px_rgba(56,189,248,0.45)]' : 'text-white/70 hover:text-white'}`}
+            >
+              <ArrowDown className="h-5 w-5" />
+              Entrée
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('sortie')}
+              className={`inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-2 text-xl font-semibold transition ${mode === 'sortie' ? 'bg-gradient-to-r from-cyan-500/45 to-blue-500/40 text-cyan-50 shadow-[0_0_30px_rgba(56,189,248,0.45)]' : 'text-white/70 hover:text-white'}`}
+            >
+              <ArrowUp className="h-5 w-5" />
+              Sortie
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-[1fr_1fr_auto_auto_auto]">
+          <Input value={counterparty} onChange={(event) => setCounterparty(event.target.value)} placeholder="Interlocuteur" className="h-11" />
+          <Input value={member} onChange={(event) => setMember(event.target.value)} placeholder="Membre" className="h-11" />
+          <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
+            Total: {money(total)}
+          </div>
+          <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
+          <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Valider
+          </PrimaryButton>
+        </div>
+      </Panel>
+
+      <div className="grid gap-4 xl:grid-cols-5">
+        <Panel className="space-y-4 xl:col-span-3">
+          <div className="grid gap-2 md:grid-cols-[180px_180px_1fr]">
+            <GlassSelect value={category} onChange={(value) => setCategory(value as FilterCategory)} options={CATEGORY_OPTIONS} />
+            <GlassSelect value={category} onChange={(value) => setCategory(value as FilterCategory)} options={CATEGORY_OPTIONS} placeholder="Catégorie" />
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Recherche" className="pl-10" />
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
+            {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
+            {filteredItems.map((item) => {
+              const lineQty = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
+              return (
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="relative h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-white/[0.08]">
+                      {item.image_url ? <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="44px" /> : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{item.name}</p>
+                      <p className="text-xs text-white/60">Stock: {Math.max(0, Number(item.stock || 0))}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setLineQuantities((prev) => ({ ...prev, [item.id]: Math.max(1, lineQty - 1) }))}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white/90"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <Input
+                      value={lineQty}
+                      onChange={(event) => setLineQuantities((prev) => ({ ...prev, [item.id]: Math.max(1, Math.floor(Number(event.target.value) || 1)) }))}
+                      inputMode="numeric"
+                      className="h-9 w-16 rounded-xl px-2 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setLineQuantities((prev) => ({ ...prev, [item.id]: lineQty + 1 }))}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white/90"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                    <PrimaryButton onClick={() => addItem(item)} className="h-9 rounded-xl px-4 text-xs">Ajouter</PrimaryButton>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Panel>
+
+        <Panel className="flex h-full max-h-[72vh] flex-col xl:col-span-2">
+          <h2 className="text-xl font-semibold text-white">Objets sélectionnés</h2>
+          <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+            {selectedItems.length === 0 ? <p className="py-8 text-center text-sm text-white/55">Aucun objet sélectionné.</p> : null}
+            {selectedItems.map((entry) => (
+              <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm font-semibold text-white">{entry.name}</p>
+                  <button type="button" onClick={() => removeItem(entry.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="inline-flex items-center gap-1">
+                    <button type="button" onClick={() => updateQuantity(entry.id, entry.quantity - 1)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/[0.06] text-white/90">
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="inline-flex min-w-[44px] items-center justify-center text-sm font-semibold text-white">{entry.quantity}</span>
+                    <button type="button" onClick={() => updateQuantity(entry.id, entry.quantity + 1)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/[0.06] text-white/90">
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-sm font-semibold text-white">{money(entry.price * entry.quantity)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 border-t border-white/12 pt-3 text-right text-2xl font-semibold text-white">
+            TOTAL : {money(total)}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  )
+}
