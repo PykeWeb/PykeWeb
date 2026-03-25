@@ -129,6 +129,7 @@ const PAGE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/equipement', label: 'Équipement' },
   { prefix: '/depenses', label: 'Dépenses' },
   { prefix: '/transactions', label: 'Transactions' },
+  { prefix: '/sb/entree-sortie', label: 'Entrée / Sortie' },
   { prefix: '/logs', label: 'Logs' },
   { prefix: '/patch-notes', label: 'Patch notes' },
   { prefix: '/pwr/commandes', label: 'Commande' },
