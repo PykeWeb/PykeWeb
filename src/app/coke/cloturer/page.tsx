@@ -41,6 +41,10 @@ function formatPrice(value: number | null | undefined) {
   return `${value.toFixed(2)} $`
 }
 
+function roundDisplay(value: number) {
+  return Math.round(value).toString()
+}
+
 export default function CokeClosePage() {
   const router = useRouter()
   const [items, setItems] = useState<CatalogItem[]>([])
@@ -244,12 +248,15 @@ export default function CokeClosePage() {
       return sum + row.quantity * (Number.isFinite(pu) ? pu : 0)
     }, 0)
 
-    const outputItem = findItem(items, 'Feuille de Cocaïne')
-    const sellPrice = Number(outputItem?.sell_price ?? outputItem?.buy_price ?? 0)
-    const outputValue = leavesQty * (Number.isFinite(sellPrice) ? sellPrice : 0)
+    const pouchPerBrick = 10
+    const brickTaxRate = 0.05
+    const totalBricksAfterTax = Math.max(0, leavesQty - (leavesQty * brickTaxRate))
+    const totalPouches = totalBricksAfterTax * pouchPerBrick
+    const pouchUnitPrice = Number(pouchItem?.sell_price ?? pouchItem?.buy_price ?? 0)
+    const outputValue = totalPouches * (Number.isFinite(pouchUnitPrice) ? pouchUnitPrice : 0)
     const gross = outputValue - totalConsumablesCost
-    return { totalConsumablesCost, outputValue, gross }
-  }, [getConsumableItem, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
+    return { totalConsumablesCost, outputValue, gross, totalPouches }
+  }, [getConsumableItem, pouchItem, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   const plannedResources = useMemo(() => {
     return [
@@ -278,6 +285,7 @@ export default function CokeClosePage() {
 
   const seedItem = useMemo(() => findItem(items, 'Graine de coke'), [items])
   const zoneItem = useMemo(() => findItem(items, 'Lampe'), [items])
+  const pouchItem = useMemo(() => findItemByAliases(items, ['Pochon', 'Pochon de coke', 'Sachet', 'Pouch']), [items])
 
   return (
     <div className="space-y-4">
@@ -365,19 +373,13 @@ export default function CokeClosePage() {
                       </div>
                       <p className="text-xs text-white/75">{field.label}</p>
                     </div>
-                    {field.key === 'leaf' ? (
-                      <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
-                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
-                      </div>
-                    ) : (
-                      <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
-                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Besoin <span className="float-right font-semibold">{field.needed}</span></div>
-                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
-                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
-                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
-                        <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque <span className="float-right font-semibold">{formatPrice(field.missingCost)}</span></div>
-                      </div>
-                    )}
+                    <div className="mb-2 grid grid-cols-2 gap-1 text-xs">
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Besoin <span className="float-right font-semibold">{field.needed}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Stock <span className="float-right font-semibold">{field.stock}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
+                      <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque <span className="float-right font-semibold">{formatPrice(field.missingCost)}</span></div>
+                    </div>
                     <p className="mb-1 text-[11px] text-white/60">Quantité réelle (modifiable)</p>
                     <div className="flex items-center gap-2">
                       <button
@@ -421,7 +423,16 @@ export default function CokeClosePage() {
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.totalConsumablesCost)}</p>
               </div>
               <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
-                <p className="text-xs text-cyan-100/85">Valeur des feuilles récupérées</p>
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
+                    {pouchItem?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={pouchItem.image_url} alt="Pochons récupérés" className="h-full w-full object-cover" loading="lazy" />
+                    ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
+                  </div>
+                  <p className="text-xs text-cyan-100/85">Valeur des pochons récupérés</p>
+                </div>
+                <p className="mt-1 text-xs text-cyan-100/75">Pochons récupérés (taxe 5%): {roundDisplay(sessionTotals.totalPouches)}</p>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
               </div>
               <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">

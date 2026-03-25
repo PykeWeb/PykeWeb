@@ -210,15 +210,27 @@ export default function DroguesBeneficePage() {
             <p className="mb-1 text-[11px] text-cyan-100/80">Taxe brick (%)</p>
             <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" />
             <p className="mb-1 mt-2 text-[11px] text-cyan-100/80">Transfo global</p>
-            <Input value={String(globalTransformValue)} onChange={(e) => setGlobalTransform(e.target.value)} inputMode="decimal" />
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setGlobalTransform(String(Math.max(0, globalTransformValue - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
+              <Input value={String(globalTransformValue)} onChange={(e) => setGlobalTransform(e.target.value)} inputMode="decimal" />
+              <button type="button" onClick={() => setGlobalTransform(String(globalTransformValue + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
+            </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <div>
                 <p className="mb-1 text-[11px] text-cyan-100/80">Prix transfo brick (unité)</p>
-                <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" />
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setBrickTransformCost(String(Math.max(0, (Number(brickTransformCost) || 0) - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
+                  <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" />
+                  <button type="button" onClick={() => setBrickTransformCost(String((Number(brickTransformCost) || 0) + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
+                </div>
               </div>
               <div>
                 <p className="mb-1 text-[11px] text-cyan-100/80">Prix transfo pochon (par lot)</p>
-                <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setPouchTransformCost(String(Math.max(0, (Number(pouchTransformCost) || 0) - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
+                  <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
+                  <button type="button" onClick={() => setPouchTransformCost(String((Number(pouchTransformCost) || 0) + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
+                </div>
               </div>
             </div>
           </div>
