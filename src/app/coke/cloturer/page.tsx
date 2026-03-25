@@ -456,8 +456,7 @@ export default function CokeClosePage() {
                 <p className="mt-2 text-center text-lg font-semibold leading-none">{formatPrice(plannedEquipmentCost)}</p>
               </div>
               <div className="group relative rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
-                <div className="flex min-h-[108px] flex-col">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <div className="h-7 w-7 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]">
                     {pouchItem?.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -465,18 +464,15 @@ export default function CokeClosePage() {
                     ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
                   </div>
                   <p className="flex items-center gap-1.5 text-xs text-cyan-100/85"><Coins className="h-3.5 w-3.5" /> Valeur des pochons récupérés</p>
-                  </div>
-                  <div className="flex flex-1 items-center justify-center">
-                    <p className="text-center text-3xl font-semibold leading-none tracking-tight">{formatPrice(sessionTotals.outputValue)}</p>
-                  </div>
-                  <div className="mt-1 flex justify-center">
-                    <div className="inline-flex w-auto shrink-0 items-center gap-1.5 rounded-xl border border-cyan-300/30 bg-cyan-500/12 px-2.5 py-1.5 shadow-[0_0_12px_rgba(34,211,238,0.12)]">
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <p className="text-2xl font-semibold leading-none tracking-tight">{formatPrice(sessionTotals.outputValue)}</p>
+                  <div className="inline-flex w-auto shrink-0 items-center gap-1.5 rounded-xl border border-cyan-300/30 bg-cyan-500/12 px-2.5 py-1.5 shadow-[0_0_12px_rgba(34,211,238,0.12)]">
                     <span className="text-[11px] font-semibold text-cyan-100/85">PU</span>
                     <button type="button" onClick={() => setPouchUnitSale(String(Math.max(1, (Number(pouchUnitSale) || 0) - 5)))} className="grid h-5 w-5 place-items-center rounded-md border border-white/15 bg-white/[0.06] pb-[1px] text-[10px] text-white/85">-</button>
                     <input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="numeric" className="h-7 w-16 rounded-md border border-white/15 bg-white/[0.06] px-1 text-center text-xs font-semibold text-cyan-50 outline-none focus:border-cyan-200/40" />
                     <button type="button" onClick={() => setPouchUnitSale(String((Number(pouchUnitSale) || 0) + 5))} className="grid h-5 w-5 place-items-center rounded-md border border-white/15 bg-white/[0.06] pb-[1px] text-[10px] text-white/85">+</button>
                     <span className="text-[11px] text-cyan-100/75">$</span>
-                    </div>
                   </div>
                 </div>
                 <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-cyan-100 shadow-lg group-hover:block">
