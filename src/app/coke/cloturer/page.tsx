@@ -251,12 +251,14 @@ export default function CokeClosePage() {
 
     const pouchPerBrick = 10
     const brickTaxRate = 0.05
+    const transformCost = 300
     const totalBricksAfterTax = Math.max(0, leavesQty - (leavesQty * brickTaxRate))
     const totalPouches = totalBricksAfterTax * pouchPerBrick
-    const pouchUnitPrice = Number(pouchItem?.sell_price ?? pouchItem?.buy_price ?? 0)
-    const outputValue = totalPouches * (Number.isFinite(pouchUnitPrice) ? pouchUnitPrice : 0)
-    const gross = outputValue - totalConsumablesCost
-    return { totalConsumablesCost, outputValue, gross, totalPouches }
+    const rawPouchUnitPrice = Number(pouchItem?.sell_price ?? pouchItem?.buy_price ?? 70)
+    const pouchUnitPrice = Math.min(75, Math.max(60, Number.isFinite(rawPouchUnitPrice) ? rawPouchUnitPrice : 70))
+    const outputValue = totalPouches * pouchUnitPrice
+    const estimatedProfitRecovered = outputValue - totalConsumablesCost - transformCost
+    return { totalConsumablesCost, outputValue, estimatedProfitRecovered, totalPouches, pouchUnitPrice, transformCost }
   }, [getConsumableItem, pouchItem, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   const plannedResources = useMemo(() => {
@@ -353,9 +355,9 @@ export default function CokeClosePage() {
                 </div>
               </div>
               <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2">
-                <p className="text-xs text-emerald-100/85">Total prix équipement prévu</p>
-                <p className="mt-1 text-lg font-semibold">{formatPrice(plannedEquipmentCost)}</p>
-                <p className="text-[11px] text-emerald-100/75">Pots + fertilisant + eau + lampes</p>
+                <p className="text-xs text-emerald-100/85">Feuille de Cocaïne</p>
+                <p className="mt-1 text-lg font-semibold">{roundDisplay(activePlan.theoreticalLeaves)}</p>
+                <p className="text-[11px] text-emerald-100/75">Production théorique session</p>
               </div>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
@@ -419,8 +421,8 @@ export default function CokeClosePage() {
 
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
-                <p className="text-xs text-amber-100/85">Coût total réel consommables</p>
-                <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.totalConsumablesCost)}</p>
+                <p className="text-xs text-amber-100/85">Total prix équipement prévu</p>
+                <p className="mt-1 text-lg font-semibold">{formatPrice(plannedEquipmentCost)}</p>
               </div>
               <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -432,12 +434,14 @@ export default function CokeClosePage() {
                   </div>
                   <p className="text-xs text-cyan-100/85">Valeur des pochons récupérés</p>
                 </div>
+                <p className="mt-1 text-xs text-cyan-100/75">PU estimé pochon: {formatPrice(sessionTotals.pouchUnitPrice)} (60-75$)</p>
                 <p className="mt-1 text-xs text-cyan-100/75">Pochons récupérés (taxe 5%): {roundDisplay(sessionTotals.totalPouches)}</p>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
               </div>
               <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
-                <p className="text-xs text-emerald-100/85">Marge brute session</p>
-                <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.gross)}</p>
+                <p className="text-xs text-emerald-100/85">Valeur estimée de bénéfice récupéré</p>
+                <p className="mt-1 text-xs text-emerald-100/75">Vente pochons estimée - équipement réel - transfo ({formatPrice(sessionTotals.transformCost)})</p>
+                <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.estimatedProfitRecovered)}</p>
               </div>
             </div>
 

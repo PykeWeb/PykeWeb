@@ -535,17 +535,17 @@ export default function DroguesClient() {
                 <div key={req.label} className="grid grid-cols-[minmax(120px,1fr)_88px_110px_110px] gap-3">
                   <span>{req.label}</span>
                   <span className="text-right text-xs text-white/70">x{req.qty}</span>
-                  <span className="text-right text-xs text-white/70">{req.unitPrice === null ? 'Prix manquant' : `${req.unitPrice.toFixed(0)}$/u`}</span>
+                  <span className="text-right text-xs text-white/70">{req.unitPrice === null ? (loading ? 'Chargement...' : 'Prix manquant') : `${req.unitPrice.toFixed(0)}$/u`}</span>
                   <span className="text-right text-xs text-white/70">{req.subtotal === null ? '—' : `${req.subtotal.toFixed(0)}$`}</span>
                 </div>
               ))}
             </div>
 
             <p className="mt-3 font-semibold text-emerald-300">
-              💰 Prix : {calculatorResult.totalKnown.toFixed(0)}$ {calculatorResult.hasMissingPrices ? 'sans le(s) prix manquant(s)' : ''}
+              💰 Prix : {calculatorResult.totalKnown.toFixed(0)}$ {(!loading && calculatorResult.hasMissingPrices) ? 'sans le(s) prix manquant(s)' : ''}
             </p>
 
-            {calculatorResult.missingPrices.length ? (
+            {(!loading && calculatorResult.missingPrices.length) ? (
               <p className="mt-2 text-amber-300">⚠️ Prix manquants : {calculatorResult.missingPrices.join(', ')}</p>
             ) : null}
           </div>
