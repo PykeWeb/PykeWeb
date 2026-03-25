@@ -70,10 +70,15 @@ export function SbEntreeSortieClient() {
     return items.filter((item) => {
       const normalizedCategory = normalizeCatalogCategory(item.category) || 'objects'
       if (category !== 'all' && normalizedCategory !== category) return false
+      if (mode === 'sortie' && Math.max(0, Number(item.stock || 0)) <= 0) return false
       if (!normalizedQuery) return true
       return item.name.toLowerCase().includes(normalizedQuery)
     })
-  }, [items, category, query])
+  }, [items, category, mode, query])
+
+  const stockById = useMemo(() => (
+    Object.fromEntries(items.map((item) => [item.id, Math.max(0, Number(item.stock || 0))]))
+  ), [items])
 
   const total = useMemo(
     () => selectedItems.reduce((sum, entry) => sum + (entry.price * entry.quantity), 0),
@@ -82,24 +87,21 @@ export function SbEntreeSortieClient() {
 
   const addItem = (item: CatalogItem) => {
     const baseQuantity = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
-    if (mode === 'sortie' && baseQuantity > Math.max(0, Number(item.stock || 0))) {
-      toast.error('Quantité supérieure au stock disponible.')
-      return
-    }
+    const maxStock = Math.max(0, Number(item.stock || 0))
+    const safeQuantity = mode === 'sortie' ? Math.min(baseQuantity, maxStock) : baseQuantity
+    if (mode === 'sortie' && safeQuantity <= 0) return
 
     setSelectedItems((prev) => {
       const index = prev.findIndex((entry) => entry.id === item.id)
       if (index >= 0) {
         const next = [...prev]
-        const nextQuantity = next[index].quantity + baseQuantity
-        if (mode === 'sortie' && nextQuantity > Math.max(0, Number(item.stock || 0))) {
-          toast.error('Quantité totale supérieure au stock disponible.')
-          return prev
-        }
+        const nextQuantity = mode === 'sortie'
+          ? Math.min(next[index].quantity + safeQuantity, maxStock)
+          : next[index].quantity + safeQuantity
         next[index] = { ...next[index], quantity: nextQuantity }
         return next
       }
-      return [...prev, { id: item.id, name: item.name, quantity: baseQuantity, price: resolveItemPrice(item) }]
+      return [...prev, { id: item.id, name: item.name, quantity: safeQuantity, price: resolveItemPrice(item) }]
     })
   }
 
@@ -108,8 +110,16 @@ export function SbEntreeSortieClient() {
   }
 
   const updateQuantity = (itemId: string, quantity: number) => {
+    const maxStock = stockById[itemId] ?? 0
     setSelectedItems((prev) => prev.map((entry) => (
-      entry.id === itemId ? { ...entry, quantity: Math.max(1, Math.floor(quantity || 1)) } : entry
+      entry.id === itemId
+        ? {
+          ...entry,
+          quantity: mode === 'sortie'
+            ? Math.max(1, Math.min(Math.floor(quantity || 1), Math.max(1, maxStock)))
+            : Math.max(1, Math.floor(quantity || 1)),
+        }
+        : entry
     )))
   }
 
@@ -209,8 +219,8 @@ export function SbEntreeSortieClient() {
         </div>
       </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-5">
-        <Panel className="space-y-4 xl:col-span-3">
+      <div className="grid gap-4 xl:grid-cols-5 xl:items-stretch">
+        <Panel className="flex h-full max-h-[72vh] flex-col space-y-4 xl:col-span-3">
           <div className="grid gap-2 md:grid-cols-[180px_180px_1fr]">
             <GlassSelect value={category} onChange={(value) => setCategory(value as FilterCategory)} options={CATEGORY_OPTIONS} />
             <GlassSelect value={category} onChange={(value) => setCategory(value as FilterCategory)} options={CATEGORY_OPTIONS} placeholder="Catégorie" />
@@ -220,7 +230,7 @@ export function SbEntreeSortieClient() {
             </label>
           </div>
 
-          <div className="space-y-2">
+          <div className="flex-1 space-y-2 overflow-y-auto pr-1">
             {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
             {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
             {filteredItems.map((item) => {
