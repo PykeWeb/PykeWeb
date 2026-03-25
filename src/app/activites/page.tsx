@@ -257,14 +257,14 @@ export default function ActivitesPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 md:flex-nowrap">
             <ActivitiesPageTabs active="declaration" showChef={canSeeChefTab} />
             <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
-              <div className="flex h-9 items-center rounded-xl border border-white/10 bg-white/[0.04] px-3">
+              <div className="inline-flex h-9 items-center rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs font-semibold text-white/85">
                 <p>Équipements sélectionnés: <span className="font-semibold">{selectedEquipmentRows.length}</span></p>
               </div>
-              <div className="flex h-9 items-center rounded-xl border border-white/10 bg-white/[0.04] px-3">
+              <div className="inline-flex h-9 items-center rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs font-semibold text-white/85">
                 <p>Objets sélectionnés: <span className="font-semibold">{selectedObjectRows.length}</span></p>
               </div>
-              <div className="flex h-9 items-center rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3">
-                <p className="font-semibold text-cyan-50">Salaire: {estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+              <div className="inline-flex h-9 items-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-3 text-xs font-semibold text-cyan-100">
+                <p>Salaire: {estimatedThisSubmission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
               </div>
             </div>
           </div>

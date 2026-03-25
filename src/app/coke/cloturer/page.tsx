@@ -259,14 +259,16 @@ export default function CokeClosePage() {
 
     const pouchPerBrick = 10
     const brickTaxRate = 0.05
-    const transformCost = 300
+    const leafToBrickTransformCost = 150
+    const brickToPouchTransformCost = 150
+    const transformCost = leafToBrickTransformCost + brickToPouchTransformCost
     const totalBricksAfterTax = Math.max(0, leavesQty - (leavesQty * brickTaxRate))
     const totalPouches = totalBricksAfterTax * pouchPerBrick
     const rawPouchUnitPrice = Number(pouchUnitSale)
     const pouchUnitPrice = Number.isFinite(rawPouchUnitPrice) && rawPouchUnitPrice > 0 ? rawPouchUnitPrice : 70
     const outputValue = totalPouches * pouchUnitPrice
     const estimatedProfitRecovered = outputValue - totalConsumablesCost - transformCost
-    return { totalConsumablesCost, outputValue, estimatedProfitRecovered, totalPouches, pouchUnitPrice, transformCost }
+    return { totalConsumablesCost, outputValue, estimatedProfitRecovered, totalPouches, pouchUnitPrice, transformCost, leafToBrickTransformCost, brickToPouchTransformCost }
   }, [getConsumableItem, pouchUnitSale, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   const plannedResources = useMemo(() => {
@@ -455,9 +457,12 @@ export default function CokeClosePage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <p className="text-lg font-semibold">{formatPrice(sessionTotals.outputValue)}</p>
-                  <div className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2 py-1">
-                    <span className="text-[11px] text-white/70">$/u</span>
-                    <Input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="decimal" className="h-7 w-16 min-w-0 border-0 bg-transparent p-0 text-right text-xs" />
+                  <div className="flex items-center gap-1 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-2 py-1">
+                    <span className="text-[11px] font-semibold text-cyan-100/85">PU</span>
+                    <button type="button" onClick={() => setPouchUnitSale(String(Math.max(1, (Number(pouchUnitSale) || 0) - 10)))} className="grid h-6 w-6 place-items-center rounded-md border border-white/15 bg-white/[0.06] text-xs text-white/80">-</button>
+                    <Input value={pouchUnitSale} onChange={(e) => setPouchUnitSale(e.target.value)} inputMode="decimal" className="h-7 w-14 min-w-0 border-0 bg-transparent p-0 text-right text-xs font-semibold text-cyan-50" />
+                    <button type="button" onClick={() => setPouchUnitSale(String((Number(pouchUnitSale) || 0) + 10))} className="grid h-6 w-6 place-items-center rounded-md border border-white/15 bg-white/[0.06] text-xs text-white/80">+</button>
+                    <span className="text-[11px] text-cyan-100/75">$</span>
                   </div>
                 </div>
                 <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-cyan-100 shadow-lg group-hover:block">
@@ -469,7 +474,7 @@ export default function CokeClosePage() {
                 <p className="flex items-center gap-1.5 text-xs text-emerald-100/85"><Leaf className="h-3.5 w-3.5" /> Valeur estimée de bénéfice récupéré</p>
                 <p className="mt-1 text-lg font-semibold">{formatPrice(sessionTotals.estimatedProfitRecovered)}</p>
                 <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
-                  Vente pochons estimée - équipement réel - transfo ({formatPrice(sessionTotals.transformCost)})
+                  Vente pochons estimée - équipement réel - transfo feuille→brick ({formatPrice(sessionTotals.leafToBrickTransformCost)}) - transfo brick→pochon ({formatPrice(sessionTotals.brickToPouchTransformCost)})
                 </div>
               </div>
             </div>
