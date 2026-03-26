@@ -9,7 +9,7 @@ import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
-import { normalizeCatalogCategory } from '@/lib/catalogConfig'
+import { getTypeFilterOptions, matchesTypeFilter, normalizeCatalogCategory, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { getTenantSession, isSbTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
@@ -40,6 +40,7 @@ export function SbEntreeSortieClient() {
   const [isLoading, setIsLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<FilterCategory>('all')
+  const [type, setType] = useState<UnifiedTypeFilterValue>('all')
   const [counterparty, setCounterparty] = useState('')
   const [member, setMember] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -70,11 +71,12 @@ export function SbEntreeSortieClient() {
     return items.filter((item) => {
       const normalizedCategory = normalizeCatalogCategory(item.category) || 'objects'
       if (category !== 'all' && normalizedCategory !== category) return false
+      if (!matchesTypeFilter(item, category, type)) return false
       if (mode === 'sortie' && Math.max(0, Number(item.stock || 0)) <= 0) return false
       if (!normalizedQuery) return true
       return item.name.toLowerCase().includes(normalizedQuery)
     })
-  }, [items, category, mode, query])
+  }, [items, category, mode, query, type])
 
   const stockById = useMemo(() => (
     Object.fromEntries(items.map((item) => [item.id, Math.max(0, Number(item.stock || 0))]))
@@ -183,7 +185,10 @@ export function SbEntreeSortieClient() {
           <button
             key={card.key}
             type="button"
-            onClick={() => setCategory(card.key === 'other' ? 'custom' : card.key as FilterCategory)}
+            onClick={() => {
+              setCategory(card.key === 'other' ? 'custom' : card.key as FilterCategory)
+              setType('all')
+            }}
             className={`min-h-[92px] rounded-2xl border px-3 py-3 text-left transition ${
               category === (card.key === 'other' ? 'custom' : card.key)
                 ? card.key === 'objects'
@@ -243,8 +248,20 @@ export function SbEntreeSortieClient() {
       <div className="grid gap-4 xl:grid-cols-5 xl:items-stretch">
         <Panel className="flex h-full max-h-[72vh] flex-col space-y-4 xl:col-span-3">
           <div className="grid gap-2 md:grid-cols-[180px_180px_1fr]">
-            <GlassSelect value={category} onChange={(value) => setCategory(value as FilterCategory)} options={CATEGORY_OPTIONS} />
-            <GlassSelect value={category} onChange={(value) => setCategory(value as FilterCategory)} options={CATEGORY_OPTIONS} placeholder="Catégorie" />
+            <GlassSelect
+              value={category}
+              onChange={(value) => {
+                setCategory(value as FilterCategory)
+                setType('all')
+              }}
+              options={CATEGORY_OPTIONS}
+            />
+            <GlassSelect
+              value={type}
+              onChange={(value) => setType(value as UnifiedTypeFilterValue)}
+              options={getTypeFilterOptions(category).map((option) => ({ value: option.value, label: option.label }))}
+              placeholder="Type"
+            />
             <label className="relative block">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
               <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Recherche" className="pl-10" />
