@@ -44,6 +44,7 @@ export async function createDrugProductionTracking(payload: {
   type: ProductionType
   quantitySent: number
   ratio: number
+  expectedOutput?: number
   receivedOutput?: number
   note?: string
   createdAt?: string
@@ -53,7 +54,10 @@ export async function createDrugProductionTracking(payload: {
   const ratio = Math.max(0, Number(payload.ratio || 0))
   const totalLeaves = quantitySent * ratio
   const netBricks = Math.max(0, totalLeaves * (1 - BRICK_TAX_RATE))
-  const expectedOutput = Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
+  const autoExpectedOutput = Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
+  const expectedOutput = payload.expectedOutput === undefined
+    ? autoExpectedOutput
+    : Math.max(0, Math.floor(payload.expectedOutput || 0))
   const receivedOutput = Math.max(0, Math.floor(payload.receivedOutput || 0))
   const status = computeStatus(receivedOutput, expectedOutput)
 

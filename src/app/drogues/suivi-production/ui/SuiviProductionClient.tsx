@@ -27,16 +27,27 @@ const TYPE_OPTIONS: { value: ProductionType; label: string }[] = [
 const NEW_REQUEST_INITIAL = {
   partnerName: '',
   type: 'coke' as ProductionType,
-  quantitySent: 100,
-  ratio: 3,
+  flowMode: 'full_chain' as FlowMode,
+  seedQty: 100,
+  leafQty: 100,
+  brickQty: 95,
   createdAt: new Date().toISOString().slice(0, 10),
   expectedDate: '',
   note: '',
 }
 
+type FlowMode = 'seed_only' | 'leaf_to_brick' | 'brick_to_pouch' | 'full_chain'
+
 const BRICK_TAX_PERCENT = 5
 const POUCHES_PER_BRICK = 10
 const POUCH_BATCH_SIZE = 10
+
+const FLOW_OPTIONS: { value: FlowMode; label: string }[] = [
+  { value: 'seed_only', label: 'Achat graines' },
+  { value: 'leaf_to_brick', label: 'Feuille → Brick' },
+  { value: 'brick_to_pouch', label: 'Brick → Pochon' },
+  { value: 'full_chain', label: 'Les 3 étapes' },
+]
 
 function money(value: number) {
   return `${Math.round(value)} $`
@@ -84,19 +95,30 @@ export default function SuiviProductionClient() {
   )
 
   const expectedFromForm = useMemo(() => {
-    const leaves = Math.max(0, Number(newRequest.quantitySent || 0) * Number(newRequest.ratio || 0))
-    const netBricks = Math.max(0, leaves * (1 - BRICK_TAX_PERCENT / 100))
-    return Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
-  },
-    [newRequest.quantitySent, newRequest.ratio]
-  )
+    const baseLeaves = newRequest.flowMode === 'full_chain'
+      ? Math.max(0, Number(newRequest.seedQty || 0))
+      : Math.max(0, Number(newRequest.leafQty || 0))
+    const netBricks = newRequest.flowMode === 'brick_to_pouch'
+      ? Math.max(0, Number(newRequest.brickQty || 0))
+      : Math.floor(baseLeaves * (1 - BRICK_TAX_PERCENT / 100))
+    if (newRequest.flowMode === 'seed_only') return Math.max(0, Number(newRequest.seedQty || 0))
+    if (newRequest.flowMode === 'leaf_to_brick') return Math.max(0, netBricks)
+    return Math.max(0, netBricks * POUCHES_PER_BRICK)
+  }, [newRequest.brickQty, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty])
 
   const conversionFromForm = useMemo(() => {
-    const leaves = Math.max(0, Number(newRequest.quantitySent || 0) * Number(newRequest.ratio || 0))
-    const netBricks = Math.max(0, leaves * (1 - BRICK_TAX_PERCENT / 100))
+    const seedQty = Math.max(0, Number(newRequest.seedQty || 0))
+    const leaves = newRequest.flowMode === 'full_chain'
+      ? seedQty
+      : newRequest.flowMode === 'leaf_to_brick'
+        ? Math.max(0, Number(newRequest.leafQty || 0))
+        : 0
+    const netBricks = newRequest.flowMode === 'brick_to_pouch'
+      ? Math.max(0, Number(newRequest.brickQty || 0))
+      : Math.floor(leaves * (1 - BRICK_TAX_PERCENT / 100))
     const pouches = Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
-    return { leaves, netBricks, pouches }
-  }, [newRequest.quantitySent, newRequest.ratio])
+    return { seedQty, leaves, netBricks, pouches }
+  }, [newRequest.brickQty, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty])
 
   const stats = useMemo(() => {
     const inProgress = rows.filter((r) => r.status === 'in_progress').length
@@ -107,6 +129,20 @@ export default function SuiviProductionClient() {
     const receivedRevenue = received * pouchSalePrice
     return { inProgress, completed, expected, received, expectedRevenue, receivedRevenue }
   }, [rows, pouchSalePrice])
+
+  const partnerStats = useMemo(() => {
+    const counts = rows.reduce<Record<string, number>>((acc, row) => {
+      const key = row.partner_name || 'Inconnu'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1])
+    return {
+      uniquePartners: entries.length,
+      topPartner: entries[0]?.[0] || '—',
+      topPartnerCount: entries[0]?.[1] || 0,
+    }
+  }, [rows])
 
   useEffect(() => {
     let mounted = true
@@ -187,14 +223,27 @@ export default function SuiviProductionClient() {
       return
     }
 
+    const quantitySent = newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain'
+      ? Math.max(0, Number(newRequest.seedQty || 0))
+      : newRequest.flowMode === 'leaf_to_brick'
+        ? Math.max(0, Number(newRequest.leafQty || 0))
+        : Math.max(0, Number(newRequest.brickQty || 0))
+
+    const flowLabel =
+      newRequest.flowMode === 'seed_only' ? 'Achat graines'
+        : newRequest.flowMode === 'leaf_to_brick' ? 'Feuille->Brick'
+          : newRequest.flowMode === 'brick_to_pouch' ? 'Brick->Pochon'
+            : 'Les 3 étapes'
+
     setSaving(true)
     try {
       const created = await createDrugProductionTracking({
         partnerName: newRequest.partnerName.trim(),
         type: newRequest.type,
-        quantitySent: Number(newRequest.quantitySent || 0),
-        ratio: Number(newRequest.ratio || 0),
-        note: newRequest.note,
+        quantitySent,
+        ratio: 1,
+        expectedOutput: expectedFromForm,
+        note: `[${flowLabel}] ${newRequest.note || ''}`.trim(),
         createdAt: newRequest.createdAt || undefined,
         expectedDate: newRequest.expectedDate || undefined,
       })
@@ -277,6 +326,11 @@ export default function SuiviProductionClient() {
         <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
           <p className="text-xs text-cyan-100/80">Total reçu</p>
           <p className="text-lg font-semibold">{money(stats.receivedRevenue)}</p>
+        </div>
+        <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm">
+          <p className="text-xs text-violet-100/80">Partenaires utilisés</p>
+          <p className="text-lg font-semibold">{partnerStats.uniquePartners}</p>
+          <p className="mt-1 text-xs text-violet-100/80">Top: {partnerStats.topPartner} ({partnerStats.topPartnerCount})</p>
         </div>
       </Panel>
 
@@ -468,29 +522,58 @@ export default function SuiviProductionClient() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-white/70">Quantité envoyée</label>
-                <Input
-                  value={newRequest.quantitySent}
-                  onChange={(event) => setNewRequest((prev) => ({ ...prev, quantitySent: Number(event.target.value) || 0 }))}
-                  inputMode="numeric"
+                <label className="text-xs text-white/70">Mode opération</label>
+                <GlassSelect
+                  value={newRequest.flowMode}
+                  onChange={(value) => setNewRequest((prev) => ({ ...prev, flowMode: value as FlowMode }))}
+                  options={FLOW_OPTIONS}
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-white/70">Ratio transformation (1 → x)</label>
-                <Input
-                  value={newRequest.ratio}
-                  onChange={(event) => setNewRequest((prev) => ({ ...prev, ratio: Number(event.target.value) || 0 }))}
-                  inputMode="decimal"
-                />
-                <p className="text-[11px] text-white/55">Le ratio indique combien de feuilles finales tu obtiens pour 1 unité envoyée, avant la taxe brick de 5%.</p>
-              </div>
+              {newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' ? (
+                <div className="space-y-1">
+                  <label className="text-xs text-white/70">Quantité graines</label>
+                  <Input
+                    value={newRequest.seedQty}
+                    onChange={(event) => setNewRequest((prev) => ({ ...prev, seedQty: Number(event.target.value) || 0 }))}
+                    inputMode="numeric"
+                  />
+                </div>
+              ) : null}
+
+              {newRequest.flowMode === 'leaf_to_brick' ? (
+                <div className="space-y-1">
+                  <label className="text-xs text-white/70">Quantité feuilles</label>
+                  <Input
+                    value={newRequest.leafQty}
+                    onChange={(event) => setNewRequest((prev) => ({ ...prev, leafQty: Number(event.target.value) || 0 }))}
+                    inputMode="numeric"
+                  />
+                </div>
+              ) : null}
+
+              {newRequest.flowMode === 'brick_to_pouch' ? (
+                <div className="space-y-1">
+                  <label className="text-xs text-white/70">Quantité bricks</label>
+                  <Input
+                    value={newRequest.brickQty}
+                    onChange={(event) => setNewRequest((prev) => ({ ...prev, brickQty: Number(event.target.value) || 0 }))}
+                    inputMode="numeric"
+                  />
+                </div>
+              ) : null}
 
               <div className="space-y-1">
                 <label className="text-xs text-white/70">Attendu (auto)</label>
                 <Input value={expectedFromForm} readOnly className="opacity-80" />
                 <p className="text-[11px] text-white/55">
-                  {Math.round(conversionFromForm.leaves)} feuilles → {Math.round(conversionFromForm.netBricks)} bricks (taxe 5%) → {conversionFromForm.pouches} pochons (1 brick = 10).
+                  {newRequest.flowMode === 'seed_only'
+                    ? `${conversionFromForm.seedQty} graines achetées.`
+                    : newRequest.flowMode === 'leaf_to_brick'
+                      ? `${Math.round(conversionFromForm.leaves)} feuilles → ${Math.round(conversionFromForm.netBricks)} bricks (taxe 5%).`
+                      : newRequest.flowMode === 'brick_to_pouch'
+                        ? `${Math.round(conversionFromForm.netBricks)} bricks → ${conversionFromForm.pouches} pochons (1 brick = 10).`
+                        : `${conversionFromForm.seedQty} graines → ${Math.round(conversionFromForm.netBricks)} bricks (taxe 5%) → ${conversionFromForm.pouches} pochons.`}
                 </p>
               </div>
 
