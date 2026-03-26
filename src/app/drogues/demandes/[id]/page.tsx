@@ -99,7 +99,7 @@ export default function DemandeDetailPage() {
             <p>Date retour: <b>{row.expected_date || '—'}</b></p><p>Statut: <b>{row.status}</b></p>
           </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">{Math.round((row.received_output / Math.max(1, row.expected_output)) * 100)}% reçu - reste {remaining}</div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={async () => {
               try {
                 const pouchId = await findPouchItemId(String(row.type))

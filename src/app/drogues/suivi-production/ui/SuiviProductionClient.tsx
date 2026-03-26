@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, ExternalLink, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
+import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -547,17 +547,13 @@ export default function SuiviProductionClient() {
                   Prix vente pochon non configuré → bénéfice affiché à 0.
                 </div>
               ) : null}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button type="button" onClick={() => void markAsDelivered(selected)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 font-semibold text-emerald-100 transition hover:bg-emerald-500/25">
                   Livrée
                 </button>
                 <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-3 font-semibold text-amber-100 transition hover:bg-amber-500/25">
                   <Save className="h-4 w-4" />
                   Ouvrir modification
-                </Link>
-                <Link href={`/drogues/demandes/${selected.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-3 font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
-                  <ExternalLink className="h-4 w-4" />
-                  Ouvrir détail complet
                 </Link>
               </div>
             </div>
