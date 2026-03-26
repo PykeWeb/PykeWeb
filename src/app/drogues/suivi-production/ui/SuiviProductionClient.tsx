@@ -91,6 +91,7 @@ export default function SuiviProductionClient() {
   const [newRequest, setNewRequest] = useState(NEW_REQUEST_INITIAL)
   const [receivedInput, setReceivedInput] = useState('0')
   const [noteInput, setNoteInput] = useState('')
+  const [noteExpanded, setNoteExpanded] = useState(false)
   const [pouchSalePrice, setPouchSalePrice] = useState(0)
   const [seedPrice, setSeedPrice] = useState(0)
   const [brickTransformCost, setBrickTransformCost] = useState(0)
@@ -264,10 +265,28 @@ export default function SuiviProductionClient() {
       setSelectedId(created.id)
       setCreating(false)
       setNewRequest(NEW_REQUEST_INITIAL)
+      setNoteExpanded(false)
       toast.success('Demande de production créée.')
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Impossible de créer la demande.'
-      toast.error(message)
+      try {
+        const created = await createDrugProductionTracking({
+          partnerName: newRequest.partnerName.trim(),
+          type: newRequest.type,
+          quantitySent,
+          ratio: 1,
+          expectedOutput: expectedFromForm,
+          note: newRequest.note?.trim() || undefined,
+        })
+        setRows((prev) => [created, ...prev])
+        setSelectedId(created.id)
+        setCreating(false)
+        setNewRequest(NEW_REQUEST_INITIAL)
+        setNoteExpanded(false)
+        toast.success('Demande créée (mode compatibilité).')
+      } catch (retryError: unknown) {
+        const message = retryError instanceof Error ? retryError.message : (error instanceof Error ? error.message : 'Impossible de créer la demande.')
+        toast.error(message)
+      }
     } finally {
       setSaving(false)
     }
@@ -353,7 +372,7 @@ export default function SuiviProductionClient() {
       </Panel>
 
       <div className="flex items-center justify-end">
-        <PrimaryButton onClick={() => setCreating(true)} className="h-11 px-5">
+        <PrimaryButton onClick={() => { setNoteExpanded(false); setCreating(true) }} className="h-11 px-5">
           <Plus className="h-4 w-4" />
           Nouvelle demande
         </PrimaryButton>
@@ -632,14 +651,22 @@ export default function SuiviProductionClient() {
               </div>
 
               <div className="space-y-1 rounded-xl border border-amber-300/20 bg-gradient-to-br from-amber-500/10 to-orange-500/[0.08] p-2.5 sm:col-span-2">
-                <label className="flex items-center gap-1.5 text-xs text-amber-100/80"><NotebookPen className="h-3.5 w-3.5" /> Note</label>
-                <textarea
-                  value={newRequest.note}
-                  onChange={(event) => setNewRequest((prev) => ({ ...prev, note: event.target.value }))}
-                  rows={3}
-                  className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/45"
-                  placeholder="Précisions / contact partenaire..."
-                />
+                <button
+                  type="button"
+                  onClick={() => setNoteExpanded((prev) => !prev)}
+                  className={`w-full rounded-xl border px-3 py-2 text-left transition ${noteExpanded ? 'border-amber-200/45 bg-amber-500/15' : 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'}`}
+                >
+                  <span className="flex items-center gap-1.5 text-xs text-amber-100/90"><NotebookPen className="h-3.5 w-3.5" /> Note (optionnel) — {noteExpanded ? 'Masquer' : 'Ajouter'}</span>
+                </button>
+                {noteExpanded ? (
+                  <textarea
+                    value={newRequest.note}
+                    onChange={(event) => setNewRequest((prev) => ({ ...prev, note: event.target.value }))}
+                    rows={3}
+                    className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/45"
+                    placeholder="Précisions / contact partenaire..."
+                  />
+                ) : null}
               </div>
 
               <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.07] p-3 sm:col-span-2">
