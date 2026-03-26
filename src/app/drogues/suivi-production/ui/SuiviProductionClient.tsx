@@ -10,10 +10,12 @@ import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { adjustDrugStock, listDrugItems } from '@/lib/drugsApi'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import {
   createDrugProductionTracking,
   listDrugProductionTrackings,
+  updateDrugProductionTracking,
   type DrugProductionTrackingRow,
   type ProductionStatus,
   type ProductionType,
@@ -63,6 +65,36 @@ function money(value: number) {
 
 function normalize(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+}
+
+function typeToken(type: string) {
+  const raw = normalize(type)
+  if (raw.includes('coke')) return 'coke'
+  if (raw.includes('meth')) return 'meth'
+  return ''
+}
+
+async function findDrugItemId(stage: 'seed' | 'leaf' | 'brick' | 'pouch', type: string) {
+  const token = typeToken(type)
+  const items = await listDrugItems()
+  const stageHints = stage === 'seed'
+    ? ['graine', 'seed']
+    : stage === 'leaf'
+      ? ['feuille', 'leaf']
+      : stage === 'brick'
+        ? ['brick', 'brique']
+        : ['pochon', 'pouch', 'sachet']
+
+  const withStage = items.filter((item) => {
+    const name = normalize(item.name)
+    return stageHints.some((hint) => name.includes(hint))
+  })
+
+  const withType = token
+    ? withStage.filter((item) => normalize(item.name).includes(token))
+    : withStage
+
+  return (withType[0] || withStage[0] || null)?.id || null
 }
 
 function typeLabel(rawType: string) {
@@ -277,6 +309,23 @@ export default function SuiviProductionClient() {
       })
       setRows((prev) => [created, ...prev])
       setSelectedId(created.id)
+      try {
+        const stockStage = newRequest.flowMode === 'leaf_to_brick'
+          ? 'leaf'
+          : newRequest.flowMode === 'brick_to_pouch'
+            ? 'brick'
+            : 'seed'
+        const inputItemId = await findDrugItemId(stockStage, newRequest.type)
+        if (inputItemId) {
+          await adjustDrugStock({
+            itemId: inputItemId,
+            delta: -quantitySent,
+            note: `Sortie auto demande ${created.id} (${newRequest.partnerName})`,
+          })
+        }
+      } catch {
+        toast.warning('Demande créée, mais la sortie stock auto a échoué.')
+      }
       setCreating(false)
       setNewRequest(NEW_REQUEST_INITIAL)
       setNoteExpanded(false)
@@ -332,6 +381,36 @@ export default function SuiviProductionClient() {
       }
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function markAsDelivered(row: DrugProductionTrackingRow) {
+    const deliveredQty = Math.max(0, Number(row.expected_output || 0))
+    if (deliveredQty <= 0) {
+      toast.error('Quantité attendue invalide.')
+      return
+    }
+
+    try {
+      const outputItemId = await findDrugItemId('pouch', row.type)
+      if (!outputItemId) {
+        toast.error('Aucun item stock "pochon" trouvé pour cette drogue.')
+        return
+      }
+      await adjustDrugStock({
+        itemId: outputItemId,
+        delta: deliveredQty,
+        note: `Entrée auto livrée ${row.id} (${row.partner_name})`,
+      })
+      const updated = await updateDrugProductionTracking(row.id, {
+        receivedOutput: deliveredQty,
+        status: 'completed',
+      })
+      setRows((prev) => prev.map((entry) => (entry.id === row.id ? updated : entry)))
+      setSelectedId(updated.id)
+      toast.success('Marqué comme livrée et stock mis à jour.')
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Livraison impossible.')
     }
   }
 
@@ -469,6 +548,9 @@ export default function SuiviProductionClient() {
                 </div>
               ) : null}
               <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => void markAsDelivered(selected)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 font-semibold text-emerald-100 transition hover:bg-emerald-500/25">
+                  Livrée
+                </button>
                 <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-3 font-semibold text-amber-100 transition hover:bg-amber-500/25">
                   <Save className="h-4 w-4" />
                   Ouvrir modification

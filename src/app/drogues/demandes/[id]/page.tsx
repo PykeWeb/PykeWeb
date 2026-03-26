@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
+import { adjustDrugStock, listDrugItems } from '@/lib/drugsApi'
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
 function uiTypeLabel(rawType: string) {
@@ -15,6 +16,24 @@ function uiTypeLabel(rawType: string) {
   if (type.includes('meth')) return 'Meth'
   if (type.includes('autre') || type.includes('other')) return 'Autres'
   return String(rawType || '').split('(')[0].trim() || 'Autres'
+}
+
+function normalizedTypeToken(rawType: string) {
+  const value = String(rawType || '').toLowerCase()
+  if (value.includes('coke')) return 'coke'
+  if (value.includes('meth')) return 'meth'
+  return ''
+}
+
+async function findPouchItemId(rawType: string) {
+  const token = normalizedTypeToken(rawType)
+  const items = await listDrugItems()
+  const pouches = items.filter((item) => {
+    const name = (item.name || '').toLowerCase()
+    return name.includes('pochon') || name.includes('pouch') || name.includes('sachet')
+  })
+  if (!token) return pouches[0]?.id || null
+  return pouches.find((item) => (item.name || '').toLowerCase().includes(token))?.id || pouches[0]?.id || null
 }
 
 export default function DemandeDetailPage() {
@@ -81,7 +100,21 @@ export default function DemandeDetailPage() {
           </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">{Math.round((row.received_output / Math.max(1, row.expected_output)) * 100)}% reçu - reste {remaining}</div>
           <div className="flex gap-2">
-            <button onClick={async () => { const u = await updateDrugProductionTracking(row.id, { receivedOutput: row.expected_output, status: 'completed' }); setRow(u) }} className="rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 font-semibold text-emerald-100">Valider réception</button>
+            <button onClick={async () => {
+              try {
+                const pouchId = await findPouchItemId(String(row.type))
+                if (!pouchId) {
+                  toast.error('Aucun item pochon trouvé pour cette drogue.')
+                  return
+                }
+                await adjustDrugStock({ itemId: pouchId, delta: row.expected_output, note: `Entrée auto livrée ${row.id} (${row.partner_name})` })
+                const u = await updateDrugProductionTracking(row.id, { receivedOutput: row.expected_output, status: 'completed' })
+                setRow(u)
+                toast.success('Livraison validée et stock mis à jour.')
+              } catch (error: unknown) {
+                toast.error(error instanceof Error ? error.message : 'Erreur livraison.')
+              }
+            }} className="rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 font-semibold text-emerald-100">Livrée</button>
             <Link href={`/drogues/demandes/${row.id}?mode=edit`} className="rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 py-2 font-semibold text-amber-100">Modifier</Link>
             <button onClick={async () => { const u = await updateDrugProductionTracking(row.id, { status: 'cancelled' }); setRow(u) }} className="rounded-xl border border-rose-300/35 bg-rose-500/15 px-4 py-2 font-semibold text-rose-100">Annuler</button>
             <button onClick={async () => { try { await deleteDrugProductionTracking(row.id); toast.success('Transaction supprimée.'); router.replace('/drogues/suivi-production') } catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Suppression impossible.') } }} className="rounded-xl border border-red-300/35 bg-red-500/15 px-4 py-2 font-semibold text-red-100">Supprimer</button>
