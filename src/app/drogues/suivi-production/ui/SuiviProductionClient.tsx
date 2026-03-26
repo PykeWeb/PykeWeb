@@ -285,7 +285,27 @@ export default function SuiviProductionClient() {
         toast.success('Demande créée (mode compatibilité).')
       } catch (retryError: unknown) {
         const message = retryError instanceof Error ? retryError.message : (error instanceof Error ? error.message : 'Impossible de créer la demande.')
-        toast.error(message)
+        const draftId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `draft-${Date.now()}`
+        const draft: DrugProductionTrackingRow = {
+          id: draftId,
+          group_id: 'local-draft',
+          partner_name: newRequest.partnerName.trim(),
+          type: newRequest.type,
+          quantity_sent: quantitySent,
+          ratio: 1,
+          expected_output: expectedFromForm,
+          received_output: 0,
+          status: 'in_progress',
+          note: `[BROUILLON LOCAL] ${newRequest.note || ''}`.trim() || null,
+          created_at: new Date().toISOString(),
+          expected_date: /^\d{4}-\d{2}-\d{2}$/.test(newRequest.expectedDate || '') ? newRequest.expectedDate : null,
+        }
+        setRows((prev) => [draft, ...prev])
+        setSelectedId(draft.id)
+        setCreating(false)
+        setNewRequest(NEW_REQUEST_INITIAL)
+        setNoteExpanded(false)
+        toast.error(`${message} • Demande gardée en brouillon local.`)
       }
     } finally {
       setSaving(false)

@@ -63,6 +63,9 @@ export async function createDrugProductionTracking(payload: {
   const createdAtValue = payload.createdAt && /^\d{4}-\d{2}-\d{2}$/.test(payload.createdAt)
     ? new Date(`${payload.createdAt}T00:00:00.000Z`).toISOString()
     : undefined
+  const expectedDateValue = payload.expectedDate && /^\d{4}-\d{2}-\d{2}$/.test(payload.expectedDate)
+    ? payload.expectedDate
+    : null
 
   const { data, error } = await supabase
     .from('drug_production_tracking')
@@ -77,12 +80,12 @@ export async function createDrugProductionTracking(payload: {
       status,
       note: payload.note?.trim() || null,
       created_at: createdAtValue,
-      expected_date: payload.expectedDate || null,
+      expected_date: expectedDateValue,
     })
     .select('*')
     .single()
 
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Erreur création demande')
   return data as DrugProductionTrackingRow
 }
 
