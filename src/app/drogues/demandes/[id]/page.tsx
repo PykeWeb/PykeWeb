@@ -9,6 +9,14 @@ import { Panel } from '@/components/ui/Panel'
 import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
+function uiTypeLabel(rawType: string) {
+  const type = String(rawType || '').trim().toLowerCase()
+  if (type.includes('coke')) return 'Coke'
+  if (type.includes('meth')) return 'Meth'
+  if (type.includes('autre') || type.includes('other')) return 'Autres'
+  return String(rawType || '').split('(')[0].trim() || 'Autres'
+}
+
 export default function DemandeDetailPage() {
   const params = useParams<{ id: string }>()
   const search = useSearchParams()
@@ -62,7 +70,7 @@ export default function DemandeDetailPage() {
       ) : (
         <Panel className="space-y-3">
           <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-2">
-            <p>Groupe: <b>{row.partner_name}</b></p><p>Type: <b>{row.type === 'coke' ? 'Coke' : row.type === 'meth' ? 'Meth' : 'Autres'}</b></p>
+            <p>Groupe: <b>{row.partner_name}</b></p><p>Type: <b>{uiTypeLabel(String(row.type))}</b></p>
             <p>Envoyé: <b>{row.quantity_sent}</b></p><p>Attendu: <b>{row.expected_output}</b></p>
             <p>Reçu: <b>{row.received_output}</b></p><p>Date: <b>{new Date(row.created_at).toLocaleDateString('fr-FR')}</b></p>
             <p>Date retour: <b>{row.expected_date || '—'}</b></p><p>Statut: <b>{row.status}</b></p>

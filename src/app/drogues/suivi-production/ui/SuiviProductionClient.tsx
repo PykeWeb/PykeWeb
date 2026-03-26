@@ -65,10 +65,13 @@ function normalize(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
-function typeLabel(type: ProductionType) {
-  if (type === 'coke') return 'Coke'
-  if (type === 'meth') return 'Meth'
-  return 'Autres'
+function typeLabel(rawType: string) {
+  const type = String(rawType || '').trim().toLowerCase()
+  if (type.includes('coke')) return 'Coke'
+  if (type.includes('meth')) return 'Meth'
+  if (type.includes('autre') || type.includes('other')) return 'Autres'
+  const cleaned = String(rawType || '').split('(')[0].trim()
+  return cleaned || 'Autres'
 }
 
 function statusLabel(status: ProductionStatus) {
@@ -214,19 +217,23 @@ export default function SuiviProductionClient() {
   }, [selected])
 
   const selectedFinance = useMemo(() => {
-    if (!selected) return { brickCount: 0, seedCost: 0, pouchCost: 0, brickCost: 0, revenue: 0, estimatedProfit: 0 }
+    if (!selected) return { brickCount: 0, seedCost: 0, pouchCost: 0, brickCost: 0, revenue: 0, totalCost: 0, hasSalePrice: false, estimatedProfit: 0 }
     const brickCount = selected.expected_output / POUCHES_PER_BRICK
-    const revenue = selected.expected_output * pouchSalePrice
+    const hasSalePrice = pouchSalePrice > 0
+    const revenue = hasSalePrice ? selected.expected_output * pouchSalePrice : 0
     const seedCost = selected.quantity_sent * seedPrice
     const brickCost = brickCount * brickTransformCost
     const pouchCost = (selected.expected_output / POUCH_BATCH_SIZE) * pouchTransformCost
+    const totalCost = seedCost + brickCost + pouchCost
     return {
       brickCount,
       seedCost,
       brickCost,
       pouchCost,
       revenue,
-      estimatedProfit: revenue - seedCost - brickCost - pouchCost,
+      totalCost,
+      hasSalePrice,
+      estimatedProfit: hasSalePrice ? (revenue - totalCost) : 0,
     }
   }, [brickTransformCost, pouchSalePrice, pouchTransformCost, seedPrice, selected])
 
@@ -433,19 +440,24 @@ export default function SuiviProductionClient() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
                   <p className="text-xs text-white/65">Coût transfo total</p>
-                  <p className="font-semibold">{money(selectedFinance.seedCost + selectedFinance.brickCost + selectedFinance.pouchCost)}</p>
+                  <p className="font-semibold">{money(selectedFinance.totalCost)}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2.5 text-sm">
                   <p className="text-xs text-emerald-100/70">Bénéfice estimé</p>
                   <p className="font-semibold">{money(selectedFinance.estimatedProfit)}</p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 font-semibold text-amber-100 transition hover:bg-amber-500/25">
+              {!selectedFinance.hasSalePrice ? (
+                <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 p-2 text-xs text-amber-100/90">
+                  Prix vente pochon non configuré → bénéfice affiché à 0.
+                </div>
+              ) : null}
+              <div className="grid grid-cols-2 gap-2">
+                <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-3 font-semibold text-amber-100 transition hover:bg-amber-500/25">
                   <Save className="h-4 w-4" />
                   Ouvrir modification
                 </Link>
-                <Link href={`/drogues/demandes/${selected.id}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
+                <Link href={`/drogues/demandes/${selected.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-3 font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
                   <ExternalLink className="h-4 w-4" />
                   Ouvrir détail complet
                 </Link>
