@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Beaker, CheckCircle2, Clock3, Coins, Factory, FlaskConical, Plus, ReceiptText, Save, Sparkles, XCircle } from 'lucide-react'
+import { ArrowRightLeft, Beaker, CheckCircle2, Clock3, Coins, Factory, FlaskConical, Package, Plus, ReceiptText, Save, Sparkles, Sprout, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -49,6 +49,13 @@ const FLOW_OPTIONS: { value: FlowMode; label: string }[] = [
   { value: 'full_chain', label: 'Les 3 étapes' },
 ]
 
+const FLOW_META: Record<FlowMode, { icon: typeof Sprout; description: string }> = {
+  seed_only: { icon: Sprout, description: 'Achat simple de graines' },
+  leaf_to_brick: { icon: ArrowRightLeft, description: 'Transformer feuilles en bricks' },
+  brick_to_pouch: { icon: Package, description: 'Transformer bricks en pochons' },
+  full_chain: { icon: Sparkles, description: 'Graines → Bricks → Pochons' },
+}
+
 function money(value: number) {
   return `${Math.round(value)} $`
 }
@@ -85,6 +92,7 @@ export default function SuiviProductionClient() {
   const [receivedInput, setReceivedInput] = useState('0')
   const [noteInput, setNoteInput] = useState('')
   const [pouchSalePrice, setPouchSalePrice] = useState(0)
+  const [seedPrice, setSeedPrice] = useState(0)
   const [brickTransformCost, setBrickTransformCost] = useState(0)
   const [pouchTransformCost, setPouchTransformCost] = useState(0)
   const [assetImages, setAssetImages] = useState<{ pouch: string | null; brick: string | null; leaf: string | null }>({ pouch: null, brick: null, leaf: null })
@@ -173,8 +181,12 @@ export default function SuiviProductionClient() {
         const pouch = items.find((item) => normalize(item.name).includes('pochon'))
         const brick = items.find((item) => normalize(item.name).includes('brique'))
         const leaf = items.find((item) => normalize(item.name).includes('feuille'))
+        const seed = items.find((item) => normalize(item.name).includes('graine'))
         if (pouch) {
           setPouchSalePrice(Math.max(0, Number(pouch.sell_price || pouch.buy_price || 0)))
+        }
+        if (seed) {
+          setSeedPrice(Math.max(0, Number(seed.buy_price || seed.sell_price || 0)))
         }
         setAssetImages({
           pouch: pouch?.image_url || null,
@@ -203,19 +215,21 @@ export default function SuiviProductionClient() {
   }, [selected])
 
   const selectedFinance = useMemo(() => {
-    if (!selected) return { brickCount: 0, pouchCost: 0, brickCost: 0, revenue: 0, estimatedProfit: 0 }
+    if (!selected) return { brickCount: 0, seedCost: 0, pouchCost: 0, brickCost: 0, revenue: 0, estimatedProfit: 0 }
     const brickCount = selected.expected_output / POUCHES_PER_BRICK
     const revenue = selected.expected_output * pouchSalePrice
+    const seedCost = selected.quantity_sent * seedPrice
     const brickCost = brickCount * brickTransformCost
     const pouchCost = (selected.expected_output / POUCH_BATCH_SIZE) * pouchTransformCost
     return {
       brickCount,
+      seedCost,
       brickCost,
       pouchCost,
       revenue,
-      estimatedProfit: revenue - brickCost - pouchCost,
+      estimatedProfit: revenue - seedCost - brickCost - pouchCost,
     }
-  }, [brickTransformCost, pouchSalePrice, pouchTransformCost, selected])
+  }, [brickTransformCost, pouchSalePrice, pouchTransformCost, seedPrice, selected])
 
   async function handleCreateRequest() {
     if (!newRequest.partnerName.trim()) {
@@ -310,6 +324,10 @@ export default function SuiviProductionClient() {
         <div>
           <p className="mb-1 text-xs text-white/70">Prix vente pochon</p>
           <Input value={pouchSalePrice} onChange={(event) => setPouchSalePrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+        </div>
+        <div>
+          <p className="mb-1 text-xs text-white/70">Prix graine</p>
+          <Input value={seedPrice} onChange={(event) => setSeedPrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
         </div>
         <div>
           <p className="mb-1 text-xs text-white/70">Coût transfo brick (unité)</p>
@@ -428,7 +446,7 @@ export default function SuiviProductionClient() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
                   <p className="text-xs text-white/65">Coût transfo total</p>
-                  <p className="font-semibold">{money(selectedFinance.brickCost + selectedFinance.pouchCost)}</p>
+                  <p className="font-semibold">{money(selectedFinance.seedCost + selectedFinance.brickCost + selectedFinance.pouchCost)}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2.5 text-sm">
                   <p className="text-xs text-emerald-100/70">Bénéfice estimé</p>
@@ -521,13 +539,31 @@ export default function SuiviProductionClient() {
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 sm:col-span-2">
                 <label className="text-xs text-white/70">Mode opération</label>
-                <GlassSelect
-                  value={newRequest.flowMode}
-                  onChange={(value) => setNewRequest((prev) => ({ ...prev, flowMode: value as FlowMode }))}
-                  options={FLOW_OPTIONS}
-                />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {FLOW_OPTIONS.map((option) => {
+                    const meta = FLOW_META[option.value]
+                    const Icon = meta.icon
+                    const active = newRequest.flowMode === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setNewRequest((prev) => ({ ...prev, flowMode: option.value }))}
+                        className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-cyan-200/50 bg-cyan-500/15 shadow-[0_0_18px_rgba(34,211,238,0.2)]' : 'border-white/12 bg-white/[0.03] hover:bg-white/[0.05]'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/15 bg-white/[0.04] text-white/85"><Icon className="h-4 w-4" /></span>
+                          <div>
+                            <p className="text-sm font-semibold text-white">{option.label}</p>
+                            <p className="text-[11px] text-white/60">{meta.description}</p>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               {newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' ? (
@@ -612,6 +648,18 @@ export default function SuiviProductionClient() {
                   <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                     <div className="mb-1 flex items-center gap-2">
                       <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/15 bg-white/[0.05]">
+                        {assetImages.leaf ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={assetImages.leaf} alt="Graine" className="h-full w-full object-cover" />
+                        ) : <div className="grid h-full w-full place-items-center text-white/60"><Sprout className="h-4 w-4" /></div>}
+                      </div>
+                      <p className="text-xs text-white/70">Prix graine</p>
+                    </div>
+                    <Input value={seedPrice} onChange={(event) => setSeedPrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <div className="mb-1 flex items-center gap-2">
+                      <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/15 bg-white/[0.05]">
                         {assetImages.pouch ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={assetImages.pouch} alt="Pochon" className="h-full w-full object-cover" />
@@ -646,18 +694,22 @@ export default function SuiviProductionClient() {
                     <Input value={pouchTransformCost} onChange={(event) => setPouchTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
                   </div>
                 </div>
-                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <div className="mt-2 grid gap-2 sm:grid-cols-4">
+                  <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs">
+                    <p className="text-amber-100/80">Coût graines</p>
+                    <p className="text-base font-semibold">{money(conversionFromForm.seedQty * seedPrice)}</p>
+                  </div>
                   <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs">
                     <p className="text-emerald-100/80">Total vente estimé</p>
                     <p className="text-base font-semibold">{money(conversionFromForm.pouches * pouchSalePrice)}</p>
                   </div>
                   <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs">
                     <p className="text-amber-100/80">Coût transfo total</p>
-                    <p className="text-base font-semibold">{money((conversionFromForm.netBricks * brickTransformCost) + ((conversionFromForm.pouches / POUCH_BATCH_SIZE) * pouchTransformCost))}</p>
+                    <p className="text-base font-semibold">{money((conversionFromForm.seedQty * seedPrice) + (conversionFromForm.netBricks * brickTransformCost) + ((conversionFromForm.pouches / POUCH_BATCH_SIZE) * pouchTransformCost))}</p>
                   </div>
                   <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2 text-xs">
                     <p className="text-cyan-100/80">Bénéfice estimé</p>
-                    <p className="text-base font-semibold">{money((conversionFromForm.pouches * pouchSalePrice) - ((conversionFromForm.netBricks * brickTransformCost) + ((conversionFromForm.pouches / POUCH_BATCH_SIZE) * pouchTransformCost)))}</p>
+                    <p className="text-base font-semibold">{money((conversionFromForm.pouches * pouchSalePrice) - ((conversionFromForm.seedQty * seedPrice) + (conversionFromForm.netBricks * brickTransformCost) + ((conversionFromForm.pouches / POUCH_BATCH_SIZE) * pouchTransformCost)))}</p>
                   </div>
                 </div>
               </div>
