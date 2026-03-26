@@ -60,6 +60,9 @@ export async function createDrugProductionTracking(payload: {
     : Math.max(0, Math.floor(payload.expectedOutput || 0))
   const receivedOutput = Math.max(0, Math.floor(payload.receivedOutput || 0))
   const status = computeStatus(receivedOutput, expectedOutput)
+  const createdAtValue = payload.createdAt
+    ? new Date(`${payload.createdAt}T00:00:00.000Z`).toISOString()
+    : undefined
 
   const { data, error } = await supabase
     .from('drug_production_tracking')
@@ -73,7 +76,7 @@ export async function createDrugProductionTracking(payload: {
       received_output: Math.min(receivedOutput, expectedOutput || receivedOutput),
       status,
       note: payload.note?.trim() || null,
-      created_at: payload.createdAt || undefined,
+      created_at: createdAtValue,
       expected_date: payload.expectedDate || null,
     })
     .select('*')

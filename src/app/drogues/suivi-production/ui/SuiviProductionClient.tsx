@@ -266,8 +266,9 @@ export default function SuiviProductionClient() {
       setCreating(false)
       setNewRequest(NEW_REQUEST_INITIAL)
       toast.success('Demande de production créée.')
-    } catch {
-      toast.error('Impossible de créer la demande.')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de créer la demande.'
+      toast.error(message)
     } finally {
       setSaving(false)
     }
@@ -525,12 +526,12 @@ export default function SuiviProductionClient() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1 sm:col-span-2">
+              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 sm:col-span-2">
                 <label className="text-xs text-white/70">Nom du groupe</label>
                 <Input value={newRequest.partnerName} onChange={(event) => setNewRequest((prev) => ({ ...prev, partnerName: event.target.value }))} />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                 <label className="text-xs text-white/70">Type</label>
                 <GlassSelect
                   value={newRequest.type}
@@ -567,7 +568,7 @@ export default function SuiviProductionClient() {
               </div>
 
               {newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' ? (
-                <div className="space-y-1">
+                <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                   <label className="text-xs text-white/70">Quantité graines</label>
                   <Input
                     value={newRequest.seedQty}
@@ -578,7 +579,7 @@ export default function SuiviProductionClient() {
               ) : null}
 
               {newRequest.flowMode === 'leaf_to_brick' ? (
-                <div className="space-y-1">
+                <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                   <label className="text-xs text-white/70">Quantité feuilles</label>
                   <Input
                     value={newRequest.leafQty}
@@ -589,7 +590,7 @@ export default function SuiviProductionClient() {
               ) : null}
 
               {newRequest.flowMode === 'brick_to_pouch' ? (
-                <div className="space-y-1">
+                <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                   <label className="text-xs text-white/70">Quantité bricks</label>
                   <Input
                     value={newRequest.brickQty}
@@ -599,7 +600,7 @@ export default function SuiviProductionClient() {
                 </div>
               ) : null}
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                 <label className="text-xs text-white/70">Attendu (auto)</label>
                 <Input value={expectedFromForm} readOnly className="opacity-80" />
                 <p className="text-[11px] text-white/55">
@@ -613,7 +614,7 @@ export default function SuiviProductionClient() {
                 </p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                 <label className="text-xs text-white/70">Date</label>
                 <Input
                   type="date"
@@ -622,7 +623,7 @@ export default function SuiviProductionClient() {
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                 <label className="text-xs text-white/70">Date estimée retour</label>
                 <Input
                   type="date"
@@ -631,7 +632,7 @@ export default function SuiviProductionClient() {
                 />
               </div>
 
-              <div className="space-y-1 sm:col-span-2">
+              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 sm:col-span-2">
                 <label className="text-xs text-white/70">Note</label>
                 <textarea
                   value={newRequest.note}
