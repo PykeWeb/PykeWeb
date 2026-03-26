@@ -320,20 +320,27 @@ export function SbEntreeSortieClient() {
                   </button>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
-                  <div className="inline-flex items-center gap-1">
-                    <button type="button" onClick={() => updateQuantity(entry.id, entry.quantity - 1)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/[0.06] text-white/90">
+                  <div className="inline-flex h-9 items-center overflow-hidden rounded-lg border border-white/15 bg-white/[0.04]">
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(entry.id, entry.quantity - 1)}
+                      className="inline-flex h-full w-9 items-center justify-center border-r border-white/10 text-white/90"
+                    >
                       <Minus className="h-4 w-4" />
-                    </button>
-                    <span className="inline-flex min-w-[44px] items-center justify-center text-sm font-semibold text-white">{entry.quantity}</span>
-                    <button type="button" onClick={() => updateQuantity(entry.id, entry.quantity + 1)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/[0.06] text-white/90">
-                      <Plus className="h-4 w-4" />
                     </button>
                     <Input
                       value={entry.quantity}
                       onChange={(event) => updateQuantity(entry.id, Number(event.target.value))}
                       inputMode="numeric"
-                      className="h-8 w-16 rounded-lg px-2 text-center text-sm"
+                      className="h-full w-16 rounded-none border-0 bg-transparent px-2 text-center text-sm"
                     />
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(entry.id, entry.quantity + 1)}
+                      className="inline-flex h-full w-9 items-center justify-center border-l border-white/10 text-white/90"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </div>
