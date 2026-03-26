@@ -18,8 +18,6 @@ type Mode = 'entree' | 'sortie'
 type FilterCategory = 'all' | ItemCategory
 type SelectedItem = { id: string; name: string; quantity: number; price: number; imageUrl?: string; category?: ItemCategory | 'custom' }
 
-const money = (value: number) => `${Math.max(0, value).toFixed(0)} $`
-
 function resolveModePrice(item: CatalogItem, mode: Mode) {
   if (mode === 'entree') return Math.max(0, Number(item.buy_price || item.sell_price || item.internal_value || 0))
   return Math.max(0, Number(item.sell_price || item.buy_price || item.internal_value || 0))
@@ -73,8 +71,8 @@ export function SbEntreeSortieClient() {
     Object.fromEntries(items.map((item) => [item.id, Math.max(0, Number(item.stock || 0))]))
   ), [items])
 
-  const total = useMemo(
-    () => selectedItems.reduce((sum, entry) => sum + (entry.price * entry.quantity), 0),
+  const totalItems = useMemo(
+    () => selectedItems.reduce((sum, entry) => sum + entry.quantity, 0),
     [selectedItems]
   )
 
@@ -222,7 +220,7 @@ export function SbEntreeSortieClient() {
           <Input value={counterparty} onChange={(event) => setCounterparty(event.target.value)} placeholder="Interlocuteur" className="h-11" />
           <Input value={member} onChange={(event) => setMember(event.target.value)} placeholder="Membre" className="h-11" />
           <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
-            Total: {money(total)}
+            Total items {mode === 'entree' ? 'entrés' : 'sortis'}: {totalItems}
           </div>
           <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
           <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
@@ -233,7 +231,7 @@ export function SbEntreeSortieClient() {
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-5 xl:items-stretch">
-        <Panel className="flex h-full max-h-[72vh] flex-col space-y-4 xl:col-span-3">
+        <Panel className="flex h-full max-h-[44vh] flex-col space-y-4 xl:col-span-3">
           <div className="grid gap-2 md:grid-cols-[180px_1fr]">
             <GlassSelect
               value={type}
@@ -251,7 +249,6 @@ export function SbEntreeSortieClient() {
             {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
             {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
             {filteredItems.map((item) => {
-              const itemUnitPrice = resolveModePrice(item, mode)
               const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
               const CategoryIcon =
                 normalizedCategory === 'objects' ? Box
@@ -282,7 +279,7 @@ export function SbEntreeSortieClient() {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-white">{item.name}</p>
-                      <p className="text-xs text-white/60">Stock: {Math.max(0, Number(item.stock || 0))} • PU: {money(itemUnitPrice)}</p>
+                      <p className="text-xs text-white/60">Stock: {Math.max(0, Number(item.stock || 0))}</p>
                     </div>
                   </div>
 
@@ -295,7 +292,7 @@ export function SbEntreeSortieClient() {
           </div>
         </Panel>
 
-        <Panel className="flex h-full max-h-[72vh] flex-col xl:col-span-2">
+        <Panel className="flex h-full max-h-[44vh] flex-col xl:col-span-2">
           <h2 className="text-xl font-semibold text-white">Objets sélectionnés</h2>
           <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
             {selectedItems.length === 0 ? <p className="py-8 text-center text-sm text-white/55">Aucun objet sélectionné.</p> : null}
@@ -338,13 +335,9 @@ export function SbEntreeSortieClient() {
                       className="h-8 w-16 rounded-lg px-2 text-center text-sm"
                     />
                   </div>
-                  <p className="text-sm font-semibold text-white">{money(entry.price * entry.quantity)}</p>
                 </div>
               </div>
             )})}
-          </div>
-          <div className="mt-4 border-t border-white/12 pt-3 text-right text-2xl font-semibold text-white">
-            TOTAL : {money(total)}
           </div>
         </Panel>
       </div>
