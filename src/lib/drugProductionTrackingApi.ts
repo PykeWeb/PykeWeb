@@ -90,8 +90,14 @@ export async function createDrugProductionTracking(payload: {
 }
 
 export async function updateDrugProductionTracking(id: string, payload: {
+  partnerName?: string
+  type?: ProductionType
+  quantitySent?: number
+  expectedOutput?: number
   receivedOutput?: number
   note?: string
+  expectedDate?: string | null
+  createdAt?: string
   status?: ProductionStatus
 }) {
   const { data: current, error: getError } = await supabase
@@ -103,6 +109,14 @@ export async function updateDrugProductionTracking(id: string, payload: {
 
   if (getError) throw new Error(getError.message || 'Demande introuvable')
 
+  const nextQuantitySent = payload.quantitySent === undefined
+    ? Math.max(0, Math.floor(Number(current.quantity_sent || 0)))
+    : Math.max(0, Math.floor(payload.quantitySent || 0))
+
+  const nextExpectedOutput = payload.expectedOutput === undefined
+    ? Math.max(0, Math.floor(Number(current.expected_output || 0)))
+    : Math.max(0, Math.floor(payload.expectedOutput || 0))
+
   const nextReceived = payload.receivedOutput === undefined
     ? Number(current.received_output || 0)
     : Math.max(0, Math.floor(payload.receivedOutput || 0))
@@ -110,13 +124,28 @@ export async function updateDrugProductionTracking(id: string, payload: {
   const forcedStatus = payload.status
   const computedStatus = forcedStatus === 'cancelled'
     ? 'cancelled'
-    : computeStatus(nextReceived, Number(current.expected_output || 0), current.status)
+    : computeStatus(nextReceived, nextExpectedOutput, current.status)
+
+  const createdAtValue = payload.createdAt && /^\d{4}-\d{2}-\d{2}$/.test(payload.createdAt)
+    ? new Date(`${payload.createdAt}T00:00:00.000Z`).toISOString()
+    : undefined
+  const expectedDateValue = payload.expectedDate === undefined
+    ? current.expected_date
+    : payload.expectedDate && /^\d{4}-\d{2}-\d{2}$/.test(payload.expectedDate)
+      ? payload.expectedDate
+      : null
 
   const { data, error } = await supabase
     .from('drug_production_tracking')
     .update({
-      received_output: Math.min(nextReceived, Math.max(0, Number(current.expected_output || 0))),
+      partner_name: payload.partnerName?.trim() || current.partner_name,
+      type: payload.type ?? current.type,
+      quantity_sent: nextQuantitySent,
+      expected_output: nextExpectedOutput,
+      received_output: Math.min(nextReceived, nextExpectedOutput),
       note: payload.note === undefined ? current.note : payload.note?.trim() || null,
+      expected_date: expectedDateValue,
+      ...(createdAtValue ? { created_at: createdAtValue } : {}),
       status: forcedStatus ?? computedStatus,
     })
     .eq('id', id)
@@ -126,4 +155,14 @@ export async function updateDrugProductionTracking(id: string, payload: {
 
   if (error) throw new Error(error.message || 'Erreur mise à jour demande')
   return data as DrugProductionTrackingRow
+}
+
+export async function deleteDrugProductionTracking(id: string) {
+  const { error } = await supabase
+    .from('drug_production_tracking')
+    .delete()
+    .eq('id', id)
+    .eq('group_id', currentGroupId())
+
+  if (error) throw new Error(error.message || 'Erreur suppression demande')
 }

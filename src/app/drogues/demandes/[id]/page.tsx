@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
 import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
-import { listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
+import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
 export default function DemandeDetailPage() {
   const params = useParams<{ id: string }>()
@@ -22,8 +23,23 @@ export default function DemandeDetailPage() {
   async function onUpdate(value: DemandFormValue, expectedOutput: number) {
     if (!row) return
     const nextStatus = row.received_output >= expectedOutput ? 'completed' : 'in_progress'
-    const updated = await updateDrugProductionTracking(row.id, { note: value.note, status: nextStatus })
+    const quantitySent = value.mode === 'seed_only' || value.mode === 'full_chain'
+      ? value.quantitySeeds
+      : value.mode === 'leaf_to_brick'
+        ? value.quantityLeaves
+        : value.quantityBricks
+    const updated = await updateDrugProductionTracking(row.id, {
+      partnerName: value.partnerName,
+      type: value.type,
+      quantitySent,
+      expectedOutput,
+      note: value.note,
+      expectedDate: value.expectedDate || null,
+      createdAt: value.createdAt,
+      status: nextStatus,
+    })
     setRow(updated)
+    toast.success('Transaction mise à jour.')
     router.replace(`/drogues/demandes/${row.id}`)
   }
 
@@ -37,7 +53,7 @@ export default function DemandeDetailPage() {
       {editMode ? (
         <Panel>
           <DemandePartenaireForm
-            initial={{ partnerName: row.partner_name, type: row.type, mode: 'full_chain', quantitySeeds: row.quantity_sent, quantityLeaves: row.quantity_sent, quantityBricks: Math.floor(row.expected_output / 10), seedPrice: 0, pouchSalePrice: 0, brickTransformCost: 0, pouchTransformCost: 0, note: row.note || '', expectedDate: row.expected_date || '' }}
+            initial={{ partnerName: row.partner_name, type: row.type, mode: 'full_chain', createdAt: row.created_at.slice(0, 10), quantitySeeds: row.quantity_sent, quantityLeaves: row.quantity_sent, quantityBricks: Math.floor(row.expected_output / 10), seedPrice: 0, pouchSalePrice: 0, brickTransformCost: 0, pouchTransformCost: 0, note: row.note || '', expectedDate: row.expected_date || '' }}
             submitLabel="Modifier"
             onSubmit={onUpdate}
             onCancel={() => router.replace(`/drogues/demandes/${row.id}`)}
@@ -56,6 +72,8 @@ export default function DemandeDetailPage() {
             <button onClick={async () => { const u = await updateDrugProductionTracking(row.id, { receivedOutput: row.expected_output, status: 'completed' }); setRow(u) }} className="rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 font-semibold text-emerald-100">Valider réception</button>
             <Link href={`/drogues/demandes/${row.id}?mode=edit`} className="rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 py-2 font-semibold text-amber-100">Modifier</Link>
             <button onClick={async () => { const u = await updateDrugProductionTracking(row.id, { status: 'cancelled' }); setRow(u) }} className="rounded-xl border border-rose-300/35 bg-rose-500/15 px-4 py-2 font-semibold text-rose-100">Annuler</button>
+            <button onClick={async () => { try { await deleteDrugProductionTracking(row.id); toast.success('Transaction supprimée.'); router.replace('/drogues/suivi-production') } catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Suppression impossible.') } }} className="rounded-xl border border-red-300/35 bg-red-500/15 px-4 py-2 font-semibold text-red-100">Supprimer</button>
+            <Link href="/drogues/suivi-production" className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 font-semibold text-white">Retour</Link>
           </div>
         </Panel>
       )}

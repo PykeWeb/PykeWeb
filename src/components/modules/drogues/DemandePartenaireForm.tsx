@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { CalendarClock, CalendarDays, NotebookPen, Plus, Tags, User } from 'lucide-react'
+import { NotebookPen, Plus, Tags, User } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
@@ -12,6 +12,7 @@ export type DemandFormValue = {
   partnerName: string
   type: ProductionType
   mode: DemandMode
+  createdAt: string
   quantitySeeds: number
   quantityLeaves: number
   quantityBricks: number
@@ -89,8 +90,8 @@ export function DemandePartenaireForm({
           <div><p className="mb-1 text-xs text-white/70">Prix vente pochon</p><Input value={form.pouchSalePrice} onChange={(e) => setForm((p) => ({ ...p, pouchSalePrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/70">Coût transfo brick</p><Input value={form.brickTransformCost} onChange={(e) => setForm((p) => ({ ...p, brickTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/70">Coût transfo pochon</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/70">Date</p><div className="relative"><CalendarDays className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" /><Input type="date" /></div></div>
-          <div><p className="mb-1 text-xs text-white/70">Date estimée retour</p><div className="relative"><CalendarClock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" /><Input type="date" value={form.expectedDate} onChange={(e) => setForm((p) => ({ ...p, expectedDate: e.target.value }))} /></div></div>
+          <div><p className="mb-1 text-xs text-white/70">Date</p><Input type="date" value={form.createdAt} onChange={(e) => setForm((p) => ({ ...p, createdAt: e.target.value }))} /></div>
+          <div><p className="mb-1 text-xs text-white/70">Date estimée retour</p><Input type="date" value={form.expectedDate} onChange={(e) => setForm((p) => ({ ...p, expectedDate: e.target.value }))} /></div>
         </div>
 
         {showNote ? (

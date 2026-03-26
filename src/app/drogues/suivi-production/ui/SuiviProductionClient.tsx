@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
+import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, ExternalLink, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -257,6 +257,7 @@ export default function SuiviProductionClient() {
         ratio: 1,
         expectedOutput: expectedFromForm,
         note: `[${flowLabel}] ${newRequest.note || ''}`.trim(),
+        createdAt: newRequest.createdAt || undefined,
         expectedDate: newRequest.expectedDate || undefined,
       })
       setRows((prev) => [created, ...prev])
@@ -267,14 +268,15 @@ export default function SuiviProductionClient() {
       toast.success('Demande de production créée.')
     } catch (error: unknown) {
       try {
-        const created = await createDrugProductionTracking({
-          partnerName: newRequest.partnerName.trim(),
-          type: newRequest.type,
-          quantitySent,
-          ratio: 1,
-          expectedOutput: expectedFromForm,
-          note: newRequest.note?.trim() || undefined,
-        })
+      const created = await createDrugProductionTracking({
+        partnerName: newRequest.partnerName.trim(),
+        type: newRequest.type,
+        quantitySent,
+        ratio: 1,
+        expectedOutput: expectedFromForm,
+        createdAt: newRequest.createdAt || undefined,
+        note: newRequest.note?.trim() || undefined,
+      })
         setRows((prev) => [created, ...prev])
         setSelectedId(created.id)
         setCreating(false)
@@ -368,12 +370,19 @@ export default function SuiviProductionClient() {
                   return (
                     <tr
                       key={row.id}
-                      onClick={() => router.push(`/drogues/demandes/${row.id}`)}
+                      onClick={() => setSelectedId(row.id)}
                       className={`border-t border-white/8 transition ${active ? 'bg-cyan-500/[0.12] shadow-[inset_0_0_35px_rgba(34,211,238,0.15)]' : 'hover:bg-white/[0.04]'}`}
                     >
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/30 bg-cyan-500/10 text-cyan-100"><Factory className="h-4 w-4" /></span>
+                          <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); router.push(`/drogues/demandes/${row.id}`) }}
+                            className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/30 bg-cyan-500/10 text-cyan-100 transition hover:bg-cyan-500/20"
+                            title="Ouvrir le détail"
+                          >
+                            <Factory className="h-4 w-4" />
+                          </button>
                           <span className="font-medium text-white">{row.partner_name}</span>
                         </div>
                       </td>
@@ -431,14 +440,16 @@ export default function SuiviProductionClient() {
                   <p className="font-semibold">{money(selectedFinance.estimatedProfit)}</p>
                 </div>
               </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-white/70">
-                Vue lecture seule. Clique sur “Ouvrir modification” pour éditer cette transaction.
+              <div className="flex flex-wrap items-center gap-2">
+                <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 font-semibold text-amber-100 transition hover:bg-amber-500/25">
+                  <Save className="h-4 w-4" />
+                  Ouvrir modification
+                </Link>
+                <Link href={`/drogues/demandes/${selected.id}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
+                  <ExternalLink className="h-4 w-4" />
+                  Ouvrir détail complet
+                </Link>
               </div>
-              <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 font-semibold text-amber-100 transition hover:bg-amber-500/25">
-                <Save className="h-4 w-4" />
-                Ouvrir modification
-              </Link>
             </div>
           )}
         </Panel>

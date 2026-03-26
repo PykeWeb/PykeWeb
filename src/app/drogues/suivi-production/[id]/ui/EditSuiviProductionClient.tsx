@@ -54,6 +54,7 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
               partnerName: row.partner_name,
               type: row.type,
               mode: 'full_chain',
+              createdAt: row.created_at.slice(0, 10),
               quantitySeeds: row.quantity_sent,
               quantityLeaves: row.quantity_sent,
               quantityBricks: Math.floor(row.expected_output / 10),
