@@ -1,7 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User, XCircle } from 'lucide-react'
+import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -12,7 +13,6 @@ import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import {
   createDrugProductionTracking,
   listDrugProductionTrackings,
-  updateDrugProductionTracking,
   type DrugProductionTrackingRow,
   type ProductionStatus,
   type ProductionType,
@@ -89,19 +89,23 @@ export default function SuiviProductionClient() {
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [newRequest, setNewRequest] = useState(NEW_REQUEST_INITIAL)
-  const [receivedInput, setReceivedInput] = useState('0')
-  const [noteInput, setNoteInput] = useState('')
   const [noteExpanded, setNoteExpanded] = useState(false)
   const [pouchSalePrice, setPouchSalePrice] = useState(0)
   const [seedPrice, setSeedPrice] = useState(0)
   const [brickTransformCost, setBrickTransformCost] = useState(0)
   const [pouchTransformCost, setPouchTransformCost] = useState(0)
   const [assetImages, setAssetImages] = useState<{ pouch: string | null; brick: string | null; leaf: string | null }>({ pouch: null, brick: null, leaf: null })
+  const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed'>('all')
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) ?? null,
     [rows, selectedId]
   )
+
+  const visibleRows = useMemo(() => {
+    if (statusFilter === 'all') return rows
+    return rows.filter((row) => row.status === statusFilter)
+  }, [rows, statusFilter])
 
   const expectedFromForm = useMemo(() => {
     const baseLeaves = newRequest.flowMode === 'full_chain'
@@ -162,8 +166,6 @@ export default function SuiviProductionClient() {
         setRows(data)
         if (data.length > 0) {
           setSelectedId(data[0].id)
-          setReceivedInput(String(data[0].received_output || 0))
-          setNoteInput(data[0].note || '')
         }
       } catch {
         toast.error('Impossible de charger le suivi de production.')
@@ -197,12 +199,6 @@ export default function SuiviProductionClient() {
       })
       .catch(() => undefined)
   }, [])
-
-  useEffect(() => {
-    if (!selected) return
-    setReceivedInput(String(selected.received_output || 0))
-    setNoteInput(selected.note || '')
-  }, [selected])
 
   const progress = useMemo(() => {
     if (!selected) return 0
@@ -312,65 +308,32 @@ export default function SuiviProductionClient() {
     }
   }
 
-  async function handleUpdateSelected(mode: 'validate' | 'edit') {
-    if (!selected) return
-    if (selected.group_id === 'local-draft') {
-      const received = Math.max(0, Math.floor(Number(receivedInput || 0)))
-      const nextStatus: ProductionStatus = received >= selected.expected_output ? 'completed' : 'in_progress'
-      setRows((prev) => prev.map((row) => (row.id === selected.id
-        ? { ...row, received_output: received, status: mode === 'validate' ? nextStatus : row.status, note: noteInput || null }
-        : row)))
-      toast.success('Brouillon local modifié.')
-      return
-    }
-    setSaving(true)
-    try {
-      const received = Math.max(0, Math.floor(Number(receivedInput || 0)))
-      const nextStatus: ProductionStatus | undefined = mode === 'validate'
-        ? (received >= selected.expected_output ? 'completed' : 'in_progress')
-        : undefined
-
-      const updated = await updateDrugProductionTracking(selected.id, {
-        receivedOutput: received,
-        note: noteInput,
-        status: nextStatus,
-      })
-
-      setRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
-      toast.success(mode === 'validate' ? 'Réception validée.' : 'Demande modifiée.')
-    } catch {
-      toast.error('Mise à jour impossible.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <div className="space-y-4">
       <PageHeader title="Suivi Production" subtitle="Suivi des transformations externes (coke, meth...)" />
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <Panel className="border-sky-300/25 bg-gradient-to-br from-sky-500/15 to-blue-600/15">
+        <button type="button" onClick={() => setStatusFilter('in_progress')} className={`rounded-2xl border px-4 py-3 text-left ${statusFilter === 'in_progress' ? 'border-sky-200/60 bg-gradient-to-br from-sky-500/30 to-blue-600/20' : 'border-sky-300/25 bg-gradient-to-br from-sky-500/15 to-blue-600/15'}`}>
           <div className="flex items-center justify-between text-sky-100/90"><p className="text-xs">Total en cours</p><Clock3 className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.inProgress}</p>
-        </Panel>
-        <Panel className="border-violet-300/25 bg-gradient-to-br from-violet-500/15 to-fuchsia-600/15">
+        </button>
+        <button type="button" onClick={() => setStatusFilter('completed')} className={`rounded-2xl border px-4 py-3 text-left ${statusFilter === 'completed' ? 'border-violet-200/60 bg-gradient-to-br from-violet-500/30 to-fuchsia-600/20' : 'border-violet-300/25 bg-gradient-to-br from-violet-500/15 to-fuchsia-600/15'}`}>
           <div className="flex items-center justify-between text-violet-100/90"><p className="text-xs">Total terminé</p><CheckCircle2 className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.completed}</p>
-        </Panel>
-        <Panel className="border-emerald-300/25 bg-gradient-to-br from-emerald-500/15 to-teal-600/15">
+        </button>
+        <button type="button" onClick={() => setStatusFilter('all')} className={`rounded-2xl border px-4 py-3 text-left ${statusFilter === 'all' ? 'border-emerald-200/60 bg-gradient-to-br from-emerald-500/30 to-teal-600/20' : 'border-emerald-300/25 bg-gradient-to-br from-emerald-500/15 to-teal-600/15'}`}>
           <div className="flex items-center justify-between text-emerald-100/90"><p className="text-xs">Pochons attendus</p><FlaskConical className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.expected}</p>
-        </Panel>
-        <Panel className="border-rose-300/25 bg-gradient-to-br from-rose-500/15 to-red-600/15">
+        </button>
+        <button type="button" onClick={() => setStatusFilter('all')} className="rounded-2xl border border-rose-300/25 bg-gradient-to-br from-rose-500/15 to-red-600/15 px-4 py-3 text-left">
           <div className="flex items-center justify-between text-rose-100/90"><p className="text-xs">Pochons reçus</p><Beaker className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.received}</p>
-        </Panel>
-        <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm">
+        </button>
+        <button type="button" onClick={() => setStatusFilter('all')} className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-left text-sm">
           <p className="text-xs text-violet-100/80">Partenaires utilisés</p>
           <p className="text-lg font-semibold">{partnerStats.uniquePartners}</p>
           <p className="mt-1 text-xs text-violet-100/80">Top: {partnerStats.topPartner} ({partnerStats.topPartnerCount})</p>
-        </div>
+        </button>
       </div>
 
       <div className="flex items-center justify-end">
@@ -397,8 +360,8 @@ export default function SuiviProductionClient() {
               </thead>
               <tbody>
                 {loading ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={7}>Chargement…</td></tr> : null}
-                {!loading && rows.length === 0 ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={7}>Aucune demande.</td></tr> : null}
-                {rows.map((row) => {
+                {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={7}>Aucune demande.</td></tr> : null}
+                {visibleRows.map((row) => {
                   const active = row.id === selectedId
                   return (
                     <tr
@@ -475,87 +438,13 @@ export default function SuiviProductionClient() {
                 </div>
               </div>
 
-              <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 sm:grid-cols-2">
-                <div>
-                  <p className="mb-1 text-xs text-white/65">Prix graine</p>
-                  <Input value={seedPrice} onChange={(event) => setSeedPrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-                </div>
-                <div>
-                  <p className="mb-1 text-xs text-white/65">Prix vente pochon</p>
-                  <Input value={pouchSalePrice} onChange={(event) => setPouchSalePrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-                </div>
-                <div>
-                  <p className="mb-1 text-xs text-white/65">Coût transfo brick</p>
-                  <Input value={brickTransformCost} onChange={(event) => setBrickTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-                </div>
-                <div>
-                  <p className="mb-1 text-xs text-white/65">Coût transfo pochon</p>
-                  <Input value={pouchTransformCost} onChange={(event) => setPouchTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-                </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-white/70">
+                Vue lecture seule. Clique sur “Ouvrir modification” pour éditer cette transaction.
               </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-white/70">Reçu</label>
-                <Input value={receivedInput} onChange={(event) => setReceivedInput(event.target.value)} inputMode="numeric" />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-white/70">Note</label>
-                <textarea
-                  value={noteInput}
-                  onChange={(event) => setNoteInput(event.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/45"
-                  placeholder="Notes / précision..."
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleUpdateSelected('validate')}
-                  disabled={saving}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 font-semibold text-emerald-100 transition hover:bg-emerald-500/25 disabled:opacity-60"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Valider réception
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleUpdateSelected('edit')}
-                  disabled={saving}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 font-semibold text-amber-100 transition hover:bg-amber-500/25 disabled:opacity-60"
-                >
-                  <Save className="h-4 w-4" />
-                  Modifier
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!selected) return
-                    if (selected.group_id === 'local-draft') {
-                      setRows((prev) => prev.map((row) => (row.id === selected.id ? { ...row, status: 'cancelled' } : row)))
-                      toast.success('Brouillon local annulé.')
-                      return
-                    }
-                    setSaving(true)
-                    try {
-                      const updated = await updateDrugProductionTracking(selected.id, { status: 'cancelled' })
-                      setRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
-                      toast.success('Demande annulée.')
-                    } catch {
-                      toast.error('Annulation impossible.')
-                    } finally {
-                      setSaving(false)
-                    }
-                  }}
-                  disabled={saving}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-rose-300/35 bg-rose-500/15 px-4 font-semibold text-rose-100 transition hover:bg-rose-500/25 disabled:opacity-60"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Annuler
-                </button>
-              </div>
+              <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 font-semibold text-amber-100 transition hover:bg-amber-500/25">
+                <Save className="h-4 w-4" />
+                Ouvrir modification
+              </Link>
             </div>
           )}
         </Panel>
