@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Beaker, CheckCircle2, Clock3, Factory, FlaskConical, Plus, Save, XCircle } from 'lucide-react'
+import { Beaker, CheckCircle2, Clock3, Coins, Factory, FlaskConical, Plus, ReceiptText, Save, Sparkles, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -76,6 +76,7 @@ export default function SuiviProductionClient() {
   const [pouchSalePrice, setPouchSalePrice] = useState(0)
   const [brickTransformCost, setBrickTransformCost] = useState(0)
   const [pouchTransformCost, setPouchTransformCost] = useState(0)
+  const [assetImages, setAssetImages] = useState<{ pouch: string | null; brick: string | null; leaf: string | null }>({ pouch: null, brick: null, leaf: null })
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) ?? null,
@@ -134,9 +135,16 @@ export default function SuiviProductionClient() {
     void listCatalogItemsUnified()
       .then((items) => {
         const pouch = items.find((item) => normalize(item.name).includes('pochon'))
+        const brick = items.find((item) => normalize(item.name).includes('brique'))
+        const leaf = items.find((item) => normalize(item.name).includes('feuille'))
         if (pouch) {
           setPouchSalePrice(Math.max(0, Number(pouch.sell_price || pouch.buy_price || 0)))
         }
+        setAssetImages({
+          pouch: pouch?.image_url || null,
+          brick: brick?.image_url || null,
+          leaf: leaf?.image_url || null,
+        })
       })
       .catch(() => undefined)
   }, [])
@@ -475,6 +483,7 @@ export default function SuiviProductionClient() {
                   onChange={(event) => setNewRequest((prev) => ({ ...prev, ratio: Number(event.target.value) || 0 }))}
                   inputMode="decimal"
                 />
+                <p className="text-[11px] text-white/55">Le ratio indique combien de feuilles finales tu obtiens pour 1 unité envoyée, avant la taxe brick de 5%.</p>
               </div>
 
               <div className="space-y-1">
@@ -512,6 +521,62 @@ export default function SuiviProductionClient() {
                   className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/45"
                   placeholder="Précisions / contact partenaire..."
                 />
+              </div>
+
+              <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.07] p-3 sm:col-span-2">
+                <p className="mb-2 text-sm font-semibold text-cyan-100">Prix & estimation</p>
+                <div className="grid gap-2 md:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <div className="mb-1 flex items-center gap-2">
+                      <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/15 bg-white/[0.05]">
+                        {assetImages.pouch ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={assetImages.pouch} alt="Pochon" className="h-full w-full object-cover" />
+                        ) : <div className="grid h-full w-full place-items-center text-white/60"><Sparkles className="h-4 w-4" /></div>}
+                      </div>
+                      <p className="text-xs text-white/70">Prix vente pochon</p>
+                    </div>
+                    <Input value={pouchSalePrice} onChange={(event) => setPouchSalePrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <div className="mb-1 flex items-center gap-2">
+                      <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/15 bg-white/[0.05]">
+                        {assetImages.brick ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={assetImages.brick} alt="Brick" className="h-full w-full object-cover" />
+                        ) : <div className="grid h-full w-full place-items-center text-white/60"><ReceiptText className="h-4 w-4" /></div>}
+                      </div>
+                      <p className="text-xs text-white/70">Coût transfo brick</p>
+                    </div>
+                    <Input value={brickTransformCost} onChange={(event) => setBrickTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <div className="mb-1 flex items-center gap-2">
+                      <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/15 bg-white/[0.05]">
+                        {assetImages.leaf ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={assetImages.leaf} alt="Feuille" className="h-full w-full object-cover" />
+                        ) : <div className="grid h-full w-full place-items-center text-white/60"><Coins className="h-4 w-4" /></div>}
+                      </div>
+                      <p className="text-xs text-white/70">Coût transfo pochon (lot)</p>
+                    </div>
+                    <Input value={pouchTransformCost} onChange={(event) => setPouchTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+                  </div>
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs">
+                    <p className="text-emerald-100/80">Total vente estimé</p>
+                    <p className="text-base font-semibold">{money(conversionFromForm.pouches * pouchSalePrice)}</p>
+                  </div>
+                  <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs">
+                    <p className="text-amber-100/80">Coût transfo total</p>
+                    <p className="text-base font-semibold">{money((conversionFromForm.netBricks * brickTransformCost) + ((conversionFromForm.pouches / POUCH_BATCH_SIZE) * pouchTransformCost))}</p>
+                  </div>
+                  <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2 text-xs">
+                    <p className="text-cyan-100/80">Bénéfice estimé</p>
+                    <p className="text-base font-semibold">{money((conversionFromForm.pouches * pouchSalePrice) - ((conversionFromForm.netBricks * brickTransformCost) + ((conversionFromForm.pouches / POUCH_BATCH_SIZE) * pouchTransformCost)))}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
