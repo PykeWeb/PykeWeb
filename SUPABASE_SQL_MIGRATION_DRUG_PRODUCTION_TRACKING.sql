@@ -20,3 +20,32 @@ create index if not exists drug_production_tracking_group_created_idx
 
 create index if not exists drug_production_tracking_group_status_idx
   on public.drug_production_tracking (group_id, status);
+
+alter table if exists public.drug_production_tracking enable row level security;
+
+drop policy if exists drug_production_tracking_anon_read on public.drug_production_tracking;
+drop policy if exists drug_production_tracking_anon_insert on public.drug_production_tracking;
+drop policy if exists drug_production_tracking_anon_update on public.drug_production_tracking;
+drop policy if exists drug_production_tracking_anon_delete on public.drug_production_tracking;
+drop policy if exists drug_production_tracking_authenticated_read on public.drug_production_tracking;
+drop policy if exists drug_production_tracking_authenticated_insert on public.drug_production_tracking;
+drop policy if exists drug_production_tracking_authenticated_update on public.drug_production_tracking;
+drop policy if exists drug_production_tracking_authenticated_delete on public.drug_production_tracking;
+
+create policy drug_production_tracking_anon_read on public.drug_production_tracking
+  for select to anon using (true);
+create policy drug_production_tracking_anon_insert on public.drug_production_tracking
+  for insert to anon with check (true);
+create policy drug_production_tracking_anon_update on public.drug_production_tracking
+  for update to anon using (true) with check (true);
+create policy drug_production_tracking_anon_delete on public.drug_production_tracking
+  for delete to anon using (true);
+
+create policy drug_production_tracking_authenticated_read on public.drug_production_tracking
+  for select to authenticated using (true);
+create policy drug_production_tracking_authenticated_insert on public.drug_production_tracking
+  for insert to authenticated with check (true);
+create policy drug_production_tracking_authenticated_update on public.drug_production_tracking
+  for update to authenticated using (true) with check (true);
+create policy drug_production_tracking_authenticated_delete on public.drug_production_tracking
+  for delete to authenticated using (true);
