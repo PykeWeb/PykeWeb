@@ -32,6 +32,10 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
     const status = row.received_output >= expectedOutput ? 'completed' : 'in_progress'
     const updated = await updateDrugProductionTracking(row.id, {
       note: `[${value.mode}] ${value.note || ''}`.trim(),
+      seedPrice: value.seedPrice,
+      pouchSalePrice: value.pouchSalePrice,
+      brickTransformCost: value.brickTransformCost,
+      pouchTransformCost: value.pouchTransformCost,
       status,
     })
     setRow(updated)
@@ -58,10 +62,10 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
               quantitySeeds: row.quantity_sent,
               quantityLeaves: row.quantity_sent,
               quantityBricks: Math.floor(row.expected_output / 10),
-              seedPrice: 0,
-              pouchSalePrice: 0,
-              brickTransformCost: 0,
-              pouchTransformCost: 0,
+              seedPrice: Number(row.seed_price || 0),
+              pouchSalePrice: Number(row.pouch_sale_price || 0),
+              brickTransformCost: Number(row.brick_transform_cost || 0),
+              pouchTransformCost: Number(row.pouch_transform_cost || 0),
               note: row.note || '',
               expectedDate: row.expected_date || '',
             }}

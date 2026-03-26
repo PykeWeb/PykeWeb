@@ -218,12 +218,16 @@ export default function SuiviProductionClient() {
 
   const selectedFinance = useMemo(() => {
     if (!selected) return { brickCount: 0, seedCost: 0, pouchCost: 0, brickCost: 0, revenue: 0, totalCost: 0, hasSalePrice: false, estimatedProfit: 0 }
+    const seedUnitPrice = Number(selected.seed_price ?? seedPrice ?? 0)
+    const saleUnitPrice = Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
+    const brickUnitCost = Number(selected.brick_transform_cost ?? brickTransformCost ?? 0)
+    const pouchUnitCost = Number(selected.pouch_transform_cost ?? pouchTransformCost ?? 0)
     const brickCount = selected.expected_output / POUCHES_PER_BRICK
-    const hasSalePrice = pouchSalePrice > 0
-    const revenue = hasSalePrice ? selected.expected_output * pouchSalePrice : 0
-    const seedCost = selected.quantity_sent * seedPrice
-    const brickCost = brickCount * brickTransformCost
-    const pouchCost = (selected.expected_output / POUCH_BATCH_SIZE) * pouchTransformCost
+    const hasSalePrice = saleUnitPrice > 0
+    const revenue = hasSalePrice ? selected.expected_output * saleUnitPrice : 0
+    const seedCost = selected.quantity_sent * seedUnitPrice
+    const brickCost = brickCount * brickUnitCost
+    const pouchCost = (selected.expected_output / POUCH_BATCH_SIZE) * pouchUnitCost
     const totalCost = seedCost + brickCost + pouchCost
     return {
       brickCount,
@@ -266,6 +270,10 @@ export default function SuiviProductionClient() {
         note: `[${flowLabel}] ${newRequest.note || ''}`.trim(),
         createdAt: newRequest.createdAt || undefined,
         expectedDate: newRequest.expectedDate || undefined,
+        seedPrice,
+        pouchSalePrice,
+        brickTransformCost,
+        pouchTransformCost,
       })
       setRows((prev) => [created, ...prev])
       setSelectedId(created.id)
@@ -283,6 +291,10 @@ export default function SuiviProductionClient() {
         expectedOutput: expectedFromForm,
         createdAt: newRequest.createdAt || undefined,
         note: newRequest.note?.trim() || undefined,
+        seedPrice,
+        pouchSalePrice,
+        brickTransformCost,
+        pouchTransformCost,
       })
         setRows((prev) => [created, ...prev])
         setSelectedId(created.id)
@@ -306,6 +318,10 @@ export default function SuiviProductionClient() {
           note: `[BROUILLON LOCAL] ${newRequest.note || ''}`.trim() || null,
           created_at: new Date().toISOString(),
           expected_date: /^\d{4}-\d{2}-\d{2}$/.test(newRequest.expectedDate || '') ? newRequest.expectedDate : null,
+          seed_price: seedPrice || null,
+          pouch_sale_price: pouchSalePrice || null,
+          brick_transform_cost: brickTransformCost || null,
+          pouch_transform_cost: pouchTransformCost || null,
         }
         setRows((prev) => [draft, ...prev])
         setSelectedId(draft.id)

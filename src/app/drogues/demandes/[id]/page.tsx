@@ -44,6 +44,10 @@ export default function DemandeDetailPage() {
       note: value.note,
       expectedDate: value.expectedDate || null,
       createdAt: value.createdAt,
+      seedPrice: value.seedPrice,
+      pouchSalePrice: value.pouchSalePrice,
+      brickTransformCost: value.brickTransformCost,
+      pouchTransformCost: value.pouchTransformCost,
       status: nextStatus,
     })
     setRow(updated)
@@ -61,7 +65,7 @@ export default function DemandeDetailPage() {
       {editMode ? (
         <Panel>
           <DemandePartenaireForm
-            initial={{ partnerName: row.partner_name, type: row.type, mode: 'full_chain', createdAt: row.created_at.slice(0, 10), quantitySeeds: row.quantity_sent, quantityLeaves: row.quantity_sent, quantityBricks: Math.floor(row.expected_output / 10), seedPrice: 0, pouchSalePrice: 0, brickTransformCost: 0, pouchTransformCost: 0, note: row.note || '', expectedDate: row.expected_date || '' }}
+            initial={{ partnerName: row.partner_name, type: row.type, mode: 'full_chain', createdAt: row.created_at.slice(0, 10), quantitySeeds: row.quantity_sent, quantityLeaves: row.quantity_sent, quantityBricks: Math.floor(row.expected_output / 10), seedPrice: Number(row.seed_price || 0), pouchSalePrice: Number(row.pouch_sale_price || 0), brickTransformCost: Number(row.brick_transform_cost || 0), pouchTransformCost: Number(row.pouch_transform_cost || 0), note: row.note || '', expectedDate: row.expected_date || '' }}
             submitLabel="Modifier"
             onSubmit={onUpdate}
             onCancel={() => router.replace(`/drogues/demandes/${row.id}`)}

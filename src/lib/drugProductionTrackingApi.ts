@@ -17,6 +17,10 @@ export type DrugProductionTrackingRow = {
   note: string | null
   created_at: string
   expected_date: string | null
+  seed_price: number | null
+  pouch_sale_price: number | null
+  brick_transform_cost: number | null
+  pouch_transform_cost: number | null
 }
 
 const BRICK_TAX_RATE = 0.05
@@ -49,6 +53,10 @@ export async function createDrugProductionTracking(payload: {
   note?: string
   createdAt?: string
   expectedDate?: string
+  seedPrice?: number
+  pouchSalePrice?: number
+  brickTransformCost?: number
+  pouchTransformCost?: number
 }) {
   const quantitySent = Math.max(0, Math.floor(payload.quantitySent || 0))
   const ratio = Math.max(0, Number(payload.ratio || 0))
@@ -81,6 +89,10 @@ export async function createDrugProductionTracking(payload: {
       note: payload.note?.trim() || null,
       created_at: createdAtValue,
       expected_date: expectedDateValue,
+      seed_price: payload.seedPrice === undefined ? null : Math.max(0, Number(payload.seedPrice || 0)),
+      pouch_sale_price: payload.pouchSalePrice === undefined ? null : Math.max(0, Number(payload.pouchSalePrice || 0)),
+      brick_transform_cost: payload.brickTransformCost === undefined ? null : Math.max(0, Number(payload.brickTransformCost || 0)),
+      pouch_transform_cost: payload.pouchTransformCost === undefined ? null : Math.max(0, Number(payload.pouchTransformCost || 0)),
     })
     .select('*')
     .single()
@@ -98,6 +110,10 @@ export async function updateDrugProductionTracking(id: string, payload: {
   note?: string
   expectedDate?: string | null
   createdAt?: string
+  seedPrice?: number
+  pouchSalePrice?: number
+  brickTransformCost?: number
+  pouchTransformCost?: number
   status?: ProductionStatus
 }) {
   const { data: current, error: getError } = await supabase
@@ -145,6 +161,10 @@ export async function updateDrugProductionTracking(id: string, payload: {
       received_output: Math.min(nextReceived, nextExpectedOutput),
       note: payload.note === undefined ? current.note : payload.note?.trim() || null,
       expected_date: expectedDateValue,
+      seed_price: payload.seedPrice === undefined ? current.seed_price : Math.max(0, Number(payload.seedPrice || 0)),
+      pouch_sale_price: payload.pouchSalePrice === undefined ? current.pouch_sale_price : Math.max(0, Number(payload.pouchSalePrice || 0)),
+      brick_transform_cost: payload.brickTransformCost === undefined ? current.brick_transform_cost : Math.max(0, Number(payload.brickTransformCost || 0)),
+      pouch_transform_cost: payload.pouchTransformCost === undefined ? current.pouch_transform_cost : Math.max(0, Number(payload.pouchTransformCost || 0)),
       ...(createdAtValue ? { created_at: createdAtValue } : {}),
       status: forcedStatus ?? computedStatus,
     })
