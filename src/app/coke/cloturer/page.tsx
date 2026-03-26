@@ -311,7 +311,7 @@ export default function CokeClosePage() {
   }, [activePlan, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
   const visibleResourceCards = useMemo(
-    () => plannedResources.filter((entry) => entry.key !== 'seed'),
+    () => plannedResources.filter((entry) => entry.key !== 'seed' && entry.key !== 'leaf'),
     [plannedResources],
   )
 
@@ -397,18 +397,18 @@ export default function CokeClosePage() {
                 <div className="mt-1 flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setRealLeaves(String(Math.max(0, (Number(realLeaves) || 0) - 10)))}
+                    onClick={() => setRealLeaves(String(Math.max(0, (Number(realLeaves) || 0) - 1)))}
                     className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
-                    aria-label="Retirer 10 feuilles"
+                    aria-label="Retirer 1 feuille"
                   >
                     -
                   </button>
                   <Input value={realLeaves} onChange={(event) => setRealLeaves(event.target.value)} inputMode="numeric" className="h-9 rounded-lg text-center" />
                   <button
                     type="button"
-                    onClick={() => setRealLeaves(String((Number(realLeaves) || 0) + 10))}
+                    onClick={() => setRealLeaves(String((Number(realLeaves) || 0) + 1))}
                     className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
-                    aria-label="Ajouter 10 feuilles"
+                    aria-label="Ajouter 1 feuille"
                   >
                     +
                   </button>
@@ -439,8 +439,8 @@ export default function CokeClosePage() {
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque prévu <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque réel <span className={`float-right font-semibold ${field.realMissing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.realMissing}</span></div>
-                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Total réel <span className="float-right font-semibold">{formatPrice(field.realQty * field.pu)}</span></div>
-                      <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque réel <span className="float-right font-semibold">{formatPrice(field.realMissingCost)}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque réel <span className="float-right font-semibold">{formatPrice(field.realMissingCost)}</span></div>
+                      <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Total réel <span className="float-right font-semibold">{formatPrice(field.realQty * field.pu)}</span></div>
                     </div>
                     <p className="mb-1 text-[11px] text-white/60">Quantité réelle (modifiable)</p>
                     <div className="flex items-center gap-2">

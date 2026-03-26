@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Box, Loader2, Minus, Plus, Search, Shield, Swords, Trash2, Pill, Shapes } from 'lucide-react'
 import { toast } from 'sonner'
@@ -29,7 +28,8 @@ const CATEGORY_OPTIONS: { value: FilterCategory; label: string }[] = [
 
 const money = (value: number) => `${Math.max(0, value).toFixed(0)} $`
 
-function resolveItemPrice(item: CatalogItem) {
+function resolveModePrice(item: CatalogItem, mode: Mode) {
+  if (mode === 'entree') return Math.max(0, Number(item.buy_price || item.sell_price || item.internal_value || 0))
   return Math.max(0, Number(item.sell_price || item.buy_price || item.internal_value || 0))
 }
 
@@ -43,6 +43,7 @@ export function SbEntreeSortieClient() {
   const [counterparty, setCounterparty] = useState('')
   const [member, setMember] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [lineQuantities, setLineQuantities] = useState<Record<string, number>>({})
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
 
   useEffect(() => {
@@ -84,8 +85,8 @@ export function SbEntreeSortieClient() {
     [selectedItems]
   )
 
-  const addItem = (item: CatalogItem, quantityToAdd = 1) => {
-    const baseQuantity = Math.max(1, Math.floor(Number(quantityToAdd) || 1))
+  const addItem = (item: CatalogItem) => {
+    const baseQuantity = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
     const maxStock = Math.max(0, Number(item.stock || 0))
     const safeQuantity = mode === 'sortie' ? Math.min(baseQuantity, maxStock) : baseQuantity
     if (mode === 'sortie' && safeQuantity <= 0) return
@@ -100,9 +101,13 @@ export function SbEntreeSortieClient() {
         next[index] = { ...next[index], quantity: nextQuantity }
         return next
       }
-      return [...prev, { id: item.id, name: item.name, quantity: safeQuantity, price: resolveItemPrice(item) }]
+      return [...prev, { id: item.id, name: item.name, quantity: safeQuantity, price: resolveModePrice(item, mode) }]
     })
   }
+
+  useEffect(() => {
+    setSelectedItems([])
+  }, [mode])
 
   const removeItem = (itemId: string) => {
     setSelectedItems((prev) => prev.filter((entry) => entry.id !== itemId))
@@ -250,6 +255,8 @@ export function SbEntreeSortieClient() {
             {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
             {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
             {filteredItems.map((item) => {
+              const lineQty = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
+              const itemUnitPrice = resolveModePrice(item, mode)
               const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
               const CategoryIcon =
                 normalizedCategory === 'objects' ? Box
@@ -258,26 +265,47 @@ export function SbEntreeSortieClient() {
                       : normalizedCategory === 'drugs' ? Pill
                         : Shapes
               return (
-                <button
+                <div
                   key={item.id}
-                  type="button"
-                  onClick={() => addItem(item, 1)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:border-cyan-300/35 hover:bg-cyan-500/[0.08]"
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:border-cyan-300/35 hover:bg-cyan-500/[0.06]"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.08]">
-                      {item.image_url ? <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="44px" /> : <CategoryIcon className="h-5 w-5 text-white/70" />}
+                      {item.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+                      ) : <CategoryIcon className="h-5 w-5 text-white/70" />}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-white">{item.name}</p>
-                      <p className="text-xs text-white/60">Stock: {Math.max(0, Number(item.stock || 0))}</p>
+                      <p className="text-xs text-white/60">Stock: {Math.max(0, Number(item.stock || 0))} • PU: {money(itemUnitPrice)}</p>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100">
-                    Cliquer pour +1
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setLineQuantities((prev) => ({ ...prev, [item.id]: Math.max(1, lineQty - 1) }))}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white/90"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <Input
+                      value={lineQty}
+                      onChange={(event) => setLineQuantities((prev) => ({ ...prev, [item.id]: Math.max(1, Math.floor(Number(event.target.value) || 1)) }))}
+                      inputMode="numeric"
+                      className="h-9 w-16 rounded-xl px-2 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setLineQuantities((prev) => ({ ...prev, [item.id]: lineQty + 1 }))}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white/90"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                    <PrimaryButton onClick={() => addItem(item)} className="h-9 rounded-xl px-4 text-xs">Ajouter</PrimaryButton>
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>
