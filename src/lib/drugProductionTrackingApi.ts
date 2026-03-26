@@ -60,7 +60,7 @@ export async function createDrugProductionTracking(payload: {
     : Math.max(0, Math.floor(payload.expectedOutput || 0))
   const receivedOutput = Math.max(0, Math.floor(payload.receivedOutput || 0))
   const status = computeStatus(receivedOutput, expectedOutput)
-  const createdAtValue = payload.createdAt
+  const createdAtValue = payload.createdAt && /^\d{4}-\d{2}-\d{2}$/.test(payload.createdAt)
     ? new Date(`${payload.createdAt}T00:00:00.000Z`).toISOString()
     : undefined
 

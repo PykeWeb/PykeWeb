@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRightLeft, Beaker, CheckCircle2, Clock3, Coins, Factory, FlaskConical, Package, Plus, ReceiptText, Save, Sparkles, Sprout, XCircle } from 'lucide-react'
+import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -258,7 +258,6 @@ export default function SuiviProductionClient() {
         ratio: 1,
         expectedOutput: expectedFromForm,
         note: `[${flowLabel}] ${newRequest.note || ''}`.trim(),
-        createdAt: newRequest.createdAt || undefined,
         expectedDate: newRequest.expectedDate || undefined,
       })
       setRows((prev) => [created, ...prev])
@@ -526,13 +525,13 @@ export default function SuiviProductionClient() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 sm:col-span-2">
-                <label className="text-xs text-white/70">Nom du groupe</label>
+              <div className="space-y-1 rounded-xl border border-cyan-300/20 bg-gradient-to-br from-cyan-500/10 to-blue-500/[0.08] p-2.5 sm:col-span-2">
+                <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><User className="h-3.5 w-3.5" /> Nom du groupe</label>
                 <Input value={newRequest.partnerName} onChange={(event) => setNewRequest((prev) => ({ ...prev, partnerName: event.target.value }))} />
               </div>
 
-              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                <label className="text-xs text-white/70">Type</label>
+              <div className="space-y-1 rounded-xl border border-violet-300/20 bg-gradient-to-br from-violet-500/10 to-indigo-500/[0.08] p-2.5">
+                <label className="flex items-center gap-1.5 text-xs text-violet-100/80"><Tags className="h-3.5 w-3.5" /> Type</label>
                 <GlassSelect
                   value={newRequest.type}
                   onChange={(value) => setNewRequest((prev) => ({ ...prev, type: value as ProductionType }))}
@@ -540,8 +539,8 @@ export default function SuiviProductionClient() {
                 />
               </div>
 
-              <div className="space-y-1 sm:col-span-2">
-                <label className="text-xs text-white/70">Mode opération</label>
+              <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/[0.08] p-2.5 sm:col-span-2">
+                <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sparkles className="h-3.5 w-3.5" /> Mode opération</label>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {FLOW_OPTIONS.map((option) => {
                     const meta = FLOW_META[option.value]
@@ -552,7 +551,7 @@ export default function SuiviProductionClient() {
                         key={option.value}
                         type="button"
                         onClick={() => setNewRequest((prev) => ({ ...prev, flowMode: option.value }))}
-                        className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-cyan-200/50 bg-cyan-500/15 shadow-[0_0_18px_rgba(34,211,238,0.2)]' : 'border-white/12 bg-white/[0.03] hover:bg-white/[0.05]'}`}
+                        className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-cyan-100/70 bg-gradient-to-br from-cyan-500/25 to-blue-500/20 shadow-[0_0_24px_rgba(34,211,238,0.3)]' : 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'}`}
                       >
                         <div className="flex items-center gap-2">
                           <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/15 bg-white/[0.04] text-white/85"><Icon className="h-4 w-4" /></span>
@@ -568,8 +567,8 @@ export default function SuiviProductionClient() {
               </div>
 
               {newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' ? (
-                <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                  <label className="text-xs text-white/70">Quantité graines</label>
+                <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> Quantité graines</label>
                   <Input
                     value={newRequest.seedQty}
                     onChange={(event) => setNewRequest((prev) => ({ ...prev, seedQty: Number(event.target.value) || 0 }))}
@@ -579,8 +578,8 @@ export default function SuiviProductionClient() {
               ) : null}
 
               {newRequest.flowMode === 'leaf_to_brick' ? (
-                <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                  <label className="text-xs text-white/70">Quantité feuilles</label>
+                <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> Quantité feuilles</label>
                   <Input
                     value={newRequest.leafQty}
                     onChange={(event) => setNewRequest((prev) => ({ ...prev, leafQty: Number(event.target.value) || 0 }))}
@@ -590,8 +589,8 @@ export default function SuiviProductionClient() {
               ) : null}
 
               {newRequest.flowMode === 'brick_to_pouch' ? (
-                <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                  <label className="text-xs text-white/70">Quantité bricks</label>
+                <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Package className="h-3.5 w-3.5" /> Quantité bricks</label>
                   <Input
                     value={newRequest.brickQty}
                     onChange={(event) => setNewRequest((prev) => ({ ...prev, brickQty: Number(event.target.value) || 0 }))}
@@ -600,8 +599,8 @@ export default function SuiviProductionClient() {
                 </div>
               ) : null}
 
-              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                <label className="text-xs text-white/70">Attendu (auto)</label>
+              <div className="space-y-1 rounded-xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/12 to-blue-500/[0.09] p-2.5">
+                <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Beaker className="h-3.5 w-3.5" /> Attendu (auto)</label>
                 <Input value={expectedFromForm} readOnly className="opacity-80" />
                 <p className="text-[11px] text-white/55">
                   {newRequest.flowMode === 'seed_only'
@@ -614,8 +613,8 @@ export default function SuiviProductionClient() {
                 </p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                <label className="text-xs text-white/70">Date</label>
+              <div className="space-y-1 rounded-xl border border-violet-300/20 bg-gradient-to-br from-violet-500/10 to-indigo-500/[0.08] p-2.5">
+                <label className="flex items-center gap-1.5 text-xs text-violet-100/80"><CalendarDays className="h-3.5 w-3.5" /> Date</label>
                 <Input
                   type="date"
                   value={newRequest.createdAt}
@@ -623,8 +622,8 @@ export default function SuiviProductionClient() {
                 />
               </div>
 
-              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                <label className="text-xs text-white/70">Date estimée retour</label>
+              <div className="space-y-1 rounded-xl border border-violet-300/20 bg-gradient-to-br from-violet-500/10 to-indigo-500/[0.08] p-2.5">
+                <label className="flex items-center gap-1.5 text-xs text-violet-100/80"><CalendarClock className="h-3.5 w-3.5" /> Date estimée retour</label>
                 <Input
                   type="date"
                   value={newRequest.expectedDate}
@@ -632,8 +631,8 @@ export default function SuiviProductionClient() {
                 />
               </div>
 
-              <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 sm:col-span-2">
-                <label className="text-xs text-white/70">Note</label>
+              <div className="space-y-1 rounded-xl border border-amber-300/20 bg-gradient-to-br from-amber-500/10 to-orange-500/[0.08] p-2.5 sm:col-span-2">
+                <label className="flex items-center gap-1.5 text-xs text-amber-100/80"><NotebookPen className="h-3.5 w-3.5" /> Note</label>
                 <textarea
                   value={newRequest.note}
                   onChange={(event) => setNewRequest((prev) => ({ ...prev, note: event.target.value }))}
