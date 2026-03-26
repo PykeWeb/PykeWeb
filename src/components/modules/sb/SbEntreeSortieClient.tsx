@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, Box, Loader2, Minus, Plus, Search, Shield, Swords, Trash2, Pill, Shapes } from 'lucide-react'
+import { ArrowDown, ArrowUp, Box, Loader2, Minus, Plus, Search, Shield, Swords, Trash2, Pill, Shapes, Layers, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Input } from '@/components/ui/Input'
@@ -16,15 +16,7 @@ import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
 type FilterCategory = 'all' | ItemCategory
-type SelectedItem = { id: string; name: string; quantity: number; price: number }
-
-const CATEGORY_OPTIONS: { value: FilterCategory; label: string }[] = [
-  { value: 'all', label: 'Tous' },
-  { value: 'objects', label: 'Objets' },
-  { value: 'weapons', label: 'Armes' },
-  { value: 'equipment', label: 'Équipement' },
-  { value: 'drugs', label: 'Drogues' },
-]
+type SelectedItem = { id: string; name: string; quantity: number; price: number; imageUrl?: string; category?: ItemCategory | 'custom' }
 
 const money = (value: number) => `${Math.max(0, value).toFixed(0)} $`
 
@@ -44,7 +36,6 @@ export function SbEntreeSortieClient() {
   const [counterparty, setCounterparty] = useState('')
   const [member, setMember] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [lineQuantities, setLineQuantities] = useState<Record<string, number>>({})
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
 
   useEffect(() => {
@@ -87,11 +78,12 @@ export function SbEntreeSortieClient() {
     [selectedItems]
   )
 
-  const addItem = (item: CatalogItem) => {
-    const baseQuantity = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
+  const addItem = (item: CatalogItem, increment = 1) => {
+    const baseQuantity = Math.max(1, Math.floor(Number(increment) || 1))
     const maxStock = Math.max(0, Number(item.stock || 0))
     const safeQuantity = mode === 'sortie' ? Math.min(baseQuantity, maxStock) : baseQuantity
     if (mode === 'sortie' && safeQuantity <= 0) return
+    const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
 
     setSelectedItems((prev) => {
       const index = prev.findIndex((entry) => entry.id === item.id)
@@ -103,7 +95,7 @@ export function SbEntreeSortieClient() {
         next[index] = { ...next[index], quantity: nextQuantity }
         return next
       }
-      return [...prev, { id: item.id, name: item.name, quantity: safeQuantity, price: resolveModePrice(item, mode) }]
+      return [...prev, { id: item.id, name: item.name, quantity: safeQuantity, price: resolveModePrice(item, mode), imageUrl: item.image_url ?? undefined, category: normalizedCategory }]
     })
   }
 
@@ -175,12 +167,12 @@ export function SbEntreeSortieClient() {
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
-          { key: 'all', label: 'Toutes', value: stats.all },
-          { key: 'objects', label: 'Objets', value: stats.objects },
-          { key: 'weapons', label: 'Armes', value: stats.weapons },
-          { key: 'equipment', label: 'Équipement', value: stats.equipment },
-          { key: 'drugs', label: 'Drogues', value: stats.drugs },
-          { key: 'other', label: 'Autres', value: stats.other },
+          { key: 'all', label: 'Toutes', value: stats.all, icon: Layers, tone: 'from-slate-500/30 to-slate-700/20 border-slate-200/30' },
+          { key: 'objects', label: 'Objets', value: stats.objects, icon: Box, tone: 'from-cyan-500/30 to-blue-600/20 border-cyan-200/35' },
+          { key: 'weapons', label: 'Armes', value: stats.weapons, icon: Swords, tone: 'from-rose-500/30 to-red-600/20 border-rose-200/35' },
+          { key: 'equipment', label: 'Équipement', value: stats.equipment, icon: Shield, tone: 'from-amber-600/35 to-orange-700/20 border-amber-200/35' },
+          { key: 'drugs', label: 'Drogues', value: stats.drugs, icon: Pill, tone: 'from-emerald-500/30 to-teal-600/20 border-emerald-200/35' },
+          { key: 'other', label: 'Autres', value: stats.other, icon: Sparkles, tone: 'from-violet-500/30 to-fuchsia-600/20 border-violet-200/35' },
         ].map((card) => (
           <button
             key={card.key}
@@ -191,19 +183,14 @@ export function SbEntreeSortieClient() {
             }}
             className={`min-h-[92px] rounded-2xl border px-3 py-3 text-left transition ${
               category === (card.key === 'other' ? 'custom' : card.key)
-                ? card.key === 'objects'
-                  ? 'border-cyan-200/75 bg-gradient-to-br from-cyan-500/35 to-blue-500/25'
-                  : card.key === 'weapons'
-                    ? 'border-rose-200/75 bg-gradient-to-br from-rose-500/35 to-red-500/25'
-                    : card.key === 'equipment'
-                      ? 'border-amber-200/75 bg-gradient-to-br from-amber-700/35 to-orange-700/25'
-                      : card.key === 'drugs'
-                        ? 'border-emerald-200/75 bg-gradient-to-br from-emerald-500/35 to-teal-500/25'
-                        : 'border-slate-200/75 bg-gradient-to-br from-slate-500/35 to-slate-700/25'
-                : 'border-white/12 bg-white/[0.04] hover:bg-white/[0.08]'
+                ? `${card.tone} bg-gradient-to-br shadow-[0_0_20px_rgba(34,211,238,0.2)]`
+                : `${card.tone} bg-gradient-to-br opacity-80 hover:opacity-100`
             }`}
           >
-            <p className="text-xs text-white/70">{card.label}</p>
+            <div className="flex items-center gap-2 text-xs text-white/80">
+              <card.icon className="h-4 w-4" />
+              <p>{card.label}</p>
+            </div>
             <p className="mt-4 text-2xl font-semibold leading-none">{card.value}</p>
           </button>
         ))}
@@ -247,15 +234,7 @@ export function SbEntreeSortieClient() {
 
       <div className="grid gap-4 xl:grid-cols-5 xl:items-stretch">
         <Panel className="flex h-full max-h-[72vh] flex-col space-y-4 xl:col-span-3">
-          <div className="grid gap-2 md:grid-cols-[180px_180px_1fr]">
-            <GlassSelect
-              value={category}
-              onChange={(value) => {
-                setCategory(value as FilterCategory)
-                setType('all')
-              }}
-              options={CATEGORY_OPTIONS}
-            />
+          <div className="grid gap-2 md:grid-cols-[180px_1fr]">
             <GlassSelect
               value={type}
               onChange={(value) => setType(value as UnifiedTypeFilterValue)}
@@ -272,7 +251,6 @@ export function SbEntreeSortieClient() {
             {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
             {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
             {filteredItems.map((item) => {
-              const lineQty = Math.max(1, Math.floor(Number(lineQuantities[item.id] ?? 1) || 1))
               const itemUnitPrice = resolveModePrice(item, mode)
               const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
               const CategoryIcon =
@@ -284,6 +262,15 @@ export function SbEntreeSortieClient() {
               return (
                 <div
                   key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => addItem(item, 1)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      addItem(item, 1)
+                    }
+                  }}
                   className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:border-cyan-300/35 hover:bg-cyan-500/[0.06]"
                 >
                   <div className="flex min-w-0 items-center gap-3">
@@ -299,28 +286,8 @@ export function SbEntreeSortieClient() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setLineQuantities((prev) => ({ ...prev, [item.id]: Math.max(1, lineQty - 1) }))}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white/90"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <Input
-                      value={lineQty}
-                      onChange={(event) => setLineQuantities((prev) => ({ ...prev, [item.id]: Math.max(1, Math.floor(Number(event.target.value) || 1)) }))}
-                      inputMode="numeric"
-                      className="h-9 w-16 rounded-xl px-2 text-center"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setLineQuantities((prev) => ({ ...prev, [item.id]: lineQty + 1 }))}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white/90"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                    <PrimaryButton onClick={() => addItem(item)} className="h-9 rounded-xl px-4 text-xs">Ajouter</PrimaryButton>
+                  <div className="text-xs font-semibold text-cyan-100/90">
+                    +1 par clic
                   </div>
                 </div>
               )
@@ -332,10 +299,25 @@ export function SbEntreeSortieClient() {
           <h2 className="text-xl font-semibold text-white">Objets sélectionnés</h2>
           <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
             {selectedItems.length === 0 ? <p className="py-8 text-center text-sm text-white/55">Aucun objet sélectionné.</p> : null}
-            {selectedItems.map((entry) => (
+            {selectedItems.map((entry) => {
+              const ItemIcon =
+                entry.category === 'objects' ? Box
+                  : entry.category === 'weapons' ? Swords
+                    : entry.category === 'equipment' ? Shield
+                      : entry.category === 'drugs' ? Pill
+                        : Shapes
+              return (
               <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-sm font-semibold text-white">{entry.name}</p>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.08]">
+                      {entry.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={entry.imageUrl} alt={entry.name} className="h-full w-full object-cover" loading="lazy" />
+                      ) : <ItemIcon className="h-5 w-5 text-white/70" />}
+                    </div>
+                    <p className="truncate text-sm font-semibold text-white">{entry.name}</p>
+                  </div>
                   <button type="button" onClick={() => removeItem(entry.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100">
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -349,11 +331,17 @@ export function SbEntreeSortieClient() {
                     <button type="button" onClick={() => updateQuantity(entry.id, entry.quantity + 1)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/[0.06] text-white/90">
                       <Plus className="h-4 w-4" />
                     </button>
+                    <Input
+                      value={entry.quantity}
+                      onChange={(event) => updateQuantity(entry.id, Number(event.target.value))}
+                      inputMode="numeric"
+                      className="h-8 w-16 rounded-lg px-2 text-center text-sm"
+                    />
                   </div>
                   <p className="text-sm font-semibold text-white">{money(entry.price * entry.quantity)}</p>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
           <div className="mt-4 border-t border-white/12 pt-3 text-right text-2xl font-semibold text-white">
             TOTAL : {money(total)}
