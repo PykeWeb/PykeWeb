@@ -314,6 +314,15 @@ export default function SuiviProductionClient() {
 
   async function handleUpdateSelected(mode: 'validate' | 'edit') {
     if (!selected) return
+    if (selected.group_id === 'local-draft') {
+      const received = Math.max(0, Math.floor(Number(receivedInput || 0)))
+      const nextStatus: ProductionStatus = received >= selected.expected_output ? 'completed' : 'in_progress'
+      setRows((prev) => prev.map((row) => (row.id === selected.id
+        ? { ...row, received_output: received, status: mode === 'validate' ? nextStatus : row.status, note: noteInput || null }
+        : row)))
+      toast.success('Brouillon local modifié.')
+      return
+    }
     setSaving(true)
     try {
       const received = Math.max(0, Math.floor(Number(receivedInput || 0)))
@@ -340,7 +349,7 @@ export default function SuiviProductionClient() {
     <div className="space-y-4">
       <PageHeader title="Suivi Production" subtitle="Suivi des transformations externes (coke, meth...)" />
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <Panel className="border-sky-300/25 bg-gradient-to-br from-sky-500/15 to-blue-600/15">
           <div className="flex items-center justify-between text-sky-100/90"><p className="text-xs">Total en cours</p><Clock3 className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.inProgress}</p>
@@ -357,39 +366,12 @@ export default function SuiviProductionClient() {
           <div className="flex items-center justify-between text-rose-100/90"><p className="text-xs">Pochons reçus</p><Beaker className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.received}</p>
         </Panel>
-      </div>
-
-      <Panel className="grid gap-3 md:grid-cols-3">
-        <div>
-          <p className="mb-1 text-xs text-white/70">Prix vente pochon</p>
-          <Input value={pouchSalePrice} onChange={(event) => setPouchSalePrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-        </div>
-        <div>
-          <p className="mb-1 text-xs text-white/70">Prix graine</p>
-          <Input value={seedPrice} onChange={(event) => setSeedPrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-        </div>
-        <div>
-          <p className="mb-1 text-xs text-white/70">Coût transfo brick (unité)</p>
-          <Input value={brickTransformCost} onChange={(event) => setBrickTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-        </div>
-        <div>
-          <p className="mb-1 text-xs text-white/70">Coût transfo pochon (lot de 10)</p>
-          <Input value={pouchTransformCost} onChange={(event) => setPouchTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-        </div>
-        <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
-          <p className="text-xs text-emerald-100/80">Total estimé (attendu)</p>
-          <p className="text-lg font-semibold">{money(stats.expectedRevenue)}</p>
-        </div>
-        <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
-          <p className="text-xs text-cyan-100/80">Total reçu</p>
-          <p className="text-lg font-semibold">{money(stats.receivedRevenue)}</p>
-        </div>
         <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm">
           <p className="text-xs text-violet-100/80">Partenaires utilisés</p>
           <p className="text-lg font-semibold">{partnerStats.uniquePartners}</p>
           <p className="mt-1 text-xs text-violet-100/80">Top: {partnerStats.topPartner} ({partnerStats.topPartnerCount})</p>
         </div>
-      </Panel>
+      </div>
 
       <div className="flex items-center justify-end">
         <PrimaryButton onClick={() => { setNoteExpanded(false); setCreating(true) }} className="h-11 px-5">
@@ -493,6 +475,25 @@ export default function SuiviProductionClient() {
                 </div>
               </div>
 
+              <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 sm:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-xs text-white/65">Prix graine</p>
+                  <Input value={seedPrice} onChange={(event) => setSeedPrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-white/65">Prix vente pochon</p>
+                  <Input value={pouchSalePrice} onChange={(event) => setPouchSalePrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-white/65">Coût transfo brick</p>
+                  <Input value={brickTransformCost} onChange={(event) => setBrickTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-white/65">Coût transfo pochon</p>
+                  <Input value={pouchTransformCost} onChange={(event) => setPouchTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs text-white/70">Reçu</label>
                 <Input value={receivedInput} onChange={(event) => setReceivedInput(event.target.value)} inputMode="numeric" />
@@ -532,6 +533,11 @@ export default function SuiviProductionClient() {
                   type="button"
                   onClick={async () => {
                     if (!selected) return
+                    if (selected.group_id === 'local-draft') {
+                      setRows((prev) => prev.map((row) => (row.id === selected.id ? { ...row, status: 'cancelled' } : row)))
+                      toast.success('Brouillon local annulé.')
+                      return
+                    }
                     setSaving(true)
                     try {
                       const updated = await updateDrugProductionTracking(selected.id, { status: 'cancelled' })

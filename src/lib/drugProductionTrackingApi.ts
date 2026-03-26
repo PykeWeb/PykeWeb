@@ -35,7 +35,7 @@ export async function listDrugProductionTrackings(): Promise<DrugProductionTrack
     .eq('group_id', currentGroupId())
     .order('created_at', { ascending: false })
 
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Erreur chargement suivi production')
   return (data ?? []) as DrugProductionTrackingRow[]
 }
 
@@ -101,7 +101,7 @@ export async function updateDrugProductionTracking(id: string, payload: {
     .eq('group_id', currentGroupId())
     .single()
 
-  if (getError) throw getError
+  if (getError) throw new Error(getError.message || 'Demande introuvable')
 
   const nextReceived = payload.receivedOutput === undefined
     ? Number(current.received_output || 0)
@@ -124,6 +124,6 @@ export async function updateDrugProductionTracking(id: string, payload: {
     .select('*')
     .single()
 
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Erreur mise à jour demande')
   return data as DrugProductionTrackingRow
 }
