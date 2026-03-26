@@ -310,6 +310,11 @@ export default function CokeClosePage() {
     })
   }, [activePlan, items, realFertilizer, realLamps, realLeaves, realPots, realSeeds, realWater])
 
+  const visibleResourceCards = useMemo(
+    () => plannedResources.filter((entry) => entry.key !== 'seed'),
+    [plannedResources],
+  )
+
   const seedItem = useMemo(() => findItem(items, 'Graine de coke'), [items])
   const zoneItem = useMemo(() => findItem(items, 'Lampe'), [items])
   const leafItem = useMemo(() => findItemByAliases(items, ['Feuille de Cocaïne', 'Feuille de coke', 'Feuille cocaïne']), [items])
@@ -389,16 +394,32 @@ export default function CokeClosePage() {
                   </div>
                   <p className="text-xs text-emerald-100/85">Feuille de Cocaïne</p>
                 </div>
-                <div className="mt-1 flex h-9 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04]">
-                  <p className="text-lg font-semibold">{roundDisplay(activePlan.theoreticalLeaves)}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRealLeaves(String(Math.max(0, (Number(realLeaves) || 0) - 10)))}
+                    className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
+                    aria-label="Retirer 10 feuilles"
+                  >
+                    -
+                  </button>
+                  <Input value={realLeaves} onChange={(event) => setRealLeaves(event.target.value)} inputMode="numeric" className="h-9 rounded-lg text-center" />
+                  <button
+                    type="button"
+                    onClick={() => setRealLeaves(String((Number(realLeaves) || 0) + 10))}
+                    className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg"
+                    aria-label="Ajouter 10 feuilles"
+                  >
+                    +
+                  </button>
                 </div>
                 <div className="pointer-events-none absolute left-2 top-full z-10 mt-1 hidden rounded-md border border-white/15 bg-slate-900/95 px-2 py-1 text-[11px] text-emerald-100 shadow-lg group-hover:block">
-                  Production théorique session
+                  Production théorique session: {roundDisplay(activePlan.theoreticalLeaves)}
                 </div>
               </div>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              {plannedResources.map((field) => {
+              {visibleResourceCards.map((field) => {
                 return (
                   <div key={field.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-3">
                     <div className="mb-2 flex items-center gap-2">
@@ -418,6 +439,7 @@ export default function CokeClosePage() {
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque prévu <span className={`float-right font-semibold ${field.missing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.missing}</span></div>
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">PU <span className="float-right font-semibold">{formatPrice(field.pu)}</span></div>
                       <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Manque réel <span className={`float-right font-semibold ${field.realMissing > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>{field.realMissing}</span></div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Total réel <span className="float-right font-semibold">{formatPrice(field.realQty * field.pu)}</span></div>
                       <div className="col-span-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1">Coût manque réel <span className="float-right font-semibold">{formatPrice(field.realMissingCost)}</span></div>
                     </div>
                     <p className="mb-1 text-[11px] text-white/60">Quantité réelle (modifiable)</p>
