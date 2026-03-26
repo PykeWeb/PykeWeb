@@ -19,6 +19,9 @@ export type DrugProductionTrackingRow = {
   expected_date: string | null
 }
 
+const BRICK_TAX_RATE = 0.05
+const POUCHES_PER_BRICK = 10
+
 function computeStatus(received: number, expected: number, current?: ProductionStatus): ProductionStatus {
   if (current === 'cancelled') return 'cancelled'
   if (received >= expected && expected > 0) return 'completed'
@@ -48,7 +51,9 @@ export async function createDrugProductionTracking(payload: {
 }) {
   const quantitySent = Math.max(0, Math.floor(payload.quantitySent || 0))
   const ratio = Math.max(0, Number(payload.ratio || 0))
-  const expectedOutput = Math.max(0, Math.floor(quantitySent * ratio))
+  const totalLeaves = quantitySent * ratio
+  const netBricks = Math.max(0, totalLeaves * (1 - BRICK_TAX_RATE))
+  const expectedOutput = Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
   const receivedOutput = Math.max(0, Math.floor(payload.receivedOutput || 0))
   const status = computeStatus(receivedOutput, expectedOutput)
 

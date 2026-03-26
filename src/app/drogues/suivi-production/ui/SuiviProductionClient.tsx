@@ -8,6 +8,7 @@ import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
+import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import {
   createDrugProductionTracking,
   listDrugProductionTrackings,
@@ -31,6 +32,18 @@ const NEW_REQUEST_INITIAL = {
   createdAt: new Date().toISOString().slice(0, 10),
   expectedDate: '',
   note: '',
+}
+
+const BRICK_TAX_PERCENT = 5
+const POUCHES_PER_BRICK = 10
+const POUCH_BATCH_SIZE = 10
+
+function money(value: number) {
+  return `${Math.round(value)} $`
+}
+
+function normalize(value: string) {
+  return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
 function typeLabel(type: ProductionType) {
@@ -60,24 +73,39 @@ export default function SuiviProductionClient() {
   const [newRequest, setNewRequest] = useState(NEW_REQUEST_INITIAL)
   const [receivedInput, setReceivedInput] = useState('0')
   const [noteInput, setNoteInput] = useState('')
+  const [pouchSalePrice, setPouchSalePrice] = useState(0)
+  const [brickTransformCost, setBrickTransformCost] = useState(0)
+  const [pouchTransformCost, setPouchTransformCost] = useState(0)
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) ?? null,
     [rows, selectedId]
   )
 
-  const expectedFromForm = useMemo(
-    () => Math.max(0, Math.floor(Number(newRequest.quantitySent || 0) * Number(newRequest.ratio || 0))),
+  const expectedFromForm = useMemo(() => {
+    const leaves = Math.max(0, Number(newRequest.quantitySent || 0) * Number(newRequest.ratio || 0))
+    const netBricks = Math.max(0, leaves * (1 - BRICK_TAX_PERCENT / 100))
+    return Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
+  },
     [newRequest.quantitySent, newRequest.ratio]
   )
+
+  const conversionFromForm = useMemo(() => {
+    const leaves = Math.max(0, Number(newRequest.quantitySent || 0) * Number(newRequest.ratio || 0))
+    const netBricks = Math.max(0, leaves * (1 - BRICK_TAX_PERCENT / 100))
+    const pouches = Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
+    return { leaves, netBricks, pouches }
+  }, [newRequest.quantitySent, newRequest.ratio])
 
   const stats = useMemo(() => {
     const inProgress = rows.filter((r) => r.status === 'in_progress').length
     const completed = rows.filter((r) => r.status === 'completed').length
     const expected = rows.reduce((sum, r) => sum + Number(r.expected_output || 0), 0)
     const received = rows.reduce((sum, r) => sum + Number(r.received_output || 0), 0)
-    return { inProgress, completed, expected, received }
-  }, [rows])
+    const expectedRevenue = expected * pouchSalePrice
+    const receivedRevenue = received * pouchSalePrice
+    return { inProgress, completed, expected, received, expectedRevenue, receivedRevenue }
+  }, [rows, pouchSalePrice])
 
   useEffect(() => {
     let mounted = true
@@ -103,6 +131,17 @@ export default function SuiviProductionClient() {
   }, [])
 
   useEffect(() => {
+    void listCatalogItemsUnified()
+      .then((items) => {
+        const pouch = items.find((item) => normalize(item.name).includes('pochon'))
+        if (pouch) {
+          setPouchSalePrice(Math.max(0, Number(pouch.sell_price || pouch.buy_price || 0)))
+        }
+      })
+      .catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
     if (!selected) return
     setReceivedInput(String(selected.received_output || 0))
     setNoteInput(selected.note || '')
@@ -118,6 +157,21 @@ export default function SuiviProductionClient() {
     if (!selected) return 0
     return Math.max(0, Number(selected.expected_output || 0) - Number(selected.received_output || 0))
   }, [selected])
+
+  const selectedFinance = useMemo(() => {
+    if (!selected) return { brickCount: 0, pouchCost: 0, brickCost: 0, revenue: 0, estimatedProfit: 0 }
+    const brickCount = selected.expected_output / POUCHES_PER_BRICK
+    const revenue = selected.expected_output * pouchSalePrice
+    const brickCost = brickCount * brickTransformCost
+    const pouchCost = (selected.expected_output / POUCH_BATCH_SIZE) * pouchTransformCost
+    return {
+      brickCount,
+      brickCost,
+      pouchCost,
+      revenue,
+      estimatedProfit: revenue - brickCost - pouchCost,
+    }
+  }, [brickTransformCost, pouchSalePrice, pouchTransformCost, selected])
 
   async function handleCreateRequest() {
     if (!newRequest.partnerName.trim()) {
@@ -194,6 +248,29 @@ export default function SuiviProductionClient() {
           <p className="mt-3 text-3xl font-semibold">{stats.received}</p>
         </Panel>
       </div>
+
+      <Panel className="grid gap-3 md:grid-cols-3">
+        <div>
+          <p className="mb-1 text-xs text-white/70">Prix vente pochon</p>
+          <Input value={pouchSalePrice} onChange={(event) => setPouchSalePrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+        </div>
+        <div>
+          <p className="mb-1 text-xs text-white/70">Coût transfo brick (unité)</p>
+          <Input value={brickTransformCost} onChange={(event) => setBrickTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+        </div>
+        <div>
+          <p className="mb-1 text-xs text-white/70">Coût transfo pochon (lot de 10)</p>
+          <Input value={pouchTransformCost} onChange={(event) => setPouchTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
+        </div>
+        <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm">
+          <p className="text-xs text-emerald-100/80">Total estimé (attendu)</p>
+          <p className="text-lg font-semibold">{money(stats.expectedRevenue)}</p>
+        </div>
+        <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
+          <p className="text-xs text-cyan-100/80">Total reçu</p>
+          <p className="text-lg font-semibold">{money(stats.receivedRevenue)}</p>
+        </div>
+      </Panel>
 
       <div className="flex items-center justify-end">
         <PrimaryButton onClick={() => setCreating(true)} className="h-11 px-5">
@@ -277,6 +354,24 @@ export default function SuiviProductionClient() {
 
               <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/[0.08] p-3 text-sm text-cyan-100">
                 {progress}% - Reste {remaining}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
+                  <p className="text-xs text-white/65">Bricks nets estimés</p>
+                  <p className="font-semibold">{Math.round(selectedFinance.brickCount)}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
+                  <p className="text-xs text-white/65">Total estimé vente</p>
+                  <p className="font-semibold">{money(selectedFinance.revenue)}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
+                  <p className="text-xs text-white/65">Coût transfo total</p>
+                  <p className="font-semibold">{money(selectedFinance.brickCost + selectedFinance.pouchCost)}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2.5 text-sm">
+                  <p className="text-xs text-emerald-100/70">Bénéfice estimé</p>
+                  <p className="font-semibold">{money(selectedFinance.estimatedProfit)}</p>
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -385,6 +480,9 @@ export default function SuiviProductionClient() {
               <div className="space-y-1">
                 <label className="text-xs text-white/70">Attendu (auto)</label>
                 <Input value={expectedFromForm} readOnly className="opacity-80" />
+                <p className="text-[11px] text-white/55">
+                  {Math.round(conversionFromForm.leaves)} feuilles → {Math.round(conversionFromForm.netBricks)} bricks (taxe 5%) → {conversionFromForm.pouches} pochons (1 brick = 10).
+                </p>
               </div>
 
               <div className="space-y-1">
