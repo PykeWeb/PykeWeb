@@ -1,0 +1,64 @@
+'use client'
+
+import Link from 'next/link'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { PageHeader } from '@/components/PageHeader'
+import { Panel } from '@/components/ui/Panel'
+import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
+import { listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
+
+export default function DemandeDetailPage() {
+  const params = useParams<{ id: string }>()
+  const search = useSearchParams()
+  const router = useRouter()
+  const editMode = search.get('mode') === 'edit'
+  const [row, setRow] = useState<DrugProductionTrackingRow | null>(null)
+
+  useEffect(() => { void listDrugProductionTrackings().then((r) => setRow(r.find((x) => x.id === params.id) || null)).catch(() => setRow(null)) }, [params.id])
+
+  const remaining = useMemo(() => row ? Math.max(0, row.expected_output - row.received_output) : 0, [row])
+
+  async function onUpdate(value: DemandFormValue, expectedOutput: number) {
+    if (!row) return
+    const nextStatus = row.received_output >= expectedOutput ? 'completed' : 'in_progress'
+    const updated = await updateDrugProductionTracking(row.id, { note: value.note, status: nextStatus })
+    setRow(updated)
+    router.replace(`/drogues/demandes/${row.id}`)
+  }
+
+  if (!row) return <Panel>Transaction introuvable.</Panel>
+
+  return (
+    <div className="space-y-4">
+      <PageHeader title="Détail demande" subtitle="Suivi détaillé d'une transaction partenaire" />
+      <Link href="/drogues/suivi-production" className="text-sm text-cyan-100">← Retour suivi</Link>
+
+      {editMode ? (
+        <Panel>
+          <DemandePartenaireForm
+            initial={{ partnerName: row.partner_name, type: row.type, mode: 'full_chain', quantitySeeds: row.quantity_sent, quantityLeaves: row.quantity_sent, quantityBricks: Math.floor(row.expected_output / 10), seedPrice: 0, pouchSalePrice: 0, brickTransformCost: 0, pouchTransformCost: 0, note: row.note || '', expectedDate: row.expected_date || '' }}
+            submitLabel="Modifier"
+            onSubmit={onUpdate}
+            onCancel={() => router.replace(`/drogues/demandes/${row.id}`)}
+          />
+        </Panel>
+      ) : (
+        <Panel className="space-y-3">
+          <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-2">
+            <p>Groupe: <b>{row.partner_name}</b></p><p>Type: <b>{row.type === 'coke' ? 'Coke' : row.type === 'meth' ? 'Meth' : 'Autres'}</b></p>
+            <p>Envoyé: <b>{row.quantity_sent}</b></p><p>Attendu: <b>{row.expected_output}</b></p>
+            <p>Reçu: <b>{row.received_output}</b></p><p>Date: <b>{new Date(row.created_at).toLocaleDateString('fr-FR')}</b></p>
+            <p>Date retour: <b>{row.expected_date || '—'}</b></p><p>Statut: <b>{row.status}</b></p>
+          </div>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">{Math.round((row.received_output / Math.max(1, row.expected_output)) * 100)}% reçu - reste {remaining}</div>
+          <div className="flex gap-2">
+            <button onClick={async () => { const u = await updateDrugProductionTracking(row.id, { receivedOutput: row.expected_output, status: 'completed' }); setRow(u) }} className="rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 font-semibold text-emerald-100">Valider réception</button>
+            <Link href={`/drogues/demandes/${row.id}?mode=edit`} className="rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 py-2 font-semibold text-amber-100">Modifier</Link>
+            <button onClick={async () => { const u = await updateDrugProductionTracking(row.id, { status: 'cancelled' }); setRow(u) }} className="rounded-xl border border-rose-300/35 bg-rose-500/15 px-4 py-2 font-semibold text-rose-100">Annuler</button>
+          </div>
+        </Panel>
+      )}
+    </div>
+  )
+}

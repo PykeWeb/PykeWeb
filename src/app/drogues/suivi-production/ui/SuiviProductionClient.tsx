@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
 import { toast } from 'sonner'
@@ -83,6 +84,7 @@ function statusClass(status: ProductionStatus) {
 }
 
 export default function SuiviProductionClient() {
+  const router = useRouter()
   const [rows, setRows] = useState<DrugProductionTrackingRow[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -329,11 +331,11 @@ export default function SuiviProductionClient() {
           <div className="flex items-center justify-between text-rose-100/90"><p className="text-xs">Pochons reçus</p><Beaker className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.received}</p>
         </button>
-        <button type="button" onClick={() => setStatusFilter('all')} className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-left text-sm">
+        <Link href="/drogues/partenaires" className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-left text-sm">
           <p className="text-xs text-violet-100/80">Partenaires utilisés</p>
           <p className="text-lg font-semibold">{partnerStats.uniquePartners}</p>
           <p className="mt-1 text-xs text-violet-100/80">Top: {partnerStats.topPartner} ({partnerStats.topPartnerCount})</p>
-        </button>
+        </Link>
       </div>
 
       <div className="flex items-center justify-end">
@@ -366,15 +368,7 @@ export default function SuiviProductionClient() {
                   return (
                     <tr
                       key={row.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedId(row.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          setSelectedId(row.id)
-                        }
-                      }}
+                      onClick={() => router.push(`/drogues/demandes/${row.id}`)}
                       className={`border-t border-white/8 transition ${active ? 'bg-cyan-500/[0.12] shadow-[inset_0_0_35px_rgba(34,211,238,0.15)]' : 'hover:bg-white/[0.04]'}`}
                     >
                       <td className="px-3 py-3">
