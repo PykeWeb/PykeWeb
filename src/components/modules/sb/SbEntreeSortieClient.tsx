@@ -16,7 +16,7 @@ import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
 type FilterCategory = 'all' | ItemCategory
-type SelectedItem = { id: string; name: string; quantity: number; price: number; imageUrl?: string; category?: ItemCategory | 'custom' }
+type SelectedItem = { id: string; name: string; quantity: number; price: number; imageUrl?: string; category?: ItemCategory | 'custom'; buyPrice?: number; sellPrice?: number }
 
 function resolveModePrice(item: CatalogItem, mode: Mode) {
   if (mode === 'entree') return Math.max(0, Number(item.buy_price || item.sell_price || item.internal_value || 0))
@@ -104,16 +104,34 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         next[index] = { ...next[index], quantity: nextQuantity }
         return next
       }
-      return [...prev, { id: item.id, name: item.name, quantity: safeQuantity, price: resolveModePrice(item, mode), imageUrl: item.image_url ?? undefined, category: normalizedCategory }]
+      const buyPrice = Math.max(0, Number(item.buy_price || item.internal_value || item.sell_price || 0))
+      const sellPrice = Math.max(0, Number(item.sell_price || item.internal_value || item.buy_price || 0))
+      return [...prev, {
+        id: item.id,
+        name: item.name,
+        quantity: safeQuantity,
+        price: resolveModePrice(item, mode),
+        imageUrl: item.image_url ?? undefined,
+        category: normalizedCategory,
+        buyPrice,
+        sellPrice,
+      }]
     })
   }
+
+  useEffect(() => {
+    if (variant !== 'trade') return
+    void listCatalogItemsUnified().then(setItems).catch(() => undefined)
+  }, [mode, variant])
 
   useEffect(() => {
     if (variant !== 'trade') return
     setSelectedItems((prev) => prev.map((entry) => {
       const item = items.find((row) => row.id === entry.id)
       if (!item) return entry
-      return { ...entry, price: resolveModePrice(item, mode) }
+      const buyPrice = Math.max(0, Number(item.buy_price || item.internal_value || item.sell_price || 0))
+      const sellPrice = Math.max(0, Number(item.sell_price || item.internal_value || item.buy_price || 0))
+      return { ...entry, price: resolveModePrice(item, mode), buyPrice, sellPrice }
     }))
   }, [items, mode, variant])
 
@@ -246,7 +264,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           </div>
         </div>
 
-        <div className="grid gap-3 xl:grid-cols-[1fr_1fr_auto_auto_auto]">
+        <div className={`grid gap-3 ${isTradeVariant ? 'xl:grid-cols-[1fr_1fr_auto_auto_auto_auto]' : 'xl:grid-cols-[1fr_1fr_auto_auto_auto]'}`}>
           <Input value={counterparty} onChange={(event) => setCounterparty(event.target.value)} placeholder="Interlocuteur" className="h-11" />
           <Input value={member} onChange={(event) => setMember(event.target.value)} placeholder="Membre" className="h-11" />
           <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
@@ -316,7 +334,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                       <p className="truncate text-sm font-semibold text-white">{item.name}</p>
                       <p className="text-xs text-white/60">
                         Stock: {Math.max(0, Number(item.stock || 0))}
-                        {isTradeVariant ? ` · ${resolveModePrice(item, mode).toFixed(2)} $` : ''}
+                        {isTradeVariant ? ` · Achat: ${Math.max(0, Number(item.buy_price || item.internal_value || item.sell_price || 0)).toFixed(2)} $ · Vente: ${Math.max(0, Number(item.sell_price || item.internal_value || item.buy_price || 0)).toFixed(2)} $` : ''}
                       </p>
                     </div>
                   </div>
@@ -382,6 +400,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                   </div>
                   {isTradeVariant ? (
                     <div className="ml-2 flex items-center gap-2">
+                      <span className="text-[11px] text-white/60">A: {(entry.buyPrice ?? 0).toFixed(2)}$ · V: {(entry.sellPrice ?? 0).toFixed(2)}$</span>
                       <span className="text-xs text-white/65">PU</span>
                       <Input
                         value={entry.price}

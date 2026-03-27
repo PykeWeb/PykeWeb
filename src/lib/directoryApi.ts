@@ -29,11 +29,13 @@ type DirectoryContactRow = {
 
 function normalizeActivity(value: string | null | undefined): DirectoryActivity {
   const raw = String(value || '').trim().toLowerCase()
-  if (raw === 'coke') return 'coke'
-  if (raw === 'meth') return 'meth'
-  if (raw === 'objects') return 'objects'
-  if (raw === 'weapons') return 'weapons'
-  if (raw === 'equipment') return 'equipment'
+  if (!raw) return 'other'
+  if (['coke', 'cocaine'].includes(raw)) return 'coke'
+  if (['meth', 'methamphetamine'].includes(raw)) return 'meth'
+  if (['objects', 'object', 'objets', 'objet'].includes(raw)) return 'objects'
+  if (['weapons', 'weapon', 'armes', 'arme'].includes(raw)) return 'weapons'
+  if (['equipment', 'equipement', 'équipement', 'equipements', 'équipements'].includes(raw)) return 'equipment'
+  if (['other', 'autre', 'autres', 'misc'].includes(raw)) return 'other'
   return 'other'
 }
 
