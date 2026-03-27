@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
@@ -11,6 +12,7 @@ import { DemandePartenaireForm, type DemandFormValue } from '@/components/module
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
 export default function EditSuiviProductionClient({ id }: { id: string }) {
+  const router = useRouter()
   const [row, setRow] = useState<DrugProductionTrackingRow | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -40,6 +42,7 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
     })
     setRow(updated)
     toast.success('Transaction modifiée.')
+    router.replace('/drogues/suivi-production')
   }
 
   async function quickStatus(action: 'received' | 'completed' | 'in_progress' | 'cancelled') {
