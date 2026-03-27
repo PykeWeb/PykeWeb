@@ -161,7 +161,7 @@ export function SbEntreeSortieClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Entrée / Sortie SB" subtitle="Interface rapide de gestion stock pour le groupe SB." />
+      <PageHeader title="Achat / Vente SB" subtitle="Interface rapide de gestion stock pour le groupe SB." />
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
@@ -203,7 +203,7 @@ export function SbEntreeSortieClient() {
               className={`inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-2 text-xl font-semibold transition ${mode === 'entree' ? 'bg-gradient-to-r from-cyan-500/45 to-blue-500/40 text-cyan-50 shadow-[0_0_30px_rgba(56,189,248,0.45)]' : 'text-white/70 hover:text-white'}`}
             >
               <ArrowDown className="h-5 w-5" />
-              Entrée
+              Achat
             </button>
             <button
               type="button"
@@ -211,7 +211,7 @@ export function SbEntreeSortieClient() {
               className={`inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-2 text-xl font-semibold transition ${mode === 'sortie' ? 'bg-gradient-to-r from-cyan-500/45 to-blue-500/40 text-cyan-50 shadow-[0_0_30px_rgba(56,189,248,0.45)]' : 'text-white/70 hover:text-white'}`}
             >
               <ArrowUp className="h-5 w-5" />
-              Sortie
+              Vente
             </button>
           </div>
         </div>
@@ -284,7 +284,7 @@ export function SbEntreeSortieClient() {
                   </div>
 
                   <div className="text-xs font-semibold text-cyan-100/90">
-                    +1 par clic
+                    Stock: {Math.max(0, Number(item.stock || 0))}
                   </div>
                 </div>
               )

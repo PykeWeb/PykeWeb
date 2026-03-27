@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Ban, CheckCircle2, Clock3, PackageCheck, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -91,11 +91,11 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
         {row ? (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void quickStatus('received')} className="rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100">Reçu</button>
-              <button type="button" onClick={() => void quickStatus('completed')} className="rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100">Valider</button>
-              <button type="button" onClick={() => void quickStatus('in_progress')} className="rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-sm font-semibold text-sky-100">En attente</button>
-              <button type="button" onClick={() => void quickStatus('cancelled')} className="rounded-xl border border-rose-300/35 bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-100">Annuler</button>
-              <button type="button" onClick={() => void onDelete()} className="rounded-xl border border-red-300/35 bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-100">Supprimer</button>
+              <button type="button" onClick={() => void quickStatus('received')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-100"><PackageCheck className="h-4 w-4" />Reçu</button>
+              <button type="button" onClick={() => void quickStatus('completed')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100"><CheckCircle2 className="h-4 w-4" />Valider</button>
+              <button type="button" onClick={() => void quickStatus('in_progress')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-sky-300/35 bg-sky-500/15 px-4 text-sm font-semibold text-sky-100"><Clock3 className="h-4 w-4" />En attente</button>
+              <button type="button" onClick={() => void quickStatus('cancelled')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-rose-300/35 bg-rose-500/15 px-4 text-sm font-semibold text-rose-100"><Ban className="h-4 w-4" />Annuler</button>
+              <button type="button" onClick={() => void onDelete()} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-red-300/35 bg-red-500/15 px-4 text-sm font-semibold text-red-100"><Trash2 className="h-4 w-4" />Supprimer</button>
             </div>
 
             <DemandePartenaireForm
