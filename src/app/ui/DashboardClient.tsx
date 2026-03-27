@@ -15,6 +15,7 @@ import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
+import { listDrugProductionTrackings, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
 type Tx = {
   id: string
@@ -96,6 +97,7 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true)
   const [recentTx, setRecentTx] = useState<Tx[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
+  const [recentDrugTrackings, setRecentDrugTrackings] = useState<DrugProductionTrackingRow[]>([])
 
   const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>(createEmptyCategoryCounts)
   const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>(createEmptyMovementCounts)
@@ -203,7 +205,7 @@ export function DashboardClient() {
       setLoading(true)
       try {
         currentGroupId()
-        const [financeEntries, catalogItems] = await Promise.all([listFinanceEntries(), listCatalogItemsUnified()])
+        const [financeEntries, catalogItems, drugTrackings] = await Promise.all([listFinanceEntries(), listCatalogItemsUnified(), listDrugProductionTrackings().catch(() => [])])
 
         if (!alive) return
 
@@ -258,6 +260,7 @@ export function DashboardClient() {
 
         setRecentTx(recentFinanceTransactions)
         setRecentExpenses(recentExpenseRows)
+        setRecentDrugTrackings((drugTrackings ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
       } finally {
@@ -489,6 +492,16 @@ export function DashboardClient() {
             ))}
           </div>
           <div className="mt-3 space-y-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Link href="/drogues" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 transition hover:bg-cyan-500/20">
+                <p className="text-xs text-cyan-100/80">Session drogue</p>
+                <p className="truncate text-sm font-semibold text-cyan-50">{recentDrugTrackings[0]?.partner_name || 'Ouvrir module drogues'}</p>
+              </Link>
+              <Link href="/drogues/suivi-production" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 transition hover:bg-violet-500/20">
+                <p className="text-xs text-violet-100/80">Suivi de production</p>
+                <p className="truncate text-sm font-semibold text-violet-50">{recentDrugTrackings[0]?.type || 'Ouvrir suivi production'}</p>
+              </Link>
+            </div>
             {activityView === 'summary' ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -514,6 +527,14 @@ export function DashboardClient() {
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-xs text-white/60">Dernière dépense</p>
                   <p className="truncate text-sm font-semibold">{recentExpenses[0]?.item_label || '—'}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-xs text-white/60">Dernier suivi production</p>
+                  <p className="truncate text-sm font-semibold">{recentDrugTrackings[0]?.partner_name || '—'}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-xs text-white/60">Type session drogue</p>
+                  <p className="truncate text-sm font-semibold">{recentDrugTrackings[0]?.type || '—'}</p>
                 </div>
               </div>
             ) : null}
