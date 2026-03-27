@@ -563,13 +563,14 @@ export default function SuiviProductionClient() {
 
       {creating ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#040916]/75 p-4 backdrop-blur-sm">
-          <Panel className="w-full max-w-2xl">
+          <Panel className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold text-white">Nouvelle demande</h2>
               <SecondaryButton onClick={() => setCreating(false)} className="h-9 px-3">Fermer</SecondaryButton>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1 rounded-xl border border-cyan-300/20 bg-gradient-to-br from-cyan-500/10 to-blue-500/[0.08] p-2.5 sm:col-span-2">
                 <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><User className="h-3.5 w-3.5" /> Nom du groupe</label>
                 <Input value={newRequest.partnerName} onChange={(event) => setNewRequest((prev) => ({ ...prev, partnerName: event.target.value }))} />
@@ -766,9 +767,10 @@ export default function SuiviProductionClient() {
                   </div>
                 </div>
               </div>
+              </div>
             </div>
 
-            <div className="mt-4 flex justify-end">
+            <div className="mt-3 flex justify-end border-t border-white/10 pt-3">
               <PrimaryButton onClick={() => void handleCreateRequest()} disabled={saving} className="h-10 px-4">
                 <Plus className="h-4 w-4" />
                 Créer la demande
