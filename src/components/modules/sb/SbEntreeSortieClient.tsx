@@ -195,7 +195,10 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     } finally {
       setIsSubmitting(false)
     }
-  }
+            <span>Total :</span>
+            <span className="ml-2 inline-flex min-w-[2.2rem] items-center justify-center rounded-lg border border-cyan-200/35 bg-cyan-500/20 px-2 py-0.5 text-white">
+              {Number.isFinite(totalItems) ? totalItems : 0}
+            </span>
 
   if (!isReady) return null
 
