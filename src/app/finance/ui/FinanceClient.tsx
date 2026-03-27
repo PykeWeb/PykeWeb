@@ -190,7 +190,6 @@ export default function FinanceClient() {
           <Link href="/finance/achat-vente"><SecondaryButton>Achat / Vente</SecondaryButton></Link>
           <Link href="/finance/entree-sortie"><SecondaryButton>{copy.finance.stockFlow.stockInOutButton}</SecondaryButton></Link>
           <Link href="/finance/stats-interlocuteurs"><SecondaryButton>Stats Groupes</SecondaryButton></Link>
-          <Link href="/activites/depense/nouveau"><SecondaryButton>Dépense</SecondaryButton></Link>
         </div>
         <SearchInput
           value={q}
