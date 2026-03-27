@@ -36,8 +36,15 @@ Variables réellement utilisées :
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (serveur uniquement)
+- `OPENAI_API_KEY` (serveur uniquement, **ne jamais commit**)
+- `OPENAI_SCAN_MODEL` (optionnel, serveur)
 - `NEXT_PUBLIC_GROUP_NAME`
 - `NEXT_PUBLIC_GROUP_BADGE`
+
+⚠️ Sécurité :
+- Mets la clé OpenAI uniquement dans `.env.local` (local) et dans les variables de ton hébergeur (Vercel/Supabase).
+- Ne mets jamais une vraie clé dans GitHub.
+- `.env.local` est ignoré par Git via `.gitignore`.
 
 ## Déploiement
 Guide détaillé : `docs/DEPLOY_VERCEL.md`
