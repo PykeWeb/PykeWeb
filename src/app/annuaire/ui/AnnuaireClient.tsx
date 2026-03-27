@@ -319,6 +319,19 @@ export default function AnnuaireClient() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation()
+                          void copyText(contact.phone || '', 'Numéro')
+                          setCopiedPhoneId(contact.id)
+                          window.setTimeout(() => setCopiedPhoneId((prev) => (prev === contact.id ? null : prev)), 900)
+                        }}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/[0.08] text-white/90"
+                        title="Copier le numéro"
+                      >
+                        {copiedPhoneId === contact.id ? <ClipboardCheck className="h-3.5 w-3.5" /> : <Clipboard className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
                           startEdit(contact)
                         }}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-300/35 bg-cyan-500/15 text-cyan-100"
