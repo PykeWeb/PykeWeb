@@ -77,11 +77,10 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     Object.fromEntries(items.map((item) => [item.id, Math.max(0, Number(item.stock || 0))]))
   ), [items])
 
-  const totalItems = useMemo(
-    () => selectedItems.reduce((sum, entry) => sum + entry.quantity, 0),
+  const safeTotalItems = useMemo(
+    () => selectedItems.reduce((sum, entry) => sum + Math.max(0, Number(entry.quantity || 0)), 0),
     [selectedItems]
   )
-  const safeTotalItems = Number.isFinite(totalItems) ? totalItems : 0
 
   const totalAmount = useMemo(
     () => selectedItems.reduce((sum, entry) => sum + (entry.quantity * Math.max(0, Number(entry.price || 0))), 0),
