@@ -492,16 +492,6 @@ export function DashboardClient() {
             ))}
           </div>
           <div className="mt-3 space-y-2">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Link href="/drogues" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 transition hover:bg-cyan-500/20">
-                <p className="text-xs text-cyan-100/80">Session drogue</p>
-                <p className="truncate text-sm font-semibold text-cyan-50">{recentDrugTrackings[0]?.partner_name || 'Ouvrir module drogues'}</p>
-              </Link>
-              <Link href="/drogues/suivi-production" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 transition hover:bg-violet-500/20">
-                <p className="text-xs text-violet-100/80">Suivi de production</p>
-                <p className="truncate text-sm font-semibold text-violet-50">{recentDrugTrackings[0]?.type || 'Ouvrir suivi production'}</p>
-              </Link>
-            </div>
             {activityView === 'summary' ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -530,11 +520,19 @@ export function DashboardClient() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-xs text-white/60">Dernier suivi production</p>
-                  <p className="truncate text-sm font-semibold">{recentDrugTrackings[0]?.partner_name || '—'}</p>
+                  {recentDrugTrackings[0] ? (
+                    <Link href={`/drogues/suivi-production/${recentDrugTrackings[0].id}`} className="truncate text-sm font-semibold text-violet-100 hover:underline">
+                      {recentDrugTrackings[0].partner_name} • {recentDrugTrackings[0].status}
+                    </Link>
+                  ) : (
+                    <p className="truncate text-sm font-semibold">—</p>
+                  )}
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-xs text-white/60">Type session drogue</p>
-                  <p className="truncate text-sm font-semibold">{recentDrugTrackings[0]?.type || '—'}</p>
+                  <p className="text-xs text-white/60">Session drogue (accès direct)</p>
+                  <Link href="/drogues" className="truncate text-sm font-semibold text-cyan-100 hover:underline">
+                    {recentDrugTrackings[0]?.type || 'Ouvrir /drogues'}
+                  </Link>
                 </div>
               </div>
             ) : null}

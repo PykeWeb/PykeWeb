@@ -81,6 +81,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     () => selectedItems.reduce((sum, entry) => sum + entry.quantity, 0),
     [selectedItems]
   )
+  const safeTotalItems = Number.isFinite(totalItems) ? totalItems : 0
 
   const totalAmount = useMemo(
     () => selectedItems.reduce((sum, entry) => sum + (entry.quantity * Math.max(0, Number(entry.price || 0))), 0),
@@ -268,7 +269,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           <Input value={counterparty} onChange={(event) => setCounterparty(event.target.value)} placeholder="Interlocuteur" className="h-11" />
           <Input value={member} onChange={(event) => setMember(event.target.value)} placeholder="Membre" className="h-11" />
           <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
-            Total : {totalItems}
+            <span>Total :</span>
+            <span className="ml-1 inline-block min-w-[1.5ch] text-right">{safeTotalItems}</span>
           </div>
           {isTradeVariant ? (
             <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-5 text-sm font-semibold text-emerald-100">
