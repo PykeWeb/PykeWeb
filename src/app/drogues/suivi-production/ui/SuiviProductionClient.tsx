@@ -39,16 +39,17 @@ const NEW_REQUEST_INITIAL = {
   note: '',
 }
 
-type FlowMode = 'seed_only' | 'leaf_to_brick' | 'brick_to_pouch' | 'full_chain'
+type FlowMode = 'seed_only' | 'leaf_to_brick' | 'brick_to_pouch' | 'two_steps_seed_to_brick' | 'two_steps_transforms' | 'full_chain'
 
 const BRICK_TAX_PERCENT = 5
 const POUCHES_PER_BRICK = 10
-const POUCH_BATCH_SIZE = 10
 
 const FLOW_OPTIONS: { value: FlowMode; label: string }[] = [
   { value: 'seed_only', label: 'Achat graines' },
   { value: 'leaf_to_brick', label: 'Feuille → Brick' },
   { value: 'brick_to_pouch', label: 'Brick → Pochon' },
+  { value: 'two_steps_seed_to_brick', label: 'Les 2 étapes (Graine → Brick)' },
+  { value: 'two_steps_transforms', label: 'Les 2 étapes (Feuille → Pochon)' },
   { value: 'full_chain', label: 'Les 3 étapes' },
 ]
 
@@ -56,7 +57,19 @@ const FLOW_META: Record<FlowMode, { icon: typeof Sprout; description: string }> 
   seed_only: { icon: Sprout, description: 'Achat simple de graines' },
   leaf_to_brick: { icon: ArrowRightLeft, description: 'Transformer feuilles en bricks' },
   brick_to_pouch: { icon: Package, description: 'Transformer bricks en pochons' },
+  two_steps_seed_to_brick: { icon: ArrowRightLeft, description: 'Graines → Bricks (2 étapes)' },
+  two_steps_transforms: { icon: Sparkles, description: 'Feuilles → Pochons (2 transformations)' },
   full_chain: { icon: Sparkles, description: 'Graines → Bricks → Pochons' },
+}
+
+function inferFlowModeFromNote(note: string | null | undefined): FlowMode {
+  const raw = String(note || '').toLowerCase()
+  if (raw.includes('2 étapes (graine->brick)') || raw.includes('2 etapes (graine->brick)')) return 'two_steps_seed_to_brick'
+  if (raw.includes('2 étapes (feuille->pochon)') || raw.includes('2 etapes (feuille->pochon)')) return 'two_steps_transforms'
+  if (raw.includes('feuille->brick')) return 'leaf_to_brick'
+  if (raw.includes('brick->pochon')) return 'brick_to_pouch'
+  if (raw.includes('achat graines')) return 'seed_only'
+  return 'full_chain'
 }
 
 function money(value: number) {
@@ -145,22 +158,22 @@ export default function SuiviProductionClient() {
   }, [rows, statusFilter])
 
   const expectedFromForm = useMemo(() => {
-    const baseLeaves = newRequest.flowMode === 'full_chain'
+    const baseLeaves = newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick'
       ? Math.max(0, Number(newRequest.seedQty || 0))
       : Math.max(0, Number(newRequest.leafQty || 0))
     const netBricks = newRequest.flowMode === 'brick_to_pouch'
       ? Math.max(0, Number(newRequest.brickQty || 0))
       : Math.floor(baseLeaves * (1 - BRICK_TAX_PERCENT / 100))
     if (newRequest.flowMode === 'seed_only') return Math.max(0, Number(newRequest.seedQty || 0))
-    if (newRequest.flowMode === 'leaf_to_brick') return Math.max(0, netBricks)
+    if (newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_seed_to_brick') return Math.max(0, netBricks)
     return Math.max(0, netBricks * POUCHES_PER_BRICK)
   }, [newRequest.brickQty, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty])
 
   const conversionFromForm = useMemo(() => {
     const seedQty = Math.max(0, Number(newRequest.seedQty || 0))
-    const leaves = newRequest.flowMode === 'full_chain'
+    const leaves = newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick'
       ? seedQty
-      : newRequest.flowMode === 'leaf_to_brick'
+      : newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms'
         ? Math.max(0, Number(newRequest.leafQty || 0))
         : 0
     const netBricks = newRequest.flowMode === 'brick_to_pouch'
@@ -169,6 +182,30 @@ export default function SuiviProductionClient() {
     const pouches = Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
     return { seedQty, leaves, netBricks, pouches }
   }, [newRequest.brickQty, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty])
+
+  const previewFinance = useMemo(() => {
+    const seedCostTotal = (newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick')
+      ? conversionFromForm.seedQty * seedPrice
+      : 0
+    const brickCostTotal = (newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_seed_to_brick' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_transforms')
+      ? conversionFromForm.leaves * brickTransformCost
+      : 0
+    const pouchCostTotal = newRequest.flowMode === 'brick_to_pouch'
+      ? Math.max(0, Number(newRequest.brickQty || 0)) * pouchTransformCost
+      : (newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_transforms')
+        ? conversionFromForm.leaves * pouchTransformCost
+        : 0
+    const totalTransformCost = brickCostTotal + pouchCostTotal
+    const totalCost = seedCostTotal + totalTransformCost
+    const totalSale = conversionFromForm.pouches * pouchSalePrice
+    return {
+      seedCostTotal,
+      totalSale,
+      totalTransformCost,
+      totalCost,
+      estimatedProfit: totalSale - totalCost,
+    }
+  }, [brickTransformCost, conversionFromForm.leaves, conversionFromForm.pouches, conversionFromForm.seedQty, newRequest.brickQty, newRequest.flowMode, pouchSalePrice, pouchTransformCost, seedPrice])
 
   const stats = useMemo(() => {
     const inProgress = rows.filter((r) => r.status === 'in_progress').length
@@ -249,23 +286,29 @@ export default function SuiviProductionClient() {
   }, [selected])
 
   const selectedFinance = useMemo(() => {
-    if (!selected) return { brickCount: 0, seedCost: 0, pouchCost: 0, brickCost: 0, revenue: 0, totalCost: 0, hasSalePrice: false, estimatedProfit: 0 }
+    if (!selected) return { brickCount: 0, seedCost: 0, pouchCost: 0, brickCost: 0, transformCost: 0, revenue: 0, totalCost: 0, hasSalePrice: false, estimatedProfit: 0 }
+    const flowMode = inferFlowModeFromNote(selected.note)
     const seedUnitPrice = Number(selected.seed_price ?? seedPrice ?? 0)
     const saleUnitPrice = Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
     const brickUnitCost = Number(selected.brick_transform_cost ?? brickTransformCost ?? 0)
     const pouchUnitCost = Number(selected.pouch_transform_cost ?? pouchTransformCost ?? 0)
+    const qtySent = Math.max(0, Number(selected.quantity_sent || 0))
     const brickCount = selected.expected_output / POUCHES_PER_BRICK
     const hasSalePrice = saleUnitPrice > 0
     const revenue = hasSalePrice ? selected.expected_output * saleUnitPrice : 0
-    const seedCost = selected.quantity_sent * seedUnitPrice
-    const brickCost = brickCount * brickUnitCost
-    const pouchCost = (selected.expected_output / POUCH_BATCH_SIZE) * pouchUnitCost
-    const totalCost = seedCost + brickCost + pouchCost
+    const seedCost = (flowMode === 'seed_only' || flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick') ? (qtySent * seedUnitPrice) : 0
+    const brickCost = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (qtySent * brickUnitCost) : 0
+    const pouchCost = flowMode === 'brick_to_pouch'
+      ? (qtySent * pouchUnitCost)
+      : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (qtySent * pouchUnitCost) : 0
+    const transformCost = brickCost + pouchCost
+    const totalCost = seedCost + transformCost
     return {
       brickCount,
       seedCost,
       brickCost,
       pouchCost,
+      transformCost,
       revenue,
       totalCost,
       hasSalePrice,
@@ -279,9 +322,9 @@ export default function SuiviProductionClient() {
       return
     }
 
-    const quantitySent = newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain'
+    const quantitySent = newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick'
       ? Math.max(0, Number(newRequest.seedQty || 0))
-      : newRequest.flowMode === 'leaf_to_brick'
+      : newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms'
         ? Math.max(0, Number(newRequest.leafQty || 0))
         : Math.max(0, Number(newRequest.brickQty || 0))
 
@@ -289,6 +332,8 @@ export default function SuiviProductionClient() {
       newRequest.flowMode === 'seed_only' ? 'Achat graines'
         : newRequest.flowMode === 'leaf_to_brick' ? 'Feuille->Brick'
           : newRequest.flowMode === 'brick_to_pouch' ? 'Brick->Pochon'
+            : newRequest.flowMode === 'two_steps_seed_to_brick' ? '2 étapes (Graine->Brick)'
+              : newRequest.flowMode === 'two_steps_transforms' ? '2 étapes (Feuille->Pochon)'
             : 'Les 3 étapes'
 
     setSaving(true)
@@ -310,7 +355,7 @@ export default function SuiviProductionClient() {
       setRows((prev) => [created, ...prev])
       setSelectedId(created.id)
       try {
-        const stockStage = newRequest.flowMode === 'leaf_to_brick'
+        const stockStage = newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms'
           ? 'leaf'
           : newRequest.flowMode === 'brick_to_pouch'
             ? 'brick'
@@ -541,7 +586,7 @@ export default function SuiviProductionClient() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
                   <p className="text-xs text-white/65">Coût transfo total</p>
-                  <p className="font-semibold">{money(selectedFinance.totalCost)}</p>
+                  <p className="font-semibold">{money(selectedFinance.transformCost)}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2.5 text-sm">
                   <p className="text-xs text-emerald-100/70">Bénéfice estimé</p>
@@ -618,7 +663,7 @@ export default function SuiviProductionClient() {
                 </div>
               </div>
 
-              {newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' ? (
+              {newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick' ? (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
                   <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> Quantité graines</label>
                   <Input
@@ -629,7 +674,7 @@ export default function SuiviProductionClient() {
                 </div>
               ) : null}
 
-              {newRequest.flowMode === 'leaf_to_brick' ? (
+              {newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms' ? (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
                   <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> Quantité feuilles</label>
                   <Input
@@ -657,10 +702,12 @@ export default function SuiviProductionClient() {
                 <p className="text-[11px] text-white/55">
                   {newRequest.flowMode === 'seed_only'
                     ? `${conversionFromForm.seedQty} graines achetées.`
-                    : newRequest.flowMode === 'leaf_to_brick'
+                    : newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_seed_to_brick'
                       ? `${Math.round(conversionFromForm.leaves)} feuilles → ${Math.round(conversionFromForm.netBricks)} bricks (taxe 5%).`
-                      : newRequest.flowMode === 'brick_to_pouch'
-                        ? `${Math.round(conversionFromForm.netBricks)} bricks → ${conversionFromForm.pouches} pochons (1 brick = 10).`
+                    : newRequest.flowMode === 'brick_to_pouch'
+                      ? `${Math.round(conversionFromForm.netBricks)} bricks → ${conversionFromForm.pouches} pochons (1 brick = 10).`
+                      : newRequest.flowMode === 'two_steps_transforms'
+                        ? `${Math.round(conversionFromForm.leaves)} feuilles → ${Math.round(conversionFromForm.netBricks)} bricks (taxe 5%) → ${conversionFromForm.pouches} pochons.`
                         : `${conversionFromForm.seedQty} graines → ${Math.round(conversionFromForm.netBricks)} bricks (taxe 5%) → ${conversionFromForm.pouches} pochons.`}
                 </p>
               </div>
@@ -757,19 +804,19 @@ export default function SuiviProductionClient() {
                 <div className="mt-2 grid gap-2 sm:grid-cols-4">
                   <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs">
                     <p className="text-amber-100/80">Coût graines</p>
-                    <p className="text-base font-semibold">{money(conversionFromForm.seedQty * seedPrice)}</p>
+                    <p className="text-base font-semibold">{money(previewFinance.seedCostTotal)}</p>
                   </div>
                   <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs">
                     <p className="text-emerald-100/80">Total vente estimé</p>
-                    <p className="text-base font-semibold">{money(conversionFromForm.pouches * pouchSalePrice)}</p>
+                    <p className="text-base font-semibold">{money(previewFinance.totalSale)}</p>
                   </div>
                   <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs">
                     <p className="text-amber-100/80">Coût transfo total</p>
-                    <p className="text-base font-semibold">{money((conversionFromForm.seedQty * seedPrice) + (conversionFromForm.netBricks * brickTransformCost) + ((conversionFromForm.pouches / POUCH_BATCH_SIZE) * pouchTransformCost))}</p>
+                    <p className="text-base font-semibold">{money(previewFinance.totalTransformCost)}</p>
                   </div>
                   <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2 text-xs">
                     <p className="text-cyan-100/80">Bénéfice estimé</p>
-                    <p className="text-base font-semibold">{money((conversionFromForm.pouches * pouchSalePrice) - ((conversionFromForm.seedQty * seedPrice) + (conversionFromForm.netBricks * brickTransformCost) + ((conversionFromForm.pouches / POUCH_BATCH_SIZE) * pouchTransformCost)))}</p>
+                    <p className="text-base font-semibold">{money(previewFinance.estimatedProfit)}</p>
                   </div>
                 </div>
               </div>

@@ -11,6 +11,16 @@ import { SecondaryButton } from '@/components/ui/design-system'
 import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
+function inferDemandMode(note: string | null | undefined): DemandFormValue['mode'] {
+  const raw = String(note || '').toLowerCase()
+  if (raw.includes('2 étapes (graine->brick)') || raw.includes('2 etapes (graine->brick)')) return 'two_steps_seed_to_brick'
+  if (raw.includes('2 étapes (feuille->pochon)') || raw.includes('2 etapes (feuille->pochon)')) return 'two_steps_transforms'
+  if (raw.includes('achat graines')) return 'seed_only'
+  if (raw.includes('feuille->brick')) return 'leaf_to_brick'
+  if (raw.includes('brick->pochon')) return 'brick_to_pouch'
+  return 'full_chain'
+}
+
 export default function EditSuiviProductionClient({ id }: { id: string }) {
   const router = useRouter()
   const [row, setRow] = useState<DrugProductionTrackingRow | null>(null)
@@ -102,7 +112,7 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
               initial={{
                 partnerName: row.partner_name,
                 type: row.type,
-                mode: 'full_chain',
+                mode: inferDemandMode(row.note),
                 createdAt: row.created_at.slice(0, 10),
                 quantitySeeds: row.quantity_sent,
                 quantityLeaves: row.quantity_sent,

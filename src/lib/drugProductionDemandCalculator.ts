@@ -1,4 +1,10 @@
-export type DemandMode = 'seed_only' | 'leaf_to_brick' | 'brick_to_pouch' | 'full_chain'
+export type DemandMode =
+  | 'seed_only'
+  | 'leaf_to_brick'
+  | 'brick_to_pouch'
+  | 'two_steps_seed_to_brick'
+  | 'two_steps_transforms'
+  | 'full_chain'
 
 export type DemandInputs = {
   mode: DemandMode
@@ -22,21 +28,33 @@ export function computeDemandMetrics(input: DemandInputs) {
 
   const taxRate = 0.05
   const pouchesPerBrick = 10
-  const pouchLotSize = 10
 
-  const leavesBase = input.mode === 'full_chain' ? seedQty : input.mode === 'leaf_to_brick' ? leafQty : 0
+  const leavesBase =
+    input.mode === 'full_chain' || input.mode === 'two_steps_seed_to_brick'
+      ? seedQty
+      : input.mode === 'leaf_to_brick' || input.mode === 'two_steps_transforms'
+        ? leafQty
+        : 0
   const netBricks = input.mode === 'brick_to_pouch' ? brickQty : Math.max(0, Math.floor(leavesBase * (1 - taxRate)))
   const pouches = Math.max(0, netBricks * pouchesPerBrick)
 
   const expectedOutput = input.mode === 'seed_only'
     ? seedQty
-    : input.mode === 'leaf_to_brick'
+    : input.mode === 'leaf_to_brick' || input.mode === 'two_steps_seed_to_brick'
       ? netBricks
       : pouches
 
-  const seedCostTotal = seedQty * seedPrice
+  const seedCostTotal = (input.mode === 'seed_only' || input.mode === 'full_chain' || input.mode === 'two_steps_seed_to_brick')
+    ? seedQty * seedPrice
+    : 0
   const totalSaleEstimate = pouches * pouchSalePrice
-  const transformCostTotal = (netBricks * brickTransformCost) + ((pouches / pouchLotSize) * pouchTransformCost)
+  const transformCostTotal = input.mode === 'seed_only'
+    ? 0
+    : input.mode === 'leaf_to_brick' || input.mode === 'two_steps_seed_to_brick'
+      ? (leavesBase * brickTransformCost)
+      : input.mode === 'brick_to_pouch'
+        ? (brickQty * pouchTransformCost)
+        : (leavesBase * (brickTransformCost + pouchTransformCost))
   const totalCost = seedCostTotal + transformCostTotal
   const estimatedProfit = totalSaleEstimate - totalCost
 

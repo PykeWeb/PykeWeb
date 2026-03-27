@@ -28,6 +28,8 @@ const MODE_OPTIONS: { value: DemandMode; label: string }[] = [
   { value: 'seed_only', label: 'Achat graines' },
   { value: 'leaf_to_brick', label: 'Feuille → Brick' },
   { value: 'brick_to_pouch', label: 'Brick → Pochon' },
+  { value: 'two_steps_seed_to_brick', label: 'Les 2 étapes (Graine → Brick)' },
+  { value: 'two_steps_transforms', label: 'Les 2 étapes (Feuille → Pochon)' },
   { value: 'full_chain', label: 'Les 3 étapes' },
 ]
 
@@ -63,6 +65,20 @@ export function DemandePartenaireForm({
     pouchTransformCost: form.pouchTransformCost,
   }), [form])
 
+  const quantityLabel =
+    form.mode === 'brick_to_pouch'
+      ? 'Quantité bricks'
+      : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
+        ? 'Quantité feuilles'
+        : 'Quantité graines'
+
+  const quantityValue =
+    form.mode === 'brick_to_pouch'
+      ? form.quantityBricks
+      : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
+        ? form.quantityLeaves
+        : form.quantitySeeds
+
   return (
     <div className="space-y-3">
       <div className="grid gap-2 md:grid-cols-[1fr_220px_auto]">
@@ -84,7 +100,23 @@ export function DemandePartenaireForm({
         <p className="text-sm font-semibold text-cyan-100">Prix & estimation</p>
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
           <div><p className="mb-1 text-xs text-white/70">Mode opération</p><GlassSelect value={form.mode} onChange={(v) => setForm((p) => ({ ...p, mode: v as DemandMode }))} options={MODE_OPTIONS} /></div>
-          <div><p className="mb-1 text-xs text-white/70">Quantité graines</p><Input value={form.quantitySeeds} onChange={(e) => setForm((p) => ({ ...p, quantitySeeds: Number(e.target.value) || 0 }))} inputMode="numeric" /></div>
+          <div>
+            <p className="mb-1 text-xs text-white/70">{quantityLabel}</p>
+            <Input
+              value={quantityValue}
+              onChange={(e) => {
+                const nextValue = Number(e.target.value) || 0
+                setForm((p) => (
+                  form.mode === 'brick_to_pouch'
+                    ? { ...p, quantityBricks: nextValue }
+                    : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
+                      ? { ...p, quantityLeaves: nextValue }
+                      : { ...p, quantitySeeds: nextValue }
+                ))
+              }}
+              inputMode="numeric"
+            />
+          </div>
           <div><p className="mb-1 text-xs text-white/70">Attendu (auto)</p><Input value={calc.expectedOutput} readOnly /></div>
           <div><p className="mb-1 text-xs text-white/70">Prix graine</p><Input value={form.seedPrice} onChange={(e) => setForm((p) => ({ ...p, seedPrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/70">Prix vente pochon</p><Input value={form.pouchSalePrice} onChange={(e) => setForm((p) => ({ ...p, pouchSalePrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
