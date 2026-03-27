@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
+import { ArrowLeft, ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -442,7 +442,13 @@ export default function SuiviProductionClient() {
         </Link>
       </div>
 
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/drogues">
+          <SecondaryButton className="h-11 px-5">
+            <ArrowLeft className="h-4 w-4" />
+            Retour accueil drogues
+          </SecondaryButton>
+        </Link>
         <PrimaryButton onClick={() => { setNoteExpanded(false); setCreating(true) }} className="h-11 px-5">
           <Plus className="h-4 w-4" />
           Nouvelle demande

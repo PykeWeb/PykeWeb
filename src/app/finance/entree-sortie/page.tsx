@@ -28,7 +28,7 @@ export default function FinanceEntreeSortiePage() {
   }, [])
 
   if (isSbGroup) {
-    return <SbEntreeSortieClient />
+    return <SbEntreeSortieClient variant="stockFlow" />
   }
 
   return (

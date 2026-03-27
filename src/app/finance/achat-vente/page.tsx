@@ -7,18 +7,27 @@ import { FinanceItemTradeModal } from '@/components/ui/FinanceItemTradeModal'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
+import { getTenantSession, isSbTenantSession } from '@/lib/tenantSession'
+import { SbEntreeSortieClient } from '@/components/modules/sb/SbEntreeSortieClient'
 
 export default function FinanceItemTradePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [initialItems, setInitialItems] = useState<CatalogItem[]>([])
+  const [isSbGroup, setIsSbGroup] = useState(false)
   const initialMode: 'buy' | 'sell' = searchParams.get('mode') === 'sell' ? 'sell' : 'buy'
 
   useEffect(() => {
+    const session = getTenantSession()
+    setIsSbGroup(isSbTenantSession(session))
     void listCatalogItemsUnified()
       .then(setInitialItems)
       .catch(() => setInitialItems([]))
   }, [])
+
+  if (isSbGroup) {
+    return <SbEntreeSortieClient variant="trade" />
+  }
 
   return (
     <div className="space-y-4">

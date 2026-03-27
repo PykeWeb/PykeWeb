@@ -23,7 +23,13 @@ function resolveModePrice(item: CatalogItem, mode: Mode) {
   return Math.max(0, Number(item.sell_price || item.buy_price || item.internal_value || 0))
 }
 
-export function SbEntreeSortieClient() {
+type SbPageVariant = 'stockFlow' | 'trade'
+
+type SbEntreeSortieClientProps = {
+  variant?: SbPageVariant
+}
+
+export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieClientProps) {
   const [isReady, setIsReady] = useState(false)
   const [mode, setMode] = useState<Mode>('entree')
   const [items, setItems] = useState<CatalogItem[]>([])
@@ -76,6 +82,11 @@ export function SbEntreeSortieClient() {
     [selectedItems]
   )
 
+  const totalAmount = useMemo(
+    () => selectedItems.reduce((sum, entry) => sum + (entry.quantity * Math.max(0, Number(entry.price || 0))), 0),
+    [selectedItems]
+  )
+
   const addItem = (item: CatalogItem, increment = 1) => {
     const baseQuantity = Math.max(1, Math.floor(Number(increment) || 1))
     const maxStock = Math.max(0, Number(item.stock || 0))
@@ -119,6 +130,12 @@ export function SbEntreeSortieClient() {
     )))
   }
 
+  const updatePrice = (itemId: string, price: number) => {
+    setSelectedItems((prev) => prev.map((entry) => (
+      entry.id === itemId ? { ...entry, price: Math.max(0, Number(price || 0)) } : entry
+    )))
+  }
+
   const clearTransaction = () => {
     setSelectedItems([])
     setCounterparty('')
@@ -139,7 +156,7 @@ export function SbEntreeSortieClient() {
           item_id: entry.id,
           mode: mode === 'entree' ? 'buy' : 'sell',
           quantity: entry.quantity,
-          unit_price: entry.price,
+          unit_price: variant === 'trade' ? entry.price : 0,
           counterparty: counterparty.trim() || undefined,
           notes,
           payment_mode: 'other',
@@ -159,9 +176,17 @@ export function SbEntreeSortieClient() {
 
   if (!isReady) return null
 
+  const isTradeVariant = variant === 'trade'
+  const modeLeftLabel = isTradeVariant ? 'Achat' : 'Entrée'
+  const modeRightLabel = isTradeVariant ? 'Vente' : 'Sortie'
+  const headerTitle = isTradeVariant ? 'Achat / Vente SB' : 'Entrée / Sortie SB'
+  const headerSubtitle = isTradeVariant
+    ? 'Interface rapide achat/vente avec prix pour le groupe SB.'
+    : 'Interface rapide entrée/sortie de stock pour le groupe SB.'
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Achat / Vente SB" subtitle="Interface rapide de gestion stock pour le groupe SB." />
+      <PageHeader title={headerTitle} subtitle={headerSubtitle} />
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
@@ -203,7 +228,7 @@ export function SbEntreeSortieClient() {
               className={`inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-2 text-xl font-semibold transition ${mode === 'entree' ? 'bg-gradient-to-r from-cyan-500/45 to-blue-500/40 text-cyan-50 shadow-[0_0_30px_rgba(56,189,248,0.45)]' : 'text-white/70 hover:text-white'}`}
             >
               <ArrowDown className="h-5 w-5" />
-              Achat
+              {modeLeftLabel}
             </button>
             <button
               type="button"
@@ -211,7 +236,7 @@ export function SbEntreeSortieClient() {
               className={`inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-2 text-xl font-semibold transition ${mode === 'sortie' ? 'bg-gradient-to-r from-cyan-500/45 to-blue-500/40 text-cyan-50 shadow-[0_0_30px_rgba(56,189,248,0.45)]' : 'text-white/70 hover:text-white'}`}
             >
               <ArrowUp className="h-5 w-5" />
-              Vente
+              {modeRightLabel}
             </button>
           </div>
         </div>
@@ -222,6 +247,11 @@ export function SbEntreeSortieClient() {
           <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
             Total items {mode === 'entree' ? 'entrés' : 'sortis'}: {totalItems}
           </div>
+          {isTradeVariant ? (
+            <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-5 text-sm font-semibold text-emerald-100">
+              Total: {totalAmount.toFixed(2)} $
+            </div>
+          ) : null}
           <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
           <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -279,7 +309,10 @@ export function SbEntreeSortieClient() {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-white">{item.name}</p>
-                      <p className="text-xs text-white/60">Stock: {Math.max(0, Number(item.stock || 0))}</p>
+                      <p className="text-xs text-white/60">
+                        Stock: {Math.max(0, Number(item.stock || 0))}
+                        {isTradeVariant ? ` · ${resolveModePrice(item, mode).toFixed(2)} $` : ''}
+                      </p>
                     </div>
                   </div>
 
@@ -342,6 +375,17 @@ export function SbEntreeSortieClient() {
                       <Plus className="h-4 w-4" />
                     </button>
                   </div>
+                  {isTradeVariant ? (
+                    <div className="ml-2 flex items-center gap-2">
+                      <span className="text-xs text-white/65">PU</span>
+                      <Input
+                        value={entry.price}
+                        onChange={(event) => updatePrice(entry.id, Number(event.target.value))}
+                        inputMode="decimal"
+                        className="h-9 w-24 text-right text-sm"
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             )})}

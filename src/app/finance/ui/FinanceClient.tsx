@@ -37,6 +37,11 @@ type ExpenseActionEntry = FinanceEntry & {
 const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', purchase: 'Achat', stock_in: 'Entrée', sale: 'Vente', stock_out: 'Sortie' }
 const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Autres', other: 'Autres' }
 
+function movementTypeLabel(entry: FinanceEntry) {
+  if (entry.category === 'drugs' && entry.movement_type !== 'expense') return 'Drogue'
+  return typeLabels[entry.movement_type]
+}
+
 function toPositiveInt(value: string, fallback = 1) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return fallback
@@ -237,7 +242,7 @@ export default function FinanceClient() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs ${entry.movement_type === 'expense' ? 'border-amber-300/40 bg-amber-500/15 text-amber-100' : entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' ? 'border-cyan-300/45 bg-cyan-500/15 text-cyan-100' : 'border-rose-300/45 bg-rose-500/15 text-rose-100'}`}>{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{typeLabels[entry.movement_type]}</span></td>
+                  <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs ${entry.movement_type === 'expense' ? 'border-amber-300/40 bg-amber-500/15 text-amber-100' : entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' ? 'border-cyan-300/45 bg-cyan-500/15 text-cyan-100' : 'border-rose-300/45 bg-rose-500/15 text-rose-100'}`}>{entry.movement_type === 'expense' ? <Receipt className="h-3 w-3" /> : entry.movement_type === 'purchase' || entry.movement_type === 'stock_in' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}{movementTypeLabel(entry)}</span></td>
                   <td className="px-4 py-3"><span className="inline-flex rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs text-white/85">{categoryLabels[entry.category] || 'Autre'}</span></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 font-semibold">
