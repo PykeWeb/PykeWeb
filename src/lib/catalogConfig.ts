@@ -5,7 +5,7 @@ export const itemCategoryOptions: { value: ItemCategory; label: string }[] = [
   { value: 'weapons', label: 'Armes' },
   { value: 'equipment', label: 'Équipement' },
   { value: 'drugs', label: 'Drogues' },
-  { value: 'custom', label: 'Autres' },
+  { value: 'custom', label: 'Autres\u200b' },
 ]
 
 export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label: string }[]> = {
@@ -26,7 +26,7 @@ export const categoryTypeOptions: Record<ItemCategory, { value: ItemType; label:
     { value: 'drug_material', label: 'Matériels' },
     { value: 'product', label: 'Productions' },
   ],
-  custom: [{ value: 'other', label: 'Autres' }],
+  custom: [{ value: 'other', label: 'Autres\u200b' }],
 }
 
 export type UnifiedTypeFilterValue =
@@ -55,7 +55,7 @@ export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: U
       { value: 'pouch', label: 'Pochons' },
       { value: 'drug_material', label: 'Matériels' },
       { value: 'product', label: 'Productions' },
-      { value: 'other', label: 'Autres' },
+      { value: 'other', label: 'Autres\u200b' },
     ]
   }
 
@@ -63,7 +63,7 @@ export function getTypeFilterOptions(category: 'all' | ItemCategory): { value: U
   if (category === 'equipment') return [{ value: 'all', label: 'Tous' }, { value: 'equipment', label: 'Équipements' }]
   if (category === 'weapons') return [{ value: 'all', label: 'Tous' }, { value: 'weapon', label: 'Armes' }, { value: 'ammo', label: 'Munitions' }, { value: 'weapon_accessory', label: 'Modding' }]
   if (category === 'drugs') return [{ value: 'all', label: 'Tous' }, { value: 'seed', label: 'Graines' }, { value: 'pouch', label: 'Pochons' }, { value: 'drug_material', label: 'Matériels' }, { value: 'product', label: 'Productions' }]
-  return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres' }]
+  return [{ value: 'all', label: 'Tous' }, { value: 'other', label: 'Autres\u200b' }]
 }
 
 export function matchesTypeFilter(item: CatalogItem, selectedCategory: 'all' | ItemCategory, selectedType: UnifiedTypeFilterValue): boolean {
@@ -150,7 +150,7 @@ export function normalizeItemType(raw: string | null, category: ItemCategory): I
 }
 
 export function getCategoryLabel(category: ItemCategory): string {
-  return itemCategoryOptions.find((option) => option.value === category)?.label ?? 'Autres'
+  return itemCategoryOptions.find((option) => option.value === category)?.label ?? 'Autres\u200b'
 }
 
 export function getTypeLabel(type: ItemType, category?: ItemCategory | string | null): string {
@@ -186,10 +186,10 @@ export function getTypeLabel(type: ItemType, category?: ItemCategory | string | 
     product: 'Productions',
     recipe: 'Matériels',
     drug_material: 'Matériels',
-    other: 'Autres',
-    input: 'Autres',
+    other: 'Autres\u200b',
+    input: 'Autres\u200b',
     output: 'Productions',
     production: 'Productions',
   }
-  return globalLabels[type] ?? 'Autres'
+  return globalLabels[type] ?? 'Autres\u200b'
 }

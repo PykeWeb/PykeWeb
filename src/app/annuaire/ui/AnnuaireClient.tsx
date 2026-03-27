@@ -23,7 +23,7 @@ const ACTIVITY_OPTIONS: Array<{ value: DirectoryActivity; label: string }> = [
   { value: 'objects', label: 'Objets' },
   { value: 'weapons', label: 'Armes' },
   { value: 'equipment', label: 'Équipement' },
-  { value: 'other', label: 'Autres' },
+  { value: 'other', label: 'Autres\u200b' },
 ]
 
 const ACTIVITY_LABELS: Record<DirectoryActivity, string> = {
@@ -32,7 +32,7 @@ const ACTIVITY_LABELS: Record<DirectoryActivity, string> = {
   objects: 'Objets',
   weapons: 'Armes',
   equipment: 'Équipement',
-  other: 'Autres',
+  other: 'Autres\u200b',
 }
 
 type FormState = {
@@ -193,7 +193,7 @@ export default function AnnuaireClient() {
           <p className="mt-2 text-3xl font-semibold">{stats.objects}</p>
         </button>
         <button type="button" onClick={() => setFilter('other')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'other' ? 'border-amber-200/60 bg-gradient-to-br from-amber-500/28 to-orange-600/20' : 'border-amber-300/25 bg-gradient-to-br from-amber-500/12 to-orange-600/12'}`}>
-          <p className="text-xs text-amber-100/85">Autres</p>
+          <p className="text-xs text-amber-100/85">{'Autres\u200b'}</p>
           <p className="mt-2 text-3xl font-semibold">{stats.other}</p>
         </button>
       </div>
