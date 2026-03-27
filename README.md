@@ -51,3 +51,4 @@ Guide détaillé : `docs/DEPLOY_VERCEL.md`
 ## Référence architecture
 - `docs/ARCHITECTURE.md`
 - `docs/CLEANUP_REPORT.md`
+- `docs/DISCORD_BOT.md` (onboarding Discord ↔ membres tablette)

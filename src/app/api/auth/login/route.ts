@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { resolveGroupLoginRole } from '@/lib/groupCredentials'
+import { verifySecret } from '@/server/discord/password'
 import {
   encodeTenantSession,
   TENANT_SESSION_COOKIE_KEY,
@@ -30,8 +31,10 @@ type GroupMemberRow = {
   player_name: string
   player_identifier: string | null
   password: string | null
+  password_hash: string | null
   is_admin: boolean
   grade_id: string | null
+  is_active: boolean
 }
 
 type RoleRow = {
@@ -104,12 +107,15 @@ async function findGroupByMemberLogin(login: string, password: string) {
   const supabase = getSupabaseAdmin()
   const { data: members, error: membersError } = await supabase
     .from('group_members')
-    .select('id,group_id,player_name,player_identifier,password,is_admin,grade_id')
+    .select('id,group_id,player_name,player_identifier,password,password_hash,is_admin,grade_id,is_active')
     .eq('player_identifier', login)
-    .eq('password', password)
 
   if (membersError) throw new Error(membersError.message)
-  const matchedMembers = (members ?? []) as GroupMemberRow[]
+  const candidates = ((members ?? []) as GroupMemberRow[]).filter((member) => member.is_active !== false)
+  const matchedMembers = candidates.filter((member) => {
+    if (member.password_hash) return verifySecret(password, member.password_hash)
+    return member.password === password
+  })
   if (matchedMembers.length === 0) return null
   if (matchedMembers.length > 1) throw new Error('Ce mot de passe pour cet identifiant est déjà utilisé par un autre groupe. Utilisez un mot de passe unique.')
 
