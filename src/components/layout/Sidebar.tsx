@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles, BookUser } from 'lucide-react'
+import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles, BookUser, ScanSearch } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
@@ -41,7 +41,7 @@ export function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
-  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'annuaire', 'drogues', 'group', 'activites'])
+  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'scan-inventaire', 'items', 'annuaire', 'drogues', 'group', 'activites'])
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [isSbGroup, setIsSbGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
@@ -105,6 +105,7 @@ export function Sidebar() {
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
+    { id: 'scan-inventaire', href: '/scan-inventaire', label: 'Scan IA', icon: <ScanSearch className="h-5 w-5" />, active: pathname.startsWith('/scan-inventaire') },
     { id: 'annuaire', href: '/annuaire', label: 'Annuaire', icon: <BookUser className="h-5 w-5" />, active: pathname.startsWith('/annuaire') },
     { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },
     { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
