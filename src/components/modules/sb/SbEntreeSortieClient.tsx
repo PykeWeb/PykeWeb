@@ -109,8 +109,13 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   }
 
   useEffect(() => {
-    setSelectedItems([])
-  }, [mode])
+    if (variant !== 'trade') return
+    setSelectedItems((prev) => prev.map((entry) => {
+      const item = items.find((row) => row.id === entry.id)
+      if (!item) return entry
+      return { ...entry, price: resolveModePrice(item, mode) }
+    }))
+  }, [items, mode, variant])
 
   const removeItem = (itemId: string) => {
     setSelectedItems((prev) => prev.filter((entry) => entry.id !== itemId))
