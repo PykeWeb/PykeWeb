@@ -7,6 +7,8 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { getTenantSession } from '@/lib/tenantSession'
 import { canAccessPath, getDefaultRouteForSession } from '@/lib/accessControl'
+import Link from 'next/link'
+import { ScanSearch } from 'lucide-react'
 
 export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -67,6 +69,13 @@ export function AppFrame({ children }: { children: ReactNode }) {
         <Topbar />
         {children}
       </main>
+      <Link
+        href="/scan-inventaire"
+        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-500/25 px-4 py-2 text-sm font-semibold text-cyan-50 shadow-[0_0_24px_rgba(6,182,212,0.35)] backdrop-blur hover:bg-cyan-500/35"
+      >
+        <ScanSearch className="h-4 w-4" />
+        Scan IA
+      </Link>
     </div>
   )
 }

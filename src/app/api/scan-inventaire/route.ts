@@ -15,7 +15,6 @@ type ScanItem = {
   detected_label: string
   matched_item_id: string | null
   matched_item_name: string | null
-  category: string | null
   estimated_quantity: number
   confidence: number
   alternatives: Array<{ item_id: string; item_name: string }>
@@ -80,7 +79,6 @@ function sanitizeScanPayload(raw: any, catalogMap: Map<string, CatalogItem>): Sc
       detected_label: typeof entry?.detected_label === 'string' ? entry.detected_label.slice(0, 100) : 'unknown',
       matched_item_id: matched ? matched.id : null,
       matched_item_name: matched ? matched.name : null,
-      category: matched ? matched.category : null,
       estimated_quantity: normalizeQuantity(entry?.estimated_quantity),
       confidence: clampConfidence(entry?.confidence),
       alternatives,
@@ -146,7 +144,10 @@ export async function POST(request: Request) {
     const apiKey = process.env.OPENAI_API_KEY
     const model = process.env.OPENAI_SCAN_MODEL || 'gpt-4.1-mini'
     if (!apiKey) {
-      return NextResponse.json({ error: 'OPENAI_API_KEY manquante côté serveur.' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'OPENAI_API_KEY manquante côté serveur. Ajoute-la dans .env.local puis redémarre Next.js.' },
+        { status: 500 }
+      )
     }
 
     const supabase = getSupabaseAdmin()
@@ -221,7 +222,6 @@ export async function POST(request: Request) {
                       detected_label: { type: 'string' },
                       matched_item_id: { anyOf: [{ type: 'string' }, { type: 'null' }] },
                       matched_item_name: { anyOf: [{ type: 'string' }, { type: 'null' }] },
-                      category: { anyOf: [{ type: 'string' }, { type: 'null' }] },
                       estimated_quantity: { type: 'integer' },
                       confidence: { type: 'number' },
                       reasoning: { type: 'string' },
@@ -242,7 +242,6 @@ export async function POST(request: Request) {
                       'detected_label',
                       'matched_item_id',
                       'matched_item_name',
-                      'category',
                       'estimated_quantity',
                       'confidence',
                       'reasoning',
