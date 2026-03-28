@@ -205,10 +205,13 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             placeholder="Membre"
             className="h-11"
           />
-          <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
-            <span>Total :</span>
-            <span className="ml-2 inline-flex min-w-[2.2rem] items-center justify-center rounded-lg border border-cyan-200/35 bg-cyan-500/20 px-2 py-0.5 text-white">
-              {safeTotalItems}
+          <div className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-300/40 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-50">
+            <span className="whitespace-nowrap text-cyan-100/95">Total objets</span>
+            <span
+              aria-live="polite"
+              className="inline-flex min-w-[2.8rem] items-center justify-center rounded-lg border border-cyan-100/45 bg-cyan-400/25 px-2.5 py-0.5 text-base font-bold leading-none text-white"
+            >
+              {safeTotalItems.toLocaleString('fr-FR')}
             </span>
           </div>
           <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>

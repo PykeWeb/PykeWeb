@@ -297,7 +297,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'stock']
+    const views: ActivityView[] = ['summary', 'transactions', 'session_coke', 'production_tracking', 'expenses', 'stock']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
