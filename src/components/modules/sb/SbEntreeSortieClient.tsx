@@ -296,40 +296,45 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
           <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Valider
-          </PrimaryButton>
-        </div>
-      </Panel>
-
-      <div className="grid gap-4 xl:grid-cols-5 xl:items-stretch">
-        <Panel className="flex h-full max-h-[44vh] flex-col space-y-4 xl:col-span-3">
-          <div className="grid gap-2 md:grid-cols-[180px_1fr]">
-            <GlassSelect
-              value={type}
-              onChange={(value) => setType(value as UnifiedTypeFilterValue)}
-              options={getTypeFilterOptions(category).map((option) => ({ value: option.value, label: option.label }))}
-              placeholder="Type"
-            />
-            <label className="relative block">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
-              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Recherche" className="pl-10" />
-            </label>
-          </div>
-
-          <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-            {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
-            {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
-            {filteredItems.map((item) => {
-              const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
-              const CategoryIcon =
-                normalizedCategory === 'objects' ? Box
-                  : normalizedCategory === 'weapons' ? Swords
-                    : normalizedCategory === 'equipment' ? Shield
-                      : normalizedCategory === 'drugs' ? Pill
-                        : Shapes
-              return (
-                <div
-                  key={item.id}
+                <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.08]">
+                        {entry.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={entry.imageUrl} alt={entry.name} className="h-full w-full object-cover" loading="lazy" />
+                        ) : <ItemIcon className="h-5 w-5 text-white/70" />}
+                      </div>
+                      <p className="truncate text-sm font-semibold text-white">{entry.name}</p>
+                      onClick={() => removeItem(entry.id)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100"
+                      <Trash2 className="h-4 w-4" />
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="inline-flex h-9 items-center overflow-hidden rounded-lg border border-white/15 bg-white/[0.04]">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(entry.id, entry.quantity - 1)}
+                        className="inline-flex h-full w-9 items-center justify-center border-r border-white/10 text-white/90"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <Input
+                        value={entry.quantity}
+                        onChange={(event) => updateQuantity(entry.id, Number(event.target.value))}
+                        inputMode="numeric"
+                        className="h-full w-16 rounded-none border-0 bg-transparent px-2 text-center text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(entry.id, entry.quantity + 1)}
+                        className="inline-flex h-full w-9 items-center justify-center border-l border-white/10 text-white/90"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+              )
+            })}
                   role="button"
                   tabIndex={0}
                   onClick={() => addItem(item, 1)}
