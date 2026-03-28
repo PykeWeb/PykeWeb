@@ -133,34 +133,6 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       const buyPrice = Math.max(0, Number(item.buy_price || item.internal_value || item.sell_price || 0))
       const sellPrice = Math.max(0, Number(item.sell_price || item.internal_value || item.buy_price || 0))
       return { ...entry, price: resolveModePrice(item, mode), buyPrice, sellPrice }
-  const transactionMetaFields = (
-    <div className="grid gap-3 xl:grid-cols-[1fr_1fr_auto_auto_auto]">
-      <Input
-        value={counterparty}
-        onChange={(event) => setCounterparty(event.target.value)}
-        placeholder="Interlocuteur"
-        className="h-11"
-      />
-      <Input
-        value={member}
-        onChange={(event) => setMember(event.target.value)}
-        placeholder="Membre"
-        className="h-11"
-      />
-      <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
-        <span>Total :</span>
-        <span className="ml-2 inline-flex min-w-[2.2rem] items-center justify-center rounded-lg border border-cyan-200/35 bg-cyan-500/20 px-2 py-0.5 text-white">
-          {safeTotalItems}
-        </span>
-      </div>
-      <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
-      <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
-        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Valider
-      </PrimaryButton>
-    </div>
-  )
-
     }))
   }, [items, mode, variant])
 
@@ -220,7 +192,31 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       const refreshed = await listCatalogItemsUnified()
       setItems(refreshed)
     } catch (error: unknown) {
-        {transactionMetaFields}
+        <div className="grid gap-3 xl:grid-cols-[1fr_1fr_auto_auto_auto]">
+          <Input
+            value={counterparty}
+            onChange={(event) => setCounterparty(event.target.value)}
+            placeholder="Interlocuteur"
+            className="h-11"
+          />
+          <Input
+            value={member}
+            onChange={(event) => setMember(event.target.value)}
+            placeholder="Membre"
+            className="h-11"
+          />
+          <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
+            <span>Total :</span>
+            <span className="ml-2 inline-flex min-w-[2.2rem] items-center justify-center rounded-lg border border-cyan-200/35 bg-cyan-500/20 px-2 py-0.5 text-white">
+              {safeTotalItems}
+            </span>
+          </div>
+          <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
+          <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Valider
+          </PrimaryButton>
+        </div>
   const headerSubtitle = isTradeVariant
     ? 'Interface rapide achat/vente avec prix pour le groupe SB.'
     : 'Interface rapide entrée/sortie de stock pour le groupe SB.'
