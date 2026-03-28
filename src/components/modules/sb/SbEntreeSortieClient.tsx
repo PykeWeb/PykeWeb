@@ -193,8 +193,18 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       setItems(refreshed)
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Impossible de valider la transaction.')
-    } finally {
-      setIsSubmitting(false)
+          <Input
+            value={counterparty}
+            onChange={(event) => setCounterparty(event.target.value)}
+            placeholder="Interlocuteur"
+            className="h-11"
+          />
+          <Input
+            value={member}
+            onChange={(event) => setMember(event.target.value)}
+            placeholder="Membre"
+            className="h-11"
+          />
     }
             <span>Total :</span>
             <span className="ml-2 inline-flex min-w-[2.2rem] items-center justify-center rounded-lg border border-cyan-200/35 bg-cyan-500/20 px-2 py-0.5 text-white">
