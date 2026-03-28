@@ -51,6 +51,33 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
 
     setIsReady(true)
   const safeTotalItems = Number.isFinite(totalItems) ? totalItems : 0
+  const transactionMetaFields = (
+    <div className="grid gap-3 xl:grid-cols-[1fr_1fr_auto_auto_auto]">
+      <Input
+        value={counterparty}
+        onChange={(event) => setCounterparty(event.target.value)}
+        placeholder="Interlocuteur"
+        className="h-11"
+      />
+      <Input
+        value={member}
+        onChange={(event) => setMember(event.target.value)}
+        placeholder="Membre"
+        className="h-11"
+      />
+      <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
+        <span>Total :</span>
+        <span className="ml-2 inline-flex min-w-[2.2rem] items-center justify-center rounded-lg border border-cyan-200/35 bg-cyan-500/20 px-2 py-0.5 text-white">
+          {safeTotalItems}
+        </span>
+      </div>
+      <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
+      <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
+        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Valider
+      </PrimaryButton>
+    </div>
+  )
     void listCatalogItemsUnified()
       .then((rows) => setItems(rows))
       .catch(() => {
@@ -192,31 +219,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       const refreshed = await listCatalogItemsUnified()
       setItems(refreshed)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Impossible de valider la transaction.')
-          <Input
-            value={counterparty}
-            onChange={(event) => setCounterparty(event.target.value)}
-            placeholder="Interlocuteur"
-            className="h-11"
-          />
-          <Input
-            value={member}
-            onChange={(event) => setMember(event.target.value)}
-            placeholder="Membre"
-            className="h-11"
-          />
-    }
-            <span>Total :</span>
-            <span className="ml-2 inline-flex min-w-[2.2rem] items-center justify-center rounded-lg border border-cyan-200/35 bg-cyan-500/20 px-2 py-0.5 text-white">
-              {safeTotalItems}
-            </span>
-
-  if (!isReady) return null
-
-  const isTradeVariant = variant === 'trade'
-  const modeLeftLabel = isTradeVariant ? 'Achat' : 'Entrée'
-  const modeRightLabel = isTradeVariant ? 'Vente' : 'Sortie'
-  const headerTitle = isTradeVariant ? 'Achat / Vente SB' : 'Entrée / Sortie SB'
+        {transactionMetaFields}
   const headerSubtitle = isTradeVariant
     ? 'Interface rapide achat/vente avec prix pour le groupe SB.'
     : 'Interface rapide entrée/sortie de stock pour le groupe SB.'
