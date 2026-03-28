@@ -342,6 +342,10 @@ export function DashboardClient() {
   const stockActivityRows = useMemo(() => (
     recentTx.filter((tx) => (stockActivityCategory === 'all' ? true : tx.category === stockActivityCategory))
   ), [recentTx, stockActivityCategory])
+  const cokeTrackings = useMemo(
+    () => recentDrugTrackings.filter((entry) => String(entry.type || '').toLowerCase().includes('coke')).slice(0, 8),
+    [recentDrugTrackings]
+  )
 
   function onCardPointerDown() {
     longPressTriggeredRef.current = false
@@ -518,8 +522,8 @@ export function DashboardClient() {
                   <p className="text-xs text-white/60">Dernière dépense</p>
                   <p className="truncate text-sm font-semibold">{recentExpenses[0]?.item_label || '—'}</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-xs text-white/60">Dernier suivi production</p>
+              cokeTrackings.map((entry) => (
+            {activityView === 'session_coke' && cokeTrackings.length === 0 ? (
                   {recentDrugTrackings[0] ? (
                     <Link href={`/drogues/suivi-production/${recentDrugTrackings[0].id}`} className="truncate text-sm font-semibold text-violet-100 hover:underline">
                       {recentDrugTrackings[0].partner_name} • {recentDrugTrackings[0].status}
