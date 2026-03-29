@@ -14,6 +14,7 @@ import { listWeapons, type DbWeapon } from '@/lib/weaponsApi'
 import { listEquipment, type DbEquipment } from '@/lib/equipmentApi'
 import { listDrugItems, type DbDrugItem } from '@/lib/drugsApi'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
+import { getTenantSession } from '@/lib/tenantSession'
 
 type PickItem = {
   type: Exclude<ExpenseItemType, 'custom'>
@@ -81,6 +82,7 @@ export function NouvelleDepenseForm({
   const router = useRouter()
 
   const [memberName, setMemberName] = useState('')
+  const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [itemType, setItemType] = useState<Exclude<ExpenseItemType, 'custom'>>('objects')
   const [useTemporaryItem, setUseTemporaryItem] = useState(false)
   const [items, setItems] = useState<PickItem[]>([])
@@ -115,6 +117,19 @@ export function NouvelleDepenseForm({
     if (useTemporaryItem) return temporaryName.trim().length > 0 && Number(unitPrice) >= 0 && quantity > 0 && !saving
     return selectedItems.length > 0 && !saving
   }, [memberName, useTemporaryItem, temporaryName, unitPrice, quantity, selectedItems, saving])
+
+  useEffect(() => {
+    const sessionMember = String(getTenantSession()?.memberName || '').trim()
+    if (sessionMember) setMemberName(sessionMember)
+    void fetch('/api/group/members', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return []
+        const payload = (await res.json()) as { members?: string[] }
+        return Array.isArray(payload.members) ? payload.members : []
+      })
+      .then((rows) => setMemberOptions(rows))
+      .catch(() => setMemberOptions([]))
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -236,8 +251,11 @@ export function NouvelleDepenseForm({
       <div className="grid h-full gap-3 md:grid-cols-2">
         <div className="md:col-span-2 grid gap-3 xl:grid-cols-[1fr_1fr_auto] xl:items-end">
           <div>
-            <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
-            <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" className="h-10" />
+            <label className="mb-1 block text-xs text-white/60">Membre</label>
+            <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" className="h-10" list="expense-member-options" />
+            <datalist id="expense-member-options">
+              {memberOptions.map((name) => <option key={name} value={name} />)}
+            </datalist>
           </div>
 
           <div>

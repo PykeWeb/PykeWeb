@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { PrimaryButton } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
-import { clearTenantSession, clearTenantSessionOnServer, saveTenantSession } from '@/lib/tenantSession'
+import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, saveTenantSession } from '@/lib/tenantSession'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
 import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
 
@@ -42,6 +42,7 @@ export default function TablettePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [memberOptions, setMemberOptions] = useState<string[]>([])
 
   const totalQty = useMemo(() => Object.values(quantities).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0), [quantities])
   const totalCost = useMemo(
@@ -126,7 +127,18 @@ export default function TablettePage() {
   }, [forceLogout, syncTabletSession])
 
   useEffect(() => {
+    const sessionMember = String(getTenantSession()?.memberName || '').trim()
+    if (sessionMember) setMemberName(sessionMember)
+
     void load()
+    void fetch('/api/group/members', withTenantSessionHeader({ cache: 'no-store' }))
+      .then(async (res) => {
+        if (!res.ok) return []
+        const payload = (await res.json()) as { members?: string[] }
+        return Array.isArray(payload.members) ? payload.members : []
+      })
+      .then((rows) => setMemberOptions(rows))
+      .catch(() => setMemberOptions([]))
   }, [load])
 
   function resetForm() {
@@ -159,7 +171,10 @@ export default function TablettePage() {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
-              <Input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Ex: Moussa" />
+              <Input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Ex: Moussa" list="tablet-member-options" />
+              <datalist id="tablet-member-options">
+                {memberOptions.map((name) => <option key={name} value={name} />)}
+              </datalist>
               {doneTodayByMember ? <p className="mt-1 text-xs text-amber-200">Ce membre a déjà validé aujourd’hui.</p> : null}
             </div>
 
