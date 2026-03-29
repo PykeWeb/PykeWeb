@@ -405,12 +405,12 @@ export function DashboardClient() {
   return (
     <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_332px]">
-      <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {!uiLayoutsReady ? Array.from({ length: 4 }).map((_, idx) => (
-            <div key={`card-skeleton-${idx}`} className="h-[118px] rounded-2xl border border-white/10 bg-white/[0.03] animate-pulse" />
-          )) : null}
-          {uiLayoutsReady ? dashboardCards.map((cardKey, idx) => {
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            {!uiLayoutsReady ? Array.from({ length: 4 }).map((_, idx) => (
+              <div key={`card-skeleton-${idx}`} className="h-[118px] rounded-2xl border border-white/10 bg-white/[0.03] animate-pulse" />
+            )) : null}
+            {uiLayoutsReady ? dashboardCards.map((cardKey, idx) => {
             const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
             const override = getBubbleOverride(`dashboard.card.${card.key}`)
             const Icon = (override?.icon && iconByName[override.icon]) ? iconByName[override.icon] : card.icon
@@ -442,7 +442,7 @@ export function DashboardClient() {
               </div>
             )
           }) : null}
-        </div>
+          </div>
 
         {visibleCustomDashboardBubbles.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
