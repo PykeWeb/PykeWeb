@@ -452,60 +452,60 @@ export function DashboardClient() {
             }) : null}
           </div>
 
-        {visibleCustomDashboardBubbles.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {visibleCustomDashboardBubbles.map((entry) => {
-              const Icon = (entry.icon && iconByName[entry.icon]) ? iconByName[entry.icon] : Shapes
-              const bubbleStyle: BubbleStyle = {
-                bgColor: entry.bgColor,
-                borderColor: entry.borderColor,
-                textColor: entry.textColor,
-                iconBgColor: entry.bgColor,
-                iconColor: entry.textColor,
-              }
-              return (
-                <StatCard
-                  key={entry.id}
-                  title={entry.title}
-                  value={entry.value || '—'}
-                  icon={<Icon className="h-5 w-5" />}
-                  tone="slate"
-                  href={entry.href}
-                  bubbleStyle={bubbleStyle}
-                />
-              )
-            })}
-          </div>
-        ) : null}
+          {visibleCustomDashboardBubbles.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {visibleCustomDashboardBubbles.map((entry) => {
+                const Icon = (entry.icon && iconByName[entry.icon]) ? iconByName[entry.icon] : Shapes
+                const bubbleStyle: BubbleStyle = {
+                  bgColor: entry.bgColor,
+                  borderColor: entry.borderColor,
+                  textColor: entry.textColor,
+                  iconBgColor: entry.bgColor,
+                  iconColor: entry.textColor,
+                }
+                return (
+                  <StatCard
+                    key={entry.id}
+                    title={entry.title}
+                    value={entry.value || '—'}
+                    icon={<Icon className="h-5 w-5" />}
+                    tone="slate"
+                    href={entry.href}
+                    bubbleStyle={bubbleStyle}
+                  />
+                )
+              })}
+            </div>
+          ) : null}
 
-        <Panel>
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold">Dernière activité</h3>
-            <Link href="/finance" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
-              Ouvrir Finance
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {[
-              { key: 'summary', label: 'Résumé', active: 'border-violet-300/65 bg-gradient-to-r from-violet-500/35 to-fuchsia-500/30 text-violet-50', idle: 'border-violet-300/25 bg-violet-500/10 text-violet-100/85 hover:bg-violet-500/18' },
-              { key: 'transactions', label: 'Transactions', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
-              { key: 'expenses', label: 'Dépenses', active: 'border-amber-300/65 bg-gradient-to-r from-amber-500/35 to-orange-500/30 text-amber-50', idle: 'border-amber-300/25 bg-amber-500/10 text-amber-100/85 hover:bg-amber-500/18' },
-              { key: 'stock', label: 'Stock', active: 'border-emerald-300/65 bg-gradient-to-r from-emerald-500/35 to-teal-500/30 text-emerald-50', idle: 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100/85 hover:bg-emerald-500/18' },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => selectActivity(tab.key as ActivityView)}
-                className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${activityView === tab.key ? tab.active : tab.idle}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div className="mt-3 space-y-2">
-            {activityView === 'summary' ? (
-              <div className="grid gap-2 sm:grid-cols-2">
+          <Panel>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold">Dernière activité</h3>
+              <Link href="/finance" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
+                Ouvrir Finance
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                { key: 'summary', label: 'Résumé', active: 'border-violet-300/65 bg-gradient-to-r from-violet-500/35 to-fuchsia-500/30 text-violet-50', idle: 'border-violet-300/25 bg-violet-500/10 text-violet-100/85 hover:bg-violet-500/18' },
+                { key: 'transactions', label: 'Transactions', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
+                { key: 'session_coke', label: 'Session Coke', active: 'border-sky-300/65 bg-gradient-to-r from-sky-500/35 to-indigo-500/30 text-sky-50', idle: 'border-sky-300/25 bg-sky-500/10 text-sky-100/85 hover:bg-sky-500/18' },
+                { key: 'production_tracking', label: 'Suivi de Production', active: 'border-fuchsia-300/65 bg-gradient-to-r from-fuchsia-500/35 to-violet-500/30 text-fuchsia-50', idle: 'border-fuchsia-300/25 bg-fuchsia-500/10 text-fuchsia-100/85 hover:bg-fuchsia-500/18' },
+                { key: 'expenses', label: 'Dépenses', active: 'border-amber-300/65 bg-gradient-to-r from-amber-500/35 to-orange-500/30 text-amber-50', idle: 'border-amber-300/25 bg-amber-500/10 text-amber-100/85 hover:bg-amber-500/18' },
+                { key: 'stock', label: 'Stock', active: 'border-emerald-300/65 bg-gradient-to-r from-emerald-500/35 to-teal-500/30 text-emerald-50', idle: 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100/85 hover:bg-emerald-500/18' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => selectActivity(tab.key as ActivityView)}
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${activityView === tab.key ? tab.active : tab.idle}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 space-y-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-xs text-white/60">Opérations Finance</p>
                   <p className="text-sm font-semibold">{financeActivitySummary.totalOps} au total</p>
