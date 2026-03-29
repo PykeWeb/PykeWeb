@@ -11,17 +11,10 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import { getTypeFilterOptions, matchesTypeFilter, normalizeCatalogCategory, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
-import { getTenantSession, isSbTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
 type FilterCategory = 'all' | ItemCategory
-type SelectedItem = { id: string; name: string; quantity: number; price: number; imageUrl?: string; category?: ItemCategory | 'custom'; buyPrice?: number; sellPrice?: number }
-
-function resolveModePrice(item: CatalogItem, mode: Mode) {
-  if (mode === 'entree') return Math.max(0, Number(item.buy_price || item.sell_price || item.internal_value || 0))
-  return Math.max(0, Number(item.sell_price || item.buy_price || item.internal_value || 0))
-}
 
 type SbPageVariant = 'stockFlow' | 'trade'
 
@@ -139,7 +132,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   }, [items, mode, variant])
 
   const removeItem = (itemId: string) => {
-      <PageHeader title="Achat / Vente SB" subtitle="Interface rapide de gestion stock pour le groupe SB." />
+      <PageHeader title="Achat / Vente & Entrée / Sortie" subtitle="Interface rapide de gestion stock pour tous les groupes." />
   }
 
   const updateQuantity = (itemId: string, quantity: number) => {

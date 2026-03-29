@@ -120,7 +120,6 @@ const PAGE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/finance', label: 'Finance' },
   { prefix: '/activites/depense', label: 'Dépense' },
   { prefix: '/items', label: 'Items' },
-  { prefix: '/annuaire', label: 'Annuaire' },
   { prefix: '/drogues', label: 'Drogues' },
   { prefix: '/tablette', label: 'Tablette' },
   { prefix: '/group', label: 'Gestion groupe' },

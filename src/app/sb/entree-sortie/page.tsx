@@ -1,5 +1,5 @@
-import { SbEntreeSortieClient } from '@/components/modules/sb/SbEntreeSortieClient'
+import { redirect } from 'next/navigation'
 
 export default function SbEntreeSortiePage() {
-  return <SbEntreeSortieClient />
+  redirect('/finance/entree-sortie')
 }

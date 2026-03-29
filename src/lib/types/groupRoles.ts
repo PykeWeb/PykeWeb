@@ -19,11 +19,7 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Dashboard', prefix: '/' },
   { label: 'Gestion groupe', prefix: '/group' },
   { label: 'Finance', prefix: '/finance' },
-  { label: 'SB Entrée / Sortie', prefix: '/sb/entree-sortie' },
   { label: 'Items', prefix: '/items' },
-  { label: 'Annuaire', prefix: '/annuaire' },
-  { label: 'Drogues', prefix: '/drogues' },
-  { label: 'Activités', prefix: GROUP_OPERATIONS_PREFIX },
   { label: 'Gestion chef', prefix: '/activites/gestion-chef' },
 ] as const
 
