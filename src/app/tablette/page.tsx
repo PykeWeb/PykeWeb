@@ -43,6 +43,11 @@ export default function TablettePage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [memberOptions, setMemberOptions] = useState<string[]>([])
+  const memberSelectOptions = useMemo(() => {
+    const current = memberName.trim()
+    if (!current) return memberOptions
+    return memberOptions.some((name) => name.toLowerCase() === current.toLowerCase()) ? memberOptions : [current, ...memberOptions]
+  }, [memberName, memberOptions])
 
   const totalQty = useMemo(() => Object.values(quantities).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0), [quantities])
   const totalCost = useMemo(
@@ -172,20 +177,13 @@ export default function TablettePage() {
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
               <select
-                value=""
-                onChange={(event) => {
-                  const next = event.target.value
-                  if (next) setMemberName(next)
-                }}
-                className="mb-2 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
+                value={memberName}
+                onChange={(event) => setMemberName(event.target.value)}
+                className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
               >
                 <option value="">Choisir un joueur</option>
-                {memberOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+                {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
-              <Input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Ex: Moussa" list="tablet-member-options" />
-              <datalist id="tablet-member-options">
-                {memberOptions.map((name) => <option key={name} value={name} />)}
-              </datalist>
               {doneTodayByMember ? <p className="mt-1 text-xs text-amber-200">Ce membre a déjà validé aujourd’hui.</p> : null}
             </div>
 

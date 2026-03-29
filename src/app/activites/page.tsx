@@ -98,6 +98,11 @@ export default function ActivitesPage() {
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [canSeeChefTab, setCanSeeChefTab] = useState(false)
+  const memberSelectOptions = useMemo(() => {
+    const current = memberName.trim()
+    if (!current) return memberOptions
+    return memberOptions.some((name) => name.toLowerCase() === current.toLowerCase()) ? memberOptions : [current, ...memberOptions]
+  }, [memberName, memberOptions])
 
   useEffect(() => {
     const session = getTenantSession()
@@ -288,20 +293,13 @@ export default function ActivitesPage() {
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Membre</span>
             <select
-              value=""
-              onChange={(event) => {
-                const next = event.target.value
-                if (next) setMemberName(next)
-              }}
+              value={memberName}
+              onChange={(event) => setMemberName(event.target.value)}
               className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
             >
               <option value="">Choisir un joueur</option>
-              {memberOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+              {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
             </select>
-            <Input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Ex: Zoro" list="activity-member-options" />
-            <datalist id="activity-member-options">
-              {memberOptions.map((name) => <option key={name} value={name} />)}
-            </datalist>
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Activité</span>

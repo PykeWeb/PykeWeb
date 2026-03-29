@@ -96,6 +96,11 @@ export function NouvelleDepenseForm({
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const memberSelectOptions = useMemo(() => {
+    const current = memberName.trim()
+    if (!current) return memberOptions
+    return memberOptions.some((name) => name.toLowerCase() === current.toLowerCase()) ? memberOptions : [current, ...memberOptions]
+  }, [memberName, memberOptions])
 
   const total = useMemo(() => {
     if (!useTemporaryItem) {
@@ -253,20 +258,13 @@ export function NouvelleDepenseForm({
           <div>
             <label className="mb-1 block text-xs text-white/60">Membre</label>
             <select
-              value=""
-              onChange={(event) => {
-                const next = event.target.value
-                if (next) setMemberName(next)
-              }}
-              className="mb-2 h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
+              value={memberName}
+              onChange={(event) => setMemberName(event.target.value)}
+              className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
             >
               <option value="">Choisir un joueur</option>
-              {memberOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+              {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
             </select>
-            <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" className="h-10" list="expense-member-options" />
-            <datalist id="expense-member-options">
-              {memberOptions.map((name) => <option key={name} value={name} />)}
-            </datalist>
           </div>
 
           <div>
