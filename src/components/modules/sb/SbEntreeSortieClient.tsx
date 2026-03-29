@@ -11,6 +11,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import { getTypeFilterOptions, matchesTypeFilter, normalizeCatalogCategory, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
+import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
@@ -36,11 +37,19 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [category, setCategory] = useState<FilterCategory>('all')
   const [type, setType] = useState<UnifiedTypeFilterValue>('all')
   const [counterparty, setCounterparty] = useState('')
+  const [defaultMemberName, setDefaultMemberName] = useState('')
   const [member, setMember] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
 
   useEffect(() => {
+    const session = getTenantSession()
+    const sessionMember = String(session?.memberName || '').trim()
+    if (sessionMember) {
+      setDefaultMemberName(sessionMember)
+      setMember(sessionMember)
+    }
+
     void listCatalogItemsUnified()
       .then((rows) => setItems(rows))
       .catch(() => {
@@ -153,7 +162,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const clearTransaction = () => {
     setSelectedItems([])
     setCounterparty('')
-    setMember('')
+    setMember(defaultMemberName)
   }
 
   const submitTransaction = async () => {
