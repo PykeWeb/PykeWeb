@@ -16,6 +16,8 @@ import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight,
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 import { listDrugProductionTrackings, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
+import { listActivities } from '@/lib/activitiesApi'
+import type { ActivityEntry } from '@/lib/types/activities'
 
 type Tx = {
   id: string
@@ -31,7 +33,7 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
-type ActivityView = 'summary' | 'transactions' | 'expenses' | 'stock'
+type ActivityView = 'summary' | 'transactions' | 'expenses' | 'stock' | 'production' | 'activities'
 type StockActivityCategory = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs'
 type StockBubbleKey = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom'
 
@@ -98,6 +100,7 @@ export function DashboardClient() {
   const [recentTx, setRecentTx] = useState<Tx[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
   const [recentDrugTrackings, setRecentDrugTrackings] = useState<DrugProductionTrackingRow[]>([])
+  const [recentActivities, setRecentActivities] = useState<ActivityEntry[]>([])
 
   const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>(createEmptyCategoryCounts)
   const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>(createEmptyMovementCounts)
@@ -205,7 +208,12 @@ export function DashboardClient() {
       setLoading(true)
       try {
         currentGroupId()
-        const [financeEntries, catalogItems, drugTrackings] = await Promise.all([listFinanceEntries(), listCatalogItemsUnified(), listDrugProductionTrackings().catch(() => [])])
+        const [financeEntries, catalogItems, drugTrackings, activities] = await Promise.all([
+          listFinanceEntries(),
+          listCatalogItemsUnified(),
+          listDrugProductionTrackings().catch(() => []),
+          listActivities().catch(() => ({ entries: [], summaries: [], settings: { group_id: '', default_percent_per_object: 2 } })),
+        ])
 
         if (!alive) return
 
@@ -261,6 +269,7 @@ export function DashboardClient() {
         setRecentTx(recentFinanceTransactions)
         setRecentExpenses(recentExpenseRows)
         setRecentDrugTrackings((drugTrackings ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
+        setRecentActivities((activities.entries ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
       } finally {
@@ -297,7 +306,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'stock']
+    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'stock', 'production', 'activities']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -480,6 +489,8 @@ export function DashboardClient() {
               { key: 'transactions', label: 'Transactions', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
               { key: 'expenses', label: 'Dépenses', active: 'border-amber-300/65 bg-gradient-to-r from-amber-500/35 to-orange-500/30 text-amber-50', idle: 'border-amber-300/25 bg-amber-500/10 text-amber-100/85 hover:bg-amber-500/18' },
               { key: 'stock', label: 'Stock', active: 'border-emerald-300/65 bg-gradient-to-r from-emerald-500/35 to-teal-500/30 text-emerald-50', idle: 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100/85 hover:bg-emerald-500/18' },
+              { key: 'production', label: `Suivi de production (${recentDrugTrackings.filter((row) => row.status === 'in_progress').length})`, active: 'border-fuchsia-300/65 bg-gradient-to-r from-fuchsia-500/35 to-violet-500/30 text-fuchsia-50', idle: 'border-fuchsia-300/25 bg-fuchsia-500/10 text-fuchsia-100/85 hover:bg-fuchsia-500/18' },
+              { key: 'activities', label: `Activités (${recentActivities.length})`, active: 'border-sky-300/65 bg-gradient-to-r from-sky-500/35 to-indigo-500/30 text-sky-50', idle: 'border-sky-300/25 bg-sky-500/10 text-sky-100/85 hover:bg-sky-500/18' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -659,6 +670,36 @@ export function DashboardClient() {
                   ))
                 )}
               </>
+            ) : null}
+            {activityView === 'production' ? (
+              recentDrugTrackings.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucun suivi de production en cours.</div>
+              ) : (
+                recentDrugTrackings.map((row) => (
+                  <Link href={`/drogues/suivi-production/${row.id}`} key={row.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                    <div>
+                      <p className="text-sm font-medium">{row.partner_name} • {row.type}</p>
+                      <p className="text-xs text-white/60">{new Date(row.created_at).toLocaleString()} • Statut: {row.status}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-white/80">{row.received_output}/{row.expected_output}</p>
+                  </Link>
+                ))
+              )
+            ) : null}
+            {activityView === 'activities' ? (
+              recentActivities.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité récente.</div>
+              ) : (
+                recentActivities.map((entry) => (
+                  <Link href="/activites" key={entry.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                    <div>
+                      <p className="text-sm font-medium">{entry.member_name} • {entry.activity_type}</p>
+                      <p className="text-xs text-white/60">{new Date(entry.created_at).toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-white/80">x{Math.max(1, Number(entry.quantity || 1))}</p>
+                  </Link>
+                ))
+              )
             ) : null}
           </div>
         </Panel>
