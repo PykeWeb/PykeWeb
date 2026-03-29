@@ -86,6 +86,7 @@ function CatalogScrollableList({
 
 export default function ActivitesPage() {
   const [memberName, setMemberName] = useState('')
+  const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [activityType, setActivityType] = useState<ActivityType>('Cambriolage')
   const [step, setStep] = useState<SelectionStep>('equipment')
   const [selectedEquipmentLines, setSelectedEquipmentLines] = useState<SelectedLine[]>([])
@@ -100,10 +101,20 @@ export default function ActivitesPage() {
 
   useEffect(() => {
     const session = getTenantSession()
+    const sessionMember = String(session?.memberName || '').trim()
+    if (sessionMember) setMemberName(sessionMember)
     const allowed = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
     setCanSeeChefTab(Boolean(session?.isAdmin || allowed.includes('/') || allowed.includes('/activites/gestion-chef')))
     void refresh()
     void listCatalogItemsUnified().then(setCatalogItems).catch(() => setCatalogItems([]))
+    void fetch('/api/group/members', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return []
+        const payload = (await res.json()) as { members?: string[] }
+        return Array.isArray(payload.members) ? payload.members : []
+      })
+      .then((rows) => setMemberOptions(rows))
+      .catch(() => setMemberOptions([]))
   }, [])
 
   useEffect(() => {
@@ -275,8 +286,11 @@ export default function ActivitesPage() {
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
-            <span className="text-white/70">Nom du joueur</span>
-            <Input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Ex: Zoro" />
+            <span className="text-white/70">Membre</span>
+            <Input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Ex: Zoro" list="activity-member-options" />
+            <datalist id="activity-member-options">
+              {memberOptions.map((name) => <option key={name} value={name} />)}
+            </datalist>
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Activité</span>

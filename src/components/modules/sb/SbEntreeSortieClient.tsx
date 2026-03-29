@@ -39,6 +39,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [counterparty, setCounterparty] = useState('')
   const [defaultMemberName, setDefaultMemberName] = useState('')
   const [member, setMember] = useState('')
+  const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
 
@@ -57,6 +58,15 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         setItems([])
       })
       .finally(() => setIsLoading(false))
+
+    void fetch('/api/group/members', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return []
+        const payload = (await res.json()) as { members?: string[] }
+        return Array.isArray(payload.members) ? payload.members : []
+      })
+      .then((rows) => setMemberOptions(rows))
+      .catch(() => setMemberOptions([]))
   }, [])
 
   const stats = useMemo(() => computeItemStockCategoryStats(items), [items])
@@ -264,7 +274,10 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
 
         <div className={`grid gap-3 ${isTradeVariant ? 'xl:grid-cols-[1fr_1fr_auto_auto_auto_auto]' : 'xl:grid-cols-[1fr_1fr_auto_auto_auto]'}`}>
           <Input value={counterparty} onChange={(event) => setCounterparty(event.target.value)} placeholder="Interlocuteur" className="h-11" />
-          <Input value={member} onChange={(event) => setMember(event.target.value)} placeholder="Membre" className="h-11" />
+          <Input value={member} onChange={(event) => setMember(event.target.value)} placeholder="Membre" className="h-11" list="group-members-options" />
+          <datalist id="group-members-options">
+            {memberOptions.map((name) => <option key={name} value={name} />)}
+          </datalist>
           <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
             <span>Qté : {safeTotalItems}</span>
           </div>
