@@ -50,12 +50,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     }
 
     setIsReady(true)
-  const totalAmount = useMemo(
-    () => selectedItems.reduce((sum, entry) => sum + (Math.max(0, Number(entry.quantity || 0)) * Math.max(0, Number(entry.price || 0))), 0),
-    [selectedItems]
-  )
   const safeTotalItems = Number.isFinite(totalItems) ? totalItems : 0
-  const safeTotalAmount = Number.isFinite(totalAmount) ? totalAmount : 0
     void listCatalogItemsUnified()
       .then((rows) => setItems(rows))
       .catch(() => {
@@ -213,16 +208,13 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             className="h-11"
           />
           <div className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-300/40 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-50">
-            <span className="whitespace-nowrap text-cyan-100/95">Total objets</span>
+            <span className="whitespace-nowrap text-cyan-100/95">Total :</span>
             <span
               aria-live="polite"
               className="inline-flex min-w-[2.8rem] items-center justify-center rounded-lg border border-cyan-100/45 bg-cyan-400/25 px-2.5 py-0.5 text-base font-bold leading-none text-white"
             >
               {safeTotalItems.toLocaleString('fr-FR')}
             </span>
-          </div>
-            <span className="ml-1 inline-flex items-center rounded-lg border border-emerald-200/35 bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-50">
-              {safeTotalAmount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
             </span>
           <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
           <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
