@@ -506,33 +506,33 @@ export function DashboardClient() {
               ))}
             </div>
             <div className="mt-3 space-y-2">
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-xs text-white/60">Opérations Finance</p>
-                  <p className="text-sm font-semibold">{financeActivitySummary.totalOps} au total</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-xs text-white/60">Répartition</p>
-                  <p className="text-sm font-semibold">{financeMovementCounts.purchase} achats · {financeMovementCounts.sale} ventes · {financeMovementCounts.expense} dépenses</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-xs text-white/60">Montant transactions récentes</p>
-                  <p className="text-sm font-semibold">{financeActivitySummary.totalAmountTx.toFixed(2)} $</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-xs text-white/60">Montant dépenses récentes</p>
-                  <p className="text-sm font-semibold">{financeActivitySummary.totalAmountExpenses.toFixed(2)} $</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-xs text-white/60">Dernière transaction</p>
-                  <p className="truncate text-sm font-semibold">{recentTx[0]?.counterparty || '—'}</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-xs text-white/60">Dernière dépense</p>
-                  <p className="truncate text-sm font-semibold">{recentExpenses[0]?.item_label || '—'}</p>
-                </div>
-              cokeTrackings.map((entry) => (
-            {activityView === 'session_coke' && cokeTrackings.length === 0 ? (
-                  {recentDrugTrackings[0] ? (
+              {activityView === 'summary' ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-white/60">Opérations Finance</p>
+                    <p className="text-sm font-semibold">{financeActivitySummary.totalOps} au total</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-white/60">Répartition</p>
+                    <p className="text-sm font-semibold">{financeMovementCounts.purchase} achats · {financeMovementCounts.sale} ventes · {financeMovementCounts.expense} dépenses</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-white/60">Montant transactions récentes</p>
+                    <p className="text-sm font-semibold">{financeActivitySummary.totalAmountTx.toFixed(2)} $</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-white/60">Montant dépenses récentes</p>
+                    <p className="text-sm font-semibold">{financeActivitySummary.totalAmountExpenses.toFixed(2)} $</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-white/60">Dernière transaction</p>
+                    <p className="truncate text-sm font-semibold">{recentTx[0]?.counterparty || '—'}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-white/60">Dernière dépense</p>
+                    <p className="truncate text-sm font-semibold">{recentExpenses[0]?.item_label || '—'}</p>
+                  </div>
+              ) : null}
                     <Link href={`/drogues/suivi-production/${recentDrugTrackings[0].id}`} className="truncate text-sm font-semibold text-violet-100 hover:underline">
                       {recentDrugTrackings[0].partner_name} • {recentDrugTrackings[0].status}
                     </Link>
