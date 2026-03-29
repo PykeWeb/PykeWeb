@@ -16,8 +16,6 @@ import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
 type FilterCategory = 'all' | ItemCategory
-  const headerTitle = 'Achat / Vente SB'
-  const headerSubtitle = 'Interface rapide de gestion stock pour le groupe SB.'
 type SelectedItem = { id: string; name: string; quantity: number; price: number; imageUrl?: string; category?: ItemCategory | 'custom'; buyPrice?: number; sellPrice?: number }
 
 function resolveModePrice(item: CatalogItem, mode: Mode) {
@@ -144,7 +142,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   }, [items, mode, variant])
 
   const removeItem = (itemId: string) => {
-      <PageHeader title={headerTitle} subtitle={headerSubtitle} />
+      <PageHeader title="Achat / Vente SB" subtitle="Interface rapide de gestion stock pour le groupe SB." />
   }
 
   const updateQuantity = (itemId: string, quantity: number) => {
