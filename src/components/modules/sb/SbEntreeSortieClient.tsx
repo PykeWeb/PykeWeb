@@ -11,7 +11,6 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import { getTypeFilterOptions, matchesTypeFilter, normalizeCatalogCategory, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
-import { getTenantSession, isSbTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
@@ -30,7 +29,6 @@ type SbEntreeSortieClientProps = {
 }
 
 export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieClientProps) {
-  const [isReady, setIsReady] = useState(false)
   const [mode, setMode] = useState<Mode>('entree')
   const [items, setItems] = useState<CatalogItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -43,13 +41,6 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
 
   useEffect(() => {
-    const session = getTenantSession()
-    if (!isSbTenantSession(session)) {
-      window.location.href = '/'
-      return
-    }
-
-    setIsReady(true)
     void listCatalogItemsUnified()
       .then((rows) => setItems(rows))
       .catch(() => {
@@ -197,15 +188,13 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     }
   }
 
-  if (!isReady) return null
-
   const isTradeVariant = variant === 'trade'
   const modeLeftLabel = isTradeVariant ? 'Achat' : 'Entrée'
   const modeRightLabel = isTradeVariant ? 'Vente' : 'Sortie'
-  const headerTitle = isTradeVariant ? 'Achat / Vente SB' : 'Entrée / Sortie SB'
+  const headerTitle = isTradeVariant ? 'Achat / Vente' : 'Entrée / Sortie'
   const headerSubtitle = isTradeVariant
-    ? 'Interface rapide achat/vente avec prix pour le groupe SB.'
-    : 'Interface rapide entrée/sortie de stock pour le groupe SB.'
+    ? 'Interface rapide achat/vente avec prix.'
+    : 'Interface rapide entrée/sortie de stock.'
 
   return (
     <div className="space-y-4">
