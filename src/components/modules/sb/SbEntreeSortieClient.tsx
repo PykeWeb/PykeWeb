@@ -50,7 +50,12 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     }
 
     setIsReady(true)
+  const totalAmount = useMemo(
+    () => selectedItems.reduce((sum, entry) => sum + (Math.max(0, Number(entry.quantity || 0)) * Math.max(0, Number(entry.price || 0))), 0),
+    [selectedItems]
+  )
   const safeTotalItems = Number.isFinite(totalItems) ? totalItems : 0
+  const safeTotalAmount = Number.isFinite(totalAmount) ? totalAmount : 0
     void listCatalogItemsUnified()
       .then((rows) => setItems(rows))
       .catch(() => {
@@ -214,6 +219,9 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
               {safeTotalItems.toLocaleString('fr-FR')}
             </span>
           </div>
+            <span className="ml-1 inline-flex items-center rounded-lg border border-emerald-200/35 bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-50">
+              {safeTotalAmount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
+            </span>
           <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
           <PrimaryButton onClick={() => void submitTransaction()} disabled={isSubmitting} className="h-11 px-6">
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
