@@ -77,6 +77,20 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   }, [groupId])
 
   const roleOptions = useMemo(() => [{ value: '', label: 'Aucun rôle' }, ...roles.map((role) => ({ value: role.id, label: role.name }))], [roles])
+  const groupMemberNameOptions = useMemo(() => {
+    const fromMembers = members.map((member) => ({
+      value: String(member.player_name || '').trim(),
+      label: String(member.player_name || '').trim(),
+    })).filter((entry) => entry.value)
+
+    return [...fromMembers, ...playerCandidates]
+      .filter((entry) => entry.value.trim())
+      .reduce<Array<{ value: string; label: string }>>((acc, entry) => {
+      if (acc.some((row) => row.value.toLowerCase() === entry.value.toLowerCase())) return acc
+      return [...acc, { value: entry.value, label: entry.label || entry.value }]
+    }, [])
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr'))
+  }, [members, playerCandidates])
 
   function toggleNewRolePermission(prefix: string) {
     setNewRolePermissions((prev) => {
@@ -278,10 +292,10 @@ export function GroupMembersGradesSection({ groupId }: Props) {
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
             <p className="text-sm font-semibold text-white/80">Ajouter un membre</p>
             <div className="mt-2 grid gap-2">
-              <label className="text-xs text-white/65">Sélectionner un joueur existant</label>
+              <label className="text-xs text-white/65">Sélectionner un membre existant du groupe</label>
               <select value={selectedPlayerName} onChange={(e) => setSelectedPlayerName(e.target.value)} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm">
                 <option value="">Choisir un joueur</option>
-                {playerCandidates.map((candidate) => (
+                {groupMemberNameOptions.map((candidate) => (
                   <option key={candidate.value} value={candidate.value}>{candidate.label}</option>
                 ))}
               </select>
