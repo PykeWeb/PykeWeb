@@ -411,37 +411,45 @@ export function DashboardClient() {
               <div key={`card-skeleton-${idx}`} className="h-[118px] rounded-2xl border border-white/10 bg-white/[0.03] animate-pulse" />
             )) : null}
             {uiLayoutsReady ? dashboardCards.map((cardKey, idx) => {
-            const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
-            const override = getBubbleOverride(`dashboard.card.${card.key}`)
-            const Icon = (override?.icon && iconByName[override.icon]) ? iconByName[override.icon] : card.icon
-            return (
-              <div key={`${card.key}-${idx}`} className="select-none touch-none" onPointerDown={onCardPointerDown} onPointerUp={onCardPointerEnd} onPointerLeave={onCardPointerEnd} onPointerCancel={onCardPointerEnd} onClickCapture={onCardClickCapture}>
-              <StatCard
-                title={override?.label || card.title}
-                value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })}
-                icon={<Icon className="h-5 w-5" />}
-                bubbleStyle={{
-                  bgColor: override?.bgColor,
-                  borderColor: override?.borderColor,
-                  textColor: override?.textColor,
-                  iconBgColor: override?.iconBgColor,
-                  iconColor: override?.iconColor,
-                }}
-                tone={
-                  card.key === 'catWeapons' ? 'rose'
-                    : card.key === 'catEquipment' ? 'amber'
-                    : card.key === 'catDrugs' ? 'emerald'
-                    : card.key === 'catObjects' ? 'cyan'
-                    : card.key === 'mvExpense' ? 'amber'
-                    : card.key === 'mvPurchase' ? 'emerald'
-                    : card.key === 'mvSale' ? 'rose'
-                    : 'slate'
-                }
-                href={card.href}
-              />
-              </div>
-            )
-          }) : null}
+              const card = CARD_OPTIONS.find((c) => c.key === cardKey) || CARD_OPTIONS[idx] || CARD_OPTIONS[0]
+              const override = getBubbleOverride(`dashboard.card.${card.key}`)
+              const Icon = (override?.icon && iconByName[override.icon]) ? iconByName[override.icon] : card.icon
+              return (
+                <div
+                  key={`${card.key}-${idx}`}
+                  className="select-none touch-none"
+                  onPointerDown={onCardPointerDown}
+                  onPointerUp={onCardPointerEnd}
+                  onPointerLeave={onCardPointerEnd}
+                  onPointerCancel={onCardPointerEnd}
+                  onClickCapture={onCardClickCapture}
+                >
+                  <StatCard
+                    title={override?.label || card.title}
+                    value={card.getValue({ loading, categoryCounts: financeCategoryCounts, movementCounts: financeMovementCounts })}
+                    icon={<Icon className="h-5 w-5" />}
+                    bubbleStyle={{
+                      bgColor: override?.bgColor,
+                      borderColor: override?.borderColor,
+                      textColor: override?.textColor,
+                      iconBgColor: override?.iconBgColor,
+                      iconColor: override?.iconColor,
+                    }}
+                    tone={
+                      card.key === 'catWeapons' ? 'rose'
+                        : card.key === 'catEquipment' ? 'amber'
+                        : card.key === 'catDrugs' ? 'emerald'
+                        : card.key === 'catObjects' ? 'cyan'
+                        : card.key === 'mvExpense' ? 'amber'
+                        : card.key === 'mvPurchase' ? 'emerald'
+                        : card.key === 'mvSale' ? 'rose'
+                        : 'slate'
+                    }
+                    href={card.href}
+                  />
+                </div>
+              )
+            }) : null}
           </div>
 
         {visibleCustomDashboardBubbles.length > 0 ? (
