@@ -287,6 +287,17 @@ export default function ActivitesPage() {
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Membre</span>
+            <select
+              value=""
+              onChange={(event) => {
+                const next = event.target.value
+                if (next) setMemberName(next)
+              }}
+              className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
+            >
+              <option value="">Choisir un joueur</option>
+              {memberOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
             <Input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Ex: Zoro" list="activity-member-options" />
             <datalist id="activity-member-options">
               {memberOptions.map((name) => <option key={name} value={name} />)}
