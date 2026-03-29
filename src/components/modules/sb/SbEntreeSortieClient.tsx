@@ -138,7 +138,9 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       const buyPrice = Math.max(0, Number(item.buy_price || item.internal_value || item.sell_price || 0))
       const sellPrice = Math.max(0, Number(item.sell_price || item.internal_value || item.buy_price || 0))
       return { ...entry, price: resolveModePrice(item, mode), buyPrice, sellPrice }
-    }))
+  if (!isReady) {
+    return null
+  }
   }, [items, mode, variant])
 
   const removeItem = (itemId: string) => {
