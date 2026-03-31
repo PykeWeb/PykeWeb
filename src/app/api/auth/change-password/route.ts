@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ error: 'Payload invalide.' }, { status: 400 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Payload invalide.' }, { status: 400 })
   }
 }

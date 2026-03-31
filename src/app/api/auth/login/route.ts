@@ -182,8 +182,8 @@ export async function POST(request: Request) {
     })
     response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(session), cookieOptions(remember))
     return response
-  } catch {
-    return NextResponse.json({ error: 'Payload invalide' }, { status: 400 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Payload invalide' }, { status: 400 })
   }
 }
 
