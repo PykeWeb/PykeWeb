@@ -16,8 +16,7 @@ export default function DroguesVentePage() {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [itemId, setItemId] = useState('')
   const [qty, setQty] = useState(1)
-  const [estimatedUnitPrice, setEstimatedUnitPrice] = useState(MIN_ESTIMATED_POUCH_PRICE)
-  const [receivedUnitPrice, setReceivedUnitPrice] = useState(MIN_ESTIMATED_POUCH_PRICE)
+  const [receivedTotalInput, setReceivedTotalInput] = useState(MIN_ESTIMATED_POUCH_PRICE)
   const [buyer, setBuyer] = useState('')
   const [member, setMember] = useState('')
   const [memberOptions, setMemberOptions] = useState<string[]>([])
@@ -33,8 +32,7 @@ export default function DroguesVentePage() {
         setItems(pouches)
         if (pouches[0]) {
           setItemId(pouches[0].id)
-          setEstimatedUnitPrice(MIN_ESTIMATED_POUCH_PRICE)
-          setReceivedUnitPrice(Math.max(0, Number(pouches[0].sell_price || pouches[0].buy_price || MIN_ESTIMATED_POUCH_PRICE)))
+          setReceivedTotalInput(Math.max(0, Number(pouches[0].sell_price || pouches[0].buy_price || MIN_ESTIMATED_POUCH_PRICE)))
         }
       })
       .catch(() => setItems([]))
@@ -52,13 +50,12 @@ export default function DroguesVentePage() {
   const selected = useMemo(() => items.find((row) => row.id === itemId) || null, [itemId, items])
   const availableStock = Math.max(0, Number(selected?.stock || 0))
   const safeQty = Math.max(1, Math.floor(qty || 1))
-  const estimatedTotal = safeQty * Math.max(0, Number(estimatedUnitPrice || 0))
-  const receivedTotal = safeQty * Math.max(0, Number(receivedUnitPrice || 0))
+  const estimatedTotal = safeQty * MIN_ESTIMATED_POUCH_PRICE
+  const receivedTotal = Math.max(0, Number(receivedTotalInput || 0))
 
   useEffect(() => {
     if (!selected) return
-    setEstimatedUnitPrice(MIN_ESTIMATED_POUCH_PRICE)
-    setReceivedUnitPrice(Math.max(0, Number(selected.sell_price || selected.buy_price || MIN_ESTIMATED_POUCH_PRICE)))
+    setReceivedTotalInput((prev) => (prev > 0 ? prev : Math.max(0, Number(selected.sell_price || selected.buy_price || MIN_ESTIMATED_POUCH_PRICE))))
     setQty((prev) => Math.max(1, Math.min(Math.floor(prev || 1), Math.max(1, Math.floor(Number(selected.stock || 0) || 0)))))
   }, [selected?.id])
 
@@ -90,17 +87,13 @@ export default function DroguesVentePage() {
             <span className="text-white/70">Quantité (stock: {availableStock})</span>
             <Input value={qty} onChange={(e) => setQty(Number(e.target.value) || 1)} inputMode="numeric" />
           </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-white/70">Prix unitaire estimé (min)</span>
-            <Input value={estimatedUnitPrice} onChange={(e) => setEstimatedUnitPrice(Number(e.target.value) || 0)} inputMode="decimal" />
-          </label>
           <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3">
-            <p className="text-xs text-white/70">Estimation totale</p>
+            <p className="text-xs text-white/70">Prix total estimé</p>
             <p className="text-xl font-semibold">{estimatedTotal.toFixed(2)} $</p>
           </div>
           <label className="space-y-1 text-sm">
-            <span className="text-white/70">Prix unitaire réellement reçu</span>
-            <Input value={receivedUnitPrice} onChange={(e) => setReceivedUnitPrice(Number(e.target.value) || 0)} inputMode="decimal" />
+            <span className="text-white/70">Prix total reçu</span>
+            <Input value={receivedTotalInput} onChange={(e) => setReceivedTotalInput(Number(e.target.value) || 0)} inputMode="decimal" />
           </label>
           <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <p className="text-xs text-white/70">Argent reçu (réel)</p>
@@ -112,8 +105,7 @@ export default function DroguesVentePage() {
           <SecondaryButton onClick={() => {
             if (!selected) return
             setQty(1)
-            setEstimatedUnitPrice(MIN_ESTIMATED_POUCH_PRICE)
-            setReceivedUnitPrice(Math.max(0, Number(selected.sell_price || selected.buy_price || MIN_ESTIMATED_POUCH_PRICE)))
+            setReceivedTotalInput(MIN_ESTIMATED_POUCH_PRICE)
             setBuyer('')
           }}
           >
@@ -131,9 +123,9 @@ export default function DroguesVentePage() {
                   item_id: selected.id,
                   mode: 'sell',
                   quantity: Math.max(1, Math.floor(qty || 1)),
-                  unit_price: Math.max(0, Number(receivedUnitPrice || 0)),
+                  unit_price: safeQty > 0 ? Math.max(0, Number(receivedTotal / safeQty)) : 0,
                   counterparty: buyer.trim() || undefined,
-                  notes: `${notes ? `${notes} · ` : ''}Estimation min: ${Number(estimatedUnitPrice || 0).toFixed(2)} $ / unité`,
+                  notes: `${notes ? `${notes} · ` : ''}Estimation min totale: ${estimatedTotal.toFixed(2)} $`,
                 })
                 toast.success('Vente enregistrée. Stock sorti et argent ajouté.')
                 const refreshed = await listCatalogItemsUnified()
