@@ -188,7 +188,8 @@ export function Sidebar() {
           </button>
         </div>
         {canOpenPasswordModal ? (
-          <button
+          <div className="mt-3 flex justify-end">
+            <button
             type="button"
             aria-label="Changer mot de passe"
             title="Changer mot de passe"
@@ -200,10 +201,11 @@ export function Sidebar() {
               setConfirmPassword('')
               setPasswordModalOpen(true)
             }}
-            className="mt-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
           >
             <KeyRound className="h-3.5 w-3.5" />
-          </button>
+            </button>
+          </div>
         ) : null}
 
         <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-gradient-to-br from-white/[0.075] via-white/[0.04] to-white/[0.02] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_24px_rgba(4,8,28,0.34)]">

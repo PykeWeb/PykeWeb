@@ -11,7 +11,7 @@ import {
   updateGroupMember,
   updateGroupMemberGrade,
 } from '@/lib/tenantAuthApi'
-import { expandAccessPrefixes, GROUP_OPERATIONS_PREFIX, normalizeRolePrefixes, ROLE_ACCESS_OPTIONS } from '@/lib/types/groupRoles'
+import { expandAccessPrefixes, normalizeRolePrefixes, ROLE_ACCESS_OPTIONS } from '@/lib/types/groupRoles'
 import type { GroupMember, GroupMemberCandidate, GroupMemberRole, GroupMembersGradesPayload } from '@/lib/types/groupMembers'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 
@@ -40,7 +40,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [playerCandidates, setPlayerCandidates] = useState<GroupMemberCandidate[]>([])
 
   const [newRoleName, setNewRoleName] = useState('')
-  const [newRolePermissions, setNewRolePermissions] = useState<string[]>([GROUP_OPERATIONS_PREFIX])
+  const [newRolePermissions, setNewRolePermissions] = useState<string[]>(['/tablette'])
 
   const [selectedPlayerName, setSelectedPlayerName] = useState('')
   const [customPlayerName, setCustomPlayerName] = useState('')
@@ -51,6 +51,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [newMemberRoleId, setNewMemberRoleId] = useState('')
   const [memberPasswordVisible, setMemberPasswordVisible] = useState<Record<string, boolean>>({})
   const [memberSearch, setMemberSearch] = useState('')
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -101,17 +102,28 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       return name.includes(query) || identifier.includes(query)
     })
   }, [members, memberSearch])
+  const selectedMember = useMemo(
+    () => filteredMembers.find((member) => member.id === selectedMemberId) ?? filteredMembers[0] ?? null,
+    [filteredMembers, selectedMemberId]
+  )
+
+  useEffect(() => {
+    if (!filteredMembers.length) {
+      setSelectedMemberId(null)
+      return
+    }
+    if (!selectedMemberId || !filteredMembers.some((member) => member.id === selectedMemberId)) {
+      setSelectedMemberId(filteredMembers[0].id)
+    }
+  }, [filteredMembers, selectedMemberId])
 
   function toggleNewRolePermission(prefix: string) {
     setNewRolePermissions((prev) => {
       const expanded = expandAccessPrefixes(prev)
       const exists = expanded.includes(prefix)
       let next = exists ? prev.filter((entry) => entry !== prefix) : [...prev, prefix]
-      if (prefix === GROUP_OPERATIONS_PREFIX) {
-        next = next.filter((entry) => entry !== '/tablette' && entry !== '/activites')
-      }
       const normalized = normalizeRolePrefixes(next)
-      return normalized.length > 0 ? normalized : [GROUP_OPERATIONS_PREFIX]
+      return normalized.length > 0 ? normalized : ['/tablette']
     })
   }
 
@@ -125,11 +137,8 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       const expanded = expandAccessPrefixes(role.permissions)
       const exists = expanded.includes(prefix)
       let next = exists ? role.permissions.filter((entry) => entry !== prefix) : [...role.permissions, prefix]
-      if (prefix === GROUP_OPERATIONS_PREFIX) {
-        next = next.filter((entry) => entry !== '/tablette' && entry !== '/activites')
-      }
       const normalized = normalizeRolePrefixes(next)
-      return { ...role, permissions: normalized.length > 0 ? normalized : [GROUP_OPERATIONS_PREFIX] }
+      return { ...role, permissions: normalized.length > 0 ? normalized : ['/tablette'] }
     }))
   }
 
@@ -150,7 +159,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       })
       applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
       setNewRoleName('')
-      setNewRolePermissions([GROUP_OPERATIONS_PREFIX])
+      setNewRolePermissions(['/tablette'])
       setError(null)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Création du rôle impossible.')
@@ -362,7 +371,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
         <h3 className="text-xl font-semibold text-center">Membres existants</h3>
-        <p className="mt-1 text-sm text-white/70 text-center">Gestion centralisée des accès membres (identifiant, mot de passe, rôle et permissions).</p>
+        <p className="mt-1 text-sm text-white/70 text-center">Liste rapide des membres. Clique un nom pour ouvrir ses détails et permissions.</p>
         <div className="mx-auto mt-4 w-full max-w-5xl space-y-4">
           <div className="rounded-xl border border-white/10 bg-black/20 p-3">
             <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
@@ -377,9 +386,45 @@ export function GroupMembersGradesSection({ groupId }: Props) {
           </div>
           {members.length === 0 ? <p className="text-sm text-white/60">Aucun membre pour ce groupe.</p> : null}
           {members.length > 0 && filteredMembers.length === 0 ? <p className="text-sm text-white/60">Aucun membre ne correspond à la recherche.</p> : null}
-          <div className="grid gap-4 xl:grid-cols-2">
-            {filteredMembers.map((member) => (
-            <div key={member.id} className="rounded-2xl border border-white/20 bg-gradient-to-br from-slate-900/70 via-slate-800/55 to-slate-900/75 p-4 shadow-[0_10px_35px_rgba(0,0,0,0.35)] md:p-5">
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="flex max-h-[220px] flex-wrap gap-2 overflow-y-auto pr-1">
+              {filteredMembers.map((member) => (
+                <div key={`chip-${member.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-2 py-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMemberId(member.id)}
+                    className={`rounded-full px-3 py-1 text-xs ${selectedMember?.id === member.id ? 'bg-cyan-500/25 text-cyan-100' : 'text-white/85 hover:bg-white/10'}`}
+                  >
+                    {member.player_name || member.player_identifier || 'Membre'}
+                  </button>
+                  <button
+                    type="button"
+                    title="Copier accès"
+                    onClick={() => {
+                      const identifier = (member.player_identifier || '').trim()
+                      const password = (member.password || '').trim()
+                      const content = [
+                        'Voici tes identifiants pour la tablette du groupe :',
+                        'https://pykestock-ten.vercel.app/',
+                        '',
+                        `Identifiant: ${identifier || '—'}`,
+                        `Mot de passe: ${password || '—'}`,
+                        '',
+                        'Tu peux modifier ton mot de passe avec le bouton "Changer mot de passe" dans le dashboard, en dessous de Déconnexion.',
+                      ].join('\n')
+                      void copyToClipboard(content)
+                    }}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/85 hover:bg-white/20"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {selectedMember ? (
+            <div key={selectedMember.id} className="rounded-2xl border border-white/20 bg-gradient-to-br from-slate-900/70 via-slate-800/55 to-slate-900/75 p-4 shadow-[0_10px_35px_rgba(0,0,0,0.35)] md:p-5">
               <div className="flex flex-wrap items-start justify-center gap-4 border-b border-white/10 pb-4">
                 <div className="flex items-center gap-3">
                   <span className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-200/30 bg-cyan-500/15 text-cyan-100">
@@ -387,12 +432,12 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                   </span>
                   <div>
                     <label className="text-[11px] uppercase tracking-wide text-white/60">Nom du membre</label>
-                    <input value={member.player_name} onChange={(e) => updateMemberDraft(member.id, { player_name: e.target.value })} className="mt-1 h-10 w-full min-w-[220px] rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Nom du membre" />
+                    <input value={selectedMember.player_name} onChange={(e) => updateMemberDraft(selectedMember.id, { player_name: e.target.value })} className="mt-1 h-10 w-full min-w-[220px] rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Nom du membre" />
                   </div>
                 </div>
                 <div className="w-full max-w-[300px]">
                   <label className="text-[11px] uppercase tracking-wide text-white/60">Identifiant</label>
-                  <input value={member.player_identifier ?? ''} onChange={(e) => updateMemberDraft(member.id, { player_identifier: e.target.value || null })} className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Identifiant membre" />
+                  <input value={selectedMember.player_identifier ?? ''} onChange={(e) => updateMemberDraft(selectedMember.id, { player_identifier: e.target.value || null })} className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Identifiant membre" />
                 </div>
               </div>
 
@@ -404,25 +449,25 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                   </label>
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
                     <input
-                      value={member.password ?? ''}
-                      onChange={(e) => updateMemberDraft(member.id, { password: e.target.value || null })}
-                      type={memberPasswordVisible[member.id] ? 'text' : 'password'}
+                      value={selectedMember.password ?? ''}
+                      onChange={(e) => updateMemberDraft(selectedMember.id, { password: e.target.value || null })}
+                      type={memberPasswordVisible[selectedMember.id] ? 'text' : 'password'}
                       className="h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none"
                       placeholder="Mot de passe membre"
                     />
-                    <button type="button" onClick={() => setMemberPasswordVisible((prev) => ({ ...prev, [member.id]: !prev[member.id] }))} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20">
-                      {memberPasswordVisible[member.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                      {memberPasswordVisible[member.id] ? 'Masquer' : 'Voir'}
+                    <button type="button" onClick={() => setMemberPasswordVisible((prev) => ({ ...prev, [selectedMember.id]: !prev[selectedMember.id] }))} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20">
+                      {memberPasswordVisible[selectedMember.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      {memberPasswordVisible[selectedMember.id] ? 'Masquer' : 'Voir'}
                     </button>
-                    <button type="button" onClick={() => updateMemberDraft(member.id, { password: generatePassword({ avoidAmbiguous: true }) })} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20">
+                    <button type="button" onClick={() => updateMemberDraft(selectedMember.id, { password: generatePassword({ avoidAmbiguous: true }) })} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20">
                       <RefreshCw className="h-3.5 w-3.5" />
                       Générer
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        const identifier = (member.player_identifier || '').trim()
-                        const password = (member.password || '').trim()
+                        const identifier = (selectedMember.player_identifier || '').trim()
+                        const password = (selectedMember.password || '').trim()
                         const content = [
                           'Voici tes identifiants pour la tablette du groupe :',
                           'https://pykestock-ten.vercel.app/',
@@ -445,9 +490,9 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
                   <div>
                     <label className="text-[11px] uppercase tracking-wide text-white/60">Rôle</label>
-                    <select value={member.grade_id ?? ''} onChange={(e) => updateMemberDraft(member.id, { grade_id: e.target.value || null })} className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white focus:border-cyan-300/50 focus:outline-none">
+                    <select value={selectedMember.grade_id ?? ''} onChange={(e) => updateMemberDraft(selectedMember.id, { grade_id: e.target.value || null })} className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white focus:border-cyan-300/50 focus:outline-none">
                       {roleOptions.map((opt) => (
-                        <option key={`${member.id}-${opt.value || 'none'}`} value={opt.value}>{opt.label}</option>
+                        <option key={`${selectedMember.id}-${opt.value || 'none'}`} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
                   </div>
@@ -455,7 +500,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                   <div className="rounded-xl border border-white/15 bg-black/20 px-3 py-2">
                     <p className="text-[11px] uppercase tracking-wide text-white/60">Droits</p>
                     <label className="mt-1 inline-flex items-center gap-2 text-sm text-white/90">
-                      <input type="checkbox" checked={member.is_admin} onChange={(e) => updateMemberDraft(member.id, { is_admin: e.target.checked })} className="h-4 w-4 rounded border-white/30 bg-black/25" />
+                      <input type="checkbox" checked={selectedMember.is_admin} onChange={(e) => updateMemberDraft(selectedMember.id, { is_admin: e.target.checked })} className="h-4 w-4 rounded border-white/30 bg-black/25" />
                       <Shield className="h-4 w-4 text-amber-300" />
                       Membre admin
                     </label>
@@ -464,18 +509,17 @@ export function GroupMembersGradesSection({ groupId }: Props) {
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 border-t border-white/10 pt-4">
-                <button disabled={busy} onClick={() => void saveMember(member)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-cyan-300/45 bg-cyan-500/20 px-4 text-sm font-medium text-cyan-50 hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50">
+                <button disabled={busy} onClick={() => void saveMember(selectedMember)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-cyan-300/45 bg-cyan-500/20 px-4 text-sm font-medium text-cyan-50 hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50">
                   <Save className="h-4 w-4" />
                   Enregistrer
                 </button>
-                <button disabled={busy} onClick={() => void removeMember(member.id)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-300/50 bg-rose-500/20 px-4 text-sm font-medium text-rose-100 hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:opacity-50">
+                <button disabled={busy} onClick={() => void removeMember(selectedMember.id)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-300/50 bg-rose-500/20 px-4 text-sm font-medium text-rose-100 hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:opacity-50">
                   <Trash2 className="h-4 w-4" />
                   Supprimer
                 </button>
               </div>
             </div>
-            ))}
-          </div>
+          ) : null}
         </div>
       </div>
 

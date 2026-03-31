@@ -19,11 +19,14 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Dashboard', prefix: '/' },
   { label: 'Gestion groupe', prefix: '/group' },
   { label: 'Finance', prefix: '/finance' },
-  { label: 'SB Entrée / Sortie', prefix: '/sb/entree-sortie' },
+  { label: 'Entrée / Sortie', prefix: '/finance/entree-sortie' },
+  { label: 'Achat / Vente', prefix: '/finance/achat-vente' },
   { label: 'Items', prefix: '/items' },
   { label: 'Annuaire', prefix: '/annuaire' },
   { label: 'Drogues', prefix: '/drogues' },
-  { label: 'Activités', prefix: GROUP_OPERATIONS_PREFIX },
+  { label: 'Tablette', prefix: '/tablette' },
+  { label: 'Activités', prefix: '/activites' },
+  { label: 'Dépenses', prefix: '/depenses' },
   { label: 'Gestion chef', prefix: '/activites/gestion-chef' },
 ] as const
 
@@ -47,9 +50,6 @@ export function expandAccessPrefixes(prefixes: string[]) {
   if (normalized.includes('/')) return ['/']
 
   const expanded = [...normalized]
-  if (normalized.includes('/finance')) {
-    expanded.push('/sb/entree-sortie')
-  }
   if (normalized.includes(GROUP_OPERATIONS_PREFIX)) {
     expanded.push('/tablette', '/activites', '/activites/depense', '/depenses', '/finance/depense')
   }
