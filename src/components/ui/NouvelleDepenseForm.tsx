@@ -286,6 +286,18 @@ export function NouvelleDepenseForm({
             <TabPill active={useTemporaryItem} onClick={() => setUseTemporaryItem(true)}>
               {'Autres\u200b'}
             </TabPill>
+            {!useTemporaryItem ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setUseTemporaryItem(true)
+                  setTemporaryName((prev) => prev || itemQuery.trim())
+                }}
+                className="inline-flex h-8 items-center rounded-xl border border-fuchsia-300/35 bg-fuchsia-500/12 px-3 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20"
+              >
+                Item absent ? Saisie libre
+              </button>
+            ) : null}
           </div>
           <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">
             <span className="text-sm font-semibold text-white">{`Total : ${Number.isFinite(total) ? total.toFixed(2) : '0.00'} $`}</span>
@@ -296,6 +308,7 @@ export function NouvelleDepenseForm({
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs text-white/60">Nom provisoire</label>
             <Input value={temporaryName} onChange={(e) => setTemporaryName(e.target.value)} placeholder="Ex: Réparation véhicule (provisoire)" />
+            <p className="mt-1 text-xs text-white/60">Tu peux créer une dépense avec n’importe quel nom et n’importe quel prix.</p>
           </div>
         ) : (
           <div className="md:col-span-2 grid gap-3 lg:grid-cols-[1fr_380px]">
