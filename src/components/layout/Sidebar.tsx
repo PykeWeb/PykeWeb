@@ -14,6 +14,7 @@ import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
 import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
+import { listCatalogItemsUnified } from '@/lib/itemsApi'
 
 type AccessInfo = { paid_until: string | null; active: boolean } | null
 
@@ -47,6 +48,7 @@ export function Sidebar() {
   const [roleLabel, setRoleLabel] = useState('')
   const [memberName, setMemberName] = useState('Boss')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
+  const [cashLabel, setCashLabel] = useState('0 $')
 
   useEffect(() => {
     const session = getTenantSession()
@@ -61,6 +63,14 @@ export function Sidebar() {
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
     setIsPwrGroup(scope.includes('pwr'))
     setIsSbGroup(isSbTenantSession(session))
+
+    void listCatalogItemsUnified()
+      .then((rows) => {
+        const cashItem = rows.find((row) => String(row.name || '').trim().toLowerCase() === 'argent')
+        const amount = Math.max(0, Number(cashItem?.stock || 0))
+        setCashLabel(`${amount.toLocaleString('fr-FR')} $`)
+      })
+      .catch(() => setCashLabel('—'))
   }, [])
 
   useEffect(() => {
@@ -179,9 +189,9 @@ export function Sidebar() {
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
                 <PanelsTopLeft className="h-3.5 w-3.5" />
-                Type
+                Cash
               </p>
-              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">PF</span></p>
+              <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">{cashLabel}</span></p>
             </div>
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">

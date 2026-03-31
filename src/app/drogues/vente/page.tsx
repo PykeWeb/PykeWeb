@@ -75,6 +75,7 @@ export default function DroguesVentePage() {
             <span className="text-white/70">Membre</span>
             <select value={member} onChange={(e) => setMember(e.target.value)} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white">
               <option value="">Choisir un joueur</option>
+              <option value="Groupe">Groupe</option>
               {memberOptions.map((name) => <option key={name} value={name}>{name}</option>)}
             </select>
           </label>
