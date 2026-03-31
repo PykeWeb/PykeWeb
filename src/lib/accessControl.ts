@@ -4,15 +4,13 @@ import { DEFAULT_MEMBER_PREFIXES, expandAccessPrefixes } from '@/lib/types/group
 
 const PUBLIC_PATHS = ['/', '/login', '/auth/bridge']
 
-function normalizeMemberPrefix(prefix: string) {
-  if (prefix === '/dashboard') return '/'
-  return prefix
-}
-
 export function isMemberRouteAllowed(pathname: string, allowedPrefixes: string[] = DEFAULT_MEMBER_PREFIXES) {
-  const prefixes = expandAccessPrefixes(allowedPrefixes.length > 0 ? allowedPrefixes : DEFAULT_MEMBER_PREFIXES).map(normalizeMemberPrefix)
+  const prefixes = expandAccessPrefixes(allowedPrefixes.length > 0 ? allowedPrefixes : DEFAULT_MEMBER_PREFIXES)
 
   if (prefixes.includes('/')) {
+    return true
+  }
+  if (pathname === '/' && prefixes.includes('/dashboard')) {
     return true
   }
 
@@ -26,7 +24,7 @@ export function getDefaultRouteForSession(session: TenantSession) {
   if (allowedPrefixes.includes('/')) return '/'
   if (allowedPrefixes.includes('/dashboard')) return '/'
   if (allowedPrefixes.length > 0) {
-    const first = normalizeMemberPrefix(allowedPrefixes[0])
+    const first = allowedPrefixes[0]
     if (first === '/operations') return '/activites'
     return first
   }
