@@ -5,6 +5,8 @@ import type { ClipboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { currentGroupId } from '@/lib/tenantScope'
+import { canAccessPath } from '@/lib/accessControl'
+import { getTenantSession } from '@/lib/tenantSession'
 import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
@@ -96,6 +98,7 @@ function stockCategoryLabel(key: StockBubbleKey) {
 
 export function DashboardClient() {
   const themeConfig = useUiThemeConfig()
+  const tenantSession = useMemo(() => getTenantSession(), [])
   const [loading, setLoading] = useState(true)
   const [recentTx, setRecentTx] = useState<Tx[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
@@ -407,6 +410,12 @@ export function DashboardClient() {
     setTicketStatus('Image collée depuis le presse-papier.')
   }
 
+  function toAllowedHref(href: string) {
+    if (!tenantSession) return undefined
+    const [path] = href.split('?')
+    return canAccessPath(tenantSession, path) ? href : undefined
+  }
+
   return (
     <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_332px]">
@@ -442,7 +451,7 @@ export function DashboardClient() {
                     : card.key === 'mvSale' ? 'rose'
                     : 'slate'
                 }
-                href={card.href}
+                href={toAllowedHref(card.href)}
               />
               </div>
             )
@@ -467,7 +476,7 @@ export function DashboardClient() {
                   value={entry.value || '—'}
                   icon={<Icon className="h-5 w-5" />}
                   tone="slate"
-                  href={entry.href}
+                  href={entry.href ? toAllowedHref(entry.href) : undefined}
                   bubbleStyle={bubbleStyle}
                 />
               )
@@ -478,7 +487,7 @@ export function DashboardClient() {
         <Panel>
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">Dernière activité</h3>
-            <Link href="/finance" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
+            <Link href={toAllowedHref('/finance') || '#'} aria-disabled={!toAllowedHref('/finance')} onClick={(event) => { if (!toAllowedHref('/finance')) event.preventDefault() }} className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs ${toAllowedHref('/finance') ? 'border-white/15 bg-white/[0.06] text-white/90 hover:bg-white/[0.12]' : 'cursor-not-allowed border-white/10 bg-white/[0.03] text-white/40'}`}>
               Ouvrir Finance
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -711,11 +720,11 @@ export function DashboardClient() {
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold tracking-wide">Stocks</h3>
             <div className="flex items-center gap-1">
-              <Link href="/coke/preparer" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/25 bg-cyan-500/12 px-2.5 py-1 text-xs text-cyan-50 hover:bg-cyan-500/20">
+              <Link href={toAllowedHref('/coke/preparer') || '#'} aria-disabled={!toAllowedHref('/coke/preparer')} onClick={(event) => { if (!toAllowedHref('/coke/preparer')) event.preventDefault() }} className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs ${toAllowedHref('/coke/preparer') ? 'border-cyan-300/25 bg-cyan-500/12 text-cyan-50 hover:bg-cyan-500/20' : 'cursor-not-allowed border-cyan-300/15 bg-cyan-500/[0.06] text-cyan-200/45'}`}>
                 Session coke
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
-              <Link href="/items" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
+              <Link href={toAllowedHref('/items') || '#'} aria-disabled={!toAllowedHref('/items')} onClick={(event) => { if (!toAllowedHref('/items')) event.preventDefault() }} className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs ${toAllowedHref('/items') ? 'border-white/15 bg-white/[0.06] text-white/90 hover:bg-white/[0.12]' : 'cursor-not-allowed border-white/10 bg-white/[0.03] text-white/40'}`}>
                 Ouvrir Items
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
@@ -736,7 +745,11 @@ export function DashboardClient() {
               return (
                 <Link
                   key={card.key}
-                  href={card.href}
+                  href={toAllowedHref(card.href) || '#'}
+                  aria-disabled={!toAllowedHref(card.href)}
+                  onClick={(event) => {
+                    if (!toAllowedHref(card.href)) event.preventDefault()
+                  }}
                   className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
                     card.key === 'objects'
                       ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'

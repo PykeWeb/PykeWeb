@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 
-export type DirectoryActivity = 'coke' | 'meth' | 'objects' | 'weapons' | 'equipment' | 'other'
+export type DirectoryActivity = 'coke' | 'meth' | 'objects' | 'weapons' | 'equipment' | 'members' | 'group' | 'other'
 
 export type DirectoryContact = {
   id: string
@@ -39,6 +39,8 @@ function normalizeActivity(value: string | null | undefined): DirectoryActivity 
   if (['objects', 'object', 'objets', 'objet'].includes(raw)) return 'objects'
   if (['weapons', 'weapon', 'armes', 'arme'].includes(raw)) return 'weapons'
   if (['equipment', 'equipement', 'equipements'].includes(raw)) return 'equipment'
+  if (['members', 'member', 'membres', 'membre'].includes(raw)) return 'members'
+  if (['group', 'groupe', 'groupes'].includes(raw)) return 'group'
   if (['other', 'autre', 'autres', 'misc'].includes(raw)) return 'other'
   return 'other'
 }
