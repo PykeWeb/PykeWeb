@@ -351,13 +351,13 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow lg:p-8">
-        <h3 className="text-xl font-semibold">Membres existants</h3>
-        <p className="mt-1 text-sm text-white/70">Chaque membre dispose de sa carte dédiée pour modifier son accès, mot de passe et permissions en un coup d’œil.</p>
-        <div className="mt-4 space-y-4">
+        <h3 className="text-xl font-semibold text-center">Membres existants</h3>
+        <p className="mt-1 text-sm text-white/70 text-center">Gestion centralisée des accès membres (identifiant, mot de passe, rôle et permissions).</p>
+        <div className="mx-auto mt-4 w-full max-w-5xl space-y-4">
           {members.length === 0 ? <p className="text-sm text-white/60">Aucun membre pour ce groupe.</p> : null}
           {members.map((member) => (
             <div key={member.id} className="rounded-2xl border border-white/20 bg-gradient-to-br from-slate-900/70 via-slate-800/55 to-slate-900/75 p-4 shadow-[0_10px_35px_rgba(0,0,0,0.35)] md:p-5">
-              <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
+              <div className="flex flex-wrap items-start justify-center gap-4 border-b border-white/10 pb-4">
                 <div className="flex items-center gap-3">
                   <span className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-200/30 bg-cyan-500/15 text-cyan-100">
                     <UserCircle2 className="h-6 w-6" />
@@ -367,13 +367,13 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                     <input value={member.player_name} onChange={(e) => updateMemberDraft(member.id, { player_name: e.target.value })} className="mt-1 h-10 w-full min-w-[220px] rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Nom du membre" />
                   </div>
                 </div>
-                <div className="w-full max-w-[280px]">
+                <div className="w-full max-w-[300px]">
                   <label className="text-[11px] uppercase tracking-wide text-white/60">Identifiant</label>
                   <input value={member.player_identifier ?? ''} onChange={(e) => updateMemberDraft(member.id, { player_identifier: e.target.value || null })} className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Identifiant membre" />
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+              <div className="mt-4 grid gap-4 lg:grid-cols-[1.25fr_1fr]">
                 <div>
                   <label className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/65">
                     <KeyRound className="h-3.5 w-3.5" />
@@ -440,7 +440,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-white/10 pt-4">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 border-t border-white/10 pt-4">
                 <button disabled={busy} onClick={() => void saveMember(member)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-cyan-300/45 bg-cyan-500/20 px-4 text-sm font-medium text-cyan-50 hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50">
                   <Save className="h-4 w-4" />
                   Enregistrer

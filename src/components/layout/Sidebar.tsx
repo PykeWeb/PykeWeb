@@ -141,7 +141,7 @@ export function Sidebar() {
     )
 
   const hasExplicitRoleRestrictions = allowedPrefixes.length > 0
-  const canChangeOwnPassword = isMember && hasMemberSessionId
+  const canOpenPasswordModal = !isAdmin
 
   const userNavLinks: NavLink[] = isPwrGroup
     ? [{ id: 'pwr-commandes', href: '/pwr/commandes', label: 'Commande', icon: <Truck className="h-5 w-5" />, active: pathname.startsWith('/pwr/commandes') }]
@@ -187,7 +187,7 @@ export function Sidebar() {
             <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
-        {canChangeOwnPassword ? (
+        {canOpenPasswordModal ? (
           <button
             type="button"
             onClick={() => {
@@ -306,18 +306,24 @@ export function Sidebar() {
             </button>
           </div>
 
+          {!hasMemberSessionId ? (
+            <p className="mb-3 rounded-lg border border-amber-300/35 bg-amber-500/15 px-3 py-2 text-xs text-amber-100">
+              Ce compte n&apos;est pas un compte membre. Connecte-toi avec un identifiant membre pour modifier ce mot de passe ici.
+            </p>
+          ) : null}
+
           <div className="space-y-3">
             <label className="block">
               <span className="text-xs text-white/65">Mot de passe actuel</span>
-              <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none" />
+              <input disabled={!hasMemberSessionId} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50" />
             </label>
             <label className="block">
               <span className="text-xs text-white/65">Nouveau mot de passe</span>
-              <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none" />
+              <input disabled={!hasMemberSessionId} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50" />
             </label>
             <label className="block">
               <span className="text-xs text-white/65">Confirmation</span>
-              <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none" />
+              <input disabled={!hasMemberSessionId} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50" />
             </label>
           </div>
 
@@ -330,10 +336,14 @@ export function Sidebar() {
             </button>
             <button
               type="button"
-              disabled={passwordBusy}
+              disabled={passwordBusy || !hasMemberSessionId}
               onClick={() => {
                 setPasswordError('')
                 setPasswordSuccess('')
+                if (!hasMemberSessionId) {
+                  setPasswordError('Ce compte ne permet pas le changement de mot de passe membre.')
+                  return
+                }
                 if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
                   setPasswordError('Tous les champs sont requis.')
                   return
