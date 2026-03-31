@@ -1294,6 +1294,7 @@ export async function createFinanceTransaction(args: {
 }) {
   const qty = toPositiveInt(args.quantity)
   const unit = toNonNegative(args.unit_price)
+  const totalAmount = calcTotal(qty, unit)
   const resolvedItemId = await ensureCatalogItemId(args.item_id)
 
   const { data: item, error: itemErr } = await supabase
@@ -1309,8 +1310,31 @@ export async function createFinanceTransaction(args: {
   const nextStock = args.mode === 'buy' ? currentStock + qty : currentStock - qty
   if (nextStock < 0) throw new Error(copy.finance.errors.stockInsufficient)
 
+  const { data: cashItem } = await supabase
+    .from('catalog_items')
+    .select('id,name,stock')
+    .eq('group_id', currentGroupId())
+    .ilike('name', 'argent')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle<{ id: string; name: string; stock: number | null }>()
+
+  const shouldMoveCash = Boolean(cashItem?.id && cashItem.id !== resolvedItemId && totalAmount > 0)
+  if (shouldMoveCash) {
+    const currentCash = toNonNegative(cashItem?.stock)
+    const nextCash = args.mode === 'sell' ? currentCash + totalAmount : currentCash - totalAmount
+    if (nextCash < 0) throw new Error('Argent insuffisant pour cet achat.')
+  }
+
   const { error: stockErr } = await supabase.from('catalog_items').update({ stock: nextStock }).eq('group_id', currentGroupId()).eq('id', resolvedItemId)
   if (stockErr) throw stockErr
+
+  if (shouldMoveCash) {
+    const currentCash = toNonNegative(cashItem?.stock)
+    const nextCash = args.mode === 'sell' ? currentCash + totalAmount : currentCash - totalAmount
+    const { error: cashErr } = await supabase.from('catalog_items').update({ stock: nextCash }).eq('group_id', currentGroupId()).eq('id', cashItem?.id as string)
+    if (cashErr) throw cashErr
+  }
 
   const { data, error } = await supabase
     .from('finance_transactions')
@@ -1320,7 +1344,7 @@ export async function createFinanceTransaction(args: {
       mode: args.mode,
       quantity: qty,
       unit_price: unit,
-      total: calcTotal(qty, unit),
+      total: totalAmount,
       counterparty: args.counterparty || null,
       notes: args.notes || null,
       payment_mode: args.payment_mode || 'cash',
@@ -1332,10 +1356,10 @@ export async function createFinanceTransaction(args: {
   void createAppLog({
     area: 'finance.transactions',
     action: args.mode,
-    message: `${args.mode === 'buy' ? 'Achat' : 'Vente'}: ${item.name} x${qty} (${calcTotal(qty, unit).toFixed(2)} $)`,
+    message: `${args.mode === 'buy' ? 'Achat' : 'Vente'}: ${item.name} x${qty} (${totalAmount.toFixed(2)} $)`,
     entity_type: 'finance_transaction',
     entity_id: data.id,
-    payload: { item_id: resolvedItemId, item_name: item.name, quantity: qty, unit_price: unit, total: calcTotal(qty, unit) },
+    payload: { item_id: resolvedItemId, item_name: item.name, quantity: qty, unit_price: unit, total: totalAmount, cash_item_id: cashItem?.id || null, cash_moved: shouldMoveCash ? totalAmount : 0 },
   })
   return data
 }
