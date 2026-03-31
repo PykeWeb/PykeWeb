@@ -12,11 +12,13 @@ import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 
 export default function DroguesVentePage() {
-  const MIN_ESTIMATED_POUCH_PRICE = 77
+  const MIN_POUCH_PRICE = 75
+  const MAX_POUCH_PRICE = 85
   const [items, setItems] = useState<CatalogItem[]>([])
   const [itemId, setItemId] = useState('')
   const [qty, setQty] = useState(1)
-  const [receivedTotalInput, setReceivedTotalInput] = useState(MIN_ESTIMATED_POUCH_PRICE)
+  const [estimatePercent, setEstimatePercent] = useState(50)
+  const [receivedTotalInput, setReceivedTotalInput] = useState(80)
   const [member, setMember] = useState('')
   const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
@@ -31,7 +33,9 @@ export default function DroguesVentePage() {
         setItems(pouches)
         if (pouches[0]) {
           setItemId(pouches[0].id)
-          setReceivedTotalInput(Math.max(0, Number(pouches[0].sell_price || pouches[0].buy_price || MIN_ESTIMATED_POUCH_PRICE)))
+          const reference = Math.max(MIN_POUCH_PRICE, Math.min(MAX_POUCH_PRICE, Number(pouches[0].sell_price || pouches[0].buy_price || 80)))
+          setEstimatePercent(Math.round(((reference - MIN_POUCH_PRICE) / (MAX_POUCH_PRICE - MIN_POUCH_PRICE)) * 100))
+          setReceivedTotalInput(reference)
         }
       })
       .catch(() => setItems([]))
@@ -49,12 +53,15 @@ export default function DroguesVentePage() {
   const selected = useMemo(() => items.find((row) => row.id === itemId) || null, [itemId, items])
   const availableStock = Math.max(0, Number(selected?.stock || 0))
   const safeQty = Math.max(1, Math.floor(qty || 1))
-  const estimatedTotal = safeQty * MIN_ESTIMATED_POUCH_PRICE
+  const estimatedUnit = MIN_POUCH_PRICE + ((MAX_POUCH_PRICE - MIN_POUCH_PRICE) * Math.max(0, Math.min(100, estimatePercent))) / 100
+  const estimatedTotal = safeQty * estimatedUnit
   const receivedTotal = Math.max(0, Number(receivedTotalInput || 0))
 
   useEffect(() => {
     if (!selected) return
-    setReceivedTotalInput((prev) => (prev > 0 ? prev : Math.max(0, Number(selected.sell_price || selected.buy_price || MIN_ESTIMATED_POUCH_PRICE))))
+    const reference = Math.max(MIN_POUCH_PRICE, Math.min(MAX_POUCH_PRICE, Number(selected.sell_price || selected.buy_price || estimatedUnit)))
+    setEstimatePercent(Math.round(((reference - MIN_POUCH_PRICE) / (MAX_POUCH_PRICE - MIN_POUCH_PRICE)) * 100))
+    setReceivedTotalInput((prev) => (prev > 0 ? prev : reference))
     setQty((prev) => Math.max(1, Math.min(Math.floor(prev || 1), Math.max(1, Math.floor(Number(selected.stock || 0) || 0)))))
   }, [selected])
 
@@ -84,9 +91,15 @@ export default function DroguesVentePage() {
             <Input value={qty} onChange={(e) => setQty(Number(e.target.value) || 1)} inputMode="numeric" />
           </label>
           <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3">
-            <p className="text-xs text-white/70">Prix total estimé</p>
-            <p className="text-xl font-semibold">{estimatedTotal.toFixed(2)} $</p>
+            <p className="text-xs text-white/70">Prix unitaire estimé ({MIN_POUCH_PRICE}-{MAX_POUCH_PRICE}$)</p>
+            <p className="text-xl font-semibold">{estimatedUnit.toFixed(2)} $</p>
+            <p className="mt-1 text-xs text-white/70">Total estimé: {estimatedTotal.toFixed(2)} $</p>
           </div>
+          <label className="space-y-1 text-sm">
+            <span className="text-white/70">Estimation (%)</span>
+            <Input value={estimatePercent} onChange={(e) => setEstimatePercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))} inputMode="numeric" />
+            <input type="range" min={0} max={100} value={estimatePercent} onChange={(e) => setEstimatePercent(Number(e.target.value) || 0)} className="w-full" />
+          </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Prix total reçu</span>
             <Input value={receivedTotalInput} onChange={(e) => setReceivedTotalInput(Number(e.target.value) || 0)} inputMode="decimal" />
@@ -101,7 +114,8 @@ export default function DroguesVentePage() {
           <SecondaryButton onClick={() => {
             if (!selected) return
             setQty(1)
-            setReceivedTotalInput(MIN_ESTIMATED_POUCH_PRICE)
+            setEstimatePercent(50)
+            setReceivedTotalInput((MIN_POUCH_PRICE + MAX_POUCH_PRICE) / 2)
           }}
           >
             Réinitialiser
@@ -113,7 +127,7 @@ export default function DroguesVentePage() {
               if (!selected) return
               try {
                 setSaving(true)
-                const notes = member.trim() ? `Membre: ${member.trim()}` : undefined
+                const notes = member.trim() ? `Vente pochon • Membre: ${member.trim()}` : 'Vente pochon'
                 await createFinanceTransaction({
                   item_id: selected.id,
                   mode: 'sell',

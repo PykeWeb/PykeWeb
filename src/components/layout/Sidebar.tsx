@@ -43,7 +43,7 @@ export function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
-  const [navOrder, setNavOrder] = useState(['dashboard', 'cash', 'finance', 'items', 'annuaire', 'drogues', 'group', 'activites'])
+  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'annuaire', 'drogues', 'group', 'activites'])
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [isSbGroup, setIsSbGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
@@ -73,14 +73,30 @@ export function Sidebar() {
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
     setIsPwrGroup(scope.includes('pwr'))
     setIsSbGroup(isSbTenantSession(session))
-
-    void listCatalogItemsUnified()
-      .then((rows) => {
-        const cashItem = rows.find((row) => String(row.name || '').trim().toLowerCase() === 'argent')
-        const amount = Math.max(0, Number(cashItem?.stock || 0))
-        setCashLabel(`${amount.toLocaleString('fr-FR')} $`)
-      })
-      .catch(() => setCashLabel('—'))
+    let mounted = true
+    const loadCash = () => {
+      void listCatalogItemsUnified()
+        .then((rows) => {
+          if (!mounted) return
+          const cashItem = rows.find((row) => String(row.name || '').trim().toLowerCase() === 'argent')
+          const amount = Math.max(0, Number(cashItem?.stock || 0))
+          setCashLabel(`${amount.toLocaleString('fr-FR')} $`)
+        })
+        .catch(() => {
+          if (mounted) setCashLabel('—')
+        })
+    }
+    loadCash()
+    const interval = window.setInterval(loadCash, 15000)
+    const onVisibility = () => {
+      if (!document.hidden) loadCash()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   useEffect(() => {
@@ -123,7 +139,6 @@ export function Sidebar() {
 
   const defaultUserLinks: NavLink[] = [
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
-    { id: 'cash', href: '/cash', label: 'Argent', icon: <PanelsTopLeft className="h-5 w-5" />, active: pathname.startsWith('/cash') },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
     { id: 'annuaire', href: '/annuaire', label: 'Annuaire', icon: <BookUser className="h-5 w-5" />, active: pathname.startsWith('/annuaire') },
