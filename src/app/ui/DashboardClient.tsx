@@ -541,7 +541,7 @@ export function DashboardClient() {
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-xs text-white/60">Dernier suivi production</p>
                   {recentDrugTrackings[0] ? (
-                    <Link href={`/drogues/suivi-production/${recentDrugTrackings[0].id}`} className="truncate text-sm font-semibold text-violet-100 hover:underline">
+                    <Link href={toAllowedHref(`/drogues/suivi-production/${recentDrugTrackings[0].id}`) || '#'} aria-disabled={!toAllowedHref(`/drogues/suivi-production/${recentDrugTrackings[0].id}`)} onClick={(event) => { if (!toAllowedHref(`/drogues/suivi-production/${recentDrugTrackings[0].id}`)) event.preventDefault() }} className={`truncate text-sm font-semibold ${toAllowedHref(`/drogues/suivi-production/${recentDrugTrackings[0].id}`) ? 'text-violet-100 hover:underline' : 'cursor-not-allowed text-violet-100/45'}`}>
                       {recentDrugTrackings[0].partner_name} • {recentDrugTrackings[0].status}
                     </Link>
                   ) : (
@@ -550,7 +550,7 @@ export function DashboardClient() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-xs text-white/60">Session drogue (accès direct)</p>
-                  <Link href="/drogues" className="truncate text-sm font-semibold text-cyan-100 hover:underline">
+                  <Link href={toAllowedHref('/drogues') || '#'} aria-disabled={!toAllowedHref('/drogues')} onClick={(event) => { if (!toAllowedHref('/drogues')) event.preventDefault() }} className={`truncate text-sm font-semibold ${toAllowedHref('/drogues') ? 'text-cyan-100 hover:underline' : 'cursor-not-allowed text-cyan-100/45'}`}>
                     {recentDrugTrackings[0]?.type || 'Ouvrir /drogues'}
                   </Link>
                 </div>
@@ -561,7 +561,7 @@ export function DashboardClient() {
             ) : null}
             {activityView === 'transactions' ? (
               recentTx.map((t) => (
-                <Link href={`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`} key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                <Link href={toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) || '#'} aria-disabled={!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)} onClick={(event) => { if (!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)) event.preventDefault() }} key={t.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                       {t.item_image_url ? (
@@ -598,7 +598,7 @@ export function DashboardClient() {
                 <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune dépense récente.</div>
               ) : (
                 recentExpenses.map((e) => (
-                  <Link href="/finance?type=expense" key={e.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                  <Link href={toAllowedHref('/finance?type=expense') || '#'} aria-disabled={!toAllowedHref('/finance?type=expense')} onClick={(event) => { if (!toAllowedHref('/finance?type=expense')) event.preventDefault() }} key={e.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref('/finance?type=expense') ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                         {e.item_image_url ? (
@@ -646,7 +646,7 @@ export function DashboardClient() {
                   <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité stock pour ce filtre.</div>
                 ) : (
                   stockActivityRows.map((t) => (
-                    <Link href={`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`} key={`stock-${t.id}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                    <Link href={toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) || '#'} aria-disabled={!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)} onClick={(event) => { if (!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)) event.preventDefault() }} key={`stock-${t.id}`} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                           {t.item_image_url ? (
@@ -685,7 +685,7 @@ export function DashboardClient() {
                 <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucun suivi de production en cours.</div>
               ) : (
                 recentDrugTrackings.map((row) => (
-                  <Link href={`/drogues/suivi-production/${row.id}`} key={row.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                  <Link href={toAllowedHref(`/drogues/suivi-production/${row.id}`) || '#'} aria-disabled={!toAllowedHref(`/drogues/suivi-production/${row.id}`)} onClick={(event) => { if (!toAllowedHref(`/drogues/suivi-production/${row.id}`)) event.preventDefault() }} key={row.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref(`/drogues/suivi-production/${row.id}`) ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
                     <div>
                       <p className="text-sm font-medium">{row.partner_name} • {row.type}</p>
                       <p className="text-xs text-white/60">{new Date(row.created_at).toLocaleString()} • Statut: {row.status}</p>
@@ -700,7 +700,7 @@ export function DashboardClient() {
                 <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité récente.</div>
               ) : (
                 recentActivities.map((entry) => (
-                  <Link href="/activites" key={entry.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                  <Link href={toAllowedHref('/activites') || '#'} aria-disabled={!toAllowedHref('/activites')} onClick={(event) => { if (!toAllowedHref('/activites')) event.preventDefault() }} key={entry.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref('/activites') ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
                     <div>
                       <p className="text-sm font-medium">{entry.member_name} • {entry.activity_type}</p>
                       <p className="text-xs text-white/60">{new Date(entry.created_at).toLocaleString()}</p>

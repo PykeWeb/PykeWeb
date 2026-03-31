@@ -45,11 +45,6 @@ function normalizeActivity(value: string | null | undefined): DirectoryActivity 
   return 'other'
 }
 
-function toDatabaseActivity(activity: DirectoryActivity): Exclude<DirectoryActivity, 'members' | 'group'> | 'other' {
-  if (activity === 'members' || activity === 'group') return 'other'
-  return activity
-}
-
 function normalizeRow(row: DirectoryContactRow): DirectoryContact {
   return {
     id: row.id,
@@ -90,7 +85,7 @@ export async function createDirectoryContact(args: {
     name,
     partner_group: args.partner_group?.trim() || null,
     phone: args.phone?.trim() || null,
-    activity: toDatabaseActivity(normalizeActivity(args.activity)),
+    activity: normalizeActivity(args.activity),
     note: args.note?.trim() || null,
   }
 
@@ -122,7 +117,7 @@ export async function updateDirectoryContact(args: {
       name,
       partner_group: args.partner_group?.trim() || null,
       phone: args.phone?.trim() || null,
-      activity: toDatabaseActivity(normalizeActivity(args.activity)),
+      activity: normalizeActivity(args.activity),
       note: args.note?.trim() || null,
       updated_at: new Date().toISOString(),
     })
