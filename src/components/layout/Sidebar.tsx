@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles, BookUser } from 'lucide-react'
+import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles, BookUser, Loader2, X } from 'lucide-react'
 import { BRAND } from '@/lib/constants/brand'
 import { useUiSettings } from '@/lib/useUiSettings'
 import { useEffect, useMemo, useState } from 'react'
@@ -15,6 +15,7 @@ import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
 import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
+import { changeMemberPassword } from '@/lib/tenantAuthApi'
 
 type AccessInfo = { paid_until: string | null; active: boolean } | null
 
@@ -49,6 +50,14 @@ export function Sidebar() {
   const [memberName, setMemberName] = useState('Boss')
   const [allowedPrefixes, setAllowedPrefixes] = useState<string[]>([])
   const [cashLabel, setCashLabel] = useState('0 $')
+  const [hasMemberSessionId, setHasMemberSessionId] = useState(false)
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordBusy, setPasswordBusy] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
 
   useEffect(() => {
     const session = getTenantSession()
@@ -57,6 +66,7 @@ export function Sidebar() {
     setGroupName(nextGroupName)
     setIsAdmin(isAdminTenantSession(session))
     setIsMember(isMemberTenantSession(session))
+    setHasMemberSessionId(Boolean(session?.memberId))
     setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Boss' : ''))
     setMemberName(session?.memberName || (session?.role === 'chef' ? 'Boss' : session?.roleLabel || 'Membre'))
     setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? expandAccessPrefixes(session.allowedPrefixes) : [])
@@ -131,6 +141,7 @@ export function Sidebar() {
     )
 
   const hasExplicitRoleRestrictions = allowedPrefixes.length > 0
+  const canChangeOwnPassword = isMember && hasMemberSessionId
 
   const userNavLinks: NavLink[] = isPwrGroup
     ? [{ id: 'pwr-commandes', href: '/pwr/commandes', label: 'Commande', icon: <Truck className="h-5 w-5" />, active: pathname.startsWith('/pwr/commandes') }]
@@ -145,7 +156,8 @@ export function Sidebar() {
           : defaultUserLinks
 
   return (
-    <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
+    <>
+      <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
       <div className="rounded-[2rem] border border-[#5b6fc7]/28 bg-gradient-to-br from-[#11173a]/95 via-[#101633]/95 to-[#0b1027]/96 p-5 shadow-[0_16px_42px_rgba(4,8,28,0.58)] backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3.5">
@@ -175,6 +187,23 @@ export function Sidebar() {
             <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
+        {canChangeOwnPassword ? (
+          <button
+            type="button"
+            onClick={() => {
+              setPasswordError('')
+              setPasswordSuccess('')
+              setCurrentPassword('')
+              setNewPassword('')
+              setConfirmPassword('')
+              setPasswordModalOpen(true)
+            }}
+            className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-white/18 bg-white/[0.08] px-3 text-xs font-medium text-white/85 transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            Changer mot de passe
+          </button>
+        ) : null}
 
         <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-gradient-to-br from-white/[0.075] via-white/[0.04] to-white/[0.02] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_24px_rgba(4,8,28,0.34)]">
           <div className="grid grid-cols-2 gap-2.5">
@@ -263,6 +292,80 @@ export function Sidebar() {
           </>
         )}
       </div>
-    </aside>
+      </aside>
+      {passwordModalOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-md rounded-2xl border border-white/15 bg-[#0f1634] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.55)]">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-white">Changer mon mot de passe</h3>
+              <p className="mt-1 text-xs text-white/65">Le nouveau mot de passe sera immédiatement visible dans la gestion du groupe.</p>
+            </div>
+            <button type="button" onClick={() => setPasswordModalOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white/80 hover:bg-white/20">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block">
+              <span className="text-xs text-white/65">Mot de passe actuel</span>
+              <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none" />
+            </label>
+            <label className="block">
+              <span className="text-xs text-white/65">Nouveau mot de passe</span>
+              <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none" />
+            </label>
+            <label className="block">
+              <span className="text-xs text-white/65">Confirmation</span>
+              <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" className="mt-1 h-10 w-full rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white focus:border-cyan-300/55 focus:outline-none" />
+            </label>
+          </div>
+
+          {passwordError ? <p className="mt-3 rounded-lg border border-rose-300/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-100">{passwordError}</p> : null}
+          {passwordSuccess ? <p className="mt-3 rounded-lg border border-emerald-300/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-100">{passwordSuccess}</p> : null}
+
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setPasswordModalOpen(false)} className="inline-flex h-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 px-3 text-sm text-white/90 hover:bg-white/20">
+              Annuler
+            </button>
+            <button
+              type="button"
+              disabled={passwordBusy}
+              onClick={() => {
+                setPasswordError('')
+                setPasswordSuccess('')
+                if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+                  setPasswordError('Tous les champs sont requis.')
+                  return
+                }
+                if (newPassword.trim().length < 6) {
+                  setPasswordError('Le nouveau mot de passe doit contenir au moins 6 caractères.')
+                  return
+                }
+                if (newPassword !== confirmPassword) {
+                  setPasswordError('La confirmation ne correspond pas au nouveau mot de passe.')
+                  return
+                }
+                setPasswordBusy(true)
+                void changeMemberPassword(currentPassword, newPassword)
+                  .then(() => {
+                    setPasswordSuccess('Mot de passe mis à jour avec succès.')
+                    setCurrentPassword('')
+                    setNewPassword('')
+                    setConfirmPassword('')
+                  })
+                  .catch((error) => setPasswordError(error instanceof Error ? error.message : 'Impossible de modifier le mot de passe.'))
+                  .finally(() => setPasswordBusy(false))
+              }}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-cyan-300/40 bg-cyan-500/20 px-3 text-sm font-medium text-cyan-50 hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              {passwordBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Enregistrer
+            </button>
+          </div>
+        </div>
+        </div>
+      ) : null}
+    </>
   )
 }

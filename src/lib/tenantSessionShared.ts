@@ -6,6 +6,7 @@ export type TenantSessionPayload = {
   groupName: string
   groupBadge?: string | null
   isAdmin?: boolean
+  memberId?: string
   role?: TenantRole
   roleLabel?: string
   memberName?: string
@@ -23,6 +24,7 @@ export function isValidTenantSession(session: TenantSessionPayload | null): sess
   if ((session.v ?? 0) !== TENANT_SESSION_VERSION) return false
 
   if (session.role && typeof session.role !== 'string') return false
+  if (session.memberId && typeof session.memberId !== 'string') return false
   if (session.roleLabel && typeof session.roleLabel !== 'string') return false
   if (session.memberName && typeof session.memberName !== 'string') return false
   if (session.allowedPrefixes && !Array.isArray(session.allowedPrefixes)) return false

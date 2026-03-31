@@ -166,6 +166,7 @@ export async function POST(request: Request) {
       groupName: isAdmin ? 'Administration' : data.name,
       groupBadge: isAdmin ? 'ADMIN' : data.badge,
       isAdmin,
+      memberId: groupByMemberLogin?.member.id,
       role: isAdmin ? 'chef' : role.key,
       roleLabel: isAdmin ? 'Administration' : normalizeRoleLabel(role),
       memberName: isAdmin ? 'Administration' : (groupByMemberLogin?.member.player_name || (role.key === 'chef' ? 'Boss' : normalizeRoleLabel(role) || 'Membre')),

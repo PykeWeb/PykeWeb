@@ -81,8 +81,18 @@ export async function loginTenant(login: string, password: string, remember = tr
     body: JSON.stringify({ login, password, remember }),
   })
   if (!res.ok) throw new Error(await readApiError(res))
-  const json = (await res.json()) as { group: TenantGroup; session: { groupId: string; groupName: string; groupBadge?: string | null; isAdmin?: boolean; role?: string; roleLabel?: string; allowedPrefixes?: string[] } }
+  const json = (await res.json()) as { group: TenantGroup; session: { groupId: string; groupName: string; groupBadge?: string | null; isAdmin?: boolean; memberId?: string; role?: string; roleLabel?: string; allowedPrefixes?: string[] } }
   return json
+}
+
+export async function changeMemberPassword(currentPassword: string, newPassword: string) {
+  const res = await fetch('/api/auth/change-password', {
+    ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+    method: 'POST',
+    credentials: 'include',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
 }
 
 

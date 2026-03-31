@@ -395,9 +395,18 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                       <RefreshCw className="h-3.5 w-3.5" />
                       Générer
                     </button>
-                    <button type="button" onClick={() => void copyToClipboard(member.password || '')} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const identifier = (member.player_identifier || '').trim()
+                        const password = (member.password || '').trim()
+                        const content = [`Identifiant: ${identifier || '—'}`, `Mot de passe: ${password || '—'}`].join('\n')
+                        void copyToClipboard(content)
+                      }}
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20"
+                    >
                       <Copy className="h-3.5 w-3.5" />
-                      Copier
+                      Copier accès
                     </button>
                   </div>
                 </div>
