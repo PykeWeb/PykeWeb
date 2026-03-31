@@ -95,9 +95,9 @@ export default function CashPage() {
         {!loading ? (
           <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
             <div>
-              <p className="text-sm text-white/70">Cash actuel (item "argent")</p>
+              <p className="text-sm text-white/70">Cash actuel (item &quot;argent&quot;)</p>
               <p className="mt-1 text-3xl font-semibold text-amber-100">{Math.max(0, Number(cashItem?.stock || 0)).toLocaleString('fr-FR')} $</p>
-              <p className="mt-1 text-xs text-white/50">{cashItem ? `ID item: ${cashItem.id}` : 'Item "argent" introuvable'}</p>
+              <p className="mt-1 text-xs text-white/50">{cashItem ? `ID item: ${cashItem.id}` : 'Item argent introuvable'}</p>
             </div>
             <div className="flex items-end gap-2">
               <input value={value} onChange={(event) => setValue(event.target.value)} type="number" min={0} className="h-10 w-40 rounded-xl border border-white/20 bg-black/30 px-3 text-sm text-white" />
