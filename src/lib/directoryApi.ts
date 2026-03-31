@@ -27,7 +27,8 @@ type DirectoryContactRow = {
   updated_at: string
 }
 
-const GROUP_ACTIVITY_TAG = '[activity:group]'
+const ACTIVITY_TAG_PREFIX = '[activity:'
+const LEGACY_SAFE_DB_ACTIVITIES: DirectoryActivity[] = ['coke', 'meth', 'objects', 'other']
 
 function normalizeActivity(value: string | null | undefined): DirectoryActivity {
   const raw = String(value || '')
@@ -49,10 +50,13 @@ function normalizeActivity(value: string | null | undefined): DirectoryActivity 
 
 function encodeActivityPayload(activity: DirectoryActivity, note: string | null | undefined) {
   const baseNote = note?.trim() || ''
-  const noteWithoutTag = baseNote.replace(GROUP_ACTIVITY_TAG, '').trim()
+  const noteWithoutTag = baseNote
+    .replace(/\[activity:[^\]]+\]/g, '')
+    .trim()
 
-  if (activity === 'group') {
-    const taggedNote = noteWithoutTag ? `${noteWithoutTag}\n${GROUP_ACTIVITY_TAG}` : GROUP_ACTIVITY_TAG
+  if (!LEGACY_SAFE_DB_ACTIVITIES.includes(activity)) {
+    const activityTag = `${ACTIVITY_TAG_PREFIX}${activity}]`
+    const taggedNote = noteWithoutTag ? `${noteWithoutTag}\n${activityTag}` : activityTag
     return { dbActivity: 'other' as const, dbNote: taggedNote }
   }
 
@@ -62,8 +66,9 @@ function encodeActivityPayload(activity: DirectoryActivity, note: string | null 
 function normalizeRow(row: DirectoryContactRow): DirectoryContact {
   const normalizedActivity = normalizeActivity(row.activity)
   const rawNote = row.note?.trim() || ''
-  const hasGroupTag = rawNote.includes(GROUP_ACTIVITY_TAG)
-  const cleanedNote = rawNote.replace(GROUP_ACTIVITY_TAG, '').trim()
+  const tagMatch = rawNote.match(/\[activity:([^\]]+)\]/i)
+  const taggedActivity = normalizeActivity(tagMatch?.[1])
+  const cleanedNote = rawNote.replace(/\[activity:[^\]]+\]/gi, '').trim()
 
   return {
     id: row.id,
@@ -71,7 +76,7 @@ function normalizeRow(row: DirectoryContactRow): DirectoryContact {
     name: String(row.name || '').trim(),
     partner_group: row.partner_group?.trim() || null,
     phone: row.phone?.trim() || null,
-    activity: normalizedActivity === 'other' && hasGroupTag ? 'group' : normalizedActivity,
+    activity: normalizedActivity === 'other' && tagMatch ? taggedActivity : normalizedActivity,
     note: cleanedNote || null,
     created_at: row.created_at,
     updated_at: row.updated_at,
