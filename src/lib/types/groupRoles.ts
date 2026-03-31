@@ -21,6 +21,7 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Entrée / Sortie', prefix: '/finance/entree-sortie' },
   { label: 'Achat / Vente', prefix: '/finance/achat-vente' },
   { label: 'Items', prefix: '/items' },
+  { label: 'Argent', prefix: '/cash' },
   { label: 'Annuaire', prefix: '/annuaire' },
   { label: 'Drogues', prefix: '/drogues' },
   { label: 'Activités', prefix: GROUP_OPERATIONS_PREFIX },

@@ -445,7 +445,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                         `Identifiant: ${identifier || '—'}`,
                         `Mot de passe: ${password || '—'}`,
                         '',
-                        'Tu peux modifier ton mot de passe avec le bouton "Changer mot de passe" dans le dashboard, en dessous de Déconnexion.',
+                        'Tu peux modifier ton mot de passe avec le bouton "Mdp" en bas à droite de la tablette.',
                       ].join('\n')
                       void copyToClipboard(content)
                     }}
@@ -510,7 +510,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                           `Identifiant: ${identifier || '—'}`,
                           `Mot de passe: ${password || '—'}`,
                           '',
-                          'Tu peux modifier ton mot de passe avec le bouton "Changer mot de passe" dans le dashboard, en dessous de Déconnexion.',
+                          'Tu peux modifier ton mot de passe avec le bouton "Mdp" en bas à droite de la tablette.',
                         ].join('\n')
                         void copyToClipboard(content)
                       }}

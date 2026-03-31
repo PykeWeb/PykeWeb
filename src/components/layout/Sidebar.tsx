@@ -43,7 +43,7 @@ export function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
-  const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'annuaire', 'drogues', 'group', 'activites'])
+  const [navOrder, setNavOrder] = useState(['dashboard', 'cash', 'finance', 'items', 'annuaire', 'drogues', 'group', 'activites'])
   const [isPwrGroup, setIsPwrGroup] = useState(false)
   const [isSbGroup, setIsSbGroup] = useState(false)
   const [roleLabel, setRoleLabel] = useState('')
@@ -123,6 +123,7 @@ export function Sidebar() {
 
   const defaultUserLinks: NavLink[] = [
     { id: 'dashboard', href: '/', label: labels.nav_dashboard || 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, active: pathname === '/' },
+    { id: 'cash', href: '/cash', label: 'Argent', icon: <PanelsTopLeft className="h-5 w-5" />, active: pathname.startsWith('/cash') },
     { id: 'finance', href: '/finance', label: labels.nav_finance || 'Finance', icon: <Wallet className="h-5 w-5" />, active: pathname.startsWith('/finance') },
     { id: 'items', href: '/items', label: 'Items', icon: <Boxes className="h-5 w-5" />, active: pathname.startsWith('/items') },
     { id: 'annuaire', href: '/annuaire', label: 'Annuaire', icon: <BookUser className="h-5 w-5" />, active: pathname.startsWith('/annuaire') },
@@ -215,13 +216,13 @@ export function Sidebar() {
               <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">{groupName}</span></p>
             </div>
 
-            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+            <Link href="/cash" className="group flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center transition hover:border-amber-300/35 hover:bg-amber-500/12">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
                 <PanelsTopLeft className="h-3.5 w-3.5" />
                 Cash
               </p>
               <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">{cashLabel}</span></p>
-            </div>
+            </Link>
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
@@ -272,22 +273,7 @@ export function Sidebar() {
             <p className="mt-1 px-1 text-xs font-semibold uppercase tracking-wide text-white/50">Catégorie • Service</p>
             <NavItem href="/admin/service/achat-service-tablette" label="Achat service tablette" icon={<Wallet className="h-5 w-5" />} active={pathname.startsWith('/admin/service/achat-service-tablette')} />
             <NavItem href="/admin/patch-notes" label="Patch notes" icon={<ScrollText className="h-5 w-5" />} active={pathname.startsWith('/admin/patch-notes')} />
-            <div className="flex items-center justify-end gap-2">
-              <div className="flex-1">
-                <NavItem href="/admin/logs" label="Logs" icon={<ClipboardList className="h-5 w-5" />} active={pathname.startsWith('/admin/logs')} />
-              </div>
-              {canOpenPasswordModal ? (
-                <button
-                  type="button"
-                  aria-label="Changer mot de passe"
-                  title="Changer mot de passe"
-                  onClick={openPasswordModal}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
-                >
-                  <KeyRound className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
+            <NavItem href="/admin/logs" label="Logs" icon={<ClipboardList className="h-5 w-5" />} active={pathname.startsWith('/admin/logs')} />
           </>
         ) : (
           <>
@@ -304,19 +290,6 @@ export function Sidebar() {
               }))}
             />
             {userNavLinks.length === 0 ? <p className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">Aucune catégorie autorisée pour ce rôle.</p> : null}
-            {canOpenPasswordModal ? (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  aria-label="Changer mot de passe"
-                  title="Changer mot de passe"
-                  onClick={openPasswordModal}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
-                >
-                  <KeyRound className="h-4 w-4" />
-                </button>
-              </div>
-            ) : null}
           </>
         )}
       </div>
