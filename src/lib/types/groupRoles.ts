@@ -23,9 +23,7 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Items', prefix: '/items' },
   { label: 'Annuaire', prefix: '/annuaire' },
   { label: 'Drogues', prefix: '/drogues' },
-  { label: 'Tablette', prefix: '/tablette' },
-  { label: 'Activités', prefix: '/activites' },
-  { label: 'Dépenses', prefix: '/depenses' },
+  { label: 'Activités', prefix: GROUP_OPERATIONS_PREFIX },
   { label: 'Gestion chef', prefix: '/activites/gestion-chef' },
 ] as const
 
@@ -46,7 +44,7 @@ export function expandAccessPrefixes(prefixes: string[]) {
 
   const expanded = [...normalized]
   if (normalized.includes(GROUP_OPERATIONS_PREFIX)) {
-    expanded.push('/tablette', '/activites')
+    expanded.push('/tablette', '/activites', '/depenses', '/finance/depense')
   }
 
   return Array.from(new Set(expanded))

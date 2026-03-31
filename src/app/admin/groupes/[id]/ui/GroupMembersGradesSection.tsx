@@ -11,7 +11,7 @@ import {
   updateGroupMember,
   updateGroupMemberGrade,
 } from '@/lib/tenantAuthApi'
-import { expandAccessPrefixes, normalizeRolePrefixes, ROLE_ACCESS_OPTIONS } from '@/lib/types/groupRoles'
+import { expandAccessPrefixes, GROUP_OPERATIONS_PREFIX, normalizeRolePrefixes, ROLE_ACCESS_OPTIONS } from '@/lib/types/groupRoles'
 import type { GroupMember, GroupMemberCandidate, GroupMemberRole, GroupMembersGradesPayload } from '@/lib/types/groupMembers'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
 
@@ -40,7 +40,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [playerCandidates, setPlayerCandidates] = useState<GroupMemberCandidate[]>([])
 
   const [newRoleName, setNewRoleName] = useState('')
-  const [newRolePermissions, setNewRolePermissions] = useState<string[]>(['/tablette'])
+  const [newRolePermissions, setNewRolePermissions] = useState<string[]>([GROUP_OPERATIONS_PREFIX])
 
   const [selectedPlayerName, setSelectedPlayerName] = useState('')
   const [customPlayerName, setCustomPlayerName] = useState('')
@@ -138,7 +138,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       const exists = expanded.includes(prefix)
       let next = exists ? prev.filter((entry) => entry !== prefix) : [...prev, prefix]
       const normalized = normalizeRolePrefixes(next)
-      return normalized.length > 0 ? normalized : ['/tablette']
+      return normalized.length > 0 ? normalized : [GROUP_OPERATIONS_PREFIX]
     })
   }
 
@@ -153,7 +153,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       const exists = expanded.includes(prefix)
       let next = exists ? role.permissions.filter((entry) => entry !== prefix) : [...role.permissions, prefix]
       const normalized = normalizeRolePrefixes(next)
-      return { ...role, permissions: normalized.length > 0 ? normalized : ['/tablette'] }
+      return { ...role, permissions: normalized.length > 0 ? normalized : [GROUP_OPERATIONS_PREFIX] }
     }))
   }
 
@@ -174,7 +174,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       })
       applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
       setNewRoleName('')
-      setNewRolePermissions(['/tablette'])
+      setNewRolePermissions([GROUP_OPERATIONS_PREFIX])
       setError(null)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Création du rôle impossible.')

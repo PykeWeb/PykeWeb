@@ -141,7 +141,16 @@ export function Sidebar() {
     )
 
   const hasExplicitRoleRestrictions = allowedPrefixes.length > 0
-  const canOpenPasswordModal = !isAdmin
+  const canOpenPasswordModal = true
+
+  function openPasswordModal() {
+    setPasswordError('')
+    setPasswordSuccess('')
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordModalOpen(true)
+  }
 
   const userNavLinks: NavLink[] = isPwrGroup
     ? [{ id: 'pwr-commandes', href: '/pwr/commandes', label: 'Commande', icon: <Truck className="h-5 w-5" />, active: pathname.startsWith('/pwr/commandes') }]
@@ -187,24 +196,6 @@ export function Sidebar() {
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
-            {canOpenPasswordModal ? (
-              <button
-                type="button"
-                aria-label="Changer mot de passe"
-                title="Changer mot de passe"
-                onClick={() => {
-                  setPasswordError('')
-                  setPasswordSuccess('')
-                  setCurrentPassword('')
-                  setNewPassword('')
-                  setConfirmPassword('')
-                  setPasswordModalOpen(true)
-                }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
-              >
-                <KeyRound className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
           </div>
         </div>
 
@@ -275,7 +266,22 @@ export function Sidebar() {
             <p className="mt-1 px-1 text-xs font-semibold uppercase tracking-wide text-white/50">Catégorie • Service</p>
             <NavItem href="/admin/service/achat-service-tablette" label="Achat service tablette" icon={<Wallet className="h-5 w-5" />} active={pathname.startsWith('/admin/service/achat-service-tablette')} />
             <NavItem href="/admin/patch-notes" label="Patch notes" icon={<ScrollText className="h-5 w-5" />} active={pathname.startsWith('/admin/patch-notes')} />
-            <NavItem href="/admin/logs" label="Logs" icon={<ClipboardList className="h-5 w-5" />} active={pathname.startsWith('/admin/logs')} />
+            <div className="flex items-center justify-end gap-2">
+              <div className="flex-1">
+                <NavItem href="/admin/logs" label="Logs" icon={<ClipboardList className="h-5 w-5" />} active={pathname.startsWith('/admin/logs')} />
+              </div>
+              {canOpenPasswordModal ? (
+                <button
+                  type="button"
+                  aria-label="Changer mot de passe"
+                  title="Changer mot de passe"
+                  onClick={openPasswordModal}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
+                >
+                  <KeyRound className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
           </>
         ) : (
           <>

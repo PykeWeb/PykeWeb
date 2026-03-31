@@ -25,6 +25,23 @@ function formatPayload(value: Record<string, unknown> | null) {
   }
 }
 
+function getMemberTrace(log: AppLogEntry) {
+  const payload = log.payload && typeof log.payload === 'object' ? log.payload as Record<string, unknown> : null
+  const candidates = [
+    payload?.member_name,
+    payload?.memberName,
+    payload?.player_name,
+    payload?.playerName,
+    payload?.member_identifier,
+    payload?.memberIdentifier,
+    payload?.player_identifier,
+    payload?.playerIdentifier,
+  ]
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .filter(Boolean)
+  return candidates[0] || '—'
+}
+
 export default function AdminLogsPage() {
   const [rows, setRows] = useState<AppLogEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,9 +79,10 @@ export default function AdminLogsPage() {
     return rows.filter((log) => {
       const groupName = log.group_name || log.group_id
       const actor = getLogActorDetails(log)
+      const memberTrace = getMemberTrace(log)
       if (groupFilter !== 'all' && groupName !== groupFilter) return false
       if (!q) return true
-      return `${groupName} ${log.area} ${log.action} ${log.message} ${actor.displayName} ${actor.characterName || ''} ${actor.steamAccount || ''} ${actor.fivemLicense || ''} ${log.entity_type || ''} ${log.entity_id || ''}`
+      return `${groupName} ${log.area} ${log.action} ${log.message} ${actor.displayName} ${actor.characterName || ''} ${actor.steamAccount || ''} ${actor.fivemLicense || ''} ${log.entity_type || ''} ${log.entity_id || ''} ${memberTrace}`
         .toLowerCase()
         .includes(q)
     })
@@ -101,6 +119,7 @@ export default function AdminLogsPage() {
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Groupe</th>
               <th className="px-4 py-3 text-left font-medium">Acteur</th>
+              <th className="px-4 py-3 text-left font-medium">Membre</th>
               <th className="px-4 py-3 text-left font-medium">Zone</th>
               <th className="px-4 py-3 text-left font-medium">Action</th>
               <th className="px-4 py-3 text-left font-medium">Message</th>
@@ -108,12 +127,13 @@ export default function AdminLogsPage() {
           </thead>
           <tbody className="divide-y divide-white/10">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-white/60">Chargement…</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-white/60">Aucun log.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-white/60">Aucun log.</td></tr>
             ) : (
               filtered.map((log) => {
                 const actor = getLogActorDetails(log)
+                const memberTrace = getMemberTrace(log)
                 return (
                 <tr
                   key={log.id}
@@ -123,6 +143,7 @@ export default function AdminLogsPage() {
                   <td className="px-4 py-3 text-white/70">{formatDate(log.created_at)}</td>
                   <td className="px-4 py-3">{log.group_name || log.group_id}</td>
                   <td className="px-4 py-3">{actor.displayName}</td>
+                  <td className="px-4 py-3">{memberTrace}</td>
                   <td className="px-4 py-3">{log.area}</td>
                   <td className="px-4 py-3">{log.action}</td>
                   <td className="px-4 py-3">{log.message}</td>
@@ -145,6 +166,7 @@ export default function AdminLogsPage() {
             <p><span className="text-white/60">Source acteur:</span> {selectedLog.actor_source}</p>
             <p><span className="text-white/60">Groupe:</span> {selectedLog.group_name || selectedLog.group_id}</p>
             <p><span className="text-white/60">Acteur:</span> {selectedActor.displayName}</p>
+            <p><span className="text-white/60">Membre (trace):</span> {getMemberTrace(selectedLog)}</p>
             <p><span className="text-white/60">Nom perso:</span> {selectedActor.characterName || '—'}</p>
             <p><span className="text-white/60">Zone:</span> {selectedLog.area}</p>
             <p><span className="text-white/60">Action:</span> {selectedLog.action}</p>
