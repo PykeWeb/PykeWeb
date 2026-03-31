@@ -400,7 +400,15 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                       onClick={() => {
                         const identifier = (member.player_identifier || '').trim()
                         const password = (member.password || '').trim()
-                        const content = [`Identifiant: ${identifier || '—'}`, `Mot de passe: ${password || '—'}`].join('\n')
+                        const content = [
+                          'Voici tes identifiants pour la tablette du groupe :',
+                          'https://pykestock-ten.vercel.app/',
+                          '',
+                          `Identifiant: ${identifier || '—'}`,
+                          `Mot de passe: ${password || '—'}`,
+                          '',
+                          'Tu peux modifier ton mot de passe avec le bouton "Changer mot de passe" dans le dashboard, en dessous de Déconnexion.',
+                        ].join('\n')
                         void copyToClipboard(content)
                       }}
                       className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20"
