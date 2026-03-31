@@ -135,7 +135,7 @@ export function Sidebar() {
     ? defaultUserLinks
     : defaultUserLinks.filter((link) =>
       allowedPrefixes.some((prefix) => {
-        if (link.href === '/') return prefix === '/'
+        if (link.href === '/') return prefix === '/' || prefix === '/dashboard'
         return link.href === prefix || link.href.startsWith(`${prefix}/`)
       })
     )
@@ -188,7 +188,7 @@ export function Sidebar() {
           </button>
         </div>
         {canOpenPasswordModal ? (
-          <div className="mt-3 flex justify-end">
+          <div className="flex justify-end">
             <button
             type="button"
             aria-label="Changer mot de passe"

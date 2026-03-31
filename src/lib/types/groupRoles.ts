@@ -16,7 +16,7 @@ const LEGACY_OPERATIONS_PREFIXES = ['/tablette', '/activites'] as const
 const LEGACY_DEPENSES_PREFIXES = ['/depenses', '/finance/depense'] as const
 
 export const ROLE_ACCESS_OPTIONS = [
-  { label: 'Dashboard', prefix: '/' },
+  { label: 'Dashboard', prefix: '/dashboard' },
   { label: 'Gestion groupe', prefix: '/group' },
   { label: 'Finance', prefix: '/finance' },
   { label: 'Entrée / Sortie', prefix: '/finance/entree-sortie' },
@@ -32,7 +32,6 @@ export const ROLE_ACCESS_OPTIONS = [
 
 export function normalizeRolePrefixes(prefixes: string[]) {
   const unique = Array.from(new Set(prefixes.map((entry) => entry.trim()).filter(Boolean)))
-  if (unique.includes('/')) return ['/']
 
   const hasOperations = unique.includes(GROUP_OPERATIONS_PREFIX) || LEGACY_OPERATIONS_PREFIXES.some((prefix) => unique.includes(prefix))
   const hasDepenses = LEGACY_DEPENSES_PREFIXES.some((prefix) => unique.includes(prefix))
