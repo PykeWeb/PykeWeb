@@ -149,9 +149,12 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   function toggleRolePermission(id: string, prefix: string) {
     setRoles((prev) => prev.map((role) => {
       if (role.id !== id) return role
-      const expanded = expandAccessPrefixes(role.permissions)
+      const basePermissions = role.permissions.includes('/')
+        ? ROLE_ACCESS_OPTIONS.map((option) => option.prefix)
+        : role.permissions
+      const expanded = expandAccessPrefixes(basePermissions)
       const exists = expanded.includes(prefix)
-      let next = exists ? role.permissions.filter((entry) => entry !== prefix) : [...role.permissions, prefix]
+      let next = exists ? basePermissions.filter((entry) => entry !== prefix) : [...basePermissions, prefix]
       const normalized = normalizeRolePrefixes(next)
       return { ...role, permissions: normalized.length > 0 ? normalized : [GROUP_OPERATIONS_PREFIX] }
     }))

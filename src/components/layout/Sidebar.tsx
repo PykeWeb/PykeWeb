@@ -298,6 +298,19 @@ export function Sidebar() {
               }))}
             />
             {userNavLinks.length === 0 ? <p className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">Aucune catégorie autorisée pour ce rôle.</p> : null}
+            {canOpenPasswordModal ? (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  aria-label="Changer mot de passe"
+                  title="Changer mot de passe"
+                  onClick={openPasswordModal}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
+                >
+                  <KeyRound className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
           </>
         )}
       </div>
