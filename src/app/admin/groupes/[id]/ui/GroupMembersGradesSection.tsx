@@ -52,6 +52,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [memberPasswordVisible, setMemberPasswordVisible] = useState<Record<string, boolean>>({})
   const [memberSearch, setMemberSearch] = useState('')
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -106,6 +107,10 @@ export function GroupMembersGradesSection({ groupId }: Props) {
     () => filteredMembers.find((member) => member.id === selectedMemberId) ?? filteredMembers[0] ?? null,
     [filteredMembers, selectedMemberId]
   )
+  const selectedRole = useMemo(
+    () => roles.find((role) => role.id === selectedRoleId) ?? roles[0] ?? null,
+    [roles, selectedRoleId]
+  )
 
   useEffect(() => {
     if (!filteredMembers.length) {
@@ -116,6 +121,16 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       setSelectedMemberId(filteredMembers[0].id)
     }
   }, [filteredMembers, selectedMemberId])
+
+  useEffect(() => {
+    if (!roles.length) {
+      setSelectedRoleId(null)
+      return
+    }
+    if (!selectedRoleId || !roles.some((role) => role.id === selectedRoleId)) {
+      setSelectedRoleId(roles[0].id)
+    }
+  }, [roles, selectedRoleId])
 
   function toggleNewRolePermission(prefix: string) {
     setNewRolePermissions((prev) => {
@@ -346,26 +361,43 @@ export function GroupMembersGradesSection({ groupId }: Props) {
         <h3 className="text-xl font-semibold">Rôles existants</h3>
         <div className="mt-3 space-y-3">
           {roles.length === 0 ? <p className="text-sm text-white/60">Aucun rôle pour ce groupe.</p> : null}
-          {roles.map((role) => (
-            <div key={role.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          {roles.length > 0 ? (
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="flex flex-wrap gap-2">
+                {roles.map((role) => (
+                  <button
+                    key={`role-chip-${role.id}`}
+                    type="button"
+                    onClick={() => setSelectedRoleId(role.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs ${selectedRole?.id === role.id ? 'border-cyan-300/45 bg-cyan-500/20 text-cyan-100' : 'border-white/15 bg-white/[0.04] text-white/80 hover:bg-white/[0.09]'}`}
+                  >
+                    {role.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {selectedRole ? (
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <div className="grid gap-2 md:grid-cols-[1fr_auto_auto] md:items-center">
-                <input value={role.name} onChange={(e) => updateRoleDraft(role.id, { name: e.target.value })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
-                <button disabled={busy} onClick={() => void saveRole(role)} className="h-10 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 text-sm text-cyan-50 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50">Enregistrer</button>
-                <button disabled={busy} onClick={() => void removeRole(role.id)} className="h-10 rounded-xl border border-rose-300/35 bg-rose-500/15 px-3 text-sm text-rose-100 hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-50">Supprimer</button>
+                <input value={selectedRole.name} onChange={(e) => updateRoleDraft(selectedRole.id, { name: e.target.value })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+                <button disabled={busy} onClick={() => void saveRole(selectedRole)} className="h-10 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 text-sm text-cyan-50 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50">Enregistrer</button>
+                <button disabled={busy} onClick={() => void removeRole(selectedRole.id)} className="h-10 rounded-xl border border-rose-300/35 bg-rose-500/15 px-3 text-sm text-rose-100 hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-50">Supprimer</button>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {ROLE_ACCESS_OPTIONS.map((option) => {
-                  const selected = role.permissions.includes('/') || expandAccessPrefixes(role.permissions).includes(option.prefix)
+                  const selected = selectedRole.permissions.includes('/') || expandAccessPrefixes(selectedRole.permissions).includes(option.prefix)
                   return (
-                    <label key={`${role.id}-${option.prefix}`} className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs ${selected ? 'border-cyan-300/35 bg-cyan-500/20 text-cyan-100' : 'border-white/12 bg-white/[0.04] text-white/70'}`}>
-                      <input type="checkbox" checked={selected} onChange={() => toggleRolePermission(role.id, option.prefix)} className="h-3.5 w-3.5" />
+                    <label key={`${selectedRole.id}-${option.prefix}`} className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs ${selected ? 'border-cyan-300/35 bg-cyan-500/20 text-cyan-100' : 'border-white/12 bg-white/[0.04] text-white/70'}`}>
+                      <input type="checkbox" checked={selected} onChange={() => toggleRolePermission(selectedRole.id, option.prefix)} className="h-3.5 w-3.5" />
                       {option.label}
                     </label>
                   )
                 })}
               </div>
             </div>
-          ))}
+          ) : null}
         </div>
       </div>
 

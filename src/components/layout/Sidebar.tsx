@@ -172,41 +172,41 @@ export function Sidebar() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            aria-label="Déconnexion"
-            title="Déconnexion"
-            onClick={() => {
-              clearTenantSession()
-              void clearTenantSessionOnServer().finally(() => {
-                window.location.href = '/login'
-              })
-            }}
-            className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/18 bg-white/[0.09] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-white/30 hover:bg-white/[0.14]"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-          </button>
-        </div>
-        {canOpenPasswordModal ? (
-          <div className="flex justify-end">
+          <div className="mt-1 flex shrink-0 flex-col items-end gap-0">
             <button
-            type="button"
-            aria-label="Changer mot de passe"
-            title="Changer mot de passe"
-            onClick={() => {
-              setPasswordError('')
-              setPasswordSuccess('')
-              setCurrentPassword('')
-              setNewPassword('')
-              setConfirmPassword('')
-              setPasswordModalOpen(true)
-            }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
-          >
-            <KeyRound className="h-3.5 w-3.5" />
+              type="button"
+              aria-label="Déconnexion"
+              title="Déconnexion"
+              onClick={() => {
+                clearTenantSession()
+                void clearTenantSessionOnServer().finally(() => {
+                  window.location.href = '/login'
+                })
+              }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/18 bg-white/[0.09] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-white/30 hover:bg-white/[0.14]"
+            >
+              <LogOut className="h-3.5 w-3.5" />
             </button>
+            {canOpenPasswordModal ? (
+              <button
+                type="button"
+                aria-label="Changer mot de passe"
+                title="Changer mot de passe"
+                onClick={() => {
+                  setPasswordError('')
+                  setPasswordSuccess('')
+                  setCurrentPassword('')
+                  setNewPassword('')
+                  setConfirmPassword('')
+                  setPasswordModalOpen(true)
+                }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
           </div>
-        ) : null}
+        </div>
 
         <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-gradient-to-br from-white/[0.075] via-white/[0.04] to-white/[0.02] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_24px_rgba(4,8,28,0.34)]">
           <div className="grid grid-cols-2 gap-2.5">
