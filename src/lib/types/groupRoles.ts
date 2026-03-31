@@ -25,6 +25,7 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Annuaire', prefix: '/annuaire' },
   { label: 'Drogues', prefix: '/drogues' },
   { label: 'Activités', prefix: GROUP_OPERATIONS_PREFIX },
+  { label: 'Licence', prefix: '/tablette/paiement' },
   { label: 'Gestion chef', prefix: '/activites/gestion-chef' },
 ] as const
 
