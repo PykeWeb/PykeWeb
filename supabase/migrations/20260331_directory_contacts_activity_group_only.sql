@@ -3,4 +3,4 @@ alter table if exists public.directory_contacts
 
 alter table if exists public.directory_contacts
   add constraint directory_contacts_activity_check
-  check (activity in ('coke', 'meth', 'objects', 'weapons', 'equipment', 'members', 'group', 'other'));
+  check (activity in ('coke', 'meth', 'objects', 'weapons', 'equipment', 'group', 'other'));

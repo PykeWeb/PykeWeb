@@ -23,7 +23,6 @@ const ACTIVITY_OPTIONS: Array<{ value: DirectoryActivity; label: string }> = [
   { value: 'objects', label: 'Objets' },
   { value: 'weapons', label: 'Armes' },
   { value: 'equipment', label: 'Équipement' },
-  { value: 'members', label: 'Membres' },
   { value: 'group', label: 'Groupe' },
   { value: 'other', label: 'Autres\u200b' },
 ]
@@ -34,7 +33,6 @@ const ACTIVITY_LABELS: Record<DirectoryActivity, string> = {
   objects: 'Objets',
   weapons: 'Armes',
   equipment: 'Équipement',
-  members: 'Membres',
   group: 'Groupe',
   other: 'Autres\u200b',
 }
@@ -61,7 +59,6 @@ function activityTone(activity: DirectoryActivity) {
   if (activity === 'objects') return 'border-emerald-300/40 bg-emerald-500/12 text-emerald-100'
   if (activity === 'weapons') return 'border-rose-300/40 bg-rose-500/12 text-rose-100'
   if (activity === 'equipment') return 'border-amber-300/40 bg-amber-500/12 text-amber-100'
-  if (activity === 'members') return 'border-sky-300/40 bg-sky-500/12 text-sky-100'
   if (activity === 'group') return 'border-indigo-300/40 bg-indigo-500/12 text-indigo-100'
   return 'border-white/20 bg-white/10 text-white/90'
 }
@@ -114,9 +111,8 @@ export default function AnnuaireClient() {
       coke: rows.filter((entry) => entry.activity === 'coke').length,
       meth: rows.filter((entry) => entry.activity === 'meth').length,
       objects: rows.filter((entry) => entry.activity === 'objects').length,
-      members: rows.filter((entry) => entry.activity === 'members').length,
       group: rows.filter((entry) => entry.activity === 'group').length,
-      other: rows.filter((entry) => !['coke', 'meth', 'objects', 'members', 'group'].includes(entry.activity)).length,
+      other: rows.filter((entry) => !['coke', 'meth', 'objects', 'group'].includes(entry.activity)).length,
     }
   }, [rows])
 
@@ -199,10 +195,6 @@ export default function AnnuaireClient() {
         <button type="button" onClick={() => setFilter('objects')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'objects' ? 'border-emerald-200/60 bg-gradient-to-br from-emerald-500/30 to-teal-600/20' : 'border-emerald-300/25 bg-gradient-to-br from-emerald-500/12 to-teal-600/12'}`}>
           <p className="text-xs text-emerald-100/85">Objets</p>
           <p className="mt-2 text-3xl font-semibold">{stats.objects}</p>
-        </button>
-        <button type="button" onClick={() => setFilter('members')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'members' ? 'border-sky-200/60 bg-gradient-to-br from-sky-500/30 to-cyan-600/20' : 'border-sky-300/25 bg-gradient-to-br from-sky-500/12 to-cyan-600/12'}`}>
-          <p className="text-xs text-sky-100/85">Membres</p>
-          <p className="mt-2 text-3xl font-semibold">{stats.members}</p>
         </button>
         <button type="button" onClick={() => setFilter('group')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'group' ? 'border-indigo-200/60 bg-gradient-to-br from-indigo-500/30 to-violet-600/20' : 'border-indigo-300/25 bg-gradient-to-br from-indigo-500/12 to-violet-600/12'}`}>
           <p className="text-xs text-indigo-100/85">Groupe</p>
