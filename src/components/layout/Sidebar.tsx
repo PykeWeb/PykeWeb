@@ -152,6 +152,12 @@ export function Sidebar() {
     setPasswordModalOpen(true)
   }
 
+  useEffect(() => {
+    const handleOpen = () => openPasswordModal()
+    window.addEventListener('pyke:open-password-modal', handleOpen)
+    return () => window.removeEventListener('pyke:open-password-modal', handleOpen)
+  }, [])
+
   const userNavLinks: NavLink[] = isPwrGroup
     ? [{ id: 'pwr-commandes', href: '/pwr/commandes', label: 'Commande', icon: <Truck className="h-5 w-5" />, active: pathname.startsWith('/pwr/commandes') }]
     : filteredUserLinks.length > 0
