@@ -17,7 +17,6 @@ export default function DroguesVentePage() {
   const [itemId, setItemId] = useState('')
   const [qty, setQty] = useState(1)
   const [receivedTotalInput, setReceivedTotalInput] = useState(MIN_ESTIMATED_POUCH_PRICE)
-  const [buyer, setBuyer] = useState('')
   const [member, setMember] = useState('')
   const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
@@ -73,10 +72,6 @@ export default function DroguesVentePage() {
             </select>
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-white/70">Acheteur / interlocuteur</span>
-            <Input value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="Ex: Client du quartier" />
-          </label>
-          <label className="space-y-1 text-sm">
             <span className="text-white/70">Membre</span>
             <select value={member} onChange={(e) => setMember(e.target.value)} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white">
               <option value="">Choisir un joueur</option>
@@ -106,7 +101,6 @@ export default function DroguesVentePage() {
             if (!selected) return
             setQty(1)
             setReceivedTotalInput(MIN_ESTIMATED_POUCH_PRICE)
-            setBuyer('')
           }}
           >
             Réinitialiser
@@ -124,7 +118,7 @@ export default function DroguesVentePage() {
                   mode: 'sell',
                   quantity: Math.max(1, Math.floor(qty || 1)),
                   unit_price: safeQty > 0 ? Math.max(0, Number(receivedTotal / safeQty)) : 0,
-                  counterparty: buyer.trim() || undefined,
+                  counterparty: 'Vente PNJ RU',
                   notes: `${notes ? `${notes} · ` : ''}Estimation min totale: ${estimatedTotal.toFixed(2)} $`,
                 })
                 toast.success('Vente enregistrée. Stock sorti et argent ajouté.')
