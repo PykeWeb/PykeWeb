@@ -56,7 +56,7 @@ export default function DroguesVentePage() {
     if (!selected) return
     setReceivedTotalInput((prev) => (prev > 0 ? prev : Math.max(0, Number(selected.sell_price || selected.buy_price || MIN_ESTIMATED_POUCH_PRICE))))
     setQty((prev) => Math.max(1, Math.min(Math.floor(prev || 1), Math.max(1, Math.floor(Number(selected.stock || 0) || 0)))))
-  }, [selected?.id])
+  }, [selected])
 
   return (
     <div className="space-y-4">

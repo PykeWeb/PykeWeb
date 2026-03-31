@@ -73,9 +73,18 @@ export default function CashPage() {
         description: cashItem.description || '',
         buy_price: cashItem.buy_price,
         sell_price: cashItem.sell_price,
+        internal_value: cashItem.internal_value,
+        show_in_finance: cashItem.show_in_finance,
+        is_active: cashItem.is_active,
         stock: nextStock,
+        low_stock_threshold: cashItem.low_stock_threshold,
+        stackable: cashItem.stackable,
+        max_stack: cashItem.max_stack,
+        weight: cashItem.weight,
         fivem_item_id: cashItem.fivem_item_id || '',
         internal_id: cashItem.internal_id,
+        hash: cashItem.hash,
+        rarity: cashItem.rarity,
       })
       setCashItem((prev) => (prev ? { ...prev, stock: nextStock } : prev))
       setError(null)
