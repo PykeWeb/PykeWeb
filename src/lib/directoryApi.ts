@@ -27,6 +27,8 @@ type DirectoryContactRow = {
   updated_at: string
 }
 
+const GROUP_ACTIVITY_TAG = '[activity:group]'
+
 function normalizeActivity(value: string | null | undefined): DirectoryActivity {
   const raw = String(value || '')
     .trim()
@@ -45,15 +47,32 @@ function normalizeActivity(value: string | null | undefined): DirectoryActivity 
   return 'other'
 }
 
+function encodeActivityPayload(activity: DirectoryActivity, note: string | null | undefined) {
+  const baseNote = note?.trim() || ''
+  const noteWithoutTag = baseNote.replace(GROUP_ACTIVITY_TAG, '').trim()
+
+  if (activity === 'group') {
+    const taggedNote = noteWithoutTag ? `${noteWithoutTag}\n${GROUP_ACTIVITY_TAG}` : GROUP_ACTIVITY_TAG
+    return { dbActivity: 'other' as const, dbNote: taggedNote }
+  }
+
+  return { dbActivity: activity, dbNote: noteWithoutTag || null }
+}
+
 function normalizeRow(row: DirectoryContactRow): DirectoryContact {
+  const normalizedActivity = normalizeActivity(row.activity)
+  const rawNote = row.note?.trim() || ''
+  const hasGroupTag = rawNote.includes(GROUP_ACTIVITY_TAG)
+  const cleanedNote = rawNote.replace(GROUP_ACTIVITY_TAG, '').trim()
+
   return {
     id: row.id,
     group_id: row.group_id,
     name: String(row.name || '').trim(),
     partner_group: row.partner_group?.trim() || null,
     phone: row.phone?.trim() || null,
-    activity: normalizeActivity(row.activity),
-    note: row.note?.trim() || null,
+    activity: normalizedActivity === 'other' && hasGroupTag ? 'group' : normalizedActivity,
+    note: cleanedNote || null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
@@ -79,14 +98,15 @@ export async function createDirectoryContact(args: {
 }): Promise<DirectoryContact> {
   const name = args.name.trim()
   if (!name) throw new Error('Le nom est obligatoire.')
+  const payloadActivity = encodeActivityPayload(normalizeActivity(args.activity), args.note)
 
   const payload = {
     group_id: currentGroupId(),
     name,
     partner_group: args.partner_group?.trim() || null,
     phone: args.phone?.trim() || null,
-    activity: normalizeActivity(args.activity),
-    note: args.note?.trim() || null,
+    activity: payloadActivity.dbActivity,
+    note: payloadActivity.dbNote,
   }
 
   const { data, error } = await supabase
@@ -110,6 +130,7 @@ export async function updateDirectoryContact(args: {
 }): Promise<void> {
   const name = args.name.trim()
   if (!name) throw new Error('Le nom est obligatoire.')
+  const payloadActivity = encodeActivityPayload(normalizeActivity(args.activity), args.note)
 
   const { error } = await supabase
     .from('directory_contacts')
@@ -117,8 +138,8 @@ export async function updateDirectoryContact(args: {
       name,
       partner_group: args.partner_group?.trim() || null,
       phone: args.phone?.trim() || null,
-      activity: normalizeActivity(args.activity),
-      note: args.note?.trim() || null,
+      activity: payloadActivity.dbActivity,
+      note: payloadActivity.dbNote,
       updated_at: new Date().toISOString(),
     })
     .eq('id', args.id)
