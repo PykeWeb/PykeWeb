@@ -50,6 +50,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [newMemberIsAdmin, setNewMemberIsAdmin] = useState(false)
   const [newMemberRoleId, setNewMemberRoleId] = useState('')
   const [memberPasswordVisible, setMemberPasswordVisible] = useState<Record<string, boolean>>({})
+  const [memberSearch, setMemberSearch] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -91,6 +92,15 @@ export function GroupMembersGradesSection({ groupId }: Props) {
     }, [])
       .sort((a, b) => a.label.localeCompare(b.label, 'fr'))
   }, [members, playerCandidates])
+  const filteredMembers = useMemo(() => {
+    const query = memberSearch.trim().toLowerCase()
+    if (!query) return members
+    return members.filter((member) => {
+      const name = String(member.player_name || '').toLowerCase()
+      const identifier = String(member.player_identifier || '').toLowerCase()
+      return name.includes(query) || identifier.includes(query)
+    })
+  }, [members, memberSearch])
 
   function toggleNewRolePermission(prefix: string) {
     setNewRolePermissions((prev) => {
@@ -354,8 +364,21 @@ export function GroupMembersGradesSection({ groupId }: Props) {
         <h3 className="text-xl font-semibold text-center">Membres existants</h3>
         <p className="mt-1 text-sm text-white/70 text-center">Gestion centralisée des accès membres (identifiant, mot de passe, rôle et permissions).</p>
         <div className="mx-auto mt-4 w-full max-w-5xl space-y-4">
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
+              <input
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Rechercher un membre (nom ou identifiant)"
+                className="h-10 w-full rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none"
+              />
+              <p className="text-xs text-white/65">{filteredMembers.length} / {members.length} membre(s)</p>
+            </div>
+          </div>
           {members.length === 0 ? <p className="text-sm text-white/60">Aucun membre pour ce groupe.</p> : null}
-          {members.map((member) => (
+          {members.length > 0 && filteredMembers.length === 0 ? <p className="text-sm text-white/60">Aucun membre ne correspond à la recherche.</p> : null}
+          <div className="grid gap-4 xl:grid-cols-2">
+            {filteredMembers.map((member) => (
             <div key={member.id} className="rounded-2xl border border-white/20 bg-gradient-to-br from-slate-900/70 via-slate-800/55 to-slate-900/75 p-4 shadow-[0_10px_35px_rgba(0,0,0,0.35)] md:p-5">
               <div className="flex flex-wrap items-start justify-center gap-4 border-b border-white/10 pb-4">
                 <div className="flex items-center gap-3">
@@ -451,7 +474,8 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                 </button>
               </div>
             </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

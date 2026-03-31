@@ -190,6 +190,8 @@ export function Sidebar() {
         {canOpenPasswordModal ? (
           <button
             type="button"
+            aria-label="Changer mot de passe"
+            title="Changer mot de passe"
             onClick={() => {
               setPasswordError('')
               setPasswordSuccess('')
@@ -198,10 +200,9 @@ export function Sidebar() {
               setConfirmPassword('')
               setPasswordModalOpen(true)
             }}
-            className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-white/18 bg-white/[0.08] px-3 text-xs font-medium text-white/85 transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
+            className="mt-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/18 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:border-cyan-300/35 hover:bg-cyan-500/15 hover:text-cyan-100"
           >
             <KeyRound className="h-3.5 w-3.5" />
-            Changer mot de passe
           </button>
         ) : null}
 
