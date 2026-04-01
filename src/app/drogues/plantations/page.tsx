@@ -33,13 +33,13 @@ const RECIPES: Recipe[] = [
   {
     key: 'meth_brut',
     title: 'Cook meth (1 batch)',
-    subtitle: 'Table + Meth + Batteries + chimie = 10 à 30 meth brut',
+    subtitle: 'Machine + table + batteries + chimie = 10 à 30 meth brut',
     requirements: [
+      { name: 'Machine de Meth', qty: 1 },
       { name: 'Table', qty: 1 },
-      { name: 'Meth', qty: 1 },
       { name: 'Batterie', qty: 2 },
-      { name: 'Ammoniaque', qty: 16 },
-      { name: 'Methylamine', qty: 15 },
+      { name: 'Ammoniaque', qty: 6 },
+      { name: 'Methylamine', qty: 5 },
     ],
     output: { name: 'Meth brut', qty: 0, range: [10, 30] },
   },

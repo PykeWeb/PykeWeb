@@ -52,10 +52,10 @@ export function buildDrugCalculatorResult(mode: DrugCalcMode, quantity: number, 
   }
 
   return normalizeRequirements([
+    { label: 'Machine de Meth', qty, unitPrice: findPriceByKeywords(items, ['machine de meth']) },
     { label: 'Table', qty, unitPrice: findPriceByKeywords(items, ['table']) },
-    { label: 'Machine de Meth', qty, unitPrice: findPriceByKeywords(items, ['machine de meth', 'meth']) },
     { label: 'Batterie', qty: qty * 2, unitPrice: findPriceByKeywords(items, ['batterie', 'battery']) },
-    { label: 'Ammoniaque', qty: qty * 16, unitPrice: findPriceByKeywords(items, ['ammoniaque']) },
-    { label: 'Methylamine', qty: qty * 15, unitPrice: findPriceByKeywords(items, ['methylamine']) },
+    { label: 'Ammoniaque', qty: qty * 6, unitPrice: findPriceByKeywords(items, ['ammoniaque']) },
+    { label: 'Methylamine', qty: qty * 5, unitPrice: findPriceByKeywords(items, ['methylamine']) },
   ])
 }
