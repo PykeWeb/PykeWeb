@@ -332,26 +332,14 @@ export default function SuiviProductionClient() {
     setAssetImages({ pouch: pouch?.image_url || null, brick: brick?.image_url || null, leaf: leaf?.image_url || null })
   }, [catalogItems, isMeth])
 
-  const progress = useMemo(() => {
-    if (!selected) return 0
-    if (!selected.expected_output) return 0
-    return Math.min(100, Math.round((selected.received_output / selected.expected_output) * 100))
-  }, [selected])
-
-  const remaining = useMemo(() => {
-    if (!selected) return 0
-    return Math.max(0, Number(selected.expected_output || 0) - Number(selected.received_output || 0))
-  }, [selected])
-
   const selectedFinance = useMemo(() => {
-    if (!selected) return { brickCount: 0, seedCost: 0, pouchCost: 0, brickCost: 0, transformCost: 0, revenue: 0, totalCost: 0, hasSalePrice: false, estimatedProfit: 0 }
+    if (!selected) return { machinePurchaseCost: 0, saleUnitPrice: 130, revenue: 0, totalCost: 0, hasSalePrice: true, estimatedProfit: 0 }
     const flowMode = selected.type === 'meth' ? 'seed_only' : inferFlowModeFromNote(selected.note)
     const seedUnitPrice = Number(selected.seed_price ?? seedPrice ?? 0)
-    const saleUnitPrice = Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
+    const saleUnitPrice = selected.type === 'meth' ? Math.max(120, Math.min(140, Number(selected.pouch_sale_price ?? pouchSalePrice ?? 130))) : Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
     const brickUnitCost = Number(selected.brick_transform_cost ?? brickTransformCost ?? 0)
     const pouchUnitCost = Number(selected.pouch_transform_cost ?? pouchTransformCost ?? 0)
     const qtySent = Math.max(0, Number(selected.quantity_sent || 0))
-    const brickCount = selected.expected_output / POUCHES_PER_BRICK
     const hasSalePrice = saleUnitPrice > 0
     const revenue = hasSalePrice ? selected.expected_output * saleUnitPrice : 0
     const seedCost = (flowMode === 'seed_only' || flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick') ? (qtySent * seedUnitPrice) : 0
@@ -362,11 +350,8 @@ export default function SuiviProductionClient() {
     const transformCost = brickCost + pouchCost
     const totalCost = seedCost + transformCost
     return {
-      brickCount,
-      seedCost,
-      brickCost,
-      pouchCost,
-      transformCost,
+      machinePurchaseCost: seedCost,
+      saleUnitPrice,
       revenue,
       totalCost,
       hasSalePrice,
@@ -572,14 +557,13 @@ export default function SuiviProductionClient() {
                   <th className="px-3 py-3">Type</th>
                   <th className="px-3 py-3">Envoyé</th>
                   <th className="px-3 py-3">Attendu</th>
-                  <th className="px-3 py-3">Reçu</th>
                   <th className="px-3 py-3">Statut</th>
                   <th className="px-3 py-3">Date</th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={7}>Chargement…</td></tr> : null}
-                {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={7}>Aucune demande.</td></tr> : null}
+                {loading ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={6}>Chargement…</td></tr> : null}
+                {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={6}>Aucune demande.</td></tr> : null}
                 {visibleRows.map((row) => {
                   const active = row.id === selectedId
                   return (
@@ -604,9 +588,8 @@ export default function SuiviProductionClient() {
                       <td className="px-3 py-3">
                         <span className="inline-flex rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-xs font-semibold text-white">{typeLabel(row.type)}</span>
                       </td>
-                      <td className="px-3 py-3 font-medium">{row.quantity_sent}</td>
+                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${row.quantity_sent} meth brut` : row.quantity_sent}</td>
                       <td className="px-3 py-3 font-medium">{row.expected_output}</td>
-                      <td className="px-3 py-3 font-medium">{row.received_output}</td>
                       <td className="px-3 py-3">
                         <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(row.status)}`}>
                           {statusLabel(row.status)}
@@ -627,28 +610,23 @@ export default function SuiviProductionClient() {
             <div className="mt-4 space-y-3">
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
                 <p><span className="text-white/60">Groupe :</span> <span className="font-semibold">{selected.partner_name}</span></p>
-                <p><span className="text-white/60">Type :</span> <span className="font-semibold">{typeLabel(selected.type)}</span></p>
-                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.quantity_sent}</span></p>
-                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{selected.expected_output}</span></p>
-                <p><span className="text-white/60">Reçu :</span> <span className="font-semibold">{selected.received_output}</span></p>
+                <p><span className="text-white/60">Type :</span> <span className="font-semibold">{selected.type === 'meth' ? 'Meth' : typeLabel(selected.type)}</span></p>
+                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.type === 'meth' ? `${selected.quantity_sent} meth brut` : selected.quantity_sent}</span></p>
+                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{selected.expected_output} pochons</span></p>
                 <p><span className="text-white/60">Statut :</span> <span className="font-semibold">{statusLabel(selected.status)}</span></p>
-              </div>
-
-              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/[0.08] p-3 text-sm text-cyan-100">
-                {progress}% - Reste {remaining}
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
-                  <p className="text-xs text-white/65">Bricks nets estimés</p>
-                  <p className="font-semibold">{Math.round(selectedFinance.brickCount)}</p>
+                  <p className="text-xs text-white/65">Prix vente pochon</p>
+                  <p className="font-semibold">{Math.round(selectedFinance.saleUnitPrice)} $</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
                   <p className="text-xs text-white/65">Total estimé vente</p>
                   <p className="font-semibold">{money(selectedFinance.revenue)}</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
-                  <p className="text-xs text-white/65">Coût transfo total</p>
-                  <p className="font-semibold">{money(selectedFinance.transformCost)}</p>
+                  <p className="text-xs text-white/65">Prix machines meth achetées</p>
+                  <p className="font-semibold">{money(selectedFinance.machinePurchaseCost)}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2.5 text-sm">
                   <p className="text-xs text-emerald-100/70">Bénéfice estimé</p>

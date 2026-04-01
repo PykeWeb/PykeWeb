@@ -164,6 +164,7 @@ export default function ItemsClient({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items.filter((it) => {
+      if (it.name.trim().toLowerCase() === 'argent') return false
       if (category !== 'all' && it.category !== category) return false
       if (!matchesTypeFilter(it, category, type)) return false
       if (!q) return true

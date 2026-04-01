@@ -151,7 +151,10 @@ export default function MethClosePage() {
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
-          <p className="text-xs text-emerald-100/80">Meth pur récupérée (modifiable)</p>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <p className="text-xs text-emerald-100/80">Meth pur récupérée (modifiable)</p>
+            <span className="rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">~ {approxPouches} pochons</span>
+          </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setRealMethBrut(String(Math.max(0, (Number(realMethBrut) || 0) - 1)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
             <Input value={realMethBrut} onChange={(e) => setRealMethBrut(e.target.value)} inputMode="numeric" />
