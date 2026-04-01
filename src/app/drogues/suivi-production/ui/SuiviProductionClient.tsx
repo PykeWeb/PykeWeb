@@ -336,7 +336,7 @@ export default function SuiviProductionClient() {
     if (!selected) return { machinePurchaseCost: 0, saleUnitPrice: 130, revenue: 0, totalCost: 0, hasSalePrice: true, estimatedProfit: 0 }
     const flowMode = selected.type === 'meth' ? 'seed_only' : inferFlowModeFromNote(selected.note)
     const seedUnitPrice = Number(selected.seed_price ?? seedPrice ?? 0)
-    const saleUnitPrice = selected.type === 'meth' ? Math.max(120, Math.min(140, Number(selected.pouch_sale_price ?? pouchSalePrice ?? 130))) : Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
+    const saleUnitPrice = selected.type === 'meth' ? Math.max(120, Math.min(220, Number(selected.pouch_sale_price ?? pouchSalePrice ?? 170))) : Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
     const brickUnitCost = Number(selected.brick_transform_cost ?? brickTransformCost ?? 0)
     const pouchUnitCost = Number(selected.pouch_transform_cost ?? pouchTransformCost ?? 0)
     const qtySent = Math.max(0, Number(selected.quantity_sent || 0))
@@ -588,7 +588,7 @@ export default function SuiviProductionClient() {
                       <td className="px-3 py-3">
                         <span className="inline-flex rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-xs font-semibold text-white">{typeLabel(row.type)}</span>
                       </td>
-                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${row.quantity_sent} meth brut` : row.quantity_sent}</td>
+                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${Math.round(Number(row.expected_output || 0) / 2)} meth brut` : row.quantity_sent}</td>
                       <td className="px-3 py-3 font-medium">{row.expected_output}</td>
                       <td className="px-3 py-3">
                         <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(row.status)}`}>
@@ -611,7 +611,7 @@ export default function SuiviProductionClient() {
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
                 <p><span className="text-white/60">Groupe :</span> <span className="font-semibold">{selected.partner_name}</span></p>
                 <p><span className="text-white/60">Type :</span> <span className="font-semibold">{selected.type === 'meth' ? 'Meth' : typeLabel(selected.type)}</span></p>
-                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.type === 'meth' ? `${selected.quantity_sent} meth brut` : selected.quantity_sent}</span></p>
+                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.type === 'meth' ? `${Math.round(Number(selected.expected_output || 0) / 2)} meth brut` : selected.quantity_sent}</span></p>
                 <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{selected.expected_output} pochons</span></p>
                 <p><span className="text-white/60">Statut :</span> <span className="font-semibold">{statusLabel(selected.status)}</span></p>
               </div>
@@ -675,8 +675,11 @@ export default function SuiviProductionClient() {
                     ...prev,
                     type: value as ProductionType,
                     flowMode: value === 'meth' ? 'seed_only' : prev.flowMode,
-                    seedQty: value === 'meth' ? 3 : prev.seedQty,
-                    expectedOutputManual: value === 'meth' ? 48 : prev.expectedOutputManual,
+                    seedQty: value === 'meth' ? 3 : 100,
+                    leafQty: value === 'meth' ? prev.leafQty : 100,
+                    brickQty: value === 'meth' ? prev.brickQty : 95,
+                    expectedOutputManual: value === 'meth' ? 48 : 0,
+                    receivedOutputManual: value === 'meth' ? prev.receivedOutputManual : 0,
                   }))}
                   options={TYPE_OPTIONS}
                 />
@@ -721,7 +724,11 @@ export default function SuiviProductionClient() {
                   <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> {isMeth ? 'Quantité de machines' : 'Quantité graines'}</label>
                   <Input
                     value={newRequest.seedQty}
-                    onChange={(event) => setNewRequest((prev) => ({ ...prev, seedQty: Number(event.target.value) || 0 }))}
+                    onChange={(event) => setNewRequest((prev) => {
+                      const machineQty = Number(event.target.value) || 0
+                      if (!isMeth) return { ...prev, seedQty: machineQty }
+                      return { ...prev, seedQty: machineQty, expectedOutputManual: Math.max(0, machineQty * 16) }
+                    })}
                     inputMode="numeric"
                   />
                 </div>

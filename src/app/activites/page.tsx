@@ -209,7 +209,6 @@ export default function ActivitesPage() {
   }
 
   async function onSubmit() {
-    if (!proofImageData) return setError('Ajoute une preuve image (jpeg ou png).')
     if (selectedObjectRows.length === 0) return setError('Ajoute au moins un objet.')
     if (activityType !== 'Boite au lettre' && selectedEquipmentRows.length === 0) return setError('Ajoute au moins un équipement.')
 
@@ -225,7 +224,7 @@ export default function ActivitesPage() {
         object_lines: objectLines,
         equipment_lines: activityType === 'Boite au lettre' ? [] : equipmentLines,
         percent_per_object: Math.max(0.01, Number(data?.settings.default_percent_per_object) || 2),
-        proof_image_data: proofImageData,
+        proof_image_data: proofImageData || '',
       })
       setOk(`Activité enregistrée ✅ (${objectLines.length} objet${objectLines.length > 1 ? 's' : ''})`)
       setSelectedObjectLines([])

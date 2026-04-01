@@ -12,8 +12,10 @@ import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 
 export default function DroguesVentePage() {
-  const MIN_POUCH_PRICE = 75
-  const MAX_POUCH_PRICE = 85
+  const COKE_MIN_POUCH_PRICE = 75
+  const COKE_MAX_POUCH_PRICE = 85
+  const METH_MIN_POUCH_PRICE = 120
+  const METH_MAX_POUCH_PRICE = 220
   const [items, setItems] = useState<CatalogItem[]>([])
   const [itemId, setItemId] = useState('')
   const [qty, setQty] = useState(1)
@@ -33,8 +35,11 @@ export default function DroguesVentePage() {
         setItems(pouches)
         if (pouches[0]) {
           setItemId(pouches[0].id)
-          const reference = Math.max(MIN_POUCH_PRICE, Math.min(MAX_POUCH_PRICE, Number(pouches[0].sell_price || pouches[0].buy_price || 80)))
-          setEstimatePercent(Math.round(((reference - MIN_POUCH_PRICE) / (MAX_POUCH_PRICE - MIN_POUCH_PRICE)) * 100))
+          const firstIsMeth = String(pouches[0].name || '').toLowerCase().includes('meth')
+          const minPrice = firstIsMeth ? METH_MIN_POUCH_PRICE : COKE_MIN_POUCH_PRICE
+          const maxPrice = firstIsMeth ? METH_MAX_POUCH_PRICE : COKE_MAX_POUCH_PRICE
+          const reference = Math.max(minPrice, Math.min(maxPrice, Number(pouches[0].sell_price || pouches[0].buy_price || ((minPrice + maxPrice) / 2))))
+          setEstimatePercent(Math.round(((reference - minPrice) / (maxPrice - minPrice)) * 100))
           setReceivedTotalInput(reference)
         }
       })
@@ -51,19 +56,22 @@ export default function DroguesVentePage() {
   }, [])
 
   const selected = useMemo(() => items.find((row) => row.id === itemId) || null, [itemId, items])
+  const isMethPouch = String(selected?.name || '').toLowerCase().includes('meth')
+  const minPouchPrice = isMethPouch ? METH_MIN_POUCH_PRICE : COKE_MIN_POUCH_PRICE
+  const maxPouchPrice = isMethPouch ? METH_MAX_POUCH_PRICE : COKE_MAX_POUCH_PRICE
   const availableStock = Math.max(0, Number(selected?.stock || 0))
   const safeQty = Math.max(1, Math.floor(qty || 1))
-  const estimatedUnit = MIN_POUCH_PRICE + ((MAX_POUCH_PRICE - MIN_POUCH_PRICE) * Math.max(0, Math.min(100, estimatePercent))) / 100
+  const estimatedUnit = minPouchPrice + ((maxPouchPrice - minPouchPrice) * Math.max(0, Math.min(100, estimatePercent))) / 100
   const estimatedTotal = safeQty * estimatedUnit
   const receivedTotal = Math.max(0, Number(receivedTotalInput || 0))
 
   useEffect(() => {
     if (!selected) return
-    const reference = Math.max(MIN_POUCH_PRICE, Math.min(MAX_POUCH_PRICE, Number(selected.sell_price || selected.buy_price || estimatedUnit)))
-    setEstimatePercent(Math.round(((reference - MIN_POUCH_PRICE) / (MAX_POUCH_PRICE - MIN_POUCH_PRICE)) * 100))
+    const reference = Math.max(minPouchPrice, Math.min(maxPouchPrice, Number(selected.sell_price || selected.buy_price || estimatedUnit)))
+    setEstimatePercent(Math.round(((reference - minPouchPrice) / (maxPouchPrice - minPouchPrice)) * 100))
     setReceivedTotalInput((prev) => (prev > 0 ? prev : reference))
     setQty((prev) => Math.max(1, Math.min(Math.floor(prev || 1), Math.max(1, Math.floor(Number(selected.stock || 0) || 0)))))
-  }, [selected])
+  }, [maxPouchPrice, minPouchPrice, selected, estimatedUnit])
 
   return (
     <div className="space-y-4">
@@ -91,7 +99,7 @@ export default function DroguesVentePage() {
             <Input value={qty} onChange={(e) => setQty(Number(e.target.value) || 1)} inputMode="numeric" />
           </label>
           <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3">
-            <p className="text-xs text-white/70">Prix unitaire estimé ({MIN_POUCH_PRICE}-{MAX_POUCH_PRICE}$)</p>
+            <p className="text-xs text-white/70">Prix unitaire estimé ({minPouchPrice}-{maxPouchPrice}$)</p>
             <p className="text-xl font-semibold">{estimatedUnit.toFixed(2)} $</p>
             <p className="mt-1 text-xs text-white/70">Total estimé: {estimatedTotal.toFixed(2)} $</p>
           </div>
@@ -115,7 +123,7 @@ export default function DroguesVentePage() {
             if (!selected) return
             setQty(1)
             setEstimatePercent(50)
-            setReceivedTotalInput((MIN_POUCH_PRICE + MAX_POUCH_PRICE) / 2)
+            setReceivedTotalInput((minPouchPrice + maxPouchPrice) / 2)
           }}
           >
             Réinitialiser
