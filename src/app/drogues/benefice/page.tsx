@@ -93,7 +93,8 @@ export default function DroguesBeneficePage() {
   }, [items, mode])
 
   const calc = useMemo(() => {
-    const seedQty = Math.max(0, Number(seeds) || 0)
+    const seedQtyRaw = Math.max(0, Number(seeds) || 0)
+    const seedQty = mode === 'meth' ? seedQtyRaw * 3 : seedQtyRaw
     const unitSeedPrice = Math.max(0, Number(seedPrice) || 0)
     const unitPot = Math.max(0, Number(potPrice) || 0)
     const unitFertilizer = Math.max(0, Number(fertilizerPrice) || 0)
@@ -154,6 +155,7 @@ export default function DroguesBeneficePage() {
       requiredAmmonia,
       requiredMethylamine,
       zones,
+      seedQtyRaw,
       lampsFromZones,
       totalSeedCost,
       totalGrowCost,
@@ -168,7 +170,7 @@ export default function DroguesBeneficePage() {
   }, [ammoniaPrice, batteryPrice, brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, methTablePrice, mode, methylaminePrice, pouchSalePrice, pouchTransformCost, potPrice, seedPrice, seeds, waterPrice])
 
   const resourceCards = useMemo(() => ([
-    { key: 'seed', label: mode === 'meth' ? 'Machine de meth' : 'Graine de coke', qty: Math.max(0, Number(seeds) || 0), unit: Math.max(0, Number(seedPrice) || 0), aliases: mode === 'meth' ? ['Machine de meth', 'Machine meth'] : ['Graine de coke', 'Graine coke'] },
+    { key: 'seed', label: mode === 'meth' ? 'Machine de meth' : 'Graine de coke', qty: mode === 'meth' ? calc.seedQtyRaw * 3 : Math.max(0, Number(seeds) || 0), unit: Math.max(0, Number(seedPrice) || 0), aliases: mode === 'meth' ? ['Machine de meth', 'Machine meth'] : ['Graine de coke', 'Graine coke'] },
     { key: 'pot', label: 'Pot', qty: calc.requiredPots, unit: Math.max(0, Number(potPrice) || 0), aliases: ['Pot'] },
     { key: 'fert', label: 'Fertilisant', qty: calc.requiredFertilizer, unit: Math.max(0, Number(fertilizerPrice) || 0), aliases: ['Fertilisant', 'Engrais'] },
     { key: 'water', label: "Bouteille d'eau", qty: calc.requiredWater, unit: Math.max(0, Number(waterPrice) || 0), aliases: ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water', 'Eau'] },
@@ -184,7 +186,7 @@ export default function DroguesBeneficePage() {
     ...entry,
     item: findItemByAliases(items, entry.aliases),
     subtotal: entry.qty * entry.unit,
-  }))), [ammoniaPrice, batteryPrice, calc.requiredAmmonia, calc.requiredBatteries, calc.requiredFertilizer, calc.requiredLamps, calc.requiredMethTables, calc.requiredMethylamine, calc.requiredPots, calc.requiredWater, fertilizerPrice, items, lampPrice, methTablePrice, mode, methylaminePrice, potPrice, seedPrice, seeds, waterPrice])
+  }))), [ammoniaPrice, batteryPrice, calc.requiredAmmonia, calc.requiredBatteries, calc.requiredFertilizer, calc.requiredLamps, calc.requiredMethTables, calc.requiredMethylamine, calc.requiredPots, calc.requiredWater, calc.seedQtyRaw, fertilizerPrice, items, lampPrice, methTablePrice, mode, methylaminePrice, potPrice, seedPrice, seeds, waterPrice])
 
   const globalTransformValue = useMemo(() => {
     const brickUnit = Math.max(0, Number(brickTransformCost) || 0)
@@ -201,7 +203,7 @@ export default function DroguesBeneficePage() {
 
   const totalTransformCost = calc.totalBrickCost + calc.totalPouchCost
   const seedItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Machine de meth', 'Machine meth'] : ['Graine de coke', 'Graine coke']), [items, mode])
-  const pouchItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Pochon de meth', 'Meth pouch', 'Pochon meth', 'Pochon'] : ['Pochon', 'Pochon de coke', 'Sachet', 'Pouch']), [items, mode])
+  const pouchItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Pochon de meth', 'Meth pouch', 'Pochon meth', 'Sachet meth'] : ['Pochon de coke', 'Pochon coke', 'Sachet coke', 'Pochon']), [items, mode])
 
   return (
     <div className="space-y-4">
@@ -220,7 +222,7 @@ export default function DroguesBeneficePage() {
                   <img src={seedItem.image_url} alt={mode === 'meth' ? 'Nombre de machines' : 'Nombre de graines'} className="h-full w-full object-cover" loading="lazy" />
                 ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
               </div>
-              <p className="text-xs text-cyan-100/85">{mode === 'meth' ? 'Nombre de machines' : 'Nombre de graines'}</p>
+              <p className="text-xs text-cyan-100/85">{mode === 'meth' ? 'Nombre de zones meth' : 'Nombre de graines'}</p>
             </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setSeeds(String(Math.max(0, (Number(seeds) || 0) - 100)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
@@ -229,6 +231,7 @@ export default function DroguesBeneficePage() {
             </div>
             <p className="mb-1 mt-2 text-xs text-cyan-100/85">{mode === 'meth' ? 'Prix machine meth (unité)' : 'Prix graine (unité)'}</p>
             <Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" />
+            {mode === 'meth' ? <p className="mt-1 text-[11px] text-cyan-100/75">1 zone = 3 machines de meth.</p> : null}
           </div>
           <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
             <div className="mb-1 flex items-center gap-2">
@@ -275,7 +278,7 @@ export default function DroguesBeneficePage() {
                 </div>
               </div>
             </div>
-            {mode === 'meth' ? <p className="mt-2 text-[11px] text-cyan-100/75">Mode Meth: calcul basé sur machines + équipements (table, batteries, ammoniaque, methylamine).</p> : null}
+            {mode === 'meth' ? <p className="mt-2 text-[11px] text-cyan-100/75">Mode Meth: zone × 3 machines, avec équipements (1 table, 2 batteries, 6 ammoniaque, 5 methylamine par machine).</p> : null}
           </div>
         </div>
 
@@ -336,8 +339,7 @@ export default function DroguesBeneficePage() {
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/drogues"><SecondaryButton>Accueil Drogues</SecondaryButton></Link>
-          <Link href="/drogues/suivi-production?type=coke"><SecondaryButton>Session Coke</SecondaryButton></Link>
-          <Link href="/drogues/suivi-production?type=meth"><SecondaryButton>Session Meth</SecondaryButton></Link>
+          <Link href="/drogues/suivi-production"><SecondaryButton>Sessions</SecondaryButton></Link>
         </div>
       </Panel>
     </div>
