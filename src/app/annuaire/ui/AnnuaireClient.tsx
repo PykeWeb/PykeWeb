@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { BookUser, Clipboard, ClipboardCheck, Pencil, Phone, Trash2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
@@ -178,6 +179,10 @@ export default function AnnuaireClient() {
   return (
     <div className="space-y-4">
       <PageHeader title="Annuaire" subtitle="Gère rapidement tes contacts utiles (nom, numéro, activité, notes)." />
+      <div className="flex flex-wrap gap-2">
+        <Link href="/annuaire/contact"><PrimaryButton>Contacts</PrimaryButton></Link>
+        <Link href="/annuaire/darkchat"><SecondaryButton>Dark Chat</SecondaryButton></Link>
+      </div>
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <button type="button" onClick={() => setFilter('all')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'all' ? 'border-slate-200/60 bg-gradient-to-br from-slate-500/28 to-slate-700/20' : 'border-slate-300/25 bg-gradient-to-br from-slate-500/12 to-slate-700/12'}`}>
