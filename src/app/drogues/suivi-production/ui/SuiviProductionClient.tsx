@@ -37,7 +37,7 @@ const NEW_REQUEST_INITIAL = {
   createdAt: new Date().toISOString().slice(0, 10),
   expectedDate: '',
   note: '',
-  expectedOutputManual: 1600,
+  expectedOutputManual: 0,
   receivedOutputManual: 0,
 }
 
@@ -160,7 +160,13 @@ export default function SuiviProductionClient() {
   useEffect(() => {
     const initialType = String(searchParams.get('type') || '').toLowerCase()
     if (initialType === 'meth' || initialType === 'coke') {
-      setNewRequest((prev) => ({ ...prev, type: initialType as ProductionType, flowMode: initialType === 'meth' ? 'seed_only' : prev.flowMode }))
+      setNewRequest((prev) => ({
+        ...prev,
+        type: initialType as ProductionType,
+        flowMode: initialType === 'meth' ? 'seed_only' : prev.flowMode,
+        seedQty: initialType === 'meth' ? 3 : prev.seedQty,
+        expectedOutputManual: initialType === 'meth' ? 48 : prev.expectedOutputManual,
+      }))
     }
   }, [searchParams])
 
@@ -169,7 +175,8 @@ export default function SuiviProductionClient() {
     setNewRequest((prev) => ({
       ...prev,
       flowMode: 'seed_only',
-      expectedOutputManual: prev.expectedOutputManual > 0 ? prev.expectedOutputManual : Math.max(0, prev.seedQty * 16),
+      seedQty: prev.seedQty > 0 ? prev.seedQty : 3,
+      expectedOutputManual: prev.expectedOutputManual > 0 ? prev.expectedOutputManual : Math.max(0, (prev.seedQty > 0 ? prev.seedQty : 3) * 16),
     }))
     setBrickTransformCost(0)
     setPouchTransformCost(0)
@@ -517,10 +524,6 @@ export default function SuiviProductionClient() {
   return (
     <div className="space-y-4">
       <PageHeader title="Transfo groupes" subtitle="Demandes envoyées à un groupe externe (coke / meth)" />
-      <div className="inline-flex rounded-xl border border-white/15 bg-white/[0.04] p-1">
-        <button type="button" onClick={() => setNewRequest((prev) => ({ ...prev, type: 'coke' }))} className={`rounded-lg px-3 py-1.5 text-sm ${newRequest.type === 'coke' ? 'bg-cyan-500/25 text-cyan-50' : 'text-white/75'}`}>Session Coke</button>
-        <button type="button" onClick={() => setNewRequest((prev) => ({ ...prev, type: 'meth', flowMode: 'seed_only' }))} className={`rounded-lg px-3 py-1.5 text-sm ${newRequest.type === 'meth' ? 'bg-violet-500/25 text-violet-50' : 'text-white/75'}`}>Session Meth</button>
-      </div>
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <button type="button" onClick={() => setStatusFilter('in_progress')} className={`rounded-2xl border px-4 py-3 text-left ${statusFilter === 'in_progress' ? 'border-sky-200/60 bg-gradient-to-br from-sky-500/30 to-blue-600/20' : 'border-sky-300/25 bg-gradient-to-br from-sky-500/15 to-blue-600/15'}`}>
@@ -690,7 +693,13 @@ export default function SuiviProductionClient() {
                 <label className="flex items-center gap-1.5 text-xs text-violet-100/80"><Tags className="h-3.5 w-3.5" /> Type</label>
                 <GlassSelect
                   value={newRequest.type}
-                  onChange={(value) => setNewRequest((prev) => ({ ...prev, type: value as ProductionType, flowMode: value === 'meth' ? 'seed_only' : prev.flowMode }))}
+                  onChange={(value) => setNewRequest((prev) => ({
+                    ...prev,
+                    type: value as ProductionType,
+                    flowMode: value === 'meth' ? 'seed_only' : prev.flowMode,
+                    seedQty: value === 'meth' ? 3 : prev.seedQty,
+                    expectedOutputManual: value === 'meth' ? 48 : prev.expectedOutputManual,
+                  }))}
                   options={TYPE_OPTIONS}
                 />
               </div>
@@ -763,7 +772,7 @@ export default function SuiviProductionClient() {
               ) : null}
 
               <div className="space-y-1 rounded-xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/12 to-blue-500/[0.09] p-2.5">
-                <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Beaker className="h-3.5 w-3.5" /> {isMeth ? 'Attendu (estimatif modifiable)' : 'Attendu (auto)'}</label>
+                <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Beaker className="h-3.5 w-3.5" /> {isMeth ? 'Meth brut approximatif (estimatif modifiable)' : 'Attendu (auto)'}</label>
                 {isMeth ? (
                   <Input
                     value={newRequest.expectedOutputManual || expectedFromForm}
@@ -787,7 +796,7 @@ export default function SuiviProductionClient() {
               </div>
               {isMeth ? (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
-                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Beaker className="h-3.5 w-3.5" /> Quantité réelle récupérée (modifiable)</label>
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Beaker className="h-3.5 w-3.5" /> Quantité réelle récupérée meth brut (modifiable)</label>
                   <Input
                     value={newRequest.receivedOutputManual}
                     onChange={(event) => setNewRequest((prev) => ({ ...prev, receivedOutputManual: Number(event.target.value) || 0 }))}

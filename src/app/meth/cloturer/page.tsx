@@ -34,12 +34,12 @@ function findItemByAliases(items: CatalogItem[], aliases: string[]) {
 export default function MethClosePage() {
   const router = useRouter()
   const [items, setItems] = useState<CatalogItem[]>([])
-  const [tables, setTables] = useState('1')
-  const [realMachines, setRealMachines] = useState('1')
-  const [realBatteries, setRealBatteries] = useState('2')
-  const [realAmmonia, setRealAmmonia] = useState('6')
-  const [realMethylamine, setRealMethylamine] = useState('5')
-  const [realMethBrut, setRealMethBrut] = useState('16')
+  const [tables, setTables] = useState('3')
+  const [realMachines, setRealMachines] = useState('3')
+  const [realBatteries, setRealBatteries] = useState('6')
+  const [realAmmonia, setRealAmmonia] = useState('18')
+  const [realMethylamine, setRealMethylamine] = useState('15')
+  const [realMethBrut, setRealMethBrut] = useState('48')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {

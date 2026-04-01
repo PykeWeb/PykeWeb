@@ -87,6 +87,7 @@ export default function DroguesBeneficePage() {
 
   useEffect(() => {
     if (mode !== 'meth') return
+    setSeeds('3')
     const machinePrice = findPriceByAliases(items, ['Machine de meth', 'Machine meth'])
     setMachineMethPrice(String(machinePrice > 0 ? machinePrice : 3300))
     setBrickTaxPercent('0')
@@ -314,7 +315,7 @@ export default function DroguesBeneficePage() {
 
         <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/60">Résumé financier</p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Coins className="h-3.5 w-3.5" /> {mode === 'meth' ? 'Coût circuit machine' : 'Coût graines'}</p><p className="font-semibold">{moneyInt(calc.totalSeedCost)}</p></div>
+          {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Coins className="h-3.5 w-3.5" /> Coût graines</p><p className="font-semibold">{moneyInt(calc.totalSeedCost)}</p></div> : null}
           {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Sprout className="h-3.5 w-3.5" /> Coût pousse</p><p className="font-semibold">{moneyInt(calc.totalGrowCost)}</p></div> : null}
           {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo brick</p><p className="font-semibold">{moneyInt(calc.totalBrickCost)}</p></div> : null}
           {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo pochon</p><p className="font-semibold">{moneyInt(calc.totalPouchCost)}</p></div> : null}
