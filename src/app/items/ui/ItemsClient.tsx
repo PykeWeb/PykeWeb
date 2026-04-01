@@ -548,12 +548,9 @@ export default function ItemsClient({
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                   <p className="text-sm font-semibold">Accès rapide</p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-5">
-                    <Link href="/coke/cloturer">
-                      <PrimaryButton className="w-full">Session Coke</PrimaryButton>
-                    </Link>
-                    <Link href="/meth/cloturer">
-                      <PrimaryButton className="w-full">Session Meth</PrimaryButton>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                    <Link href="/drogues/sessions">
+                      <PrimaryButton className="w-full">Sessions</PrimaryButton>
                     </Link>
                     <Link href="/drogues/benefice">
                       <SecondaryButton className="w-full">Bénéfice drogue</SecondaryButton>
