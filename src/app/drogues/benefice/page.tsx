@@ -55,7 +55,7 @@ export default function DroguesBeneficePage() {
   const [fertilizerPrice, setFertilizerPrice] = useState('0')
   const [waterPrice, setWaterPrice] = useState('0')
   const [lampPrice, setLampPrice] = useState('0')
-  const [methTablePrice, setMethTablePrice] = useState('0')
+  const [machineMethPrice, setMachineMethPrice] = useState('3300')
   const [batteryPrice, setBatteryPrice] = useState('0')
   const [ammoniaPrice, setAmmoniaPrice] = useState('0')
   const [methylaminePrice, setMethylaminePrice] = useState('0')
@@ -77,7 +77,8 @@ export default function DroguesBeneficePage() {
       setFertilizerPrice(String(findPrice(rows, 'Fertilisant')))
       setWaterPrice(String(findPriceByAliases(rows, ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water', 'Eau'])))
       setLampPrice(String(findPrice(rows, 'Lampe')))
-      setMethTablePrice(String(findPriceByAliases(rows, ['Table', 'Table meth'])))
+      const machinePrice = findPriceByAliases(rows, ['Machine de meth', 'Machine meth'])
+      setMachineMethPrice(String(machinePrice > 0 ? machinePrice : 3300))
       setBatteryPrice(String(findPriceByAliases(rows, ['Batterie', 'Battery'])))
       setAmmoniaPrice(String(findPriceByAliases(rows, ['Ammoniaque'])))
       setMethylaminePrice(String(findPriceByAliases(rows, ['Methylamine', 'Méthylamine'])))
@@ -86,8 +87,9 @@ export default function DroguesBeneficePage() {
 
   useEffect(() => {
     if (mode !== 'meth') return
-    const tablePrice = findPriceByAliases(items, ['Table meth', 'Table'])
-    setSeedPrice(String(tablePrice > 0 ? tablePrice : 3300))
+    const machinePrice = findPriceByAliases(items, ['Machine de meth', 'Machine meth'])
+    setMachineMethPrice(String(machinePrice > 0 ? machinePrice : 3300))
+    setBrickTaxPercent('0')
     setBrickTransformCost('0')
     setPouchTransformCost('0')
   }, [items, mode])
@@ -99,7 +101,7 @@ export default function DroguesBeneficePage() {
     const unitFertilizer = Math.max(0, Number(fertilizerPrice) || 0)
     const unitWater = Math.max(0, Number(waterPrice) || 0)
     const unitLamp = Math.max(0, Number(lampPrice) || 0)
-    const unitMethTable = Math.max(0, Number(methTablePrice) || 0)
+    const unitMachineMeth = Math.max(0, Number(machineMethPrice) || 0)
     const unitBattery = Math.max(0, Number(batteryPrice) || 0)
     const unitAmmonia = Math.max(0, Number(ammoniaPrice) || 0)
     const unitMethylamine = Math.max(0, Number(methylaminePrice) || 0)
@@ -118,7 +120,7 @@ export default function DroguesBeneficePage() {
     const requiredWater = mode === 'meth' ? 0 : seedQty * 3
     const lampsFromZones = mode === 'meth' ? 0 : zones * 2
     const requiredLamps = lampsFromZones
-    const requiredMethTables = mode === 'meth' ? seedQty : 0
+    const requiredMethMachines = mode === 'meth' ? seedQty : 0
     const requiredBatteries = mode === 'meth' ? seedQty * 2 : 0
     const requiredAmmonia = mode === 'meth' ? seedQty * 6 : 0
     const requiredMethylamine = mode === 'meth' ? seedQty * 5 : 0
@@ -127,11 +129,11 @@ export default function DroguesBeneficePage() {
     const grossBricks = totalLeaves
     const taxesOnBricks = grossBricks * taxRate
     const totalBricks = Math.max(0, grossBricks - taxesOnBricks)
-    const totalPouches = totalBricks * pouchPerBrick
+    const totalPouches = mode === 'meth' ? seedQty * 16 : totalBricks * pouchPerBrick
 
-    const totalSeedCost = seedQty * unitSeedPrice
+    const totalSeedCost = mode === 'meth' ? seedQty * unitMachineMeth : seedQty * unitSeedPrice
     const totalGrowCost = mode === 'meth'
-      ? (requiredMethTables * unitMethTable) + (requiredBatteries * unitBattery) + (requiredAmmonia * unitAmmonia) + (requiredMethylamine * unitMethylamine)
+      ? (requiredMethMachines * 0) + (requiredBatteries * unitBattery) + (requiredAmmonia * unitAmmonia) + (requiredMethylamine * unitMethylamine)
       : (requiredPots * unitPot) + (requiredFertilizer * unitFertilizer) + (requiredWater * unitWater) + (requiredLamps * unitLamp)
     const totalBrickCost = mode === 'meth' ? 0 : totalBricks * brickCost
     const totalPouchCost = mode === 'meth' ? 0 : (totalPouches / pouchBatchSize) * pouchCostPerBatch
@@ -149,7 +151,7 @@ export default function DroguesBeneficePage() {
       requiredFertilizer,
       requiredWater,
       requiredLamps,
-      requiredMethTables,
+      requiredMethMachines,
       requiredBatteries,
       requiredAmmonia,
       requiredMethylamine,
@@ -159,32 +161,30 @@ export default function DroguesBeneficePage() {
       totalGrowCost,
       totalBrickCost,
       totalPouchCost,
-      pouchBatchSize,
-      pouchCostPerBatch,
       totalCost,
       totalRevenue,
       profit,
     }
-  }, [ammoniaPrice, batteryPrice, brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, methTablePrice, mode, methylaminePrice, pouchSalePrice, pouchTransformCost, potPrice, seedPrice, seeds, waterPrice])
+  }, [ammoniaPrice, batteryPrice, brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, machineMethPrice, mode, methylaminePrice, pouchSalePrice, pouchTransformCost, potPrice, seedPrice, seeds, waterPrice])
 
   const resourceCards = useMemo(() => ([
-    { key: 'seed', label: mode === 'meth' ? 'Table meth' : 'Graine de coke', qty: Math.max(0, Number(seeds) || 0), unit: Math.max(0, Number(seedPrice) || 0), aliases: mode === 'meth' ? ['Table meth', 'Table'] : ['Graine de coke', 'Graine coke'] },
+    { key: 'seed', label: mode === 'meth' ? 'Machine de meth' : 'Graine de coke', qty: Math.max(0, Number(seeds) || 0), unit: mode === 'meth' ? Math.max(0, Number(machineMethPrice) || 0) : Math.max(0, Number(seedPrice) || 0), aliases: mode === 'meth' ? ['Machine de meth', 'Machine meth'] : ['Graine de coke', 'Graine coke'] },
     { key: 'pot', label: 'Pot', qty: calc.requiredPots, unit: Math.max(0, Number(potPrice) || 0), aliases: ['Pot'] },
     { key: 'fert', label: 'Fertilisant', qty: calc.requiredFertilizer, unit: Math.max(0, Number(fertilizerPrice) || 0), aliases: ['Fertilisant', 'Engrais'] },
     { key: 'water', label: "Bouteille d'eau", qty: calc.requiredWater, unit: Math.max(0, Number(waterPrice) || 0), aliases: ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water', 'Eau'] },
     { key: 'lamp', label: 'Lampe', qty: calc.requiredLamps, unit: Math.max(0, Number(lampPrice) || 0), aliases: ['Lampe'] },
-    { key: 'meth_table', label: 'Table', qty: calc.requiredMethTables, unit: Math.max(0, Number(methTablePrice) || 0), aliases: ['Table', 'Table meth'] },
+    { key: 'meth_machine', label: 'Machine de meth', qty: calc.requiredMethMachines, unit: Math.max(0, Number(machineMethPrice) || 0), aliases: ['Machine de meth', 'Machine meth'] },
     { key: 'battery', label: 'Batterie', qty: calc.requiredBatteries, unit: Math.max(0, Number(batteryPrice) || 0), aliases: ['Batterie', 'Battery'] },
     { key: 'ammonia', label: 'Ammoniaque', qty: calc.requiredAmmonia, unit: Math.max(0, Number(ammoniaPrice) || 0), aliases: ['Ammoniaque'] },
     { key: 'methylamine', label: 'Methylamine', qty: calc.requiredMethylamine, unit: Math.max(0, Number(methylaminePrice) || 0), aliases: ['Methylamine', 'Méthylamine'] },
   ].filter((entry) => mode === 'meth'
-    ? ['seed', 'meth_table', 'battery', 'ammonia', 'methylamine'].includes(entry.key)
+    ? ['seed', 'battery', 'ammonia', 'methylamine'].includes(entry.key)
     : ['seed', 'pot', 'fert', 'water', 'lamp'].includes(entry.key))
     .map((entry) => ({
-    ...entry,
-    item: findItemByAliases(items, entry.aliases),
-    subtotal: entry.qty * entry.unit,
-  }))), [ammoniaPrice, batteryPrice, calc.requiredAmmonia, calc.requiredBatteries, calc.requiredFertilizer, calc.requiredLamps, calc.requiredMethTables, calc.requiredMethylamine, calc.requiredPots, calc.requiredWater, fertilizerPrice, items, lampPrice, methTablePrice, mode, methylaminePrice, potPrice, seedPrice, seeds, waterPrice])
+      ...entry,
+      item: findItemByAliases(items, entry.aliases),
+      subtotal: entry.qty * entry.unit,
+    }))), [ammoniaPrice, batteryPrice, calc.requiredAmmonia, calc.requiredBatteries, calc.requiredFertilizer, calc.requiredLamps, calc.requiredMethMachines, calc.requiredMethylamine, calc.requiredPots, calc.requiredWater, fertilizerPrice, items, lampPrice, machineMethPrice, mode, methylaminePrice, potPrice, seedPrice, seeds, waterPrice])
 
   const globalTransformValue = useMemo(() => {
     const brickUnit = Math.max(0, Number(brickTransformCost) || 0)
@@ -200,7 +200,7 @@ export default function DroguesBeneficePage() {
   }
 
   const totalTransformCost = calc.totalBrickCost + calc.totalPouchCost
-  const seedItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Table meth', 'Table'] : ['Graine de coke', 'Graine coke']), [items, mode])
+  const seedItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Machine de meth', 'Machine meth'] : ['Graine de coke', 'Graine coke']), [items, mode])
   const pouchItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Pochon de meth', 'Meth pouch', 'Pochon meth', 'Sachet meth'] : ['Pochon de coke', 'Pochon coke', 'Sachet coke', 'Pochon']), [items, mode])
 
   return (
@@ -227,8 +227,8 @@ export default function DroguesBeneficePage() {
               <Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" />
               <button type="button" onClick={() => setSeeds(String((Number(seeds) || 0) + 100))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
             </div>
-            <p className="mb-1 mt-2 text-xs text-cyan-100/85">{mode === 'meth' ? 'Prix table meth (unité)' : 'Prix graine (unité)'}</p>
-            <Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" />
+            <p className="mb-1 mt-2 text-xs text-cyan-100/85">{mode === 'meth' ? 'Prix circuit machine meth (unité)' : 'Prix graine (unité)'}</p>
+            <Input value={mode === 'meth' ? machineMethPrice : seedPrice} onChange={(e) => (mode === 'meth' ? setMachineMethPrice(e.target.value) : setSeedPrice(e.target.value))} inputMode="decimal" />
           </div>
           <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
             <div className="mb-1 flex items-center gap-2">
@@ -249,6 +249,14 @@ export default function DroguesBeneficePage() {
             </div>
           </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+            {mode === 'meth' ? (
+              <>
+                <p className="mb-1 text-[11px] text-cyan-100/80">Circuit machine meth</p>
+                <p className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-white">Achat machine + équipements + transfo inclus</p>
+                <p className="mt-2 text-[11px] text-cyan-100/75">Prix conseillé: 3 100 à 3 300 $ / machine.</p>
+              </>
+            ) : (
+              <>
             <p className="mb-1 text-[11px] text-cyan-100/80">Taxe brick (%)</p>
             <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" />
             <p className="mb-1 mt-2 text-[11px] text-cyan-100/80">Transfo global</p>
@@ -262,7 +270,7 @@ export default function DroguesBeneficePage() {
                 <p className="mb-1 text-[11px] text-cyan-100/80">Prix transfo brick (unité)</p>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => setBrickTransformCost(String(Math.max(0, (Number(brickTransformCost) || 0) - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
-                  <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" disabled={mode === 'meth'} />
+                  <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" />
                   <button type="button" onClick={() => setBrickTransformCost(String((Number(brickTransformCost) || 0) + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
                 </div>
               </div>
@@ -270,12 +278,14 @@ export default function DroguesBeneficePage() {
                 <p className="mb-1 text-[11px] text-cyan-100/80">Prix transfo pochon (par lot)</p>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => setPouchTransformCost(String(Math.max(0, (Number(pouchTransformCost) || 0) - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
-                  <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" disabled={mode === 'meth'} />
+                  <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
                   <button type="button" onClick={() => setPouchTransformCost(String((Number(pouchTransformCost) || 0) + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
                 </div>
               </div>
             </div>
-            {mode === 'meth' ? <p className="mt-2 text-[11px] text-cyan-100/75">Mode Meth: calcul par table (1 table, 2 batteries, 6 ammoniaque, 5 methylamine).</p> : null}
+              </>
+            )}
+            {mode === 'meth' ? <p className="mt-2 text-[11px] text-cyan-100/75">Calcul meth par machine/table: 1 machine, 2 batteries, 6 ammoniaque, 5 methylamine.</p> : null}
           </div>
         </div>
 
@@ -313,11 +323,11 @@ export default function DroguesBeneficePage() {
 
         <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/60">Résumé financier</p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Coins className="h-3.5 w-3.5" /> Coût graines</p><p className="font-semibold">{moneyInt(calc.totalSeedCost)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Coins className="h-3.5 w-3.5" /> {mode === 'meth' ? 'Coût circuit machine' : 'Coût graines'}</p><p className="font-semibold">{moneyInt(calc.totalSeedCost)}</p></div>
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Sprout className="h-3.5 w-3.5" /> Coût pousse</p><p className="font-semibold">{moneyInt(calc.totalGrowCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo brick</p><p className="font-semibold">{moneyInt(calc.totalBrickCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo pochon</p><p className="font-semibold">{moneyInt(calc.totalPouchCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Layers className="h-3.5 w-3.5" /> Coût transfo global appliqué</p><p className="font-semibold">{moneyInt(totalTransformCost)}</p></div>
+          {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo brick</p><p className="font-semibold">{moneyInt(calc.totalBrickCost)}</p></div> : null}
+          {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo pochon</p><p className="font-semibold">{moneyInt(calc.totalPouchCost)}</p></div> : null}
+          {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Layers className="h-3.5 w-3.5" /> Coût transfo global appliqué</p><p className="font-semibold">{moneyInt(totalTransformCost)}</p></div> : null}
         </div>
         <div className="mt-2 grid gap-2 lg:grid-cols-3">
           <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-2.5 text-sm">

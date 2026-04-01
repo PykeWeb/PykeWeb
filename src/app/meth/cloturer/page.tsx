@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { FlaskConical, Image as ImageIcon, Package, TestTube2, Wrench } from 'lucide-react'
 import { toast } from 'sonner'
 import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
@@ -10,27 +11,35 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import { markStockOutNote } from '@/lib/financeStockFlow'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
-import { buildMethSessionPlan, METH_SESSION_STORAGE_KEY } from '@/lib/cokeSessionStorage'
 
 function normalize(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
 function findItemByAliases(items: CatalogItem[], aliases: string[]) {
-  const a = aliases.map(normalize)
-  return items.find((item) => a.some((alias) => normalize(item.name).includes(alias))) || null
+  const normalizedAliases = aliases.map((alias) => normalize(alias))
+  const scored = items.map((item) => {
+    const name = normalize(item.name)
+    let score = -1
+    for (const alias of normalizedAliases) {
+      if (name === alias) score = Math.max(score, 100)
+      else if (name.startsWith(`${alias} `) || name.endsWith(` ${alias}`)) score = Math.max(score, 80)
+      else if (alias.length >= 4 && name.includes(alias)) score = Math.max(score, 60)
+    }
+    return { item, score }
+  })
+  return scored.filter((row) => row.score >= 0).sort((a, b) => b.score - a.score)[0]?.item || null
 }
 
 export default function MethClosePage() {
   const router = useRouter()
   const [items, setItems] = useState<CatalogItem[]>([])
-  const [zones, setZones] = useState('1')
-  const [realMachines, setRealMachines] = useState('3')
-  const [realTables, setRealTables] = useState('3')
-  const [realBatteries, setRealBatteries] = useState('6')
-  const [realAmmonia, setRealAmmonia] = useState('18')
-  const [realMethylamine, setRealMethylamine] = useState('15')
-  const [realPouches, setRealPouches] = useState('3')
+  const [tables, setTables] = useState('1')
+  const [realMachines, setRealMachines] = useState('1')
+  const [realBatteries, setRealBatteries] = useState('2')
+  const [realAmmonia, setRealAmmonia] = useState('6')
+  const [realMethylamine, setRealMethylamine] = useState('5')
+  const [realPouches, setRealPouches] = useState('16')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -38,45 +47,39 @@ export default function MethClosePage() {
   }, [])
 
   useEffect(() => {
-    const plan = buildMethSessionPlan(Number(zones))
-    setRealMachines(String(plan.machines))
-    setRealTables(String(plan.tables))
-    setRealBatteries(String(plan.batteries))
-    setRealAmmonia(String(plan.ammonia))
-    setRealMethylamine(String(plan.methylamine))
-    setRealPouches(String(plan.theoreticalPouches))
-    window.localStorage.setItem(METH_SESSION_STORAGE_KEY, JSON.stringify(plan))
-  }, [zones])
+    const tableCount = Math.max(0, Number(tables) || 0)
+    setRealMachines(String(tableCount))
+    setRealBatteries(String(tableCount * 2))
+    setRealAmmonia(String(tableCount * 6))
+    setRealMethylamine(String(tableCount * 5))
+    setRealPouches(String(Math.round(tableCount * 16)))
+  }, [tables])
 
-  const totalCost = useMemo(() => {
-    const rows = [
-      { qty: Number(realMachines) || 0, item: findItemByAliases(items, ['machine de meth', 'machine meth']) },
-      { qty: Number(realTables) || 0, item: findItemByAliases(items, ['table']) },
-      { qty: Number(realBatteries) || 0, item: findItemByAliases(items, ['batterie', 'battery']) },
-      { qty: Number(realAmmonia) || 0, item: findItemByAliases(items, ['ammoniaque']) },
-      { qty: Number(realMethylamine) || 0, item: findItemByAliases(items, ['methylamine', 'méthylamine']) },
+  const rows = useMemo(() => {
+    const shape = [
+      { key: 'machine', label: 'Machine de meth', qty: Math.max(0, Math.floor(Number(realMachines) || 0)), aliases: ['machine de meth', 'machine meth'], icon: Wrench },
+      { key: 'battery', label: 'Batterie', qty: Math.max(0, Math.floor(Number(realBatteries) || 0)), aliases: ['batterie', 'battery'], icon: Package },
+      { key: 'ammonia', label: 'Ammoniaque', qty: Math.max(0, Math.floor(Number(realAmmonia) || 0)), aliases: ['ammoniaque'], icon: FlaskConical },
+      { key: 'methylamine', label: 'Methylamine', qty: Math.max(0, Math.floor(Number(realMethylamine) || 0)), aliases: ['methylamine', 'méthylamine'], icon: TestTube2 },
     ]
-    return rows.reduce((sum, row) => sum + (Math.max(0, row.qty) * Math.max(0, Number(row.item?.buy_price || 0))), 0)
-  }, [items, realAmmonia, realBatteries, realMachines, realMethylamine, realTables])
+    return shape.map((row) => {
+      const item = findItemByAliases(items, row.aliases)
+      const unit = Math.max(0, Number(item?.buy_price || 0))
+      return { ...row, item, unit, subtotal: row.qty * unit }
+    })
+  }, [items, realAmmonia, realBatteries, realMachines, realMethylamine])
+
+  const totalCost = useMemo(() => rows.reduce((sum, row) => sum + row.subtotal, 0), [rows])
 
   async function submit() {
     setSaving(true)
     try {
-      const consumeRows = [
-        { label: 'Machine de meth', qty: Number(realMachines) || 0 },
-        { label: 'Table', qty: Number(realTables) || 0 },
-        { label: 'Batterie', qty: Number(realBatteries) || 0 },
-        { label: 'Ammoniaque', qty: Number(realAmmonia) || 0 },
-        { label: 'Methylamine', qty: Number(realMethylamine) || 0 },
-      ]
-      for (const row of consumeRows) {
-        if (row.qty <= 0) continue
-        const item = findItemByAliases(items, [row.label])
-        if (!item) continue
+      for (const row of rows) {
+        if (row.qty <= 0 || !row.item) continue
         await createFinanceTransaction({
-          item_id: item.id,
+          item_id: row.item.id,
           mode: 'sell',
-          quantity: Math.max(0, Math.floor(row.qty)),
+          quantity: row.qty,
           unit_price: 0,
           counterparty: 'Session meth',
           notes: markStockOutNote('Clôture session meth'),
@@ -97,6 +100,7 @@ export default function MethClosePage() {
           payment_mode: 'other',
         })
       }
+
       toast.success('Session meth validée.')
       router.push('/items?view=tools')
     } catch (e) {
@@ -108,20 +112,50 @@ export default function MethClosePage() {
 
   return (
     <Panel>
-      <h1 className="mb-3 text-xl font-semibold">Session Meth</h1>
-      <p className="mb-3 text-sm text-white/70">Règle: 1 zone = 3 machines meth.</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div><p className="text-xs text-white/70">Zones prévues</p><Input value={zones} onChange={(e) => setZones(e.target.value)} inputMode="numeric" /></div>
-        <div><p className="text-xs text-white/70">Machines utilisées</p><Input value={realMachines} onChange={(e) => setRealMachines(e.target.value)} inputMode="numeric" /></div>
-        <div><p className="text-xs text-white/70">Tables utilisées</p><Input value={realTables} onChange={(e) => setRealTables(e.target.value)} inputMode="numeric" /></div>
-        <div><p className="text-xs text-white/70">Batteries utilisées</p><Input value={realBatteries} onChange={(e) => setRealBatteries(e.target.value)} inputMode="numeric" /></div>
-        <div><p className="text-xs text-white/70">Ammoniaque utilisée</p><Input value={realAmmonia} onChange={(e) => setRealAmmonia(e.target.value)} inputMode="numeric" /></div>
-        <div><p className="text-xs text-white/70">Methylamine utilisée</p><Input value={realMethylamine} onChange={(e) => setRealMethylamine(e.target.value)} inputMode="numeric" /></div>
-        <div className="sm:col-span-2"><p className="text-xs text-white/70">Pochons meth récupérés</p><Input value={realPouches} onChange={(e) => setRealPouches(e.target.value)} inputMode="numeric" /></div>
+      <h1 className="mb-2 text-xl font-semibold">Session Meth</h1>
+      <p className="mb-3 text-sm text-white/70">Session table par table: 1 machine, 2 batteries, 6 ammoniaque, 5 methylamine.</p>
+
+      <div className="mb-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+        <p className="mb-1 text-xs text-cyan-100/85">Nombre de tables</p>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setTables(String(Math.max(0, (Number(tables) || 0) - 1)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
+          <Input value={tables} onChange={(e) => setTables(e.target.value)} inputMode="numeric" />
+          <button type="button" onClick={() => setTables(String((Number(tables) || 0) + 1))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
+        </div>
       </div>
 
-      <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
-        <p>Coût équipement estimé: <span className="font-semibold">{Math.round(totalCost)} $</span></p>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {rows.map((row) => {
+          const Icon = row.icon
+          return (
+            <div key={row.key} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-2.5">
+              <div className="mb-2 flex items-center gap-2">
+                <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                  {row.item?.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={row.item.image_url} alt={row.label} className="h-full w-full object-cover" loading="lazy" />
+                  ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
+                </div>
+                <p className="text-sm font-medium">{row.label}</p>
+              </div>
+              <p className="text-xs text-white/70">Besoin: <span className="font-semibold text-cyan-100">{row.qty}</span></p>
+              <p className="text-xs text-white/70">PU: <span className="font-semibold">{Math.round(row.unit)} $</span></p>
+              <p className="text-xs text-white/70">Sous-total: <span className="font-semibold text-emerald-100">{Math.round(row.subtotal)} $</span></p>
+              <div className="mt-2 flex items-center gap-1 text-[11px] text-white/55"><Icon className="h-3.5 w-3.5" />Table-based</div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
+          <p className="text-xs text-emerald-100/80">Meth pur récupérée (modifiable)</p>
+          <Input value={realPouches} onChange={(e) => setRealPouches(e.target.value)} inputMode="numeric" />
+        </div>
+        <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
+          <p className="text-xs text-amber-100/80">Coût équipement estimé</p>
+          <p className="text-2xl font-semibold">{Math.round(totalCost)} $</p>
+        </div>
       </div>
 
       <div className="mt-4 flex gap-2">
