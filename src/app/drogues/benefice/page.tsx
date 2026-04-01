@@ -339,7 +339,8 @@ export default function DroguesBeneficePage() {
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/drogues"><SecondaryButton>Accueil Drogues</SecondaryButton></Link>
-          <Link href="/drogues/suivi-production"><SecondaryButton>Sessions</SecondaryButton></Link>
+          <Link href="/drogues/plantations"><SecondaryButton>Session récolte</SecondaryButton></Link>
+          <Link href="/drogues/suivi-production"><SecondaryButton>Transfo groupes</SecondaryButton></Link>
         </div>
       </Panel>
     </div>

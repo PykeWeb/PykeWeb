@@ -549,11 +549,14 @@ export default function ItemsClient({
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                   <p className="text-sm font-semibold">Accès rapide</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                    <Link href="/drogues/plantations">
+                      <PrimaryButton className="w-full">Session récolte</PrimaryButton>
+                    </Link>
                     <Link href="/drogues/benefice">
                       <SecondaryButton className="w-full">Bénéfice drogue</SecondaryButton>
                     </Link>
                     <Link href="/drogues/suivi-production">
-                      <PrimaryButton className="w-full">Sessions</PrimaryButton>
+                      <SecondaryButton className="w-full">Transfo groupes</SecondaryButton>
                     </Link>
                     <Link href="/drogues/vente">
                       <SecondaryButton className="w-full">Vente pochons</SecondaryButton>

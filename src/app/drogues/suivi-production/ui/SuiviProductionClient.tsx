@@ -501,7 +501,7 @@ export default function SuiviProductionClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Suivi Production" subtitle="Suivi des transformations externes (coke, meth...)" />
+      <PageHeader title="Transfo groupes" subtitle="Demandes envoyées à un groupe externe (coke / meth)" />
       <div className="inline-flex rounded-xl border border-white/15 bg-white/[0.04] p-1">
         <button type="button" onClick={() => setNewRequest((prev) => ({ ...prev, type: 'coke' }))} className={`rounded-lg px-3 py-1.5 text-sm ${newRequest.type === 'coke' ? 'bg-cyan-500/25 text-cyan-50' : 'text-white/75'}`}>Session Coke</button>
         <button type="button" onClick={() => setNewRequest((prev) => ({ ...prev, type: 'meth', flowMode: 'seed_only' }))} className={`rounded-lg px-3 py-1.5 text-sm ${newRequest.type === 'meth' ? 'bg-violet-500/25 text-violet-50' : 'text-white/75'}`}>Session Meth</button>
