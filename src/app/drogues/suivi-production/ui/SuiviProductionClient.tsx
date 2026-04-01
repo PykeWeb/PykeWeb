@@ -212,7 +212,7 @@ export default function SuiviProductionClient() {
     if (newRequest.type === 'meth') {
       const tableQty = Math.max(0, Number(newRequest.seedQty || 0))
       const expectedMeth = Math.max(0, Number(newRequest.expectedOutputManual || (tableQty * 16) || 0))
-      return { seedQty: tableQty, leaves: 0, netBricks: 0, pouches: expectedMeth }
+      return { seedQty: tableQty, leaves: 0, netBricks: 0, pouches: expectedMeth * 2 }
     }
     const flowMode = resolveFlowMode(newRequest.type, newRequest.flowMode)
     const seedQty = Math.max(0, Number(newRequest.seedQty || 0))
@@ -255,6 +255,12 @@ export default function SuiviProductionClient() {
       estimatedProfit: totalSale - totalCost,
     }
   }, [brickTransformCost, conversionFromForm.leaves, conversionFromForm.pouches, conversionFromForm.seedQty, newRequest.brickQty, newRequest.flowMode, newRequest.type, pouchSalePrice, pouchTransformCost, seedPrice])
+
+  const methApproxPouches = useMemo(() => {
+    if (!isMeth) return 0
+    const referenceMethBrut = Math.max(0, Number(newRequest.receivedOutputManual || newRequest.expectedOutputManual || 0))
+    return referenceMethBrut * 2
+  }, [isMeth, newRequest.expectedOutputManual, newRequest.receivedOutputManual])
 
   const stats = useMemo(() => {
     const inProgress = rows.filter((r) => r.status === 'in_progress').length
@@ -719,13 +725,13 @@ export default function SuiviProductionClient() {
               ) : (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/[0.08] p-2.5 sm:col-span-2">
                   <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sparkles className="h-3.5 w-3.5" /> Mode opération</label>
-                  <p className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-white">Table + Transfo (mode unique)</p>
+                  <p className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-white">Machine + Transfo (mode unique)</p>
                 </div>
               )}
 
               {isMeth || newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick' ? (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
-                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> {isMeth ? 'Quantité de tables' : 'Quantité graines'}</label>
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> {isMeth ? 'Quantité de machines' : 'Quantité graines'}</label>
                   <Input
                     value={newRequest.seedQty}
                     onChange={(event) => setNewRequest((prev) => ({ ...prev, seedQty: Number(event.target.value) || 0 }))}
@@ -767,7 +773,7 @@ export default function SuiviProductionClient() {
                 ) : <Input value={expectedFromForm} readOnly className="opacity-80" />}
                 <p className="text-[11px] text-white/55">
                   {isMeth
-                    ? `${conversionFromForm.seedQty} tables → estimatif ${conversionFromForm.pouches} meth pur (12 à 20 par table).`
+                    ? `${conversionFromForm.seedQty} machines → estimatif ${Number(newRequest.expectedOutputManual || 0)} meth brut (12 à 20 par machine).`
                     : newRequest.flowMode === 'seed_only'
                     ? `${conversionFromForm.seedQty} graines achetées.`
                     : newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_seed_to_brick'
@@ -787,6 +793,13 @@ export default function SuiviProductionClient() {
                     onChange={(event) => setNewRequest((prev) => ({ ...prev, receivedOutputManual: Number(event.target.value) || 0 }))}
                     inputMode="numeric"
                   />
+                </div>
+              ) : null}
+              {isMeth ? (
+                <div className="space-y-1 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Package className="h-3.5 w-3.5" /> Pochons approximatifs (calcul)</label>
+                  <Input value={methApproxPouches} readOnly className="opacity-90" />
+                  <p className="text-[11px] text-cyan-100/70">Calcul: meth brut × 2.</p>
                 </div>
               ) : null}
 

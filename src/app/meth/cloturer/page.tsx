@@ -39,7 +39,7 @@ export default function MethClosePage() {
   const [realBatteries, setRealBatteries] = useState('2')
   const [realAmmonia, setRealAmmonia] = useState('6')
   const [realMethylamine, setRealMethylamine] = useState('5')
-  const [realPouches, setRealPouches] = useState('16')
+  const [realMethBrut, setRealMethBrut] = useState('16')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function MethClosePage() {
     setRealBatteries(String(tableCount * 2))
     setRealAmmonia(String(tableCount * 6))
     setRealMethylamine(String(tableCount * 5))
-    setRealPouches(String(Math.round(tableCount * 16)))
+    setRealMethBrut(String(Math.round(tableCount * 16)))
   }, [tables])
 
   const rows = useMemo(() => {
@@ -88,7 +88,7 @@ export default function MethClosePage() {
       }
 
       const output = findItemByAliases(items, ['pochon de meth', 'pochon meth', 'sachet meth'])
-      const qty = Math.max(0, Math.floor(Number(realPouches) || 0))
+      const qty = Math.max(0, Math.floor((Number(realMethBrut) || 0) * 2))
       if (output && qty > 0) {
         await createFinanceTransaction({
           item_id: output.id,
@@ -109,6 +109,8 @@ export default function MethClosePage() {
       setSaving(false)
     }
   }
+
+  const approxPouches = Math.max(0, Math.floor((Number(realMethBrut) || 0) * 2))
 
   return (
     <Panel>
@@ -150,11 +152,12 @@ export default function MethClosePage() {
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
           <p className="text-xs text-emerald-100/80">Meth pur récupérée (modifiable)</p>
-          <Input value={realPouches} onChange={(e) => setRealPouches(e.target.value)} inputMode="numeric" />
-        </div>
-        <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm">
-          <p className="text-xs text-amber-100/80">Coût équipement estimé</p>
-          <p className="text-2xl font-semibold">{Math.round(totalCost)} $</p>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setRealMethBrut(String(Math.max(0, (Number(realMethBrut) || 0) - 1)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
+            <Input value={realMethBrut} onChange={(e) => setRealMethBrut(e.target.value)} inputMode="numeric" />
+            <button type="button" onClick={() => setRealMethBrut(String((Number(realMethBrut) || 0) + 1))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
+          </div>
+          <p className="mt-2 text-xs text-emerald-100/75">Pochons approximatifs (x2): <span className="font-semibold">{approxPouches}</span></p>
         </div>
       </div>
 

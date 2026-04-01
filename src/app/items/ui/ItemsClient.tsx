@@ -489,7 +489,6 @@ export default function ItemsClient({
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-[220px] flex-1">
-                <label className="mb-1 block text-xs text-white/60">Mode</label>
                 <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
               </div>
               {calcMode === 'meth' ? (
@@ -528,24 +527,6 @@ export default function ItemsClient({
 
             {calcMode === 'coke' ? (
               <div className="mt-3 space-y-3">
-                <div className="rounded-2xl border border-cyan-300/30 bg-gradient-to-br from-cyan-500/16 via-blue-500/10 to-transparent p-3 sm:p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/15 bg-white/[0.06]">
-                      {selectedOutputItem?.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={selectedOutputItem.image_url} alt="Session coke" className="h-full w-full object-cover" loading="lazy" />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-white/60">
-                          <Pill className="h-5 w-5" />
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold text-cyan-50">Session coke</p>
-                      <p className="text-xs text-cyan-100/85">Prépare, suis et clôture une session de plantation</p>
-                    </div>
-                  </div>
-                </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                   <p className="text-sm font-semibold">Accès rapide</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-4">

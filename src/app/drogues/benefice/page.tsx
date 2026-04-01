@@ -129,7 +129,7 @@ export default function DroguesBeneficePage() {
     const grossBricks = totalLeaves
     const taxesOnBricks = grossBricks * taxRate
     const totalBricks = Math.max(0, grossBricks - taxesOnBricks)
-    const totalPouches = mode === 'meth' ? seedQty * 16 : totalBricks * pouchPerBrick
+    const totalPouches = mode === 'meth' ? seedQty * 32 : totalBricks * pouchPerBrick
 
     const totalSeedCost = mode === 'meth' ? seedQty * unitMachineMeth : seedQty * unitSeedPrice
     const totalGrowCost = mode === 'meth'
@@ -223,9 +223,9 @@ export default function DroguesBeneficePage() {
               <p className="text-xs text-cyan-100/85">{mode === 'meth' ? 'Nombre de tables' : 'Nombre de graines'}</p>
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setSeeds(String(Math.max(0, (Number(seeds) || 0) - 100)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
+              <button type="button" onClick={() => setSeeds(String(Math.max(0, (Number(seeds) || 0) - (mode === 'meth' ? 3 : 100))))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
               <Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" />
-              <button type="button" onClick={() => setSeeds(String((Number(seeds) || 0) + 100))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
+              <button type="button" onClick={() => setSeeds(String((Number(seeds) || 0) + (mode === 'meth' ? 3 : 100)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
             </div>
             <p className="mb-1 mt-2 text-xs text-cyan-100/85">{mode === 'meth' ? 'Prix circuit machine meth (unité)' : 'Prix graine (unité)'}</p>
             <Input value={mode === 'meth' ? machineMethPrice : seedPrice} onChange={(e) => (mode === 'meth' ? setMachineMethPrice(e.target.value) : setSeedPrice(e.target.value))} inputMode="decimal" />
@@ -248,14 +248,7 @@ export default function DroguesBeneficePage() {
               <button type="button" onClick={() => setPouchSalePrice(String((Number(pouchSalePrice) || 0) + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
             </div>
           </div>
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
-            {mode === 'meth' ? (
-              <>
-                <p className="mb-1 text-[11px] text-cyan-100/80">Circuit machine meth</p>
-                <p className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-white">Achat machine + équipements + transfo inclus</p>
-                <p className="mt-2 text-[11px] text-cyan-100/75">Prix conseillé: 3 100 à 3 300 $ / machine.</p>
-              </>
-            ) : (
+          {mode !== 'meth' ? <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
               <>
             <p className="mb-1 text-[11px] text-cyan-100/80">Taxe brick (%)</p>
             <Input value={brickTaxPercent} onChange={(e) => setBrickTaxPercent(e.target.value)} inputMode="decimal" />
@@ -284,9 +277,7 @@ export default function DroguesBeneficePage() {
               </div>
             </div>
               </>
-            )}
-            {mode === 'meth' ? <p className="mt-2 text-[11px] text-cyan-100/75">Calcul meth par machine/table: 1 machine, 2 batteries, 6 ammoniaque, 5 methylamine.</p> : null}
-          </div>
+          </div> : null}
         </div>
 
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/60">Ressources nécessaires</p>
@@ -324,7 +315,7 @@ export default function DroguesBeneficePage() {
         <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/60">Résumé financier</p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Coins className="h-3.5 w-3.5" /> {mode === 'meth' ? 'Coût circuit machine' : 'Coût graines'}</p><p className="font-semibold">{moneyInt(calc.totalSeedCost)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Sprout className="h-3.5 w-3.5" /> Coût pousse</p><p className="font-semibold">{moneyInt(calc.totalGrowCost)}</p></div>
+          {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Sprout className="h-3.5 w-3.5" /> Coût pousse</p><p className="font-semibold">{moneyInt(calc.totalGrowCost)}</p></div> : null}
           {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo brick</p><p className="font-semibold">{moneyInt(calc.totalBrickCost)}</p></div> : null}
           {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Hammer className="h-3.5 w-3.5" /> Coût transfo pochon</p><p className="font-semibold">{moneyInt(calc.totalPouchCost)}</p></div> : null}
           {mode !== 'meth' ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm"><p className="flex items-center gap-1.5 text-xs text-amber-100/85"><Layers className="h-3.5 w-3.5" /> Coût transfo global appliqué</p><p className="font-semibold">{moneyInt(totalTransformCost)}</p></div> : null}
