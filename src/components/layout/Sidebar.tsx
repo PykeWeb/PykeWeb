@@ -147,20 +147,18 @@ export function Sidebar() {
   ]
 
   const hasFullAccess = allowedPrefixes.includes('/')
+  const isLinkAllowedByPrefix = (href: string, prefix: string) => {
+    if (href === '/') return prefix === '/' || prefix === '/dashboard'
+    return href === prefix || href.startsWith(`${prefix}/`) || prefix.startsWith(`${href}/`)
+  }
   const canAccessPrefix = (href: string) => {
     if (isAdmin || hasFullAccess) return true
-    return allowedPrefixes.some((prefix) => {
-      if (href === '/') return prefix === '/' || prefix === '/dashboard'
-      return href === prefix || href.startsWith(`${prefix}/`)
-    })
+    return allowedPrefixes.some((prefix) => isLinkAllowedByPrefix(href, prefix))
   }
   const filteredUserLinks = hasFullAccess
     ? defaultUserLinks
     : defaultUserLinks.filter((link) =>
-      allowedPrefixes.some((prefix) => {
-        if (link.href === '/') return prefix === '/' || prefix === '/dashboard'
-        return link.href === prefix || link.href.startsWith(`${prefix}/`)
-      })
+      allowedPrefixes.some((prefix) => isLinkAllowedByPrefix(link.href, prefix))
     )
 
   const hasExplicitRoleRestrictions = allowedPrefixes.length > 0
