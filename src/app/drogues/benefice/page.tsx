@@ -48,6 +48,7 @@ function findPriceByAliases(items: CatalogItem[], aliases: string[]) {
 }
 
 export default function DroguesBeneficePage() {
+  const [mode, setMode] = useState<'coke' | 'meth'>('coke')
   const [seeds, setSeeds] = useState('100')
   const [seedPrice, setSeedPrice] = useState('0') // prix graine (unité)
   const [potPrice, setPotPrice] = useState('0')
@@ -75,6 +76,18 @@ export default function DroguesBeneficePage() {
     }).catch(() => setItems([]))
   }, [])
 
+  useEffect(() => {
+    if (mode !== 'meth') return
+    const tablePrice = findPriceByAliases(items, ['Table', 'Table meth', 'Meth table'])
+    setSeedPrice(String(tablePrice > 0 ? tablePrice : 3300))
+    setPotPrice('0')
+    setFertilizerPrice('0')
+    setWaterPrice('0')
+    setLampPrice('0')
+    setBrickTransformCost('0')
+    setPouchTransformCost('0')
+  }, [items, mode])
+
   const calc = useMemo(() => {
     const seedQty = Math.max(0, Number(seeds) || 0)
     const unitSeedPrice = Math.max(0, Number(seedPrice) || 0)
@@ -92,10 +105,10 @@ export default function DroguesBeneficePage() {
     const pouchBatchSize = POUCH_BATCH_SIZE
     const unitSale = Math.max(0, Number(pouchSalePrice) || 0)
 
-    const requiredPots = seedQty
-    const requiredFertilizer = seedQty
-    const requiredWater = seedQty * 3
-    const lampsFromZones = zones * 2
+    const requiredPots = mode === 'meth' ? 0 : seedQty
+    const requiredFertilizer = mode === 'meth' ? 0 : seedQty
+    const requiredWater = mode === 'meth' ? 0 : seedQty * 3
+    const lampsFromZones = mode === 'meth' ? 0 : zones * 2
     const requiredLamps = lampsFromZones
 
     const totalLeaves = seedQty * leavesSeed
@@ -105,9 +118,9 @@ export default function DroguesBeneficePage() {
     const totalPouches = totalBricks * pouchPerBrick
 
     const totalSeedCost = seedQty * unitSeedPrice
-    const totalGrowCost = (requiredPots * unitPot) + (requiredFertilizer * unitFertilizer) + (requiredWater * unitWater) + (requiredLamps * unitLamp)
-    const totalBrickCost = totalBricks * brickCost
-    const totalPouchCost = (totalPouches / pouchBatchSize) * pouchCostPerBatch
+    const totalGrowCost = mode === 'meth' ? 0 : (requiredPots * unitPot) + (requiredFertilizer * unitFertilizer) + (requiredWater * unitWater) + (requiredLamps * unitLamp)
+    const totalBrickCost = mode === 'meth' ? 0 : totalBricks * brickCost
+    const totalPouchCost = mode === 'meth' ? 0 : (totalPouches / pouchBatchSize) * pouchCostPerBatch
     const totalCost = totalSeedCost + totalGrowCost + totalBrickCost + totalPouchCost
     const totalRevenue = totalPouches * unitSale
     const profit = totalRevenue - totalCost
@@ -134,19 +147,19 @@ export default function DroguesBeneficePage() {
       totalRevenue,
       profit,
     }
-  }, [brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, pouchSalePrice, pouchTransformCost, potPrice, seedPrice, seeds, waterPrice])
+  }, [brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, mode, pouchSalePrice, pouchTransformCost, potPrice, seedPrice, seeds, waterPrice])
 
   const resourceCards = useMemo(() => ([
-    { key: 'seed', label: 'Graine de coke', qty: calc.requiredPots, unit: Math.max(0, Number(seedPrice) || 0), aliases: ['Graine de coke', 'Graine coke'] },
+    { key: 'seed', label: mode === 'meth' ? 'Table meth' : 'Graine de coke', qty: Math.max(0, Number(seeds) || 0), unit: Math.max(0, Number(seedPrice) || 0), aliases: mode === 'meth' ? ['Table', 'Table meth'] : ['Graine de coke', 'Graine coke'] },
     { key: 'pot', label: 'Pot', qty: calc.requiredPots, unit: Math.max(0, Number(potPrice) || 0), aliases: ['Pot'] },
     { key: 'fert', label: 'Fertilisant', qty: calc.requiredFertilizer, unit: Math.max(0, Number(fertilizerPrice) || 0), aliases: ['Fertilisant', 'Engrais'] },
     { key: 'water', label: "Bouteille d'eau", qty: calc.requiredWater, unit: Math.max(0, Number(waterPrice) || 0), aliases: ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water', 'Eau'] },
     { key: 'lamp', label: 'Lampe', qty: calc.requiredLamps, unit: Math.max(0, Number(lampPrice) || 0), aliases: ['Lampe'] },
-  ].map((entry) => ({
+  ].filter((entry) => mode === 'meth' ? entry.key === 'seed' : true).map((entry) => ({
     ...entry,
     item: findItemByAliases(items, entry.aliases),
     subtotal: entry.qty * entry.unit,
-  }))), [calc.requiredFertilizer, calc.requiredLamps, calc.requiredPots, calc.requiredWater, fertilizerPrice, items, lampPrice, potPrice, seedPrice, waterPrice])
+  }))), [calc.requiredFertilizer, calc.requiredLamps, calc.requiredPots, calc.requiredWater, fertilizerPrice, items, lampPrice, mode, potPrice, seedPrice, seeds, waterPrice])
 
   const globalTransformValue = useMemo(() => {
     const brickUnit = Math.max(0, Number(brickTransformCost) || 0)
@@ -162,13 +175,17 @@ export default function DroguesBeneficePage() {
   }
 
   const totalTransformCost = calc.totalBrickCost + calc.totalPouchCost
-  const seedItem = useMemo(() => findItemByAliases(items, ['Graine de coke', 'Graine coke']), [items])
+  const seedItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Table', 'Table meth'] : ['Graine de coke', 'Graine coke']), [items, mode])
   const pouchItem = useMemo(() => findItemByAliases(items, ['Pochon', 'Pochon de coke', 'Sachet', 'Pouch']), [items])
 
   return (
     <div className="space-y-4">
       <PageHeader title="Bénéfice drogue" subtitle="Simule ton coût total et ta marge par session" />
       <Panel>
+        <div className="mb-3 inline-flex rounded-xl border border-white/15 bg-white/[0.04] p-1">
+          <button type="button" onClick={() => setMode('coke')} className={`rounded-lg px-3 py-1.5 text-sm ${mode === 'coke' ? 'bg-cyan-500/25 text-cyan-50' : 'text-white/75'}`}>Coke</button>
+          <button type="button" onClick={() => setMode('meth')} className={`rounded-lg px-3 py-1.5 text-sm ${mode === 'meth' ? 'bg-violet-500/25 text-violet-50' : 'text-white/75'}`}>Meth</button>
+        </div>
         <div className="mb-4 grid items-stretch gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <div className="mb-1 flex items-center gap-2">
@@ -178,14 +195,14 @@ export default function DroguesBeneficePage() {
                   <img src={seedItem.image_url} alt="Nombre de graines" className="h-full w-full object-cover" loading="lazy" />
                 ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
               </div>
-              <p className="text-xs text-cyan-100/85">Nombre de graines</p>
+              <p className="text-xs text-cyan-100/85">{mode === 'meth' ? 'Nombre de tables' : 'Nombre de graines'}</p>
             </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setSeeds(String(Math.max(0, (Number(seeds) || 0) - 100)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
               <Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" />
               <button type="button" onClick={() => setSeeds(String((Number(seeds) || 0) + 100))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
             </div>
-            <p className="mb-1 mt-2 text-xs text-cyan-100/85">Prix graine (unité)</p>
+            <p className="mb-1 mt-2 text-xs text-cyan-100/85">{mode === 'meth' ? 'Prix table (unité)' : 'Prix graine (unité)'}</p>
             <Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" />
           </div>
           <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
@@ -220,7 +237,7 @@ export default function DroguesBeneficePage() {
                 <p className="mb-1 text-[11px] text-cyan-100/80">Prix transfo brick (unité)</p>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => setBrickTransformCost(String(Math.max(0, (Number(brickTransformCost) || 0) - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
-                  <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" />
+                  <Input value={brickTransformCost} onChange={(e) => setBrickTransformCost(e.target.value)} inputMode="decimal" disabled={mode === 'meth'} />
                   <button type="button" onClick={() => setBrickTransformCost(String((Number(brickTransformCost) || 0) + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
                 </div>
               </div>
@@ -228,11 +245,12 @@ export default function DroguesBeneficePage() {
                 <p className="mb-1 text-[11px] text-cyan-100/80">Prix transfo pochon (par lot)</p>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => setPouchTransformCost(String(Math.max(0, (Number(pouchTransformCost) || 0) - 10)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
-                  <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" />
+                  <Input value={pouchTransformCost} onChange={(e) => setPouchTransformCost(e.target.value)} inputMode="decimal" disabled={mode === 'meth'} />
                   <button type="button" onClick={() => setPouchTransformCost(String((Number(pouchTransformCost) || 0) + 10))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
                 </div>
               </div>
             </div>
+            {mode === 'meth' ? <p className="mt-2 text-[11px] text-cyan-100/75">Mode Meth: transfo et équipements inclus dans le prix table.</p> : null}
           </div>
         </div>
 
@@ -293,7 +311,8 @@ export default function DroguesBeneficePage() {
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/drogues"><SecondaryButton>Accueil Drogues</SecondaryButton></Link>
-          <Link href="/coke/cloturer"><SecondaryButton>Sessions Drogues</SecondaryButton></Link>
+          <Link href="/drogues/suivi-production?type=coke"><SecondaryButton>Session Coke</SecondaryButton></Link>
+          <Link href="/drogues/suivi-production?type=meth"><SecondaryButton>Session Meth</SecondaryButton></Link>
         </div>
       </Panel>
     </div>

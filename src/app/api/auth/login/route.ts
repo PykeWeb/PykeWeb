@@ -166,6 +166,7 @@ export async function POST(request: Request) {
       groupName: isAdmin ? 'Administration' : data.name,
       groupBadge: isAdmin ? 'ADMIN' : data.badge,
       isAdmin,
+      memberId: groupByMemberLogin?.member.id,
       role: isAdmin ? 'chef' : role.key,
       roleLabel: isAdmin ? 'Administration' : normalizeRoleLabel(role),
       memberName: isAdmin ? 'Administration' : (groupByMemberLogin?.member.player_name || (role.key === 'chef' ? 'Boss' : normalizeRoleLabel(role) || 'Membre')),
@@ -181,8 +182,8 @@ export async function POST(request: Request) {
     })
     response.cookies.set(TENANT_SESSION_COOKIE_KEY, encodeTenantSession(session), cookieOptions(remember))
     return response
-  } catch {
-    return NextResponse.json({ error: 'Payload invalide' }, { status: 400 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Payload invalide' }, { status: 400 })
   }
 }
 

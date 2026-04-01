@@ -86,6 +86,7 @@ function CatalogScrollableList({
 
 export default function ActivitesPage() {
   const [memberName, setMemberName] = useState('')
+  const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [activityType, setActivityType] = useState<ActivityType>('Cambriolage')
   const [step, setStep] = useState<SelectionStep>('equipment')
   const [selectedEquipmentLines, setSelectedEquipmentLines] = useState<SelectedLine[]>([])
@@ -97,13 +98,28 @@ export default function ActivitesPage() {
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [canSeeChefTab, setCanSeeChefTab] = useState(false)
+  const memberSelectOptions = useMemo(() => {
+    const current = memberName.trim()
+    if (!current) return memberOptions
+    return memberOptions.some((name) => name.toLowerCase() === current.toLowerCase()) ? memberOptions : [current, ...memberOptions]
+  }, [memberName, memberOptions])
 
   useEffect(() => {
     const session = getTenantSession()
+    const sessionMember = String(session?.memberName || '').trim()
+    if (sessionMember) setMemberName(sessionMember)
     const allowed = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
     setCanSeeChefTab(Boolean(session?.isAdmin || allowed.includes('/') || allowed.includes('/activites/gestion-chef')))
     void refresh()
     void listCatalogItemsUnified().then(setCatalogItems).catch(() => setCatalogItems([]))
+    void fetch('/api/group/members', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return []
+        const payload = (await res.json()) as { members?: string[] }
+        return Array.isArray(payload.members) ? payload.members : []
+      })
+      .then((rows) => setMemberOptions(rows))
+      .catch(() => setMemberOptions([]))
   }, [])
 
   useEffect(() => {
@@ -275,8 +291,15 @@ export default function ActivitesPage() {
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
-            <span className="text-white/70">Nom du joueur</span>
-            <Input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Ex: Zoro" />
+            <span className="text-white/70">Membre</span>
+            <select
+              value={memberName}
+              onChange={(event) => setMemberName(event.target.value)}
+              className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
+            >
+              <option value="">Choisir un joueur</option>
+              {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Activité</span>

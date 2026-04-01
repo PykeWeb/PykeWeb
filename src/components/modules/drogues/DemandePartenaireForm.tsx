@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NotebookPen, Plus, Tags, User } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { GlassSelect } from '@/components/ui/GlassSelect'
@@ -39,6 +39,10 @@ const TYPE_OPTIONS: { value: ProductionType; label: string }[] = [
   { value: 'other', label: 'Autres' },
 ]
 
+const MODE_OPTIONS_METH: { value: DemandMode; label: string }[] = [
+  { value: 'full_chain', label: 'Achat table (transfo incluse)' },
+]
+
 export function DemandePartenaireForm({
   initial,
   submitLabel,
@@ -53,6 +57,18 @@ export function DemandePartenaireForm({
   const [form, setForm] = useState<DemandFormValue>(initial)
   const [showNote, setShowNote] = useState(Boolean(initial.note))
   const [saving, setSaving] = useState(false)
+  const isMeth = form.type === 'meth'
+
+  useEffect(() => {
+    if (!isMeth) return
+    setForm((prev) => ({
+      ...prev,
+      mode: 'full_chain',
+      brickTransformCost: 0,
+      pouchTransformCost: 0,
+      seedPrice: prev.seedPrice > 0 ? prev.seedPrice : 3300,
+    }))
+  }, [isMeth])
 
   const calc = useMemo(() => computeDemandMetrics({
     mode: form.mode,
@@ -66,7 +82,9 @@ export function DemandePartenaireForm({
   }), [form])
 
   const quantityLabel =
-    form.mode === 'brick_to_pouch'
+    isMeth
+      ? 'Quantité tables'
+      : form.mode === 'brick_to_pouch'
       ? 'Quantité bricks'
       : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
         ? 'Quantité feuilles'
@@ -99,7 +117,7 @@ export function DemandePartenaireForm({
       <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.07] p-3 space-y-3">
         <p className="text-sm font-semibold text-cyan-100">Prix & estimation</p>
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-          <div><p className="mb-1 text-xs text-white/70">Mode opération</p><GlassSelect value={form.mode} onChange={(v) => setForm((p) => ({ ...p, mode: v as DemandMode }))} options={MODE_OPTIONS} /></div>
+          <div><p className="mb-1 text-xs text-white/70">Mode opération</p><GlassSelect value={form.mode} onChange={(v) => setForm((p) => ({ ...p, mode: v as DemandMode }))} options={isMeth ? MODE_OPTIONS_METH : MODE_OPTIONS} /></div>
           <div>
             <p className="mb-1 text-xs text-white/70">{quantityLabel}</p>
             <Input
@@ -109,7 +127,9 @@ export function DemandePartenaireForm({
                 setForm((p) => (
                   form.mode === 'brick_to_pouch'
                     ? { ...p, quantityBricks: nextValue }
-                    : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
+                    : isMeth
+                      ? { ...p, quantitySeeds: nextValue }
+                      : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
                       ? { ...p, quantityLeaves: nextValue }
                       : { ...p, quantitySeeds: nextValue }
                 ))
@@ -118,13 +138,14 @@ export function DemandePartenaireForm({
             />
           </div>
           <div><p className="mb-1 text-xs text-white/70">Attendu (auto)</p><Input value={calc.expectedOutput} readOnly /></div>
-          <div><p className="mb-1 text-xs text-white/70">Prix graine</p><Input value={form.seedPrice} onChange={(e) => setForm((p) => ({ ...p, seedPrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
+          <div><p className="mb-1 text-xs text-white/70">{isMeth ? 'Prix table (transfo incluse)' : 'Prix graine'}</p><Input value={form.seedPrice} onChange={(e) => setForm((p) => ({ ...p, seedPrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/70">Prix vente pochon</p><Input value={form.pouchSalePrice} onChange={(e) => setForm((p) => ({ ...p, pouchSalePrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/70">Coût transfo brick</p><Input value={form.brickTransformCost} onChange={(e) => setForm((p) => ({ ...p, brickTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/70">Coût transfo pochon</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
+          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo brick</p><Input value={form.brickTransformCost} onChange={(e) => setForm((p) => ({ ...p, brickTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
+          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo pochon</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
           <div><p className="mb-1 text-xs text-white/70">Date</p><Input type="date" value={form.createdAt} onChange={(e) => setForm((p) => ({ ...p, createdAt: e.target.value }))} /></div>
           <div><p className="mb-1 text-xs text-white/70">Date estimée retour</p><Input type="date" value={form.expectedDate} onChange={(e) => setForm((p) => ({ ...p, expectedDate: e.target.value }))} /></div>
         </div>
+        {isMeth ? <p className="text-xs text-cyan-100/80">Pour la Meth: 1 table = 1 recette. Prix conseillé: 3 300$ (transformation comprise, équipements fournis).</p> : null}
 
         {showNote ? (
           <div>

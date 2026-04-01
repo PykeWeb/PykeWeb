@@ -9,11 +9,8 @@ import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { PrimaryButton, SecondaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { createExpense, type ExpenseItemType } from '@/lib/expensesApi'
-import { listObjects, type DbObject } from '@/lib/objectsApi'
-import { listWeapons, type DbWeapon } from '@/lib/weaponsApi'
-import { listEquipment, type DbEquipment } from '@/lib/equipmentApi'
-import { listDrugItems, type DbDrugItem } from '@/lib/drugsApi'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
+import { getTenantSession } from '@/lib/tenantSession'
 
 type PickItem = {
   type: Exclude<ExpenseItemType, 'custom'>
@@ -81,6 +78,7 @@ export function NouvelleDepenseForm({
   const router = useRouter()
 
   const [memberName, setMemberName] = useState('')
+  const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [itemType, setItemType] = useState<Exclude<ExpenseItemType, 'custom'>>('objects')
   const [useTemporaryItem, setUseTemporaryItem] = useState(false)
   const [items, setItems] = useState<PickItem[]>([])
@@ -94,6 +92,11 @@ export function NouvelleDepenseForm({
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const memberSelectOptions = useMemo(() => {
+    const current = memberName.trim()
+    if (!current) return memberOptions
+    return memberOptions.some((name) => name.toLowerCase() === current.toLowerCase()) ? memberOptions : [current, ...memberOptions]
+  }, [memberName, memberOptions])
 
   const total = useMemo(() => {
     if (!useTemporaryItem) {
@@ -117,30 +120,34 @@ export function NouvelleDepenseForm({
   }, [memberName, useTemporaryItem, temporaryName, unitPrice, quantity, selectedItems, saving])
 
   useEffect(() => {
+    const sessionMember = String(getTenantSession()?.memberName || '').trim()
+    if (sessionMember) setMemberName(sessionMember)
+    void fetch('/api/group/members', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return []
+        const payload = (await res.json()) as { members?: string[] }
+        return Array.isArray(payload.members) ? payload.members : []
+      })
+      .then((rows) => setMemberOptions(rows))
+      .catch(() => setMemberOptions([]))
+  }, [])
+
+  useEffect(() => {
     async function load() {
       setError(null)
       try {
-        if (itemType === 'objects') {
-          const data = await listObjects()
-          const mapped: PickItem[] = data.map((o: DbObject) => ({ type: 'objects', id: o.id, name: o.name, price: o.price, image_url: o.image_url }))
-          setItems(await enrichMissingImagesByName('objects', mapped))
-          return
-        }
-        if (itemType === 'weapons') {
-          const data = await listWeapons()
-          const mapped: PickItem[] = data.map((w: DbWeapon) => ({ type: 'weapons', id: w.id, name: w.name || w.weapon_id || 'Arme', price: 0, image_url: w.image_url }))
-          setItems(await enrichMissingImagesByName('weapons', mapped))
-          return
-        }
-        if (itemType === 'equipment') {
-          const data = await listEquipment()
-          const mapped: PickItem[] = data.map((e: DbEquipment) => ({ type: 'equipment', id: e.id, name: e.name, price: e.price, image_url: e.image_url }))
-          setItems(await enrichMissingImagesByName('equipment', mapped))
-          return
-        }
-        const data = await listDrugItems()
-        const mapped: PickItem[] = data.map((d: DbDrugItem) => ({ type: 'drugs', id: d.id, name: d.name, price: d.price, image_url: d.image_url }))
-        setItems(await enrichMissingImagesByName('drugs', mapped))
+        const category = itemType
+        const data = await listCatalogItemsUnified()
+        const mapped: PickItem[] = data
+          .filter((row) => row.category === category && row.is_active)
+          .map((row) => ({
+            type: category,
+            id: row.id,
+            name: row.name,
+            price: Math.max(0, Number(row.buy_price || row.internal_value || row.sell_price || 0)),
+            image_url: row.image_url,
+          }))
+        setItems(await enrichMissingImagesByName(category, mapped))
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Erreur')
       }
@@ -236,8 +243,15 @@ export function NouvelleDepenseForm({
       <div className="grid h-full gap-3 md:grid-cols-2">
         <div className="md:col-span-2 grid gap-3 xl:grid-cols-[1fr_1fr_auto] xl:items-end">
           <div>
-            <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
-            <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Ex: Pyke" className="h-10" />
+            <label className="mb-1 block text-xs text-white/60">Membre</label>
+            <select
+              value={memberName}
+              onChange={(event) => setMemberName(event.target.value)}
+              className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
+            >
+              <option value="">Choisir un joueur</option>
+              {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
           </div>
 
           <div>
@@ -272,6 +286,18 @@ export function NouvelleDepenseForm({
             <TabPill active={useTemporaryItem} onClick={() => setUseTemporaryItem(true)}>
               {'Autres\u200b'}
             </TabPill>
+            {!useTemporaryItem ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setUseTemporaryItem(true)
+                  setTemporaryName((prev) => prev || itemQuery.trim())
+                }}
+                className="inline-flex h-8 items-center rounded-xl border border-fuchsia-300/35 bg-fuchsia-500/12 px-3 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20"
+              >
+                Item absent ? Saisie libre
+              </button>
+            ) : null}
           </div>
           <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">
             <span className="text-sm font-semibold text-white">{`Total : ${Number.isFinite(total) ? total.toFixed(2) : '0.00'} $`}</span>
@@ -282,6 +308,7 @@ export function NouvelleDepenseForm({
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs text-white/60">Nom provisoire</label>
             <Input value={temporaryName} onChange={(e) => setTemporaryName(e.target.value)} placeholder="Ex: Réparation véhicule (provisoire)" />
+            <p className="mt-1 text-xs text-white/60">Tu peux créer une dépense avec n’importe quel nom et n’importe quel prix.</p>
           </div>
         ) : (
           <div className="md:col-span-2 grid gap-3 lg:grid-cols-[1fr_380px]">

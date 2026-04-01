@@ -13,31 +13,33 @@ export type GroupRolesConfig = {
 
 export const GROUP_OPERATIONS_PREFIX = '/operations'
 const LEGACY_OPERATIONS_PREFIXES = ['/tablette', '/activites'] as const
-const LEGACY_DEPENSES_PREFIXES = ['/depenses', '/finance/depense'] as const
 
 export const ROLE_ACCESS_OPTIONS = [
-  { label: 'Dashboard', prefix: '/' },
+  { label: 'Dashboard', prefix: '/dashboard' },
   { label: 'Gestion groupe', prefix: '/group' },
   { label: 'Finance', prefix: '/finance' },
-  { label: 'SB Entrée / Sortie', prefix: '/sb/entree-sortie' },
+  { label: 'Entrée / Sortie', prefix: '/finance/entree-sortie' },
+  { label: 'Achat / Vente', prefix: '/finance/achat-vente' },
   { label: 'Items', prefix: '/items' },
+  { label: 'Argent', prefix: '/cash' },
   { label: 'Annuaire', prefix: '/annuaire' },
-  { label: 'Drogues', prefix: '/drogues' },
+  { label: 'Drogues (Accueil)', prefix: '/drogues' },
+  { label: 'Drogues - Session', prefix: '/drogues/partenaires' },
+  { label: 'Drogues - Suivi', prefix: '/drogues/suivi-production' },
+  { label: 'Drogues - Bénéfice', prefix: '/drogues/benefice' },
+  { label: 'Drogues - Vente', prefix: '/drogues/vente' },
   { label: 'Activités', prefix: GROUP_OPERATIONS_PREFIX },
+  { label: 'Licence', prefix: '/tablette/paiement' },
   { label: 'Gestion chef', prefix: '/activites/gestion-chef' },
 ] as const
 
 export function normalizeRolePrefixes(prefixes: string[]) {
   const unique = Array.from(new Set(prefixes.map((entry) => entry.trim()).filter(Boolean)))
-  if (unique.includes('/')) return ['/']
 
   const hasOperations = unique.includes(GROUP_OPERATIONS_PREFIX) || LEGACY_OPERATIONS_PREFIXES.some((prefix) => unique.includes(prefix))
-  const hasDepenses = LEGACY_DEPENSES_PREFIXES.some((prefix) => unique.includes(prefix))
   const next = unique
     .filter((prefix) => !LEGACY_OPERATIONS_PREFIXES.includes(prefix as typeof LEGACY_OPERATIONS_PREFIXES[number]))
-    .filter((prefix) => !LEGACY_DEPENSES_PREFIXES.includes(prefix as typeof LEGACY_DEPENSES_PREFIXES[number]))
   if (hasOperations) next.push(GROUP_OPERATIONS_PREFIX)
-  if (hasDepenses) next.push(GROUP_OPERATIONS_PREFIX)
 
   return Array.from(new Set(next))
 }
@@ -47,11 +49,8 @@ export function expandAccessPrefixes(prefixes: string[]) {
   if (normalized.includes('/')) return ['/']
 
   const expanded = [...normalized]
-  if (normalized.includes('/finance')) {
-    expanded.push('/sb/entree-sortie')
-  }
   if (normalized.includes(GROUP_OPERATIONS_PREFIX)) {
-    expanded.push('/tablette', '/activites', '/activites/depense', '/depenses', '/finance/depense')
+    expanded.push('/tablette', '/activites', '/depenses', '/finance/depense')
   }
 
   return Array.from(new Set(expanded))

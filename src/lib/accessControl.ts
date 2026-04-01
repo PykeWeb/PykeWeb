@@ -10,6 +10,9 @@ export function isMemberRouteAllowed(pathname: string, allowedPrefixes: string[]
   if (prefixes.includes('/')) {
     return true
   }
+  if (pathname === '/' && prefixes.includes('/dashboard')) {
+    return true
+  }
 
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
 }
@@ -19,6 +22,7 @@ export function getDefaultRouteForSession(session: TenantSession) {
 
   const allowedPrefixes = expandAccessPrefixes(session.allowedPrefixes ?? [])
   if (allowedPrefixes.includes('/')) return '/'
+  if (allowedPrefixes.includes('/dashboard')) return '/'
   if (allowedPrefixes.length > 0) {
     const first = allowedPrefixes[0]
     if (first === '/operations') return '/activites'

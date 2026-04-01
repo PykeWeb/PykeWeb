@@ -30,6 +30,11 @@ export function AppFrame({ children }: { children: ReactNode }) {
       return
     }
 
+    if (pathname === '/dashboard') {
+      window.location.href = '/'
+      return
+    }
+
     const session = getTenantSession()
     if (!session?.groupId || !session.groupName?.trim()) {
       window.location.href = '/login'

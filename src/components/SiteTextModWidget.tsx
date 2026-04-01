@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { ClipboardList, Settings2, Trash2 } from 'lucide-react'
+import { ClipboardList, KeyRound, Settings2, Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
@@ -668,6 +668,16 @@ export function SiteTextModWidget() {
           </div>
         </div>
       ))}
+
+      <button
+        data-mod-widget="true"
+        type="button"
+        onClick={() => window.dispatchEvent(new Event('pyke:open-password-modal'))}
+        className="fixed bottom-3 right-[7.25rem] z-[100] inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/70 px-2 py-1 text-[10px] text-white/80 hover:bg-black/90"
+      >
+        <KeyRound className="h-3 w-3" />
+        Mdp
+      </button>
 
       <button
         data-mod-widget="true"

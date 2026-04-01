@@ -5,6 +5,8 @@ import type { ClipboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { currentGroupId } from '@/lib/tenantScope'
+import { canAccessPath } from '@/lib/accessControl'
+import { getTenantSession } from '@/lib/tenantSession'
 import { StatCard } from '@/components/modules/dashboard/StatCard'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
@@ -16,6 +18,8 @@ import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight,
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
 import { listDrugProductionTrackings, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
+import { listActivities } from '@/lib/activitiesApi'
+import type { ActivityEntry } from '@/lib/types/activities'
 
 type Tx = {
   id: string
@@ -31,7 +35,7 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
-type ActivityView = 'summary' | 'transactions' | 'expenses' | 'stock'
+type ActivityView = 'summary' | 'transactions' | 'expenses' | 'stock' | 'production' | 'activities'
 type StockActivityCategory = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs'
 type StockBubbleKey = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom'
 
@@ -94,10 +98,12 @@ function stockCategoryLabel(key: StockBubbleKey) {
 
 export function DashboardClient() {
   const themeConfig = useUiThemeConfig()
+  const tenantSession = useMemo(() => getTenantSession(), [])
   const [loading, setLoading] = useState(true)
   const [recentTx, setRecentTx] = useState<Tx[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
   const [recentDrugTrackings, setRecentDrugTrackings] = useState<DrugProductionTrackingRow[]>([])
+  const [recentActivities, setRecentActivities] = useState<ActivityEntry[]>([])
 
   const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>(createEmptyCategoryCounts)
   const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>(createEmptyMovementCounts)
@@ -205,7 +211,12 @@ export function DashboardClient() {
       setLoading(true)
       try {
         currentGroupId()
-        const [financeEntries, catalogItems, drugTrackings] = await Promise.all([listFinanceEntries(), listCatalogItemsUnified(), listDrugProductionTrackings().catch(() => [])])
+        const [financeEntries, catalogItems, drugTrackings, activities] = await Promise.all([
+          listFinanceEntries(),
+          listCatalogItemsUnified(),
+          listDrugProductionTrackings().catch(() => []),
+          listActivities().catch(() => ({ entries: [], summaries: [], settings: { group_id: '', default_percent_per_object: 2 } })),
+        ])
 
         if (!alive) return
 
@@ -261,6 +272,7 @@ export function DashboardClient() {
         setRecentTx(recentFinanceTransactions)
         setRecentExpenses(recentExpenseRows)
         setRecentDrugTrackings((drugTrackings ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
+        setRecentActivities((activities.entries ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
       } finally {
@@ -297,7 +309,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'stock']
+    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'stock', 'production', 'activities']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -398,6 +410,12 @@ export function DashboardClient() {
     setTicketStatus('Image collée depuis le presse-papier.')
   }
 
+  function toAllowedHref(href: string) {
+    if (!tenantSession) return undefined
+    const [path] = href.split('?')
+    return canAccessPath(tenantSession, path) ? href : undefined
+  }
+
   return (
     <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_332px]">
@@ -433,7 +451,7 @@ export function DashboardClient() {
                     : card.key === 'mvSale' ? 'rose'
                     : 'slate'
                 }
-                href={card.href}
+                href={toAllowedHref(card.href)}
               />
               </div>
             )
@@ -458,7 +476,7 @@ export function DashboardClient() {
                   value={entry.value || '—'}
                   icon={<Icon className="h-5 w-5" />}
                   tone="slate"
-                  href={entry.href}
+                  href={entry.href ? toAllowedHref(entry.href) : undefined}
                   bubbleStyle={bubbleStyle}
                 />
               )
@@ -469,7 +487,7 @@ export function DashboardClient() {
         <Panel>
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">Dernière activité</h3>
-            <Link href="/finance" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
+            <Link href={toAllowedHref('/finance') || '#'} aria-disabled={!toAllowedHref('/finance')} onClick={(event) => { if (!toAllowedHref('/finance')) event.preventDefault() }} className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs ${toAllowedHref('/finance') ? 'border-white/15 bg-white/[0.06] text-white/90 hover:bg-white/[0.12]' : 'cursor-not-allowed border-white/10 bg-white/[0.03] text-white/40'}`}>
               Ouvrir Finance
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -480,6 +498,8 @@ export function DashboardClient() {
               { key: 'transactions', label: 'Transactions', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
               { key: 'expenses', label: 'Dépenses', active: 'border-amber-300/65 bg-gradient-to-r from-amber-500/35 to-orange-500/30 text-amber-50', idle: 'border-amber-300/25 bg-amber-500/10 text-amber-100/85 hover:bg-amber-500/18' },
               { key: 'stock', label: 'Stock', active: 'border-emerald-300/65 bg-gradient-to-r from-emerald-500/35 to-teal-500/30 text-emerald-50', idle: 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100/85 hover:bg-emerald-500/18' },
+              { key: 'production', label: `Suivi de production (${recentDrugTrackings.filter((row) => row.status === 'in_progress').length})`, active: 'border-fuchsia-300/65 bg-gradient-to-r from-fuchsia-500/35 to-violet-500/30 text-fuchsia-50', idle: 'border-fuchsia-300/25 bg-fuchsia-500/10 text-fuchsia-100/85 hover:bg-fuchsia-500/18' },
+              { key: 'activities', label: `Activités (${recentActivities.length})`, active: 'border-sky-300/65 bg-gradient-to-r from-sky-500/35 to-indigo-500/30 text-sky-50', idle: 'border-sky-300/25 bg-sky-500/10 text-sky-100/85 hover:bg-sky-500/18' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -521,7 +541,7 @@ export function DashboardClient() {
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-xs text-white/60">Dernier suivi production</p>
                   {recentDrugTrackings[0] ? (
-                    <Link href={`/drogues/suivi-production/${recentDrugTrackings[0].id}`} className="truncate text-sm font-semibold text-violet-100 hover:underline">
+                    <Link href={toAllowedHref(`/drogues/suivi-production/${recentDrugTrackings[0].id}`) || '#'} aria-disabled={!toAllowedHref(`/drogues/suivi-production/${recentDrugTrackings[0].id}`)} onClick={(event) => { if (!toAllowedHref(`/drogues/suivi-production/${recentDrugTrackings[0].id}`)) event.preventDefault() }} className={`truncate text-sm font-semibold ${toAllowedHref(`/drogues/suivi-production/${recentDrugTrackings[0].id}`) ? 'text-violet-100 hover:underline' : 'cursor-not-allowed text-violet-100/45'}`}>
                       {recentDrugTrackings[0].partner_name} • {recentDrugTrackings[0].status}
                     </Link>
                   ) : (
@@ -530,7 +550,7 @@ export function DashboardClient() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-xs text-white/60">Session drogue (accès direct)</p>
-                  <Link href="/drogues" className="truncate text-sm font-semibold text-cyan-100 hover:underline">
+                  <Link href={toAllowedHref('/drogues') || '#'} aria-disabled={!toAllowedHref('/drogues')} onClick={(event) => { if (!toAllowedHref('/drogues')) event.preventDefault() }} className={`truncate text-sm font-semibold ${toAllowedHref('/drogues') ? 'text-cyan-100 hover:underline' : 'cursor-not-allowed text-cyan-100/45'}`}>
                     {recentDrugTrackings[0]?.type || 'Ouvrir /drogues'}
                   </Link>
                 </div>
@@ -541,7 +561,7 @@ export function DashboardClient() {
             ) : null}
             {activityView === 'transactions' ? (
               recentTx.map((t) => (
-                <Link href={`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`} key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                <Link href={toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) || '#'} aria-disabled={!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)} onClick={(event) => { if (!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)) event.preventDefault() }} key={t.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                       {t.item_image_url ? (
@@ -578,7 +598,7 @@ export function DashboardClient() {
                 <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune dépense récente.</div>
               ) : (
                 recentExpenses.map((e) => (
-                  <Link href="/finance?type=expense" key={e.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                  <Link href={toAllowedHref('/finance?type=expense') || '#'} aria-disabled={!toAllowedHref('/finance?type=expense')} onClick={(event) => { if (!toAllowedHref('/finance?type=expense')) event.preventDefault() }} key={e.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref('/finance?type=expense') ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                         {e.item_image_url ? (
@@ -626,7 +646,7 @@ export function DashboardClient() {
                   <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité stock pour ce filtre.</div>
                 ) : (
                   stockActivityRows.map((t) => (
-                    <Link href={`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`} key={`stock-${t.id}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.06]">
+                    <Link href={toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) || '#'} aria-disabled={!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)} onClick={(event) => { if (!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)) event.preventDefault() }} key={`stock-${t.id}`} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                           {t.item_image_url ? (
@@ -660,6 +680,36 @@ export function DashboardClient() {
                 )}
               </>
             ) : null}
+            {activityView === 'production' ? (
+              recentDrugTrackings.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucun suivi de production en cours.</div>
+              ) : (
+                recentDrugTrackings.map((row) => (
+                  <Link href={toAllowedHref(`/drogues/suivi-production/${row.id}`) || '#'} aria-disabled={!toAllowedHref(`/drogues/suivi-production/${row.id}`)} onClick={(event) => { if (!toAllowedHref(`/drogues/suivi-production/${row.id}`)) event.preventDefault() }} key={row.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref(`/drogues/suivi-production/${row.id}`) ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
+                    <div>
+                      <p className="text-sm font-medium">{row.partner_name} • {row.type}</p>
+                      <p className="text-xs text-white/60">{new Date(row.created_at).toLocaleString()} • Statut: {row.status}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-white/80">{row.received_output}/{row.expected_output}</p>
+                  </Link>
+                ))
+              )
+            ) : null}
+            {activityView === 'activities' ? (
+              recentActivities.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune activité récente.</div>
+              ) : (
+                recentActivities.map((entry) => (
+                  <Link href={toAllowedHref('/activites') || '#'} aria-disabled={!toAllowedHref('/activites')} onClick={(event) => { if (!toAllowedHref('/activites')) event.preventDefault() }} key={entry.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref('/activites') ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
+                    <div>
+                      <p className="text-sm font-medium">{entry.member_name} • {entry.activity_type}</p>
+                      <p className="text-xs text-white/60">{new Date(entry.created_at).toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-white/80">x{Math.max(1, Number(entry.quantity || 1))}</p>
+                  </Link>
+                ))
+              )
+            ) : null}
           </div>
         </Panel>
 
@@ -670,11 +720,11 @@ export function DashboardClient() {
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold tracking-wide">Stocks</h3>
             <div className="flex items-center gap-1">
-              <Link href="/coke/preparer" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/25 bg-cyan-500/12 px-2.5 py-1 text-xs text-cyan-50 hover:bg-cyan-500/20">
+              <Link href={toAllowedHref('/coke/preparer') || '#'} aria-disabled={!toAllowedHref('/coke/preparer')} onClick={(event) => { if (!toAllowedHref('/coke/preparer')) event.preventDefault() }} className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs ${toAllowedHref('/coke/preparer') ? 'border-cyan-300/25 bg-cyan-500/12 text-cyan-50 hover:bg-cyan-500/20' : 'cursor-not-allowed border-cyan-300/15 bg-cyan-500/[0.06] text-cyan-200/45'}`}>
                 Session coke
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
-              <Link href="/items" className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs text-white/90 hover:bg-white/[0.12]">
+              <Link href={toAllowedHref('/items') || '#'} aria-disabled={!toAllowedHref('/items')} onClick={(event) => { if (!toAllowedHref('/items')) event.preventDefault() }} className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs ${toAllowedHref('/items') ? 'border-white/15 bg-white/[0.06] text-white/90 hover:bg-white/[0.12]' : 'cursor-not-allowed border-white/10 bg-white/[0.03] text-white/40'}`}>
                 Ouvrir Items
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
@@ -695,7 +745,11 @@ export function DashboardClient() {
               return (
                 <Link
                   key={card.key}
-                  href={card.href}
+                  href={toAllowedHref(card.href) || '#'}
+                  aria-disabled={!toAllowedHref(card.href)}
+                  onClick={(event) => {
+                    if (!toAllowedHref(card.href)) event.preventDefault()
+                  }}
                   className={`rounded-2xl border px-3 py-3 text-left transition min-h-[108px] ${
                     card.key === 'objects'
                       ? 'border-cyan-300/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.13]'

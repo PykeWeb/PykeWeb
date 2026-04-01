@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRightLeft, Beaker, CalendarClock, CalendarDays, CheckCircle2, Clock3, Coins, Factory, FlaskConical, NotebookPen, Package, Plus, ReceiptText, Save, Sparkles, Sprout, Tags, User } from 'lucide-react'
 import { toast } from 'sonner'
@@ -133,6 +133,7 @@ function statusClass(status: ProductionStatus) {
 
 export default function SuiviProductionClient() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [rows, setRows] = useState<DrugProductionTrackingRow[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -146,6 +147,22 @@ export default function SuiviProductionClient() {
   const [pouchTransformCost, setPouchTransformCost] = useState(0)
   const [assetImages, setAssetImages] = useState<{ pouch: string | null; brick: string | null; leaf: string | null }>({ pouch: null, brick: null, leaf: null })
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed'>('all')
+
+  useEffect(() => {
+    const initialType = String(searchParams.get('type') || '').toLowerCase()
+    if (initialType === 'meth' || initialType === 'coke') {
+      setNewRequest((prev) => ({ ...prev, type: initialType as ProductionType }))
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!creating) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [creating])
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) ?? null,

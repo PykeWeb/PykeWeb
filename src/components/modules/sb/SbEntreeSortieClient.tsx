@@ -11,7 +11,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import { getTypeFilterOptions, matchesTypeFilter, normalizeCatalogCategory, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
-import { getTenantSession, isSbTenantSession } from '@/lib/tenantSession'
+import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
@@ -30,7 +30,6 @@ type SbEntreeSortieClientProps = {
 }
 
 export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieClientProps) {
-  const [isReady, setIsReady] = useState(false)
   const [mode, setMode] = useState<Mode>('entree')
   const [items, setItems] = useState<CatalogItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -38,18 +37,25 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [category, setCategory] = useState<FilterCategory>('all')
   const [type, setType] = useState<UnifiedTypeFilterValue>('all')
   const [counterparty, setCounterparty] = useState('')
+  const [defaultMemberName, setDefaultMemberName] = useState('')
   const [member, setMember] = useState('')
+  const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
+  const memberSelectOptions = useMemo(() => {
+    const current = member.trim()
+    if (!current) return memberOptions
+    return memberOptions.some((name) => name.toLowerCase() === current.toLowerCase()) ? memberOptions : [current, ...memberOptions]
+  }, [member, memberOptions])
 
   useEffect(() => {
     const session = getTenantSession()
-    if (!isSbTenantSession(session)) {
-      window.location.href = '/'
-      return
+    const sessionMember = String(session?.memberName || '').trim()
+    if (sessionMember) {
+      setDefaultMemberName(sessionMember)
+      setMember(sessionMember)
     }
 
-    setIsReady(true)
     void listCatalogItemsUnified()
       .then((rows) => setItems(rows))
       .catch(() => {
@@ -57,6 +63,15 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         setItems([])
       })
       .finally(() => setIsLoading(false))
+
+    void fetch('/api/group/members', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return []
+        const payload = (await res.json()) as { members?: string[] }
+        return Array.isArray(payload.members) ? payload.members : []
+      })
+      .then((rows) => setMemberOptions(rows))
+      .catch(() => setMemberOptions([]))
   }, [])
 
   const stats = useMemo(() => computeItemStockCategoryStats(items), [items])
@@ -162,7 +177,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const clearTransaction = () => {
     setSelectedItems([])
     setCounterparty('')
-    setMember('')
+    setMember(defaultMemberName)
   }
 
   const submitTransaction = async () => {
@@ -197,15 +212,13 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     }
   }
 
-  if (!isReady) return null
-
   const isTradeVariant = variant === 'trade'
   const modeLeftLabel = isTradeVariant ? 'Achat' : 'Entrée'
   const modeRightLabel = isTradeVariant ? 'Vente' : 'Sortie'
-  const headerTitle = isTradeVariant ? 'Achat / Vente SB' : 'Entrée / Sortie SB'
+  const headerTitle = isTradeVariant ? 'Achat / Vente' : 'Entrée / Sortie'
   const headerSubtitle = isTradeVariant
-    ? 'Interface rapide achat/vente avec prix pour le groupe SB.'
-    : 'Interface rapide entrée/sortie de stock pour le groupe SB.'
+    ? 'Interface rapide achat/vente avec prix.'
+    : 'Interface rapide entrée/sortie de stock.'
 
   return (
     <div className="space-y-4">
@@ -266,10 +279,16 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
 
         <div className={`grid gap-3 ${isTradeVariant ? 'xl:grid-cols-[1fr_1fr_auto_auto_auto_auto]' : 'xl:grid-cols-[1fr_1fr_auto_auto_auto]'}`}>
           <Input value={counterparty} onChange={(event) => setCounterparty(event.target.value)} placeholder="Interlocuteur" className="h-11" />
-          <Input value={member} onChange={(event) => setMember(event.target.value)} placeholder="Membre" className="h-11" />
+          <select
+            value={member}
+            onChange={(event) => setMember(event.target.value)}
+            className="h-11 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
+          >
+            <option value="">Choisir un joueur</option>
+            {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
           <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
-            <span>Total :</span>
-            <span className="ml-1 inline-block min-w-[1.5ch] text-right">{safeTotalItems}</span>
+            <span>Qté : {safeTotalItems}</span>
           </div>
           {isTradeVariant ? (
             <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-5 text-sm font-semibold text-emerald-100">
