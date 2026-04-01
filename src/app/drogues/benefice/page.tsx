@@ -86,15 +86,14 @@ export default function DroguesBeneficePage() {
 
   useEffect(() => {
     if (mode !== 'meth') return
-    const machinePrice = findPriceByAliases(items, ['Machine de meth', 'Machine meth'])
-    setSeedPrice(String(machinePrice > 0 ? machinePrice : 3300))
+    const tablePrice = findPriceByAliases(items, ['Table meth', 'Table'])
+    setSeedPrice(String(tablePrice > 0 ? tablePrice : 3300))
     setBrickTransformCost('0')
     setPouchTransformCost('0')
   }, [items, mode])
 
   const calc = useMemo(() => {
-    const seedQtyRaw = Math.max(0, Number(seeds) || 0)
-    const seedQty = mode === 'meth' ? seedQtyRaw * 3 : seedQtyRaw
+    const seedQty = Math.max(0, Number(seeds) || 0)
     const unitSeedPrice = Math.max(0, Number(seedPrice) || 0)
     const unitPot = Math.max(0, Number(potPrice) || 0)
     const unitFertilizer = Math.max(0, Number(fertilizerPrice) || 0)
@@ -155,7 +154,6 @@ export default function DroguesBeneficePage() {
       requiredAmmonia,
       requiredMethylamine,
       zones,
-      seedQtyRaw,
       lampsFromZones,
       totalSeedCost,
       totalGrowCost,
@@ -170,7 +168,7 @@ export default function DroguesBeneficePage() {
   }, [ammoniaPrice, batteryPrice, brickTaxPercent, brickTransformCost, fertilizerPrice, growZones, lampPrice, methTablePrice, mode, methylaminePrice, pouchSalePrice, pouchTransformCost, potPrice, seedPrice, seeds, waterPrice])
 
   const resourceCards = useMemo(() => ([
-    { key: 'seed', label: mode === 'meth' ? 'Machine de meth' : 'Graine de coke', qty: mode === 'meth' ? calc.seedQtyRaw * 3 : Math.max(0, Number(seeds) || 0), unit: Math.max(0, Number(seedPrice) || 0), aliases: mode === 'meth' ? ['Machine de meth', 'Machine meth'] : ['Graine de coke', 'Graine coke'] },
+    { key: 'seed', label: mode === 'meth' ? 'Table meth' : 'Graine de coke', qty: Math.max(0, Number(seeds) || 0), unit: Math.max(0, Number(seedPrice) || 0), aliases: mode === 'meth' ? ['Table meth', 'Table'] : ['Graine de coke', 'Graine coke'] },
     { key: 'pot', label: 'Pot', qty: calc.requiredPots, unit: Math.max(0, Number(potPrice) || 0), aliases: ['Pot'] },
     { key: 'fert', label: 'Fertilisant', qty: calc.requiredFertilizer, unit: Math.max(0, Number(fertilizerPrice) || 0), aliases: ['Fertilisant', 'Engrais'] },
     { key: 'water', label: "Bouteille d'eau", qty: calc.requiredWater, unit: Math.max(0, Number(waterPrice) || 0), aliases: ["Bouteille d'eau", 'Bouteille eau', 'Water bottle', 'Water', 'Eau'] },
@@ -186,7 +184,7 @@ export default function DroguesBeneficePage() {
     ...entry,
     item: findItemByAliases(items, entry.aliases),
     subtotal: entry.qty * entry.unit,
-  }))), [ammoniaPrice, batteryPrice, calc.requiredAmmonia, calc.requiredBatteries, calc.requiredFertilizer, calc.requiredLamps, calc.requiredMethTables, calc.requiredMethylamine, calc.requiredPots, calc.requiredWater, calc.seedQtyRaw, fertilizerPrice, items, lampPrice, methTablePrice, mode, methylaminePrice, potPrice, seedPrice, seeds, waterPrice])
+  }))), [ammoniaPrice, batteryPrice, calc.requiredAmmonia, calc.requiredBatteries, calc.requiredFertilizer, calc.requiredLamps, calc.requiredMethTables, calc.requiredMethylamine, calc.requiredPots, calc.requiredWater, fertilizerPrice, items, lampPrice, methTablePrice, mode, methylaminePrice, potPrice, seedPrice, seeds, waterPrice])
 
   const globalTransformValue = useMemo(() => {
     const brickUnit = Math.max(0, Number(brickTransformCost) || 0)
@@ -202,7 +200,7 @@ export default function DroguesBeneficePage() {
   }
 
   const totalTransformCost = calc.totalBrickCost + calc.totalPouchCost
-  const seedItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Machine de meth', 'Machine meth'] : ['Graine de coke', 'Graine coke']), [items, mode])
+  const seedItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Table meth', 'Table'] : ['Graine de coke', 'Graine coke']), [items, mode])
   const pouchItem = useMemo(() => findItemByAliases(items, mode === 'meth' ? ['Pochon de meth', 'Meth pouch', 'Pochon meth', 'Sachet meth'] : ['Pochon de coke', 'Pochon coke', 'Sachet coke', 'Pochon']), [items, mode])
 
   return (
@@ -219,19 +217,18 @@ export default function DroguesBeneficePage() {
               <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
                 {seedItem?.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={seedItem.image_url} alt={mode === 'meth' ? 'Nombre de machines' : 'Nombre de graines'} className="h-full w-full object-cover" loading="lazy" />
+                  <img src={seedItem.image_url} alt={mode === 'meth' ? 'Nombre de tables' : 'Nombre de graines'} className="h-full w-full object-cover" loading="lazy" />
                 ) : <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-3.5 w-3.5" /></div>}
               </div>
-              <p className="text-xs text-cyan-100/85">{mode === 'meth' ? 'Nombre de zones meth' : 'Nombre de graines'}</p>
+              <p className="text-xs text-cyan-100/85">{mode === 'meth' ? 'Nombre de tables' : 'Nombre de graines'}</p>
             </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setSeeds(String(Math.max(0, (Number(seeds) || 0) - 100)))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">-</button>
               <Input value={seeds} onChange={(e) => setSeeds(e.target.value)} inputMode="decimal" />
               <button type="button" onClick={() => setSeeds(String((Number(seeds) || 0) + 100))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
             </div>
-            <p className="mb-1 mt-2 text-xs text-cyan-100/85">{mode === 'meth' ? 'Prix machine meth (unité)' : 'Prix graine (unité)'}</p>
+            <p className="mb-1 mt-2 text-xs text-cyan-100/85">{mode === 'meth' ? 'Prix table meth (unité)' : 'Prix graine (unité)'}</p>
             <Input value={seedPrice} onChange={(e) => setSeedPrice(e.target.value)} inputMode="decimal" />
-            {mode === 'meth' ? <p className="mt-1 text-[11px] text-cyan-100/75">1 zone = 3 machines de meth.</p> : null}
           </div>
           <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
             <div className="mb-1 flex items-center gap-2">
@@ -278,13 +275,13 @@ export default function DroguesBeneficePage() {
                 </div>
               </div>
             </div>
-            {mode === 'meth' ? <p className="mt-2 text-[11px] text-cyan-100/75">Mode Meth: zone × 3 machines, avec équipements (1 table, 2 batteries, 6 ammoniaque, 5 methylamine par machine).</p> : null}
+            {mode === 'meth' ? <p className="mt-2 text-[11px] text-cyan-100/75">Mode Meth: calcul par table (1 table, 2 batteries, 6 ammoniaque, 5 methylamine).</p> : null}
           </div>
         </div>
 
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/60">Ressources nécessaires</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-2.5 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
+          {mode !== 'meth' ? <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-2.5 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
             <div className="mb-2 flex items-center gap-2">
               <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] text-white/70">
                 Z
@@ -296,7 +293,7 @@ export default function DroguesBeneficePage() {
               <Input value={growZones} onChange={(e) => setGrowZones(e.target.value)} inputMode="numeric" className="h-8 rounded-md" />
               <button type="button" onClick={() => setGrowZones(String((Number(growZones) || 0) + 1))} className="h-8 w-8 rounded-md border border-white/15 bg-white/[0.04] text-base">+</button>
             </div>
-          </div>
+          </div> : null}
           {resourceCards.map((entry) => (
             <div key={entry.key} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-2.5 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
               <div className="mb-2 flex items-center gap-2">

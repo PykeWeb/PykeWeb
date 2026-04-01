@@ -527,7 +527,6 @@ export default function CokeClosePage() {
             <div className="flex gap-2">
               <PrimaryButton disabled={saving} onClick={() => { void submit() }}>{saving ? 'Validation...' : 'Session faite (mettre à jour stock)'}</PrimaryButton>
               <Link href="/drogues"><SecondaryButton>Retour</SecondaryButton></Link>
-              <Link href="/drogues/benefice"><SecondaryButton>Bénéfice drogue</SecondaryButton></Link>
             </div>
           </div>
       </Panel>

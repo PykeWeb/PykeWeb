@@ -37,6 +37,8 @@ const NEW_REQUEST_INITIAL = {
   createdAt: new Date().toISOString().slice(0, 10),
   expectedDate: '',
   note: '',
+  expectedOutputManual: 0,
+  receivedOutputManual: 0,
 }
 
 type FlowMode = 'seed_only' | 'leaf_to_brick' | 'brick_to_pouch' | 'two_steps_seed_to_brick' | 'two_steps_transforms' | 'full_chain'
@@ -190,7 +192,7 @@ export default function SuiviProductionClient() {
 
   const expectedFromForm = useMemo(() => {
     const flowMode = resolveFlowMode(newRequest.type, newRequest.flowMode)
-    if (newRequest.type === 'meth') return Math.max(0, Number(newRequest.seedQty || 0))
+    if (newRequest.type === 'meth') return Math.max(0, Number(newRequest.expectedOutputManual || newRequest.seedQty || 0))
     const baseLeaves = flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick'
       ? Math.max(0, Number(newRequest.seedQty || 0))
       : Math.max(0, Number(newRequest.leafQty || 0))
@@ -200,7 +202,7 @@ export default function SuiviProductionClient() {
     if (flowMode === 'seed_only') return Math.max(0, Number(newRequest.seedQty || 0))
     if (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick') return Math.max(0, netBricks)
     return Math.max(0, netBricks * POUCHES_PER_BRICK)
-  }, [newRequest.brickQty, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty, newRequest.type])
+  }, [newRequest.brickQty, newRequest.expectedOutputManual, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty, newRequest.type])
 
   const conversionFromForm = useMemo(() => {
     if (newRequest.type === 'meth') {
@@ -384,6 +386,7 @@ export default function SuiviProductionClient() {
         quantitySent,
         ratio: 1,
         expectedOutput: expectedFromForm,
+        receivedOutput: newRequest.type === 'meth' ? Math.max(0, Number(newRequest.receivedOutputManual || 0)) : undefined,
         note: `[${flowLabel}] ${newRequest.note || ''}`.trim(),
         createdAt: newRequest.createdAt || undefined,
         expectedDate: newRequest.expectedDate || undefined,
@@ -423,6 +426,7 @@ export default function SuiviProductionClient() {
         quantitySent,
         ratio: 1,
         expectedOutput: expectedFromForm,
+        receivedOutput: newRequest.type === 'meth' ? Math.max(0, Number(newRequest.receivedOutputManual || 0)) : undefined,
         createdAt: newRequest.createdAt || undefined,
         note: newRequest.note?.trim() || undefined,
         seedPrice,
@@ -748,8 +752,14 @@ export default function SuiviProductionClient() {
               ) : null}
 
               <div className="space-y-1 rounded-xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/12 to-blue-500/[0.09] p-2.5">
-                <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Beaker className="h-3.5 w-3.5" /> Attendu (auto)</label>
-                <Input value={expectedFromForm} readOnly className="opacity-80" />
+                <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Beaker className="h-3.5 w-3.5" /> {isMeth ? 'Attendu (estimatif modifiable)' : 'Attendu (auto)'}</label>
+                {isMeth ? (
+                  <Input
+                    value={newRequest.expectedOutputManual || expectedFromForm}
+                    onChange={(event) => setNewRequest((prev) => ({ ...prev, expectedOutputManual: Number(event.target.value) || 0 }))}
+                    inputMode="numeric"
+                  />
+                ) : <Input value={expectedFromForm} readOnly className="opacity-80" />}
                 <p className="text-[11px] text-white/55">
                   {isMeth
                     ? `${conversionFromForm.seedQty} meth achetés + transfo → ${conversionFromForm.pouches} pochons meth.`
@@ -764,6 +774,16 @@ export default function SuiviProductionClient() {
                         : `${conversionFromForm.seedQty} graines → ${Math.round(conversionFromForm.netBricks)} bricks (taxe 5%) → ${conversionFromForm.pouches} pochons.`}
                 </p>
               </div>
+              {isMeth ? (
+                <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Beaker className="h-3.5 w-3.5" /> Quantité réelle récupérée (modifiable)</label>
+                  <Input
+                    value={newRequest.receivedOutputManual}
+                    onChange={(event) => setNewRequest((prev) => ({ ...prev, receivedOutputManual: Number(event.target.value) || 0 }))}
+                    inputMode="numeric"
+                  />
+                </div>
+              ) : null}
 
               <div className="space-y-1 rounded-xl border border-violet-300/20 bg-gradient-to-br from-violet-500/10 to-indigo-500/[0.08] p-2.5">
                 <label className="flex items-center gap-1.5 text-xs text-violet-100/80"><CalendarDays className="h-3.5 w-3.5" /> Date</label>

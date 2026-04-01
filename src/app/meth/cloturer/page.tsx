@@ -127,7 +127,6 @@ export default function MethClosePage() {
       <div className="mt-4 flex gap-2">
         <PrimaryButton onClick={() => void submit()} disabled={saving}>Valider</PrimaryButton>
         <Link href="/drogues"><SecondaryButton>Retour</SecondaryButton></Link>
-        <Link href="/drogues/benefice"><SecondaryButton>Bénéfice</SecondaryButton></Link>
       </div>
     </Panel>
   )
