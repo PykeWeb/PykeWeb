@@ -45,6 +45,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [manualItemLabel, setManualItemLabel] = useState('')
   const [manualCashAmount, setManualCashAmount] = useState('')
   const [manualReason, setManualReason] = useState('')
+  const [methKitMachines, setMethKitMachines] = useState('1')
+  const [methKitUnitPrice, setMethKitUnitPrice] = useState('3300')
   const memberSelectOptions = useMemo(() => {
     const current = member.trim()
     if (!current) return memberOptions
@@ -109,6 +111,11 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     () => selectedItems.reduce((sum, entry) => sum + (entry.quantity * Math.max(0, Number(entry.price || 0))), 0),
     [selectedItems]
   )
+
+  function findItemByAliases(aliases: string[]) {
+    const normalizedAliases = aliases.map((alias) => alias.trim().toLowerCase())
+    return items.find((item) => normalizedAliases.some((alias) => item.name.trim().toLowerCase().includes(alias))) || null
+  }
 
   const addItem = (item: CatalogItem, increment = 1) => {
     const baseQuantity = Math.max(1, Math.floor(Number(increment) || 1))
@@ -189,6 +196,35 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setManualItemLabel('')
     setManualCashAmount('')
     setManualReason('')
+    setMethKitMachines('1')
+    setMethKitUnitPrice('3300')
+  }
+
+  function addMethKitToSelection() {
+    const machineQty = Math.max(1, Math.floor(Number(methKitMachines || 1) || 1))
+    const machineUnitPrice = Math.max(0, Number(methKitUnitPrice || 0))
+
+    const machine = findItemByAliases(['machine de meth', 'machine meth'])
+    const battery = findItemByAliases(['batterie', 'battery'])
+    const ammonia = findItemByAliases(['ammoniaque', 'ammonia'])
+    const methylamine = findItemByAliases(['methylamine', 'méthylamine'])
+
+    if (!machine || !battery || !ammonia || !methylamine) {
+      toast.error('Kit meth incomplet: vérifie les items Machine/Batterie/Ammoniaque/Methylamine.')
+      return
+    }
+
+    addItem(machine, machineQty)
+    addItem(battery, machineQty * 2)
+    addItem(ammonia, machineQty * 6)
+    addItem(methylamine, machineQty * 5)
+
+    setSelectedItems((prev) => prev.map((entry) => {
+      if (entry.id === machine.id) return { ...entry, price: machineUnitPrice }
+      if (entry.id === battery.id || entry.id === ammonia.id || entry.id === methylamine.id) return { ...entry, price: 0 }
+      return entry
+    }))
+    toast.success('Kit complet meth ajouté.')
   }
 
   const submitManualCashFlow = async () => {
@@ -317,8 +353,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             onChange={(event) => setMember(event.target.value)}
             className="h-11 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
           >
-            <option value="">Choisir un joueur</option>
-            {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+            <option value="" className="bg-[#0b1228] text-white">Choisir un joueur</option>
+            {memberSelectOptions.map((name) => <option key={name} value={name} className="bg-[#0b1228] text-white">{name}</option>)}
           </select>
           <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
             <span>Qté : {safeTotalItems}</span>
@@ -364,6 +400,18 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                   <Input value={manualCashAmount} onChange={(event) => setManualCashAmount(event.target.value)} inputMode="decimal" placeholder={`Montant argent (${mode === 'sortie' ? 'sortie' : 'entrée'})`} className="h-10" />
                   <Input value={manualReason} onChange={(event) => setManualReason(event.target.value)} placeholder="Raison (obligatoire si montant)" className="h-10" />
                 </div>
+              </div>
+            </div>
+          ) : null}
+
+          {isTradeVariant && mode === 'entree' ? (
+            <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3">
+              <p className="text-sm font-semibold text-cyan-100">Achat kit complet Meth</p>
+              <p className="mt-1 text-xs text-cyan-100/75">Ajoute Machine + accessoires au stock. Prix machine modifiable (promo possible), accessoires inclus à 0$.</p>
+              <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                <Input value={methKitMachines} onChange={(event) => setMethKitMachines(event.target.value)} inputMode="numeric" placeholder="Nb machines" className="h-10" />
+                <Input value={methKitUnitPrice} onChange={(event) => setMethKitUnitPrice(event.target.value)} inputMode="decimal" placeholder="Prix machine (ex: 3300)" className="h-10" />
+                <SecondaryButton onClick={addMethKitToSelection} className="h-10">Ajouter kit meth</SecondaryButton>
               </div>
             </div>
           ) : null}

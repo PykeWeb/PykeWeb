@@ -87,16 +87,16 @@ export default function DroguesVentePage() {
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Pochon</span>
             <select value={itemId} onChange={(e) => setItemId(e.target.value)} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white">
-              <option value="">Choisir un item</option>
-              {items.map((row) => <option key={row.id} value={row.id}>{row.name} (stock {Math.max(0, Number(row.stock || 0))})</option>)}
+              <option value="" className="bg-[#0b1228] text-white">Choisir un item</option>
+              {items.map((row) => <option key={row.id} value={row.id} className="bg-[#0b1228] text-white">{row.name} (stock {Math.max(0, Number(row.stock || 0))})</option>)}
             </select>
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Membre</span>
             <select value={member} onChange={(e) => setMember(e.target.value)} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white">
-              <option value="">Choisir un joueur</option>
-              <option value="Groupe">Groupe</option>
-              {memberOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+              <option value="" className="bg-[#0b1228] text-white">Choisir un joueur</option>
+              <option value="Groupe" className="bg-[#0b1228] text-white">Groupe</option>
+              {memberOptions.map((name) => <option key={name} value={name} className="bg-[#0b1228] text-white">{name}</option>)}
             </select>
           </label>
           <label className="space-y-1 text-sm">
