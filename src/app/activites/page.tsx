@@ -141,7 +141,15 @@ export default function ActivitesPage() {
     }
   }
 
-  const objectItems = useMemo(() => catalogItems.filter((item) => item.category === 'objects' && item.is_active), [catalogItems])
+  const objectItems = useMemo(() => {
+    return catalogItems.filter((item) => {
+      if (!item.is_active) return false
+      if (item.category === 'objects') return true
+      if (item.category !== 'drugs') return false
+      const normalizedName = String(item.name || '').trim().toLowerCase()
+      return normalizedName === 'pochon de coke' || normalizedName === 'pochon de meth'
+    })
+  }, [catalogItems])
   const equipmentItems = useMemo(() => catalogItems.filter((item) => item.category === 'equipment' && item.is_active), [catalogItems])
 
   const allowedEquipmentItems = useMemo(() => {
