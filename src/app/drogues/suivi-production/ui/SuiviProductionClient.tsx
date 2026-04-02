@@ -361,6 +361,8 @@ export default function SuiviProductionClient() {
     const pouchUnitCost = Number(selected.pouch_transform_cost ?? pouchTransformCost ?? 0)
     const qtySent = Math.max(0, Number(selected.quantity_sent || 0))
     const expectedOutput = Math.max(0, Number(selected.expected_output || 0))
+    const receivedOutput = Math.max(0, Number(selected.received_output || 0))
+    const effectiveOutput = receivedOutput > 0 ? receivedOutput : expectedOutput
     const hasSalePrice = saleUnitPrice > 0
     const quantities = cokeFlowQuantities(
       flowMode,
@@ -369,10 +371,10 @@ export default function SuiviProductionClient() {
       qtySent,
     )
     const expectedPouches = selected.type === 'meth'
-      ? expectedOutput
+      ? effectiveOutput
       : (flowMode === 'seed_only' || flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick'
         ? 0
-        : expectedOutput)
+        : effectiveOutput)
     const revenue = hasSalePrice ? expectedPouches * saleUnitPrice : 0
     const seedCost = (flowMode === 'seed_only' || flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick') ? (qtySent * seedUnitPrice) : 0
     const brickCost = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms')
@@ -380,7 +382,7 @@ export default function SuiviProductionClient() {
       : 0
     const pouchCost = flowMode === 'brick_to_pouch'
       ? (qtySent * pouchUnitCost)
-      : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (Math.max(0, Math.floor(expectedOutput / POUCHES_PER_BRICK)) * pouchUnitCost) : 0
+      : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (Math.max(0, Math.floor(effectiveOutput / POUCHES_PER_BRICK)) * pouchUnitCost) : 0
     const transformCost = brickCost + pouchCost
     const totalCost = seedCost + transformCost
     return {

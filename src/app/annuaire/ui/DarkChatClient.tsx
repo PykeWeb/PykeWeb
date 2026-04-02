@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ClipboardEvent } from 'react'
 import Link from 'next/link'
 import { Clipboard, ClipboardCheck, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -73,6 +73,16 @@ export default function DarkChatClient() {
     setImageData(`data:${file.type};base64,${base64}`)
   }
 
+  async function onPasteImage(event: ClipboardEvent<HTMLDivElement>) {
+    const imageItem = [...event.clipboardData.items].find((item) => item.type.startsWith('image/'))
+    if (!imageItem) return
+    const file = imageItem.getAsFile()
+    if (!file) return
+    event.preventDefault()
+    await onPickFile(file)
+    toast.success('Image collée depuis le presse-papiers.')
+  }
+
   async function copyName(value: string, id: string) {
     try {
       await navigator.clipboard.writeText(value)
@@ -112,6 +122,7 @@ export default function DarkChatClient() {
       </div>
 
       <Panel>
+        <div onPaste={(event) => void onPasteImage(event)} tabIndex={0}>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom darkchat" className="h-11" />
           <select value={category} onChange={(e) => setCategory(e.target.value as DarkCategory)} className="h-11 rounded-xl border border-white/15 bg-white/[0.05] px-3 text-sm text-white outline-none">
@@ -126,6 +137,8 @@ export default function DarkChatClient() {
             <img src={imageData} alt="Preview carte darkchat" className="h-full w-full object-cover" />
           </div>
         ) : null}
+        <p className="mt-2 text-xs text-white/60">Tu peux aussi coller une image avec Ctrl+V dans ce bloc.</p>
+        </div>
       </Panel>
 
       <Panel>
