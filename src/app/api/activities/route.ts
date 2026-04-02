@@ -178,6 +178,7 @@ export async function POST(request: Request) {
     let equipmentDisplay = ''
     let equipmentTotalQty = 0
     let firstEquipmentId: string | null = null
+    const equipmentStockMap = new Map<string, CatalogItemRow>()
 
     if (activityType !== 'Boite au lettre') {
       const equipmentIds = [...new Set(equipmentLines.map((line) => String(line.equipment_item_id).trim()).filter(Boolean))]
@@ -195,14 +196,29 @@ export async function POST(request: Request) {
       }
       if (equipmentMap.size !== equipmentIds.length) return NextResponse.json({ error: 'Un ou plusieurs équipements sont invalides.' }, { status: 400 })
 
+      const requiredQtyByEquipment = new Map<string, number>()
       const parts: string[] = []
       for (const line of equipmentLines) {
         const item = equipmentMap.get(line.equipment_item_id)
         if (!item) continue
         const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        requiredQtyByEquipment.set(item.id, (requiredQtyByEquipment.get(item.id) || 0) + qty)
         equipmentTotalQty += qty
         parts.push(`${item.name} x${qty}`)
         if (!firstEquipmentId) firstEquipmentId = item.id
+      }
+
+      for (const [itemId, requiredQty] of requiredQtyByEquipment.entries()) {
+        const equipment = equipmentMap.get(itemId)
+        if (!equipment) continue
+        const currentStock = Math.max(0, Number(equipment.stock || 0))
+        if (currentStock < requiredQty) {
+          return NextResponse.json({ error: `Stock insuffisant pour l'équipement ${equipment.name}.` }, { status: 400 })
+        }
+      }
+
+      for (const [itemId, equipment] of equipmentMap.entries()) {
+        equipmentStockMap.set(itemId, equipment)
       }
       equipmentDisplay = parts.join(' • ')
     }
@@ -257,21 +273,8 @@ export async function POST(request: Request) {
     }
 
     if (activityType !== 'Boite au lettre') {
-      const { data: latestEquipmentRows, error: latestEquipmentErr } = await supabase
-        .from('catalog_items')
-        .select('id,name,category,buy_price,stock')
-        .eq('group_id', session.groupId)
-        .eq('is_active', true)
-        .in('id', [...new Set(equipmentLines.map((line) => String(line.equipment_item_id).trim()).filter(Boolean))])
-
-      if (latestEquipmentErr) throw latestEquipmentErr
-      const latestEquipmentMap = new Map<string, CatalogItemRow>()
-      for (const row of (latestEquipmentRows ?? []) as CatalogItemRow[]) {
-        if (row.category === 'equipment') latestEquipmentMap.set(row.id, row)
-      }
-
       for (const line of equipmentLines) {
-        const equipmentItem = latestEquipmentMap.get(line.equipment_item_id)
+        const equipmentItem = equipmentStockMap.get(line.equipment_item_id)
         if (!equipmentItem) continue
         const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
         const currentStock = Math.max(0, Number(equipmentItem.stock || 0))
