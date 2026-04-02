@@ -742,6 +742,20 @@ function toNullableString(value: string | null | undefined) {
   return normalized.length ? normalized : null
 }
 
+function isItemTypeConstraintError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+  const message = String((error as { message?: unknown }).message || '').toLowerCase()
+  return message.includes('catalog_items_item_type_check') || (message.includes('item_type') && message.includes('check constraint'))
+}
+
+function withLegacyDbItemType(category: ItemCategory, itemType: ItemType): ItemType[] {
+  if (category === 'objects') return [itemType, 'consumable', 'material', 'other']
+  if (category === 'custom') return [itemType, 'other', 'input']
+  if (category === 'weapons') return [itemType, 'weapon']
+  if (category === 'equipment') return [itemType, 'equipment']
+  return [itemType, 'product', 'drug_material', 'other']
+}
+
 export async function updateCatalogItem(args: UpdateCatalogItemInput) {
   try {
     const resolved = await ensureCatalogItemId(args.id)
@@ -794,7 +808,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
       throw new Error('Aucune modification détectée.')
     }
 
-    const { data, error } = await supabase
+    let updateResult = await supabase
       .from('catalog_items')
       .update({
         ...nextPayload,
@@ -804,8 +818,26 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
       .eq('id', resolved)
       .select('id')
 
-    if (error) throw error
-    if (!data || data.length === 0) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
+    if (updateResult.error && isItemTypeConstraintError(updateResult.error)) {
+      const candidates = withLegacyDbItemType(nextPayload.category, nextPayload.item_type)
+      for (const candidate of candidates) {
+        if (candidate === nextPayload.item_type) continue
+        updateResult = await supabase
+          .from('catalog_items')
+          .update({
+            ...nextPayload,
+            item_type: candidate,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('group_id', groupId)
+          .eq('id', resolved)
+          .select('id')
+        if (!updateResult.error) break
+      }
+    }
+
+    if (updateResult.error) throw updateResult.error
+    if (!updateResult.data || updateResult.data.length === 0) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
 
     if (args.imageFile) {
     const ext = getExt(args.imageFile)

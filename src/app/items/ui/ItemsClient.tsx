@@ -353,7 +353,10 @@ export default function ItemsClient({
     setter((prev) => ({ ...prev, [key]: String(next) }))
   }, [plantationOutputPerRun, plantationRuns])
 
-  const categoryCounts = useMemo(() => computeItemStockCategoryStats(items), [items])
+  const categoryCounts = useMemo(() => {
+    const withoutCash = items.filter((item) => item.name.trim().toLowerCase() !== 'argent')
+    return computeItemStockCategoryStats(withoutCash)
+  }, [items])
 
   return (
     <Panel className={view === 'tools' ? 'border-0 bg-transparent p-0 shadow-none' : undefined}>
