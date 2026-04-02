@@ -360,7 +360,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         <div className="rounded-2xl border border-amber-300/25 bg-amber-500/[0.08] p-3">
           <p className="text-sm font-semibold text-amber-100">Sortie argent (item non listé)</p>
           <p className="mt-1 text-xs text-amber-100/75">
-            Utilise ce bloc si l’item n’existe pas dans la liste. La sortie est enregistrée sur l’item "argent" avec motif détaillé.
+            Utilise ce bloc si l’item n’existe pas dans la liste. La sortie est enregistrée sur l’item &quot;argent&quot; avec motif détaillé.
           </p>
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
             <Input value={manualItemLabel} onChange={(event) => setManualItemLabel(event.target.value)} placeholder="Nom item non listé" className="h-10" />

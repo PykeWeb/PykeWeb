@@ -281,7 +281,7 @@ export default function SuiviProductionClient() {
       totalCost,
       estimatedProfit: totalSale - totalCost,
     }
-  }, [brickTransformCost, conversionFromForm.leaves, conversionFromForm.pouches, conversionFromForm.seedQty, newRequest.brickQty, newRequest.flowMode, newRequest.type, pouchSalePrice, pouchTransformCost, seedPrice])
+  }, [brickTransformCost, conversionFromForm.leaves, conversionFromForm.netBricks, conversionFromForm.pouches, conversionFromForm.seedQty, newRequest.flowMode, newRequest.type, pouchSalePrice, pouchTransformCost, seedPrice])
 
   const methApproxPouches = useMemo(() => {
     if (!isMeth) return 0
