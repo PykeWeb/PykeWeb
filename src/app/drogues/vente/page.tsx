@@ -14,6 +14,8 @@ import type { CatalogItem } from '@/lib/types/itemsFinance'
 export default function DroguesVentePage() {
   const COKE_MIN_POUCH_PRICE = 75
   const COKE_MAX_POUCH_PRICE = 85
+  const FENTANYL_MIN_POUCH_PRICE = 60
+  const FENTANYL_MAX_POUCH_PRICE = 90
   const METH_MIN_POUCH_PRICE = 120
   const METH_MAX_POUCH_PRICE = 220
   const [items, setItems] = useState<CatalogItem[]>([])
@@ -25,6 +27,13 @@ export default function DroguesVentePage() {
   const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
+  function getPriceRange(name: string) {
+    const normalized = String(name || '').toLowerCase()
+    if (normalized.includes('fenta')) return { min: FENTANYL_MIN_POUCH_PRICE, max: FENTANYL_MAX_POUCH_PRICE }
+    if (normalized.includes('meth')) return { min: METH_MIN_POUCH_PRICE, max: METH_MAX_POUCH_PRICE }
+    return { min: COKE_MIN_POUCH_PRICE, max: COKE_MAX_POUCH_PRICE }
+  }
+
   useEffect(() => {
     const sessionMember = String(getTenantSession()?.memberName || '').trim()
     if (sessionMember) setMember(sessionMember)
@@ -35,9 +44,7 @@ export default function DroguesVentePage() {
         setItems(pouches)
         if (pouches[0]) {
           setItemId(pouches[0].id)
-          const firstIsMeth = String(pouches[0].name || '').toLowerCase().includes('meth')
-          const minPrice = firstIsMeth ? METH_MIN_POUCH_PRICE : COKE_MIN_POUCH_PRICE
-          const maxPrice = firstIsMeth ? METH_MAX_POUCH_PRICE : COKE_MAX_POUCH_PRICE
+          const { min: minPrice, max: maxPrice } = getPriceRange(pouches[0].name)
           const reference = Math.max(minPrice, Math.min(maxPrice, Number(pouches[0].sell_price || pouches[0].buy_price || ((minPrice + maxPrice) / 2))))
           setEstimatePercent(Math.round(((reference - minPrice) / (maxPrice - minPrice)) * 100))
           setReceivedTotalInput(reference)
@@ -56,9 +63,7 @@ export default function DroguesVentePage() {
   }, [])
 
   const selected = useMemo(() => items.find((row) => row.id === itemId) || null, [itemId, items])
-  const isMethPouch = String(selected?.name || '').toLowerCase().includes('meth')
-  const minPouchPrice = isMethPouch ? METH_MIN_POUCH_PRICE : COKE_MIN_POUCH_PRICE
-  const maxPouchPrice = isMethPouch ? METH_MAX_POUCH_PRICE : COKE_MAX_POUCH_PRICE
+  const { min: minPouchPrice, max: maxPouchPrice } = getPriceRange(String(selected?.name || ''))
   const availableStock = Math.max(0, Number(selected?.stock || 0))
   const safeQty = Math.max(1, Math.floor(qty || 1))
   const estimatedUnit = minPouchPrice + ((maxPouchPrice - minPouchPrice) * Math.max(0, Math.min(100, estimatePercent))) / 100
@@ -98,11 +103,6 @@ export default function DroguesVentePage() {
             <span className="text-white/70">Quantité (stock: {availableStock})</span>
             <Input value={qty} onChange={(e) => setQty(Number(e.target.value) || 1)} inputMode="numeric" />
           </label>
-          <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3">
-            <p className="text-xs text-white/70">Prix unitaire estimé ({minPouchPrice}-{maxPouchPrice}$)</p>
-            <p className="text-xl font-semibold">{estimatedUnit.toFixed(2)} $</p>
-            <p className="mt-1 text-xs text-white/70">Total estimé: {estimatedTotal.toFixed(2)} $</p>
-          </div>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Estimation (%)</span>
             <Input value={estimatePercent} onChange={(e) => setEstimatePercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))} inputMode="numeric" />
@@ -115,6 +115,11 @@ export default function DroguesVentePage() {
           <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-3">
             <p className="text-xs text-white/70">Argent reçu (réel)</p>
             <p className="text-xl font-semibold">{receivedTotal.toFixed(2)} $</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3">
+            <p className="text-xs text-white/70">Prix unitaire estimé ({minPouchPrice}-{maxPouchPrice}$)</p>
+            <p className="text-xl font-semibold">{estimatedUnit.toFixed(2)} $</p>
+            <p className="mt-1 text-xs text-white/70">Total estimé: {estimatedTotal.toFixed(2)} $</p>
           </div>
         </div>
 
