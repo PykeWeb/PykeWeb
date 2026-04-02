@@ -41,7 +41,11 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [member, setMember] = useState('')
   const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmittingCashOut, setIsSubmittingCashOut] = useState(false)
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
+  const [manualItemLabel, setManualItemLabel] = useState('')
+  const [manualCashAmount, setManualCashAmount] = useState('')
+  const [manualReason, setManualReason] = useState('')
   const memberSelectOptions = useMemo(() => {
     const current = member.trim()
     if (!current) return memberOptions
@@ -91,6 +95,11 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const stockById = useMemo(() => (
     Object.fromEntries(items.map((item) => [item.id, Math.max(0, Number(item.stock || 0))]))
   ), [items])
+
+  const cashItem = useMemo(
+    () => items.find((item) => String(item.name || '').trim().toLowerCase() === 'argent') ?? null,
+    [items]
+  )
 
   const safeTotalItems = useMemo(
     () => selectedItems.reduce((sum, entry) => sum + Math.max(0, Number(entry.quantity || 0)), 0),
@@ -178,6 +187,52 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setSelectedItems([])
     setCounterparty('')
     setMember(defaultMemberName)
+  }
+
+  const submitManualCashOut = async () => {
+    const amount = Math.max(0, Number(manualCashAmount || 0))
+    if (!cashItem?.id) {
+      toast.error('Aucun item "argent" actif trouvé.')
+      return
+    }
+    if (!manualItemLabel.trim()) {
+      toast.error('Indique le nom de l’item non listé.')
+      return
+    }
+    if (amount <= 0) {
+      toast.error('Montant invalide.')
+      return
+    }
+    if (!manualReason.trim()) {
+      toast.error('Ajoute une raison de sortie.')
+      return
+    }
+
+    setIsSubmittingCashOut(true)
+    try {
+      const memberNote = member.trim() ? `Membre: ${member.trim()}` : null
+      const reasonNote = `Sortie argent hors catalogue • Item: ${manualItemLabel.trim()} • Raison: ${manualReason.trim()}`
+      const notes = memberNote ? `${reasonNote} • ${memberNote}` : reasonNote
+      await createFinanceTransaction({
+        item_id: cashItem.id,
+        mode: 'sell',
+        quantity: 1,
+        unit_price: amount,
+        counterparty: counterparty.trim() || manualItemLabel.trim(),
+        notes,
+        payment_mode: 'other',
+      })
+      toast.success('Sortie argent enregistrée.')
+      setManualItemLabel('')
+      setManualCashAmount('')
+      setManualReason('')
+      const refreshed = await listCatalogItemsUnified()
+      setItems(refreshed)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Impossible d’enregistrer la sortie argent.')
+    } finally {
+      setIsSubmittingCashOut(false)
+    }
   }
 
   const submitTransaction = async () => {
@@ -300,6 +355,22 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Valider
           </PrimaryButton>
+        </div>
+
+        <div className="rounded-2xl border border-amber-300/25 bg-amber-500/[0.08] p-3">
+          <p className="text-sm font-semibold text-amber-100">Sortie argent (item non listé)</p>
+          <p className="mt-1 text-xs text-amber-100/75">
+            Utilise ce bloc si l’item n’existe pas dans la liste. La sortie est enregistrée sur l’item "argent" avec motif détaillé.
+          </p>
+          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            <Input value={manualItemLabel} onChange={(event) => setManualItemLabel(event.target.value)} placeholder="Nom item non listé" className="h-10" />
+            <Input value={manualCashAmount} onChange={(event) => setManualCashAmount(event.target.value)} inputMode="decimal" placeholder="Montant sortie argent" className="h-10" />
+            <Input value={manualReason} onChange={(event) => setManualReason(event.target.value)} placeholder="Raison particulière" className="h-10" />
+            <PrimaryButton onClick={() => void submitManualCashOut()} disabled={isSubmittingCashOut} className="h-10">
+              {isSubmittingCashOut ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Sortir argent
+            </PrimaryButton>
+          </div>
         </div>
       </Panel>
 

@@ -94,6 +94,24 @@ function resolveFlowMode(type: ProductionType, flowMode: FlowMode): FlowMode {
   return flowMode
 }
 
+function cokeFlowQuantities(flowMode: FlowMode, seedQty: number, leafQty: number, brickQty: number) {
+  const safeSeed = Math.max(0, seedQty)
+  const safeLeaf = Math.max(0, leafQty)
+  const safeBrick = Math.max(0, brickQty)
+  const leavesInput = flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick'
+    ? safeSeed
+    : flowMode === 'leaf_to_brick' || flowMode === 'two_steps_transforms'
+      ? safeLeaf
+      : 0
+  const bricksInput = flowMode === 'brick_to_pouch'
+    ? safeBrick
+    : Math.floor(leavesInput * (1 - BRICK_TAX_PERCENT / 100))
+  const pouchesOutput = (flowMode === 'brick_to_pouch' || flowMode === 'two_steps_transforms' || flowMode === 'full_chain')
+    ? Math.max(0, Math.floor(bricksInput * POUCHES_PER_BRICK))
+    : 0
+  return { leavesInput, bricksInput, pouchesOutput }
+}
+
 async function findDrugItemId(stage: 'seed' | 'leaf' | 'brick' | 'pouch', type: string) {
   const token = typeToken(type)
   const items = await listDrugItems()
@@ -223,15 +241,15 @@ export default function SuiviProductionClient() {
     }
     const flowMode = resolveFlowMode(newRequest.type, newRequest.flowMode)
     const seedQty = Math.max(0, Number(newRequest.seedQty || 0))
-    const leaves = flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick'
-      ? seedQty
-      : flowMode === 'leaf_to_brick' || flowMode === 'two_steps_transforms'
-        ? Math.max(0, Number(newRequest.leafQty || 0))
-        : 0
-    const netBricks = flowMode === 'brick_to_pouch'
-      ? Math.max(0, Number(newRequest.brickQty || 0))
-      : Math.floor(leaves * (1 - BRICK_TAX_PERCENT / 100))
-    const pouches = Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
+    const quantities = cokeFlowQuantities(
+      flowMode,
+      seedQty,
+      Math.max(0, Number(newRequest.leafQty || 0)),
+      Math.max(0, Number(newRequest.brickQty || 0)),
+    )
+    const leaves = quantities.leavesInput
+    const netBricks = quantities.bricksInput
+    const pouches = quantities.pouchesOutput
     return { seedQty, leaves, netBricks, pouches }
   }, [newRequest.brickQty, newRequest.expectedOutputManual, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty, newRequest.type])
 
@@ -250,7 +268,9 @@ export default function SuiviProductionClient() {
     const flowMode = resolveFlowMode(newRequest.type, newRequest.flowMode)
     const seedCostTotal = (flowMode === 'seed_only' || flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick') ? conversionFromForm.seedQty * seedPrice : 0
     const brickCostTotal = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? conversionFromForm.leaves * brickTransformCost : 0
-    const pouchCostTotal = flowMode === 'brick_to_pouch' ? Math.max(0, Number(newRequest.brickQty || 0)) * pouchTransformCost : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? conversionFromForm.leaves * pouchTransformCost : 0
+    const pouchCostTotal = (flowMode === 'brick_to_pouch' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms')
+      ? conversionFromForm.netBricks * pouchTransformCost
+      : 0
     const totalTransformCost = brickCostTotal + pouchCostTotal
     const totalCost = seedCostTotal + totalTransformCost
     const totalSale = conversionFromForm.pouches * pouchSalePrice
@@ -340,13 +360,27 @@ export default function SuiviProductionClient() {
     const brickUnitCost = Number(selected.brick_transform_cost ?? brickTransformCost ?? 0)
     const pouchUnitCost = Number(selected.pouch_transform_cost ?? pouchTransformCost ?? 0)
     const qtySent = Math.max(0, Number(selected.quantity_sent || 0))
+    const expectedOutput = Math.max(0, Number(selected.expected_output || 0))
     const hasSalePrice = saleUnitPrice > 0
-    const revenue = hasSalePrice ? selected.expected_output * saleUnitPrice : 0
+    const quantities = cokeFlowQuantities(
+      flowMode,
+      qtySent,
+      qtySent,
+      qtySent,
+    )
+    const expectedPouches = selected.type === 'meth'
+      ? expectedOutput
+      : (flowMode === 'seed_only' || flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick'
+        ? 0
+        : expectedOutput)
+    const revenue = hasSalePrice ? expectedPouches * saleUnitPrice : 0
     const seedCost = (flowMode === 'seed_only' || flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick') ? (qtySent * seedUnitPrice) : 0
-    const brickCost = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (qtySent * brickUnitCost) : 0
+    const brickCost = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms')
+      ? (quantities.leavesInput * brickUnitCost)
+      : 0
     const pouchCost = flowMode === 'brick_to_pouch'
       ? (qtySent * pouchUnitCost)
-      : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (qtySent * pouchUnitCost) : 0
+      : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (Math.max(0, Math.floor(expectedOutput / POUCHES_PER_BRICK)) * pouchUnitCost) : 0
     const transformCost = brickCost + pouchCost
     const totalCost = seedCost + transformCost
     return {
