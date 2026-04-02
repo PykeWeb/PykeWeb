@@ -227,6 +227,16 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     toast.success('Kit complet meth ajouté.')
   }
 
+  function addOtherQuickItemToSelection() {
+    const tablette = findItemByAliases(['tablette', 'tablet'])
+    if (!tablette) {
+      toast.error('Item "Tablette" introuvable dans le catalogue.')
+      return
+    }
+    addItem(tablette, 1)
+    toast.success('Tablette ajoutée.')
+  }
+
   const submitManualCashFlow = async () => {
     const amount = Math.max(0, Number(manualCashAmount || 0))
     if (amount <= 0) return
@@ -394,6 +404,15 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
               <p className="mt-1 text-xs text-violet-100/75">
                 Ici tu peux faire une entrée/sortie d’argent (selon le mode), avec item non listé + raison. Tu peux aussi cumuler avec les items sélectionnés.
               </p>
+              {isTradeVariant && mode === 'entree' ? (
+                <div className="mt-3 rounded-xl border border-violet-300/25 bg-violet-400/[0.08] p-2">
+                  <p className="text-xs text-violet-100/90">Ajout rapide (autres):</p>
+                  <div className="mt-2 grid gap-2 md:grid-cols-[1fr_auto]">
+                    <Input value="Tablette (x1)" readOnly className="h-10 opacity-90" />
+                    <SecondaryButton onClick={addOtherQuickItemToSelection} className="h-10">Ajouter tablette</SecondaryButton>
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-3 grid gap-2">
                 <Input value={manualItemLabel} onChange={(event) => setManualItemLabel(event.target.value)} placeholder="Nom item non listé (optionnel)" className="h-10" />
                 <div className="grid gap-2 md:grid-cols-2">
@@ -404,7 +423,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             </div>
           ) : null}
 
-          {isTradeVariant && mode === 'entree' ? (
+          {isTradeVariant && mode === 'entree' && category === 'drugs' ? (
             <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3">
               <p className="text-sm font-semibold text-cyan-100">Achat kit complet Meth</p>
               <p className="mt-1 text-xs text-cyan-100/75">Ajoute Machine + accessoires au stock. Prix machine modifiable (promo possible), accessoires inclus à 0$.</p>

@@ -31,6 +31,24 @@ const ACTIVITY_EQUIPMENT_RULES: Partial<Record<ActivityType, string[]>> = {
   Superette: ['grosse perceuse'],
 }
 
+const ACTIVITY_SPECIAL_OBJECT_NAMES = new Set([
+  "bouteilles d'eau",
+  'argent',
+  'telephone de hack',
+  'téléphone de hack',
+  'disqueuse',
+  'kit de cambu',
+  'kit de cambriolage',
+])
+
+function normalizeLabel(value: string) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -145,8 +163,9 @@ export default function ActivitesPage() {
     return catalogItems.filter((item) => {
       if (!item.is_active) return false
       if (item.category === 'objects') return true
+      const normalizedName = normalizeLabel(item.name)
+      if (ACTIVITY_SPECIAL_OBJECT_NAMES.has(normalizedName)) return true
       if (item.category !== 'drugs') return false
-      const normalizedName = String(item.name || '').trim().toLowerCase()
       return normalizedName === 'pochon de coke' || normalizedName === 'pochon de meth'
     })
   }, [catalogItems])
