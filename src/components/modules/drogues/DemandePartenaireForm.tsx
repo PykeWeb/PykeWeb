@@ -43,6 +43,13 @@ const MODE_OPTIONS_METH: { value: DemandMode; label: string }[] = [
   { value: 'full_chain', label: 'Achat table (transfo incluse)' },
 ]
 
+function normalizeProductionType(raw: string): ProductionType {
+  const value = String(raw || '').toLowerCase()
+  if (value.includes('meth')) return 'meth'
+  if (value.includes('coke')) return 'coke'
+  return 'other'
+}
+
 export function DemandePartenaireForm({
   initial,
   submitLabel,
@@ -54,7 +61,7 @@ export function DemandePartenaireForm({
   onSubmit: (value: DemandFormValue, expectedOutput: number) => Promise<void>
   onCancel?: () => void
 }) {
-  const [form, setForm] = useState<DemandFormValue>(initial)
+  const [form, setForm] = useState<DemandFormValue>({ ...initial, type: normalizeProductionType(initial.type) })
   const [showNote, setShowNote] = useState(Boolean(initial.note))
   const [saving, setSaving] = useState(false)
   const isMeth = form.type === 'meth'
@@ -72,6 +79,7 @@ export function DemandePartenaireForm({
 
   const calc = useMemo(() => computeDemandMetrics({
     mode: form.mode,
+    isMeth,
     quantitySeeds: form.quantitySeeds,
     quantityLeaves: form.quantityLeaves,
     quantityBricks: form.quantityBricks,
@@ -79,7 +87,7 @@ export function DemandePartenaireForm({
     pouchSalePrice: form.pouchSalePrice,
     brickTransformCost: form.brickTransformCost,
     pouchTransformCost: form.pouchTransformCost,
-  }), [form])
+  }), [form, isMeth])
 
   const quantityLabel =
     isMeth
