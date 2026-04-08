@@ -167,6 +167,37 @@ async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qt
   if (insertError) throw insertError
 }
 
+async function adjustCashStock(groupId: string, delta: number) {
+  if (delta === 0) return
+  const supabase = getSupabaseAdmin()
+  const { data: cashItem, error: cashLoadError } = await supabase
+    .from('catalog_items')
+    .select('id,stock,name')
+    .eq('group_id', groupId)
+    .ilike('name', 'argent')
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle<{ id: string; stock: number | null; name: string }>()
+
+  if (cashLoadError) throw cashLoadError
+  if (!cashItem?.id) throw new ApiError('Item "argent" introuvable dans le catalogue.', 400)
+
+  const currentStock = Math.max(0, Number(cashItem.stock || 0))
+  const nextStock = Math.max(0, currentStock + delta)
+  if (delta < 0 && currentStock < Math.abs(delta)) {
+    throw new ApiError(`Stock insuffisant sur "${cashItem.name}" (requis: ${Math.abs(delta)}).`, 400)
+  }
+
+  const { error: updateCashError } = await supabase
+    .from('catalog_items')
+    .update({ stock: nextStock, updated_at: new Date().toISOString() })
+    .eq('group_id', groupId)
+    .eq('id', cashItem.id)
+
+  if (updateCashError) throw updateCashError
+}
+
 function buildGroupStats(runs: TabletDailyRun[]): GroupTabletStats {
   const today = toDayKey()
   const weekPrefix = today.slice(0, 8)
@@ -308,6 +339,7 @@ export async function POST(request: Request) {
     if (insertError) throw insertError
 
     try {
+      await adjustCashStock(session.groupId, -totalCost)
       for (const line of lines) {
         const option = options.find((item) => item.key === line.key)
         if (!option) continue
@@ -315,6 +347,11 @@ export async function POST(request: Request) {
       }
     } catch (catalogError: unknown) {
       await supabase.from('tablet_daily_runs').delete().eq('id', inserted.id).eq('group_id', session.groupId)
+      try {
+        await adjustCashStock(session.groupId, totalCost)
+      } catch {
+        // noop: preserve original error path
+      }
       throw catalogError
     }
 

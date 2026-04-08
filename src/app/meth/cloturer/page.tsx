@@ -87,8 +87,8 @@ export default function MethClosePage() {
         })
       }
 
-      const output = findItemByAliases(items, ['pochon de meth', 'pochon meth', 'sachet meth'])
-      const qty = Math.max(0, Math.floor((Number(realMethBrut) || 0) * 2))
+      const output = findItemByAliases(items, ['meth brut', 'meth pure', 'meth pur'])
+      const qty = Math.max(0, Math.floor(Number(realMethBrut) || 0))
       if (output && qty > 0) {
         await createFinanceTransaction({
           item_id: output.id,
@@ -101,7 +101,7 @@ export default function MethClosePage() {
         })
       }
 
-      toast.success('Session meth validée.')
+      toast.success('Session meth validée (meth brut ajoutée, sans pochons).')
       router.push('/items?view=tools')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erreur session meth')
@@ -160,7 +160,7 @@ export default function MethClosePage() {
             <Input value={realMethBrut} onChange={(e) => setRealMethBrut(e.target.value)} inputMode="numeric" />
             <button type="button" onClick={() => setRealMethBrut(String((Number(realMethBrut) || 0) + 1))} className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] text-lg">+</button>
           </div>
-          <p className="mt-2 text-xs text-emerald-100/75">Pochons approximatifs (x2): <span className="font-semibold">{approxPouches}</span></p>
+          <p className="mt-2 text-xs text-emerald-100/75">Estimatif transfo plus tard (x2 pochons): <span className="font-semibold">{approxPouches}</span></p>
         </div>
       </div>
 

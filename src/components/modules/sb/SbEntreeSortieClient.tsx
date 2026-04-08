@@ -47,6 +47,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [manualReason, setManualReason] = useState('')
   const [methKitMachines, setMethKitMachines] = useState('1')
   const [methKitUnitPrice, setMethKitUnitPrice] = useState('3300')
+  const [showManualCashEditor, setShowManualCashEditor] = useState(false)
+  const [showMethKitEditor, setShowMethKitEditor] = useState(false)
   const memberSelectOptions = useMemo(() => {
     const current = member.trim()
     if (!current) return memberOptions
@@ -198,6 +200,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setManualReason('')
     setMethKitMachines('1')
     setMethKitUnitPrice('3300')
+    setShowManualCashEditor(false)
+    setShowMethKitEditor(false)
   }
 
   function addMethKitToSelection() {
@@ -398,46 +402,57 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             </label>
           </div>
 
-          {category === 'custom' ? (
-            <div className="rounded-2xl border border-violet-300/25 bg-violet-500/[0.08] p-3">
-              <p className="text-sm font-semibold text-violet-100">Autre(s) • Argent / item non listé</p>
-              <p className="mt-1 text-xs text-violet-100/75">
-                Ici tu peux faire une entrée/sortie d’argent (selon le mode), avec item non listé + raison. Tu peux aussi cumuler avec les items sélectionnés.
-              </p>
-              {isTradeVariant && mode === 'entree' ? (
-                <div className="mt-3 rounded-xl border border-violet-300/25 bg-violet-400/[0.08] p-2">
-                  <p className="text-xs text-violet-100/90">Ajout rapide (autres):</p>
-                  <div className="mt-2 grid gap-2 md:grid-cols-[1fr_auto]">
-                    <Input value="Tablette (x1)" readOnly className="h-10 opacity-90" />
-                    <SecondaryButton onClick={addOtherQuickItemToSelection} className="h-10">Ajouter tablette</SecondaryButton>
-                  </div>
-                </div>
-              ) : null}
-              <div className="mt-3 grid gap-2">
-                <Input value={manualItemLabel} onChange={(event) => setManualItemLabel(event.target.value)} placeholder="Nom item non listé (optionnel)" className="h-10" />
-                <div className="grid gap-2 md:grid-cols-2">
-                  <Input value={manualCashAmount} onChange={(event) => setManualCashAmount(event.target.value)} inputMode="decimal" placeholder={`Montant argent (${mode === 'sortie' ? 'sortie' : 'entrée'})`} className="h-10" />
-                  <Input value={manualReason} onChange={(event) => setManualReason(event.target.value)} placeholder="Raison (obligatoire si montant)" className="h-10" />
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {isTradeVariant && mode === 'entree' && category === 'drugs' ? (
-            <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3">
-              <p className="text-sm font-semibold text-cyan-100">Achat kit complet Meth</p>
-              <p className="mt-1 text-xs text-cyan-100/75">Ajoute Machine + accessoires au stock. Prix machine modifiable (promo possible), accessoires inclus à 0$.</p>
-              <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                <Input value={methKitMachines} onChange={(event) => setMethKitMachines(event.target.value)} inputMode="numeric" placeholder="Nb machines" className="h-10" />
-                <Input value={methKitUnitPrice} onChange={(event) => setMethKitUnitPrice(event.target.value)} inputMode="decimal" placeholder="Prix machine (ex: 3300)" className="h-10" />
-                <SecondaryButton onClick={addMethKitToSelection} className="h-10">Ajouter kit meth</SecondaryButton>
-              </div>
-            </div>
-          ) : null}
-
           <div className="flex-1 space-y-2 overflow-y-auto pr-1">
             {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
             {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
+            {category === 'custom' ? (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowManualCashEditor(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setShowManualCashEditor(true)
+                  }
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-violet-300/25 bg-violet-500/[0.08] px-3 py-2 text-left transition hover:border-violet-300/45 hover:bg-violet-500/[0.14]"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-lg border border-violet-300/35 bg-violet-500/[0.14]">
+                    <Sparkles className="h-5 w-5 text-violet-100" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">Argent / item non listé</p>
+                    <p className="text-xs text-white/70">Clique pour saisir montant, raison et item libre.</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {isTradeVariant && mode === 'entree' && category === 'drugs' ? (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowMethKitEditor(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setShowMethKitEditor(true)
+                  }
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] px-3 py-2 text-left transition hover:border-cyan-300/45 hover:bg-cyan-500/[0.14]"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-lg border border-cyan-300/35 bg-cyan-500/[0.14]">
+                    <Pill className="h-5 w-5 text-cyan-100" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">Achat kit complet Meth</p>
+                    <p className="text-xs text-white/70">Ajoute machine + accessoires avec prix machine modifiable.</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {filteredItems.map((item) => {
               const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
               const CategoryIcon =
@@ -488,6 +503,33 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         <Panel className="flex h-full max-h-[44vh] flex-col xl:col-span-2">
           <h2 className="text-xl font-semibold text-white">Objets sélectionnés</h2>
           <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+            {showManualCashEditor ? (
+              <div className="rounded-xl border border-violet-300/25 bg-violet-500/[0.08] p-2">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-violet-100">Argent / item non listé</p>
+                  {isTradeVariant && mode === 'entree' ? (
+                    <SecondaryButton onClick={addOtherQuickItemToSelection} className="h-8 px-3 text-xs">+ Tablette</SecondaryButton>
+                  ) : null}
+                </div>
+                <div className="grid gap-2">
+                  <Input value={manualItemLabel} onChange={(event) => setManualItemLabel(event.target.value)} placeholder="Nom item non listé (optionnel)" className="h-9" />
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <Input value={manualCashAmount} onChange={(event) => setManualCashAmount(event.target.value)} inputMode="decimal" placeholder={`Montant argent (${mode === 'sortie' ? 'sortie' : 'entrée'})`} className="h-9" />
+                    <Input value={manualReason} onChange={(event) => setManualReason(event.target.value)} placeholder="Raison (obligatoire si montant)" className="h-9" />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {showMethKitEditor && isTradeVariant && mode === 'entree' ? (
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-2">
+                <p className="text-sm font-semibold text-cyan-100">Kit complet Meth</p>
+                <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                  <Input value={methKitMachines} onChange={(event) => setMethKitMachines(event.target.value)} inputMode="numeric" placeholder="Nb machines" className="h-9" />
+                  <Input value={methKitUnitPrice} onChange={(event) => setMethKitUnitPrice(event.target.value)} inputMode="decimal" placeholder="Prix machine" className="h-9" />
+                  <SecondaryButton onClick={addMethKitToSelection} className="h-9">Ajouter kit</SecondaryButton>
+                </div>
+              </div>
+            ) : null}
             {selectedItems.length === 0 ? <p className="py-8 text-center text-sm text-white/55">Aucun objet sélectionné.</p> : null}
             {selectedItems.map((entry) => {
               const ItemIcon =

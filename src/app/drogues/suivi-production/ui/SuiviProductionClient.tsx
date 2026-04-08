@@ -172,6 +172,7 @@ export default function SuiviProductionClient() {
   const [pouchTransformCost, setPouchTransformCost] = useState(0)
   const [assetImages, setAssetImages] = useState<{ pouch: string | null; brick: string | null; leaf: string | null }>({ pouch: null, brick: null, leaf: null })
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed'>('all')
+  const [deliveryModal, setDeliveryModal] = useState<{ row: DrugProductionTrackingRow; realPouches: string } | null>(null)
   const isMeth = newRequest.type === 'meth'
   const [catalogItems, setCatalogItems] = useState<Array<{ name: string; buy_price: number | null; sell_price: number | null; image_url: string | null }>>([])
 
@@ -512,10 +513,10 @@ export default function SuiviProductionClient() {
     }
   }
 
-  async function markAsDelivered(row: DrugProductionTrackingRow) {
-    const deliveredQty = Math.max(0, Number(row.expected_output || 0))
+  async function confirmDelivered(row: DrugProductionTrackingRow, deliveredQtyRaw: number) {
+    const deliveredQty = Math.max(0, Math.floor(Number(deliveredQtyRaw || 0)))
     if (deliveredQty <= 0) {
-      toast.error('Quantité attendue invalide.')
+      toast.error('Quantité de pochons invalide.')
       return
     }
 
@@ -536,10 +537,17 @@ export default function SuiviProductionClient() {
       })
       setRows((prev) => prev.map((entry) => (entry.id === row.id ? updated : entry)))
       setSelectedId(updated.id)
-      toast.success('Marqué comme livrée et stock mis à jour.')
+      toast.success('Transformation validée et stock mis à jour.')
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Livraison impossible.')
     }
+  }
+
+  function openDeliveryModal(row: DrugProductionTrackingRow) {
+    setDeliveryModal({
+      row,
+      realPouches: String(Math.max(0, Math.floor(Number(row.expected_output || 0)))),
+    })
   }
 
   return (
@@ -675,7 +683,7 @@ export default function SuiviProductionClient() {
                 </div>
               ) : null}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button type="button" onClick={() => void markAsDelivered(selected)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 font-semibold text-emerald-100 transition hover:bg-emerald-500/25">
+                <button type="button" onClick={() => openDeliveryModal(selected)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 font-semibold text-emerald-100 transition hover:bg-emerald-500/25">
                   Livrée
                 </button>
                 <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-3 font-semibold text-amber-100 transition hover:bg-amber-500/25">
@@ -948,6 +956,42 @@ export default function SuiviProductionClient() {
               <PrimaryButton onClick={() => void handleCreateRequest()} disabled={saving} className="h-10 px-4">
                 <Plus className="h-4 w-4" />
                 Créer la demande
+              </PrimaryButton>
+            </div>
+          </Panel>
+        </div>
+      ) : null}
+
+      {deliveryModal ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#040916]/75 p-4 backdrop-blur-sm">
+          <Panel className="w-full max-w-md">
+            <h3 className="text-lg font-semibold text-white">Validation de la transformation</h3>
+            <p className="mt-1 text-sm text-white/70">
+              {deliveryModal.row.partner_name} • {typeLabel(deliveryModal.row.type)}
+            </p>
+            <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3 text-sm">
+              <p className="text-white/70">Quantité estimée</p>
+              <p className="font-semibold text-cyan-100">{Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0)))} pochons</p>
+            </div>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-white/75">Pochons réellement récupérés</span>
+              <Input
+                value={deliveryModal.realPouches}
+                onChange={(event) => setDeliveryModal((prev) => (prev ? { ...prev, realPouches: event.target.value } : prev))}
+                inputMode="numeric"
+              />
+              <span className="text-xs text-white/60">La valeur saisie sera ajoutée au stock final.</span>
+            </label>
+            <div className="mt-4 flex justify-end gap-2">
+              <SecondaryButton onClick={() => setDeliveryModal(null)}>Annuler</SecondaryButton>
+              <PrimaryButton
+                onClick={async () => {
+                  const qty = Math.max(0, Math.floor(Number(deliveryModal.realPouches || 0)))
+                  await confirmDelivered(deliveryModal.row, qty)
+                  setDeliveryModal(null)
+                }}
+              >
+                Valider la transformation
               </PrimaryButton>
             </div>
           </Panel>
