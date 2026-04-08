@@ -7,13 +7,14 @@ import { CenteredFormLayout } from '@/components/ui/CenteredFormLayout'
 import { Input } from '@/components/ui/Input'
 import { ImageDropzone } from '@/components/modules/objets/ImageDropzone'
 import { PrimaryButton, SecondaryButton, SearchInput, TabPill } from '@/components/ui/design-system'
+import { MemberSelect } from '@/components/ui/MemberSelect'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { createExpense, type ExpenseItemType } from '@/lib/expensesApi'
 import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import { getTenantSession } from '@/lib/tenantSession'
 
 type PickItem = {
-  type: Exclude<ExpenseItemType, 'custom'>
+  type: ExpenseItemType
   id: string
   name: string
   price: number
@@ -28,14 +29,15 @@ type SelectedExpenseItem = PickItem & {
 
 const ITEMS_JSON_MARKER = '__ITEMS_JSON__:'
 
-const catalogTypeOptions: Array<{ value: Exclude<ExpenseItemType, 'custom'>; label: string }> = [
+const catalogTypeOptions: Array<{ value: ExpenseItemType; label: string }> = [
   { value: 'objects', label: 'Objets' },
   { value: 'weapons', label: 'Armes' },
   { value: 'equipment', label: 'Équipement' },
   { value: 'drugs', label: 'Drogues' },
+  { value: 'custom', label: 'Autres' },
 ]
 
-async function enrichMissingImagesByName(category: Exclude<ExpenseItemType, 'custom'>, baseItems: PickItem[]) {
+async function enrichMissingImagesByName(category: ExpenseItemType, baseItems: PickItem[]) {
   const missing = baseItems.filter((item) => !item.image_url).length
   if (missing === 0) return baseItems
 
@@ -79,7 +81,7 @@ export function NouvelleDepenseForm({
 
   const [memberName, setMemberName] = useState('')
   const [memberOptions, setMemberOptions] = useState<string[]>([])
-  const [itemType, setItemType] = useState<Exclude<ExpenseItemType, 'custom'>>('objects')
+  const [itemType, setItemType] = useState<ExpenseItemType>('objects')
   const [useTemporaryItem, setUseTemporaryItem] = useState(false)
   const [items, setItems] = useState<PickItem[]>([])
   const [selectedItems, setSelectedItems] = useState<SelectedExpenseItem[]>([])
@@ -244,14 +246,7 @@ export function NouvelleDepenseForm({
         <div className="md:col-span-2 grid gap-3 xl:grid-cols-[1fr_1fr_auto] xl:items-end">
           <div>
             <label className="mb-1 block text-xs text-white/60">Membre</label>
-            <select
-              value={memberName}
-              onChange={(event) => setMemberName(event.target.value)}
-              className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
-            >
-              <option value="">Choisir un joueur</option>
-              {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
+            <MemberSelect value={memberName} onChange={setMemberName} options={memberSelectOptions} />
           </div>
 
           <div>
@@ -283,21 +278,16 @@ export function NouvelleDepenseForm({
                 {option.label}
               </TabPill>
             ))}
-            <TabPill active={useTemporaryItem} onClick={() => setUseTemporaryItem(true)}>
-              {'Autres\u200b'}
-            </TabPill>
-            {!useTemporaryItem ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setUseTemporaryItem(true)
-                  setTemporaryName((prev) => prev || itemQuery.trim())
-                }}
-                className="inline-flex h-8 items-center rounded-xl border border-fuchsia-300/35 bg-fuchsia-500/12 px-3 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20"
-              >
-                Item absent ? Saisie libre
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setUseTemporaryItem(true)
+                setTemporaryName((prev) => prev || itemQuery.trim())
+              }}
+              className="inline-flex h-8 items-center rounded-xl border border-fuchsia-300/35 bg-fuchsia-500/12 px-3 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20"
+            >
+              Item absent ? Saisie libre
+            </button>
           </div>
           <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">
             <span className="text-sm font-semibold text-white">{`Total : ${Number.isFinite(total) ? total.toFixed(2) : '0.00'} $`}</span>

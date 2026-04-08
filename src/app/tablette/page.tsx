@@ -7,6 +7,7 @@ import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { MemberSelect } from '@/components/ui/MemberSelect'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, saveTenantSession } from '@/lib/tenantSession'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
@@ -176,14 +177,7 @@ export default function TablettePage() {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
-              <select
-                value={memberName}
-                onChange={(event) => setMemberName(event.target.value)}
-                className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
-              >
-                <option value="">Choisir un joueur</option>
-                {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
+              <MemberSelect value={memberName} onChange={setMemberName} options={memberSelectOptions} />
               {doneTodayByMember ? <p className="mt-1 text-xs text-amber-200">Ce membre a déjà validé aujourd’hui.</p> : null}
             </div>
 

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 import { createAppLog } from '@/lib/logsApi'
+import { resolveCatalogItemId } from '@/lib/itemsApi'
 
 export type ExpenseStatus = 'pending' | 'paid'
 
@@ -91,6 +92,7 @@ export async function createExpense(args: {
   description?: string
   proofFile?: File | null
 }): Promise<DbExpense> {
+  const resolvedItemId = args.item_id ? await resolveCatalogItemId(args.item_id) : null
   const normalizedUnitPrice = toNonNegative(args.unit_price)
   const defaultUnitPrice = toNonNegative(args.default_unit_price ?? normalizedUnitPrice)
   const normalizedQuantity = Math.max(1, Math.floor(toNonNegative(args.quantity, 1)))
@@ -103,7 +105,7 @@ export async function createExpense(args: {
       group_id: currentGroupId(),
       member_name: args.member_name,
       item_source: args.item_source,
-      item_id: args.item_id || null,
+      item_id: resolvedItemId,
       item_label: args.item_label,
       unit_price: normalizedUnitPrice,
       unit_price_override: hasOverride ? normalizedUnitPrice : null,

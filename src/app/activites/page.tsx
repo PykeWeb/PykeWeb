@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { Button } from '@/components/ui/Button'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
+import { MemberSelect } from '@/components/ui/MemberSelect'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { createActivity, listActivities, type ActivityListResponse } from '@/lib/activitiesApi'
 import {
@@ -13,7 +14,7 @@ import {
   type ActivityObjectLineInput,
   type ActivityType,
 } from '@/lib/types/activities'
-import { listCatalogItemsUnified } from '@/lib/itemsApi'
+import { listCatalogItemsUnified, resolveCatalogItemId } from '@/lib/itemsApi'
 import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
@@ -239,8 +240,12 @@ export default function ActivitesPage() {
     if (selectedObjectRows.length === 0) return setError('Ajoute au moins un objet.')
     if (activityType !== 'Boite au lettre' && selectedEquipmentRows.length === 0) return setError('Ajoute au moins un équipement.')
 
-    const objectLines: ActivityObjectLineInput[] = selectedObjectRows.map((row) => ({ object_item_id: row.item.id, quantity: row.qty }))
-    const equipmentLines: ActivityEquipmentLineInput[] = selectedEquipmentRows.map((row) => ({ equipment_item_id: row.item.id, quantity: row.qty }))
+    const objectLines: ActivityObjectLineInput[] = await Promise.all(
+      selectedObjectRows.map(async (row) => ({ object_item_id: await resolveCatalogItemId(row.item.id), quantity: row.qty }))
+    )
+    const equipmentLines: ActivityEquipmentLineInput[] = await Promise.all(
+      selectedEquipmentRows.map(async (row) => ({ equipment_item_id: await resolveCatalogItemId(row.item.id), quantity: row.qty }))
+    )
 
     try {
       setSaving(true)
@@ -318,14 +323,7 @@ export default function ActivitesPage() {
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Membre</span>
-            <select
-              value={memberName}
-              onChange={(event) => setMemberName(event.target.value)}
-              className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
-            >
-              <option value="">Choisir un joueur</option>
-              {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
+            <MemberSelect value={memberName} onChange={setMemberName} options={memberSelectOptions} />
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Activité</span>
