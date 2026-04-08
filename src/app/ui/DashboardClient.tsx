@@ -5,6 +5,7 @@ import type { ClipboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { currentGroupId } from '@/lib/tenantScope'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { canAccessPath } from '@/lib/accessControl'
 import { getTenantSession } from '@/lib/tenantSession'
 import { StatCard } from '@/components/modules/dashboard/StatCard'
@@ -35,9 +36,10 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
-type ActivityView = 'summary' | 'expenses' | 'stock' | 'production' | 'activities'
+type ActivityView = 'summary' | 'expenses' | 'stock' | 'production' | 'activities' | 'tablet'
 type StockActivityCategory = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs'
 type StockBubbleKey = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom'
+type TabletRun = { id: string; member_name: string; total_items: number; total_cost: number; created_at: string }
 
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
@@ -104,6 +106,7 @@ export function DashboardClient() {
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
   const [recentDrugTrackings, setRecentDrugTrackings] = useState<DrugProductionTrackingRow[]>([])
   const [recentActivities, setRecentActivities] = useState<ActivityEntry[]>([])
+  const [recentTabletRuns, setRecentTabletRuns] = useState<TabletRun[]>([])
 
   const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>(createEmptyCategoryCounts)
   const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>(createEmptyMovementCounts)
@@ -211,11 +214,12 @@ export function DashboardClient() {
       setLoading(true)
       try {
         currentGroupId()
-        const [financeEntries, catalogItems, drugTrackings, activities] = await Promise.all([
+        const [financeEntries, catalogItems, drugTrackings, activities, tabletRes] = await Promise.all([
           listFinanceEntries(),
           listCatalogItemsUnified(),
           listDrugProductionTrackings().catch(() => []),
           listActivities().catch(() => ({ entries: [], summaries: [], settings: { group_id: '', default_percent_per_object: 2 } })),
+          fetch('/api/tablette/atelier', withTenantSessionHeader({ cache: 'no-store' })).catch(() => null),
         ])
 
         if (!alive) return
@@ -273,6 +277,13 @@ export function DashboardClient() {
         setRecentExpenses(recentExpenseRows)
         setRecentDrugTrackings((drugTrackings ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
         setRecentActivities((activities.entries ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
+        if (tabletRes?.ok) {
+          const tabletPayload = (await tabletRes.json()) as { runs?: TabletRun[] }
+          const runs = Array.isArray(tabletPayload.runs) ? tabletPayload.runs : []
+          setRecentTabletRuns(runs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
+        } else {
+          setRecentTabletRuns([])
+        }
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
       } finally {
@@ -309,7 +320,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'expenses', 'stock', 'production', 'activities']
+    const views: ActivityView[] = ['summary', 'expenses', 'stock', 'production', 'activities', 'tablet']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -499,6 +510,7 @@ export function DashboardClient() {
               { key: 'stock', label: 'Stock', active: 'border-emerald-300/65 bg-gradient-to-r from-emerald-500/35 to-teal-500/30 text-emerald-50', idle: 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100/85 hover:bg-emerald-500/18' },
               { key: 'production', label: 'Production', active: 'border-fuchsia-300/65 bg-gradient-to-r from-fuchsia-500/35 to-violet-500/30 text-fuchsia-50', idle: 'border-fuchsia-300/25 bg-fuchsia-500/10 text-fuchsia-100/85 hover:bg-fuchsia-500/18' },
               { key: 'activities', label: 'Activités', active: 'border-sky-300/65 bg-gradient-to-r from-sky-500/35 to-indigo-500/30 text-sky-50', idle: 'border-sky-300/25 bg-sky-500/10 text-sky-100/85 hover:bg-sky-500/18' },
+              { key: 'tablet', label: 'Tablette', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -668,6 +680,21 @@ export function DashboardClient() {
                       <p className="text-xs text-white/60">{new Date(entry.created_at).toLocaleString()}</p>
                     </div>
                     <p className="text-sm font-semibold text-white/80">x{Math.max(1, Number(entry.quantity || 1))}</p>
+                  </Link>
+                ))
+              )
+            ) : null}
+            {activityView === 'tablet' ? (
+              recentTabletRuns.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucun passage tablette récent.</div>
+              ) : (
+                recentTabletRuns.map((run) => (
+                  <Link href={toAllowedHref('/tablette') || '#'} aria-disabled={!toAllowedHref('/tablette')} onClick={(event) => { if (!toAllowedHref('/tablette')) event.preventDefault() }} key={run.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref('/tablette') ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
+                    <div>
+                      <p className="text-sm font-medium">{run.member_name}</p>
+                      <p className="text-xs text-white/60">{new Date(run.created_at).toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-white/80">{Math.max(0, Number(run.total_items || 0))} items • {Math.max(0, Number(run.total_cost || 0)).toFixed(2)} $</p>
                   </Link>
                 ))
               )

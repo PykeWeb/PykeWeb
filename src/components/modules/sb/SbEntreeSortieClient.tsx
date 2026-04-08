@@ -235,14 +235,11 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setShowMethKitEditor(false)
   }
 
-  function addOtherQuickItemToSelection() {
-    const tablette = findItemByAliases(['tablette', 'tablet'])
-    if (!tablette) {
-      toast.error('Item "Tablette" introuvable dans le catalogue.')
-      return
-    }
-    addItem(tablette, 1)
-    toast.success('Tablette ajoutée.')
+  function closeManualCashEditor() {
+    setShowManualCashEditor(false)
+    setManualItemLabel('')
+    setManualCashAmount('')
+    setManualReason('')
   }
 
   const submitManualCashFlow = async () => {
@@ -427,7 +424,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                     <Sparkles className="h-5 w-5 text-violet-100" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">Autres / item non listé</p>
+                    <p className="truncate text-sm font-semibold text-white">Autres</p>
                     <p className="text-xs text-white/70">Clique pour saisir montant, raison et item libre.</p>
                   </div>
                 </div>
@@ -510,10 +507,10 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             {showManualCashEditor ? (
               <div className="rounded-xl border border-violet-300/25 bg-violet-500/[0.08] p-2">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-violet-100">Autres / item non listé</p>
-                  {isTradeVariant && mode === 'entree' ? (
-                    <SecondaryButton onClick={addOtherQuickItemToSelection} className="h-8 px-3 text-xs">+ Tablette</SecondaryButton>
-                  ) : null}
+                  <p className="text-sm font-semibold text-violet-100">Autres</p>
+                  <button type="button" onClick={closeManualCashEditor} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
                 <div className="grid gap-2">
                   <Input value={manualItemLabel} onChange={(event) => setManualItemLabel(event.target.value)} placeholder="Nom item non listé (optionnel)" className="h-9" />
