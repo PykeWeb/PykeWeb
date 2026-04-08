@@ -33,7 +33,10 @@ const ACTIVITY_EQUIPMENT_RULES: Partial<Record<ActivityType, string[]>> = {
 }
 
 const ACTIVITY_SPECIAL_OBJECT_NAMES = new Set([
+  "bouteille d'eau",
   "bouteilles d'eau",
+  'bouteille deau',
+  'bouteilles deau',
   'argent',
   'telephone de hack',
   'téléphone de hack',

@@ -21,16 +21,29 @@ function inferDemandMode(note: string | null | undefined): DemandFormValue['mode
   return 'full_chain'
 }
 
+function isMethType(rawType: string) {
+  return String(rawType || '').toLowerCase().includes('meth')
+}
+
+function normalizeDemandType(rawType: string): DemandFormValue['type'] {
+  if (isMethType(rawType)) return 'meth'
+  if (String(rawType || '').toLowerCase().includes('coke')) return 'coke'
+  return 'other'
+}
+
 export default function EditSuiviProductionClient({ id }: { id: string }) {
   const router = useRouter()
   const [row, setRow] = useState<DrugProductionTrackingRow | null>(null)
   const [loading, setLoading] = useState(true)
+  const [receivedDraft, setReceivedDraft] = useState('0')
 
   useEffect(() => {
     void (async () => {
       try {
         const rows = await listDrugProductionTrackings()
-        setRow(rows.find((entry) => entry.id === id) || null)
+        const found = rows.find((entry) => entry.id === id) || null
+        setRow(found)
+        setReceivedDraft(String(Math.max(0, Number(found?.received_output || 0))))
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : 'Impossible de charger la transaction.')
       } finally {
@@ -41,13 +54,15 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
 
   async function onSubmit(value: DemandFormValue, expectedOutput: number) {
     if (!row) return
-    const status = row.received_output >= expectedOutput ? 'completed' : 'in_progress'
+    const nextReceived = Math.max(0, Number(receivedDraft || row.received_output || 0))
+    const status = nextReceived >= expectedOutput ? 'completed' : 'in_progress'
     const updated = await updateDrugProductionTracking(row.id, {
       note: `[${value.mode}] ${value.note || ''}`.trim(),
       seedPrice: value.seedPrice,
       pouchSalePrice: value.pouchSalePrice,
       brickTransformCost: value.brickTransformCost,
       pouchTransformCost: value.pouchTransformCost,
+      receivedOutput: nextReceived,
       status,
     })
     setRow(updated)
@@ -108,10 +123,26 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
               <button type="button" onClick={() => void onDelete()} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-red-300/35 bg-red-500/15 px-4 text-sm font-semibold text-red-100"><Trash2 className="h-4 w-4" />Supprimer</button>
             </div>
 
+            <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-2">
+              <label className="text-sm text-white/75">
+                <span className="mb-1 block text-xs text-white/60">{isMethType(row.type) ? 'Meth brut reçu' : 'Pochons reçus'}</span>
+                <input
+                  value={receivedDraft}
+                  onChange={(event) => setReceivedDraft(event.target.value)}
+                  inputMode="numeric"
+                  className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white outline-none"
+                />
+              </label>
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-sm">
+                <p className="text-xs text-cyan-100/80">Valeur actuelle enregistrée</p>
+                <p className="mt-1 font-semibold">{Math.max(0, Number(row.received_output || 0))}</p>
+              </div>
+            </div>
+
             <DemandePartenaireForm
               initial={{
                 partnerName: row.partner_name,
-                type: row.type,
+                type: normalizeDemandType(row.type),
                 mode: inferDemandMode(row.note),
                 createdAt: row.created_at.slice(0, 10),
                 quantitySeeds: row.quantity_sent,

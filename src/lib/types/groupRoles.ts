@@ -29,6 +29,7 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Drogues - Bénéfice', prefix: '/drogues/benefice' },
   { label: 'Drogues - Vente', prefix: '/drogues/vente' },
   { label: 'Activités', prefix: GROUP_OPERATIONS_PREFIX },
+  { label: 'Coffre tablette', prefix: '/tablette/coffre' },
   { label: 'Licence', prefix: '/tablette/paiement' },
   { label: 'Gestion chef', prefix: '/activites/gestion-chef' },
 ] as const

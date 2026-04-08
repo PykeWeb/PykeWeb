@@ -12,6 +12,7 @@ import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, saveTenantSession } from '@/lib/tenantSession'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyBudget, TabletDailyRun } from '@/lib/types/tablette'
 import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
+import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 
 type AtelierResponse = {
   today: string
@@ -48,6 +49,9 @@ export default function TablettePage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [memberOptions, setMemberOptions] = useState<string[]>([])
+  const session = getTenantSession()
+  const allowedPrefixes = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
+  const canSeeTabletBudget = Boolean(session?.isAdmin || allowedPrefixes.includes('/') || allowedPrefixes.includes('/tablette/coffre'))
   const memberSelectOptions = useMemo(() => {
     const current = memberName.trim()
     if (!current) return memberOptions
@@ -185,6 +189,7 @@ export default function TablettePage() {
           </div>
         ) : null}
 
+        {canSeeTabletBudget ? (
         <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.08] p-4">
           <h2 className="text-base font-semibold">Coffre tablette du jour</h2>
           <p className="mb-3 text-xs text-white/65">Budget journalier pour payer les passages tablette.</p>
@@ -248,6 +253,7 @@ export default function TablettePage() {
           </div>
           <p className="mt-2 text-xs text-white/65">Passages payés: <span className="font-semibold text-white">{budget?.paid_runs || 0}</span></p>
         </div>
+        ) : null}
 
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="grid gap-3 md:grid-cols-2">

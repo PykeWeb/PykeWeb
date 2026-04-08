@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { requireGroupSession } from '@/server/auth/requireSession'
 import { normalizeTabletOptions, TABLET_DAILY_ITEM_OPTIONS, toDayKey } from '@/lib/tabletteItems'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyBudget, TabletDailyRun, TabletRunItemLine, TabletSubmitPayload } from '@/lib/types/tablette'
+import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 
 type TabletDailyRunRow = {
   id: string
@@ -329,6 +330,12 @@ function toPublicBudget(dayKey: string, budget: StoredBudget | null): TabletDail
   }
 }
 
+function canManageTabletBudget(session: { isAdmin?: boolean; allowedPrefixes?: string[] }) {
+  if (session.isAdmin) return true
+  const allowed = expandAccessPrefixes(Array.isArray(session.allowedPrefixes) ? session.allowedPrefixes : [])
+  return allowed.includes('/') || allowed.includes('/tablette/coffre')
+}
+
 export async function GET(request: Request) {
   try {
     const session = await requireGroupSession(request)
@@ -347,7 +354,7 @@ export async function GET(request: Request) {
 
     const runs = (data ?? []) as TabletDailyRun[]
 
-    const budget = await loadTodayBudget(session.groupId, today)
+    const budget = canManageTabletBudget(session) ? await loadTodayBudget(session.groupId, today) : null
     return NextResponse.json({
       today,
       items: await getGlobalTabletOptions(),
@@ -375,6 +382,9 @@ export async function POST(request: Request) {
     const options = await getGlobalTabletOptions()
     const dayKey = toDayKey()
     if (body.action === 'init_budget' || body.action === 'update_budget') {
+      if (!canManageTabletBudget(session)) {
+        return NextResponse.json({ error: 'Action non autorisée.' }, { status: 403 })
+      }
       const budgetInitial = Math.max(0, Number(body.budget_initial || 0))
       const payoutPerRun = Math.max(0, Number(body.payout_per_run || 0))
       const existing = await loadTodayBudget(session.groupId, dayKey)
@@ -390,6 +400,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, nextBudget) })
     }
     if (body.action === 'reset_budget') {
+      if (!canManageTabletBudget(session)) {
+        return NextResponse.json({ error: 'Action non autorisée.' }, { status: 403 })
+      }
       const resetBudget: StoredBudget = {
         day_key: dayKey,
         budget_initial: 0,

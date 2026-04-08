@@ -80,12 +80,12 @@ function money(value: number) {
 
 function toPouchesEquivalent(row: Pick<DrugProductionTrackingRow, 'type' | 'expected_output'>) {
   const expected = Math.max(0, Number(row.expected_output || 0))
-  return row.type === 'meth' ? expected * 2 : expected
+  return isMethType(row.type) ? expected * 2 : expected
 }
 
 function toReceivedPouchesEquivalent(row: Pick<DrugProductionTrackingRow, 'type' | 'received_output'>) {
   const received = Math.max(0, Number(row.received_output || 0))
-  return row.type === 'meth' ? received * 2 : received
+  return isMethType(row.type) ? received * 2 : received
 }
 
 function normalize(value: string) {
@@ -97,6 +97,10 @@ function typeToken(type: string) {
   if (raw.includes('coke')) return 'coke'
   if (raw.includes('meth')) return 'meth'
   return ''
+}
+
+function isMethType(type: string) {
+  return typeToken(type) === 'meth'
 }
 
 function resolveFlowMode(type: ProductionType, flowMode: FlowMode): FlowMode {
@@ -365,7 +369,7 @@ export default function SuiviProductionClient() {
 
   const selectedFinance = useMemo(() => {
     if (!selected) return { machinePurchaseCost: 0, saleUnitPrice: 130, revenue: 0, totalCost: 0, hasSalePrice: true, estimatedProfit: 0 }
-    const flowMode = selected.type === 'meth' ? 'seed_only' : inferFlowModeFromNote(selected.note)
+    const flowMode = isMethType(selected.type) ? 'seed_only' : inferFlowModeFromNote(selected.note)
     const seedUnitPrice = Number(selected.seed_price ?? seedPrice ?? 0)
     const saleUnitPrice = Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
     const brickUnitCost = Number(selected.brick_transform_cost ?? brickTransformCost ?? 0)
@@ -381,7 +385,7 @@ export default function SuiviProductionClient() {
       qtySent,
       qtySent,
     )
-    const expectedPouches = selected.type === 'meth'
+    const expectedPouches = isMethType(selected.type)
       ? effectiveOutput * 2
       : (flowMode === 'seed_only' || flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick'
         ? 0
@@ -391,7 +395,7 @@ export default function SuiviProductionClient() {
     const brickCost = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms')
       ? (quantities.leavesInput * brickUnitCost)
       : 0
-    const pouchCost = selected.type === 'meth'
+    const pouchCost = isMethType(selected.type)
       ? 0
       : flowMode === 'brick_to_pouch'
       ? (qtySent * pouchUnitCost)
@@ -528,7 +532,7 @@ export default function SuiviProductionClient() {
   async function confirmDelivered(row: DrugProductionTrackingRow, deliveredQtyRaw: number) {
     const deliveredQty = Math.max(0, Math.floor(Number(deliveredQtyRaw || 0)))
     if (deliveredQty <= 0) {
-      toast.error(row.type === 'meth' ? 'Quantité meth brut invalide.' : 'Quantité de pochons invalide.')
+      toast.error(isMethType(row.type) ? 'Quantité meth brut invalide.' : 'Quantité de pochons invalide.')
       return
     }
 
@@ -538,7 +542,7 @@ export default function SuiviProductionClient() {
         toast.error('Aucun item stock "pochon" trouvé pour cette drogue.')
         return
       }
-      const deliveredPouches = row.type === 'meth' ? deliveredQty * 2 : deliveredQty
+      const deliveredPouches = isMethType(row.type) ? deliveredQty * 2 : deliveredQty
       await adjustDrugStock({
         itemId: outputItemId,
         delta: deliveredPouches,
@@ -645,8 +649,15 @@ export default function SuiviProductionClient() {
                       <td className="px-3 py-3">
                         <span className="inline-flex rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-xs font-semibold text-white">{typeLabel(row.type)}</span>
                       </td>
-                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${row.quantity_sent} machines` : row.quantity_sent}</td>
-                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${Math.max(0, Number(row.expected_output || 0))} meth brut (≈ ${toPouchesEquivalent(row)} pochons)` : row.expected_output}</td>
+                      <td className="px-3 py-3 font-medium">{isMethType(row.type) ? `${row.quantity_sent} machines` : row.quantity_sent}</td>
+                      <td className="px-3 py-3 font-medium">
+                        {isMethType(row.type) ? (
+                          <div className="leading-tight">
+                            <p>{Math.max(0, Number(row.expected_output || 0))} meth brut</p>
+                            <p className="text-xs text-white/70">≈ {toPouchesEquivalent(row)} pochons</p>
+                          </div>
+                        ) : row.expected_output}
+                      </td>
                       <td className="px-3 py-3">
                         <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(row.status)}`}>
                           {statusLabel(row.status)}
@@ -667,11 +678,11 @@ export default function SuiviProductionClient() {
             <div className="mt-4 space-y-3">
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
                 <p><span className="text-white/60">Groupe :</span> <span className="font-semibold">{selected.partner_name}</span></p>
-                <p><span className="text-white/60">Type :</span> <span className="font-semibold">{selected.type === 'meth' ? 'Meth' : typeLabel(selected.type)}</span></p>
-                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.type === 'meth' ? `${selected.quantity_sent} machines` : selected.quantity_sent}</span></p>
-                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{selected.type === 'meth' ? `${selected.expected_output} meth brut (≈ ${toPouchesEquivalent(selected)} pochons)` : `${selected.expected_output} pochons`}</span></p>
+                <p><span className="text-white/60">Type :</span> <span className="font-semibold">{isMethType(selected.type) ? 'Meth' : typeLabel(selected.type)}</span></p>
+                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.quantity_sent} machines` : selected.quantity_sent}</span></p>
+                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.expected_output} meth brut (≈ ${toPouchesEquivalent(selected)} pochons)` : `${selected.expected_output} pochons`}</span></p>
                 <p><span className="text-white/60">Statut :</span> <span className="font-semibold">{statusLabel(selected.status)}</span></p>
-                <p><span className="text-white/60">Reçu :</span> <span className="font-semibold">{selected.type === 'meth' ? `${selected.received_output || 0} meth brut (≈ ${toReceivedPouchesEquivalent(selected)} pochons)` : `${selected.received_output || 0} pochons`}</span></p>
+                <p><span className="text-white/60">Reçu :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.received_output || 0} meth brut (≈ ${toReceivedPouchesEquivalent(selected)} pochons)` : `${selected.received_output || 0} pochons`}</span></p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
@@ -986,13 +997,13 @@ export default function SuiviProductionClient() {
             <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3 text-sm">
               <p className="text-white/70">Quantité estimée</p>
               <p className="font-semibold text-cyan-100">
-                {deliveryModal.row.type === 'meth'
+                {isMethType(deliveryModal.row.type)
                   ? `${Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0)))} meth brut (≈ ${Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0))) * 2} pochons)`
                   : `${Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0)))} pochons`}
               </p>
             </div>
             <label className="mt-3 block space-y-1 text-sm">
-              <span className="text-white/75">{deliveryModal.row.type === 'meth' ? 'Meth brut réellement récupéré' : 'Pochons réellement récupérés'}</span>
+              <span className="text-white/75">{isMethType(deliveryModal.row.type) ? 'Meth brut réellement récupéré' : 'Pochons réellement récupérés'}</span>
               <Input
                 value={deliveryModal.realPouches}
                 onChange={(event) => setDeliveryModal((prev) => (prev ? { ...prev, realPouches: event.target.value } : prev))}
