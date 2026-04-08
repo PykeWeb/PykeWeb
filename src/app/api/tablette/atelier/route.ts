@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { requireGroupSession } from '@/server/auth/requireSession'
 import { normalizeTabletOptions, TABLET_DAILY_ITEM_OPTIONS, toDayKey } from '@/lib/tabletteItems'
-import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun, TabletRunItemLine, TabletSubmitPayload } from '@/lib/types/tablette'
+import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyBudget, TabletDailyRun, TabletRunItemLine, TabletSubmitPayload } from '@/lib/types/tablette'
 
 type TabletDailyRunRow = {
   id: string
@@ -243,6 +243,92 @@ function buildGroupStats(runs: TabletDailyRun[]): GroupTabletStats {
   }
 }
 
+type StoredBudget = {
+  day_key: string
+  budget_initial: number
+  payout_per_run: number
+  paid_runs: number
+  distributed_total: number
+  paid_members: string[]
+}
+
+function parseBudgetOrder(dayKey: string, order: string[] | null | undefined): StoredBudget | null {
+  if (!Array.isArray(order) || order.length === 0) return null
+  const map = new Map(order.map((entry) => {
+    const [key, ...rest] = String(entry).split(':')
+    return [key.trim(), rest.join(':').trim()]
+  }))
+  const budgetInitial = Number(map.get('budget_initial') || 0)
+  const payoutPerRun = Number(map.get('payout_per_run') || 0)
+  const paidRuns = Number(map.get('paid_runs') || 0)
+  const distributedTotal = Number(map.get('distributed_total') || 0)
+  const paidMembers = String(map.get('paid_members') || '')
+    .split('|')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+  if (!Number.isFinite(budgetInitial) || !Number.isFinite(payoutPerRun)) return null
+  return {
+    day_key: dayKey,
+    budget_initial: Math.max(0, budgetInitial),
+    payout_per_run: Math.max(0, payoutPerRun),
+    paid_runs: Math.max(0, Math.floor(paidRuns || 0)),
+    distributed_total: Math.max(0, distributedTotal),
+    paid_members: paidMembers,
+  }
+}
+
+function serializeBudgetOrder(budget: StoredBudget) {
+  return [
+    `budget_initial:${budget.budget_initial}`,
+    `payout_per_run:${budget.payout_per_run}`,
+    `paid_runs:${budget.paid_runs}`,
+    `distributed_total:${budget.distributed_total}`,
+    `paid_members:${budget.paid_members.join('|')}`,
+  ]
+}
+
+async function loadTodayBudget(groupId: string, dayKey: string): Promise<StoredBudget | null> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('ui_layouts')
+    .select('order')
+    .eq('scope_type', 'group')
+    .eq('scope_id', groupId)
+    .eq('page_key', `tablette.coffre.${dayKey}`)
+    .maybeSingle<{ order: string[] | null }>()
+  if (error) throw error
+  return parseBudgetOrder(dayKey, data?.order)
+}
+
+async function saveTodayBudget(groupId: string, budget: StoredBudget) {
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase
+    .from('ui_layouts')
+    .upsert({
+      scope_type: 'group',
+      scope_id: groupId,
+      page_key: `tablette.coffre.${budget.day_key}`,
+      order: serializeBudgetOrder(budget),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'scope_type,scope_id,page_key' })
+  if (error) throw error
+}
+
+function toPublicBudget(dayKey: string, budget: StoredBudget | null): TabletDailyBudget | null {
+  if (!budget) return null
+  const distributed = Math.max(0, Number(budget.distributed_total || 0))
+  const remaining = Math.max(0, Number(budget.budget_initial || 0) - distributed)
+  return {
+    day_key: dayKey,
+    budget_initial: Math.max(0, Number(budget.budget_initial || 0)),
+    payout_per_run: Math.max(0, Number(budget.payout_per_run || 0)),
+    paid_runs: Math.max(0, Number(budget.paid_runs || 0)),
+    distributed_total: distributed,
+    remaining,
+    paid_members: budget.paid_members,
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const session = await requireGroupSession(request)
@@ -261,11 +347,13 @@ export async function GET(request: Request) {
 
     const runs = (data ?? []) as TabletDailyRun[]
 
+    const budget = await loadTodayBudget(session.groupId, today)
     return NextResponse.json({
       today,
       items: await getGlobalTabletOptions(),
       runs,
       stats: buildGroupStats(runs),
+      budget: toPublicBudget(today, budget),
     })
   } catch (error: unknown) {
     return NextResponse.json({ error: toErrorMessage(error) }, { status: toStatusCode(error) })
@@ -276,11 +364,44 @@ export async function POST(request: Request) {
   try {
     const session = await requireGroupSession(request)
     await assertGroupTabletAccess(session.groupId)
-    const body = (await request.json()) as TabletSubmitPayload
+    const body = (await request.json()) as TabletSubmitPayload & {
+      budget_initial?: number
+      payout_per_run?: number
+      action?: 'run' | 'init_budget' | 'update_budget' | 'reset_budget'
+    }
     const member = normalizeMemberName(body.member_name)
     if (!member.raw) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
 
     const options = await getGlobalTabletOptions()
+    const dayKey = toDayKey()
+    if (body.action === 'init_budget' || body.action === 'update_budget') {
+      const budgetInitial = Math.max(0, Number(body.budget_initial || 0))
+      const payoutPerRun = Math.max(0, Number(body.payout_per_run || 0))
+      const existing = await loadTodayBudget(session.groupId, dayKey)
+      const nextBudget: StoredBudget = {
+        day_key: dayKey,
+        budget_initial: budgetInitial,
+        payout_per_run: payoutPerRun,
+        paid_runs: existing?.paid_runs ?? 0,
+        distributed_total: existing?.distributed_total ?? 0,
+        paid_members: existing?.paid_members ?? [],
+      }
+      await saveTodayBudget(session.groupId, nextBudget)
+      return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, nextBudget) })
+    }
+    if (body.action === 'reset_budget') {
+      const resetBudget: StoredBudget = {
+        day_key: dayKey,
+        budget_initial: 0,
+        payout_per_run: 0,
+        paid_runs: 0,
+        distributed_total: 0,
+        paid_members: [],
+      }
+      await saveTodayBudget(session.groupId, resetBudget)
+      return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, resetBudget) })
+    }
+
     const quantities = body.quantities || {}
 
     const lines: TabletRunItemLine[] = options
@@ -302,7 +423,16 @@ export async function POST(request: Request) {
     }
 
     const totalCost = Number(lines.reduce((sum, line) => sum + line.subtotal, 0).toFixed(2))
-    const dayKey = toDayKey()
+    const budget = await loadTodayBudget(session.groupId, dayKey)
+    const payoutPerRun = Math.max(0, Number(budget?.payout_per_run || 0))
+    const memberAlreadyPaid = Boolean(budget?.paid_members.includes(member.normalized))
+    if (memberAlreadyPaid) {
+      return NextResponse.json({ error: 'Ce membre a déjà été payé aujourd’hui.' }, { status: 409 })
+    }
+    const remainingBefore = Math.max(0, Number(budget?.budget_initial || 0) - Math.max(0, Number(budget?.distributed_total || 0)))
+    if (payoutPerRun > 0 && remainingBefore < payoutPerRun) {
+      return NextResponse.json({ error: 'Budget tablette insuffisant.' }, { status: 400 })
+    }
 
     const legacyDisqueuseQty = lines.find((line) => line.key === 'disqueuse')?.quantity ?? 0
     const legacyKitQty = lines.find((line) => line.key === 'kit_cambus')?.quantity ?? 0
@@ -353,6 +483,16 @@ export async function POST(request: Request) {
         // noop: preserve original error path
       }
       throw catalogError
+    }
+
+    if (budget) {
+      const nextBudget: StoredBudget = {
+        ...budget,
+        paid_runs: budget.paid_runs + 1,
+        distributed_total: Number((budget.distributed_total + payoutPerRun).toFixed(2)),
+        paid_members: [...new Set([...budget.paid_members, member.normalized])],
+      }
+      await saveTodayBudget(session.groupId, nextBudget)
     }
 
     return NextResponse.json(inserted)

@@ -10,7 +10,7 @@ import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { MemberSelect } from '@/components/ui/MemberSelect'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, saveTenantSession } from '@/lib/tenantSession'
-import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
+import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyBudget, TabletDailyRun } from '@/lib/types/tablette'
 import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
 
 type AtelierResponse = {
@@ -18,6 +18,7 @@ type AtelierResponse = {
   items: TabletCatalogItemConfig[]
   runs: TabletDailyRun[]
   stats: GroupTabletStats
+  budget: TabletDailyBudget | null
 }
 
 function formatDay(value: string) {
@@ -39,6 +40,9 @@ export default function TablettePage() {
   const [runs, setRuns] = useState<TabletDailyRun[]>([])
   const [stats, setStats] = useState<GroupTabletStats | null>(null)
   const [today, setToday] = useState('')
+  const [budget, setBudget] = useState<TabletDailyBudget | null>(null)
+  const [budgetInitialDraft, setBudgetInitialDraft] = useState('0')
+  const [payoutDraft, setPayoutDraft] = useState('0')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,6 +71,11 @@ export default function TablettePage() {
     if (!normalized) return false
     return runs.some((row) => row.day_key === today && row.member_name.trim().toLowerCase() === normalized)
   }, [memberName, runs, today])
+  const paidTodayByMember = useMemo(() => {
+    const normalized = memberName.trim().toLowerCase()
+    if (!normalized) return false
+    return Boolean(budget?.paid_members?.includes(normalized))
+  }, [budget?.paid_members, memberName])
   const tabletteBubbleStats = useMemo(() => {
     return {
       today: stats?.today.runs ?? 0,
@@ -118,6 +127,9 @@ export default function TablettePage() {
       setRuns(data.runs)
       setToday(data.today)
       setStats(data.stats)
+      setBudget(data.budget || null)
+      setBudgetInitialDraft(String(Math.max(0, Number(data.budget?.budget_initial || 0))))
+      setPayoutDraft(String(Math.max(0, Number(data.budget?.payout_per_run || 0))))
       setQuantities((prev) => {
         const next: Record<string, number> = {}
         for (const item of data.items) {
@@ -173,12 +185,77 @@ export default function TablettePage() {
           </div>
         ) : null}
 
+        <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.08] p-4">
+          <h2 className="text-base font-semibold">Coffre tablette du jour</h2>
+          <p className="mb-3 text-xs text-white/65">Budget journalier pour payer les passages tablette.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="space-y-1 text-xs text-white/70">
+              <span>Budget initial</span>
+              <Input value={budgetInitialDraft} onChange={(event) => setBudgetInitialDraft(event.target.value)} inputMode="decimal" />
+            </label>
+            <label className="space-y-1 text-xs text-white/70">
+              <span>Prime par passage</span>
+              <Input value={payoutDraft} onChange={(event) => setPayoutDraft(event.target.value)} inputMode="decimal" />
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <PrimaryButton
+              onClick={async () => {
+                const action = budget ? 'update_budget' : 'init_budget'
+                const res = await fetch('/api/tablette/atelier', {
+                  ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+                  method: 'POST',
+                  body: JSON.stringify({
+                    action,
+                    budget_initial: Math.max(0, Number(budgetInitialDraft || 0)),
+                    payout_per_run: Math.max(0, Number(payoutDraft || 0)),
+                  }),
+                })
+                if (!res.ok) {
+                  const payload = (await res.json().catch(() => null)) as { error?: string } | null
+                  setError(payload?.error || 'Impossible de sauvegarder le coffre.')
+                  return
+                }
+                await load()
+              }}
+            >
+              {budget ? 'Modifier coffre' : 'Initialiser coffre'}
+            </PrimaryButton>
+            <PrimaryButton
+              onClick={async () => {
+                const res = await fetch('/api/tablette/atelier', {
+                  ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+                  method: 'POST',
+                  body: JSON.stringify({ action: 'reset_budget' }),
+                })
+                if (!res.ok) {
+                  const payload = (await res.json().catch(() => null)) as { error?: string } | null
+                  setError(payload?.error || 'Reset impossible.')
+                  return
+                }
+                await load()
+              }}
+            >
+              Reset jour
+            </PrimaryButton>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm md:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Date: <span className="font-semibold">{formatDay(today)}</span></div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Budget: <span className="font-semibold">{Number(budget?.budget_initial || 0).toFixed(2)} $</span></div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Prime: <span className="font-semibold">{Number(budget?.payout_per_run || 0).toFixed(2)} $</span></div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Distribué: <span className="font-semibold">{Number(budget?.distributed_total || 0).toFixed(2)} $</span></div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Restant: <span className="font-semibold">{Number(budget?.remaining || 0).toFixed(2)} $</span></div>
+          </div>
+          <p className="mt-2 text-xs text-white/65">Passages payés: <span className="font-semibold text-white">{budget?.paid_runs || 0}</span></p>
+        </div>
+
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
               <MemberSelect value={memberName} onChange={setMemberName} options={memberSelectOptions} />
               {doneTodayByMember ? <p className="mt-1 text-xs text-amber-200">Ce membre a déjà validé aujourd’hui.</p> : null}
+              {paidTodayByMember ? <p className="mt-1 text-xs text-amber-200">Ce membre a déjà pris sa prime aujourd’hui.</p> : null}
             </div>
 
             {items.map((item) => (
@@ -217,7 +294,7 @@ export default function TablettePage() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             <PrimaryButton
-              disabled={!canSubmit || doneTodayByMember}
+              disabled={!canSubmit || doneTodayByMember || paidTodayByMember}
               onClick={async () => {
                 setSaving(true)
                 setError(null)
@@ -228,7 +305,7 @@ export default function TablettePage() {
                   const res = await fetch('/api/tablette/atelier', {
                     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
                     method: 'POST',
-                    body: JSON.stringify({ member_name: memberName, quantities }),
+                    body: JSON.stringify({ action: 'run', member_name: memberName, quantities }),
                   })
 
                   if (!res.ok) {
@@ -241,7 +318,7 @@ export default function TablettePage() {
                   }
 
                   resetForm()
-                  setSuccess('Tablette validée et items ajoutés au catalogue.')
+                  setSuccess('Tablette validée, items ajoutés et coffre mis à jour.')
                   await load()
                 } catch (submitError: unknown) {
                   setError(submitError instanceof Error ? submitError.message : 'Validation impossible.')
@@ -269,22 +346,29 @@ export default function TablettePage() {
                   <th className="px-3 py-2 text-left">Membre</th>
                   <th className="px-3 py-2 text-left">Items</th>
                   <th className="px-3 py-2 text-left">Total</th>
+                  <th className="px-3 py-2 text-left">Payé</th>
+                  <th className="px-3 py-2 text-left">Restant</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {loading ? (
-                  <tr><td colSpan={4} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
                 ) : runs.length === 0 ? (
-                  <tr><td colSpan={4} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
                 ) : (
-                  runs.map((row) => (
+                  runs.map((row, index) => {
+                    const paid = Number(budget?.payout_per_run || 0)
+                    const remainingAfter = Math.max(0, Number(budget?.budget_initial || 0) - (paid * (runs.length - index)))
+                    return (
                     <tr key={row.id}>
                       <td className="px-3 py-2 text-white/70">{formatDateTime(row.created_at)}</td>
                       <td className="px-3 py-2 font-medium">{row.member_name}</td>
                       <td className="px-3 py-2">{row.total_items}</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
+                      <td className="px-3 py-2">{paid.toFixed(2)} $</td>
+                      <td className="px-3 py-2">{remainingAfter.toFixed(2)} $</td>
                     </tr>
-                  ))
+                  )})
                 )}
               </tbody>
             </table>

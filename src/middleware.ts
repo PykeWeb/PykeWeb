@@ -14,8 +14,9 @@ export function middleware(request: NextRequest) {
   const raw = request.cookies.get(TENANT_SESSION_COOKIE_KEY)?.value
   const session = raw ? decodeTenantSession(raw) : null
   if (!session || !isValidTenantSession(session)) {
-    if (PUBLIC_PATHS.has(pathname)) return NextResponse.next()
-    return NextResponse.redirect(new URL('/login', request.url))
+    // FiveM CEF can intermittently fail to persist HTTP cookies; keep routing permissive here
+    // and let AppFrame/client-session guards finalize auth from localStorage + bridge sync.
+    return NextResponse.next()
   }
 
   if (PUBLIC_PATHS.has(pathname)) {

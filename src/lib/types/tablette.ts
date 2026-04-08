@@ -24,8 +24,20 @@ export type TabletDailyRun = {
   kit_cambus_qty: number
   total_items: number
   total_cost: number
+  payout_amount?: number
+  remaining_after?: number
   items_json?: TabletRunItemLine[]
   created_at: string
+}
+
+export type TabletDailyBudget = {
+  day_key: string
+  budget_initial: number
+  payout_per_run: number
+  paid_runs: number
+  distributed_total: number
+  remaining: number
+  paid_members: string[]
 }
 
 export type TabletSubmitPayload = {
