@@ -31,6 +31,24 @@ const ACTIVITY_EQUIPMENT_RULES: Partial<Record<ActivityType, string[]>> = {
   Superette: ['grosse perceuse'],
 }
 
+const ACTIVITY_SPECIAL_OBJECT_NAMES = new Set([
+  "bouteilles d'eau",
+  'argent',
+  'telephone de hack',
+  'téléphone de hack',
+  'disqueuse',
+  'kit de cambu',
+  'kit de cambriolage',
+])
+
+function normalizeLabel(value: string) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -141,7 +159,16 @@ export default function ActivitesPage() {
     }
   }
 
-  const objectItems = useMemo(() => catalogItems.filter((item) => item.category === 'objects' && item.is_active), [catalogItems])
+  const objectItems = useMemo(() => {
+    return catalogItems.filter((item) => {
+      if (!item.is_active) return false
+      if (item.category === 'objects') return true
+      const normalizedName = normalizeLabel(item.name)
+      if (ACTIVITY_SPECIAL_OBJECT_NAMES.has(normalizedName)) return true
+      if (item.category !== 'drugs') return false
+      return normalizedName === 'pochon de coke' || normalizedName === 'pochon de meth'
+    })
+  }, [catalogItems])
   const equipmentItems = useMemo(() => catalogItems.filter((item) => item.category === 'equipment' && item.is_active), [catalogItems])
 
   const allowedEquipmentItems = useMemo(() => {
@@ -209,7 +236,6 @@ export default function ActivitesPage() {
   }
 
   async function onSubmit() {
-    if (!proofImageData) return setError('Ajoute une preuve image (jpeg ou png).')
     if (selectedObjectRows.length === 0) return setError('Ajoute au moins un objet.')
     if (activityType !== 'Boite au lettre' && selectedEquipmentRows.length === 0) return setError('Ajoute au moins un équipement.')
 
@@ -225,7 +251,7 @@ export default function ActivitesPage() {
         object_lines: objectLines,
         equipment_lines: activityType === 'Boite au lettre' ? [] : equipmentLines,
         percent_per_object: Math.max(0.01, Number(data?.settings.default_percent_per_object) || 2),
-        proof_image_data: proofImageData,
+        proof_image_data: proofImageData || '',
       })
       setOk(`Activité enregistrée ✅ (${objectLines.length} objet${objectLines.length > 1 ? 's' : ''})`)
       setSelectedObjectLines([])

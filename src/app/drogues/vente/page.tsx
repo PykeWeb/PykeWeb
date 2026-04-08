@@ -12,8 +12,12 @@ import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 
 export default function DroguesVentePage() {
-  const MIN_POUCH_PRICE = 75
-  const MAX_POUCH_PRICE = 85
+  const COKE_MIN_POUCH_PRICE = 75
+  const COKE_MAX_POUCH_PRICE = 85
+  const FENTANYL_MIN_POUCH_PRICE = 60
+  const FENTANYL_MAX_POUCH_PRICE = 90
+  const METH_MIN_POUCH_PRICE = 120
+  const METH_MAX_POUCH_PRICE = 220
   const [items, setItems] = useState<CatalogItem[]>([])
   const [itemId, setItemId] = useState('')
   const [qty, setQty] = useState(1)
@@ -22,6 +26,13 @@ export default function DroguesVentePage() {
   const [member, setMember] = useState('')
   const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+
+  function getPriceRange(name: string) {
+    const normalized = String(name || '').toLowerCase()
+    if (normalized.includes('fenta')) return { min: FENTANYL_MIN_POUCH_PRICE, max: FENTANYL_MAX_POUCH_PRICE }
+    if (normalized.includes('meth')) return { min: METH_MIN_POUCH_PRICE, max: METH_MAX_POUCH_PRICE }
+    return { min: COKE_MIN_POUCH_PRICE, max: COKE_MAX_POUCH_PRICE }
+  }
 
   useEffect(() => {
     const sessionMember = String(getTenantSession()?.memberName || '').trim()
@@ -33,8 +44,9 @@ export default function DroguesVentePage() {
         setItems(pouches)
         if (pouches[0]) {
           setItemId(pouches[0].id)
-          const reference = Math.max(MIN_POUCH_PRICE, Math.min(MAX_POUCH_PRICE, Number(pouches[0].sell_price || pouches[0].buy_price || 80)))
-          setEstimatePercent(Math.round(((reference - MIN_POUCH_PRICE) / (MAX_POUCH_PRICE - MIN_POUCH_PRICE)) * 100))
+          const { min: minPrice, max: maxPrice } = getPriceRange(pouches[0].name)
+          const reference = Math.max(minPrice, Math.min(maxPrice, Number(pouches[0].sell_price || pouches[0].buy_price || ((minPrice + maxPrice) / 2))))
+          setEstimatePercent(Math.round(((reference - minPrice) / (maxPrice - minPrice)) * 100))
           setReceivedTotalInput(reference)
         }
       })
@@ -51,19 +63,20 @@ export default function DroguesVentePage() {
   }, [])
 
   const selected = useMemo(() => items.find((row) => row.id === itemId) || null, [itemId, items])
+  const { min: minPouchPrice, max: maxPouchPrice } = getPriceRange(String(selected?.name || ''))
   const availableStock = Math.max(0, Number(selected?.stock || 0))
   const safeQty = Math.max(1, Math.floor(qty || 1))
-  const estimatedUnit = MIN_POUCH_PRICE + ((MAX_POUCH_PRICE - MIN_POUCH_PRICE) * Math.max(0, Math.min(100, estimatePercent))) / 100
+  const estimatedUnit = minPouchPrice + ((maxPouchPrice - minPouchPrice) * Math.max(0, Math.min(100, estimatePercent))) / 100
   const estimatedTotal = safeQty * estimatedUnit
   const receivedTotal = Math.max(0, Number(receivedTotalInput || 0))
 
   useEffect(() => {
     if (!selected) return
-    const reference = Math.max(MIN_POUCH_PRICE, Math.min(MAX_POUCH_PRICE, Number(selected.sell_price || selected.buy_price || estimatedUnit)))
-    setEstimatePercent(Math.round(((reference - MIN_POUCH_PRICE) / (MAX_POUCH_PRICE - MIN_POUCH_PRICE)) * 100))
+    const reference = Math.max(minPouchPrice, Math.min(maxPouchPrice, Number(selected.sell_price || selected.buy_price || estimatedUnit)))
+    setEstimatePercent(Math.round(((reference - minPouchPrice) / (maxPouchPrice - minPouchPrice)) * 100))
     setReceivedTotalInput((prev) => (prev > 0 ? prev : reference))
     setQty((prev) => Math.max(1, Math.min(Math.floor(prev || 1), Math.max(1, Math.floor(Number(selected.stock || 0) || 0)))))
-  }, [selected])
+  }, [maxPouchPrice, minPouchPrice, selected, estimatedUnit])
 
   return (
     <div className="space-y-4">
@@ -74,27 +87,22 @@ export default function DroguesVentePage() {
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Pochon</span>
             <select value={itemId} onChange={(e) => setItemId(e.target.value)} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white">
-              <option value="">Choisir un item</option>
-              {items.map((row) => <option key={row.id} value={row.id}>{row.name} (stock {Math.max(0, Number(row.stock || 0))})</option>)}
+              <option value="" className="bg-[#0b1228] text-white">Choisir un item</option>
+              {items.map((row) => <option key={row.id} value={row.id} className="bg-[#0b1228] text-white">{row.name} (stock {Math.max(0, Number(row.stock || 0))})</option>)}
             </select>
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Membre</span>
             <select value={member} onChange={(e) => setMember(e.target.value)} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white">
-              <option value="">Choisir un joueur</option>
-              <option value="Groupe">Groupe</option>
-              {memberOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+              <option value="" className="bg-[#0b1228] text-white">Choisir un joueur</option>
+              <option value="Groupe" className="bg-[#0b1228] text-white">Groupe</option>
+              {memberOptions.map((name) => <option key={name} value={name} className="bg-[#0b1228] text-white">{name}</option>)}
             </select>
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Quantité (stock: {availableStock})</span>
             <Input value={qty} onChange={(e) => setQty(Number(e.target.value) || 1)} inputMode="numeric" />
           </label>
-          <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3">
-            <p className="text-xs text-white/70">Prix unitaire estimé ({MIN_POUCH_PRICE}-{MAX_POUCH_PRICE}$)</p>
-            <p className="text-xl font-semibold">{estimatedUnit.toFixed(2)} $</p>
-            <p className="mt-1 text-xs text-white/70">Total estimé: {estimatedTotal.toFixed(2)} $</p>
-          </div>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Estimation (%)</span>
             <Input value={estimatePercent} onChange={(e) => setEstimatePercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))} inputMode="numeric" />
@@ -108,6 +116,11 @@ export default function DroguesVentePage() {
             <p className="text-xs text-white/70">Argent reçu (réel)</p>
             <p className="text-xl font-semibold">{receivedTotal.toFixed(2)} $</p>
           </div>
+          <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3">
+            <p className="text-xs text-white/70">Prix unitaire estimé ({minPouchPrice}-{maxPouchPrice}$)</p>
+            <p className="text-xl font-semibold">{estimatedUnit.toFixed(2)} $</p>
+            <p className="mt-1 text-xs text-white/70">Total estimé: {estimatedTotal.toFixed(2)} $</p>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -115,7 +128,7 @@ export default function DroguesVentePage() {
             if (!selected) return
             setQty(1)
             setEstimatePercent(50)
-            setReceivedTotalInput((MIN_POUCH_PRICE + MAX_POUCH_PRICE) / 2)
+            setReceivedTotalInput((minPouchPrice + maxPouchPrice) / 2)
           }}
           >
             Réinitialiser

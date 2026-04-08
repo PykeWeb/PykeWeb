@@ -8,7 +8,7 @@ import {
   type ActivityType,
 } from '@/lib/types/activities'
 
-type CatalogItemRow = { id: string; name: string; category: string; buy_price: number | null }
+type CatalogItemRow = { id: string; name: string; category: string; buy_price: number | null; stock?: number | null }
 
 const MAX_PROOF_LENGTH = 3_000_000
 
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
     const objectIds = [...new Set(objectLines.map((line) => String(line.object_item_id).trim()).filter(Boolean))]
     const { data: objectRows, error: objectErr } = await supabase
       .from('catalog_items')
-      .select('id,name,category,buy_price')
+      .select('id,name,category,buy_price,stock')
       .eq('group_id', session.groupId)
       .eq('is_active', true)
       .in('id', objectIds)
@@ -178,12 +178,13 @@ export async function POST(request: Request) {
     let equipmentDisplay = ''
     let equipmentTotalQty = 0
     let firstEquipmentId: string | null = null
+    const equipmentStockMap = new Map<string, CatalogItemRow>()
 
     if (activityType !== 'Boite au lettre') {
       const equipmentIds = [...new Set(equipmentLines.map((line) => String(line.equipment_item_id).trim()).filter(Boolean))]
       const { data: equipmentRows, error: equipmentErr } = await supabase
         .from('catalog_items')
-        .select('id,name,category,buy_price')
+        .select('id,name,category,buy_price,stock')
         .eq('group_id', session.groupId)
         .eq('is_active', true)
         .in('id', equipmentIds)
@@ -195,14 +196,29 @@ export async function POST(request: Request) {
       }
       if (equipmentMap.size !== equipmentIds.length) return NextResponse.json({ error: 'Un ou plusieurs équipements sont invalides.' }, { status: 400 })
 
+      const requiredQtyByEquipment = new Map<string, number>()
       const parts: string[] = []
       for (const line of equipmentLines) {
         const item = equipmentMap.get(line.equipment_item_id)
         if (!item) continue
         const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        requiredQtyByEquipment.set(item.id, (requiredQtyByEquipment.get(item.id) || 0) + qty)
         equipmentTotalQty += qty
         parts.push(`${item.name} x${qty}`)
         if (!firstEquipmentId) firstEquipmentId = item.id
+      }
+
+      for (const [itemId, requiredQty] of requiredQtyByEquipment.entries()) {
+        const equipment = equipmentMap.get(itemId)
+        if (!equipment) continue
+        const currentStock = Math.max(0, Number(equipment.stock || 0))
+        if (currentStock < requiredQty) {
+          return NextResponse.json({ error: `Stock insuffisant pour l'équipement ${equipment.name}.` }, { status: 400 })
+        }
+      }
+
+      for (const [itemId, equipment] of equipmentMap.entries()) {
+        equipmentStockMap.set(itemId, equipment)
       }
       equipmentDisplay = parts.join(' • ')
     }
@@ -241,6 +257,39 @@ export async function POST(request: Request) {
     }
 
     if (error) throw error
+
+    for (const line of objectLines) {
+      const objectItem = objectMap.get(line.object_item_id)
+      if (!objectItem) continue
+      const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+      const currentStock = Math.max(0, Number(objectItem.stock || 0))
+      const { error: updateObjectStockErr } = await supabase
+        .from('catalog_items')
+        .update({ stock: currentStock + qty })
+        .eq('group_id', session.groupId)
+        .eq('id', objectItem.id)
+      if (updateObjectStockErr) throw updateObjectStockErr
+      objectItem.stock = currentStock + qty
+    }
+
+    if (activityType !== 'Boite au lettre') {
+      for (const line of equipmentLines) {
+        const equipmentItem = equipmentStockMap.get(line.equipment_item_id)
+        if (!equipmentItem) continue
+        const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        const currentStock = Math.max(0, Number(equipmentItem.stock || 0))
+        if (currentStock < qty) {
+          return NextResponse.json({ error: `Stock insuffisant pour l'équipement ${equipmentItem.name}.` }, { status: 400 })
+        }
+        const { error: updateEquipmentStockErr } = await supabase
+          .from('catalog_items')
+          .update({ stock: currentStock - qty })
+          .eq('group_id', session.groupId)
+          .eq('id', equipmentItem.id)
+        if (updateEquipmentStockErr) throw updateEquipmentStockErr
+        equipmentItem.stock = currentStock - qty
+      }
+    }
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
   } catch (error: unknown) {

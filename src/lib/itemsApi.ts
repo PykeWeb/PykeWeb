@@ -742,71 +742,104 @@ function toNullableString(value: string | null | undefined) {
   return normalized.length ? normalized : null
 }
 
+function isItemTypeConstraintError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+  const message = String((error as { message?: unknown }).message || '').toLowerCase()
+  return message.includes('catalog_items_item_type_check') || (message.includes('item_type') && message.includes('check constraint'))
+}
+
+function withLegacyDbItemType(category: ItemCategory, itemType: ItemType): ItemType[] {
+  if (category === 'objects') return [itemType, 'consumable', 'material', 'other']
+  if (category === 'custom') return [itemType, 'other', 'input']
+  if (category === 'weapons') return [itemType, 'weapon']
+  if (category === 'equipment') return [itemType, 'equipment']
+  return [itemType, 'product', 'drug_material', 'other']
+}
+
 export async function updateCatalogItem(args: UpdateCatalogItemInput) {
-  const resolved = await ensureCatalogItemId(args.id)
-  const groupId = currentGroupId()
-  const { data: current, error: currentError } = await supabase
-    .from('catalog_items')
-    .select('id,name,description,category,item_type,buy_price,sell_price,stock,fivem_item_id,internal_id,image_url')
-    .eq('group_id', groupId)
-    .eq('id', resolved)
-    .maybeSingle<{
-      id: string
-      name: string
-      description: string | null
-      category: ItemCategory
-      item_type: ItemType | null
-      buy_price: number | string | null
-      sell_price: number | string | null
-      stock: number | string | null
-      fivem_item_id: string | null
-      internal_id: string | null
-      image_url: string | null
-    }>()
+  try {
+    const resolved = await ensureCatalogItemId(args.id)
+    const groupId = currentGroupId()
+    const { data: current, error: currentError } = await supabase
+      .from('catalog_items')
+      .select('id,name,description,category,item_type,buy_price,sell_price,stock,fivem_item_id,internal_id,image_url')
+      .eq('group_id', groupId)
+      .eq('id', resolved)
+      .maybeSingle<{
+        id: string
+        name: string
+        description: string | null
+        category: ItemCategory
+        item_type: ItemType | null
+        buy_price: number | string | null
+        sell_price: number | string | null
+        stock: number | string | null
+        fivem_item_id: string | null
+        internal_id: string | null
+        image_url: string | null
+      }>()
 
-  if (currentError) throw currentError
-  if (!current) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
+    if (currentError) throw currentError
+    if (!current) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
 
-  const nextPayload = {
-    name: args.name.trim(),
-    category: args.category,
-    item_type: normalizeItemType(args.item_type, args.category),
-    description: toNullableString(args.description),
-    buy_price: toNonNegative(args.buy_price),
-    sell_price: toNonNegative(args.sell_price),
-    stock: toNonNegative(args.stock),
-    fivem_item_id: toNullableString(args.fivem_item_id),
-  }
+    const nextPayload = {
+      name: args.name.trim(),
+      category: args.category,
+      item_type: normalizeItemType(args.item_type, args.category),
+      description: toNullableString(args.description),
+      buy_price: toNonNegative(args.buy_price),
+      sell_price: toNonNegative(args.sell_price),
+      stock: toNonNegative(args.stock),
+      fivem_item_id: toNullableString(args.fivem_item_id),
+    }
 
-  const hasDataChange = (
-    current.name !== nextPayload.name ||
-    current.category !== nextPayload.category ||
-    normalizeItemType(current.item_type, current.category) !== nextPayload.item_type ||
-    toNullableString(current.description) !== nextPayload.description ||
-    toNonNegative(current.buy_price) !== nextPayload.buy_price ||
-    toNonNegative(current.sell_price) !== nextPayload.sell_price ||
-    toNonNegative(current.stock) !== nextPayload.stock ||
-    toNullableString(current.fivem_item_id) !== nextPayload.fivem_item_id
-  )
+    const hasDataChange = (
+      current.name !== nextPayload.name ||
+      current.category !== nextPayload.category ||
+      normalizeItemType(current.item_type, current.category) !== nextPayload.item_type ||
+      toNullableString(current.description) !== nextPayload.description ||
+      toNonNegative(current.buy_price) !== nextPayload.buy_price ||
+      toNonNegative(current.sell_price) !== nextPayload.sell_price ||
+      toNonNegative(current.stock) !== nextPayload.stock ||
+      toNullableString(current.fivem_item_id) !== nextPayload.fivem_item_id
+    )
 
-  if (!hasDataChange && !args.imageFile) {
-    throw new Error('Aucune modification détectée.')
-  }
+    if (!hasDataChange && !args.imageFile) {
+      throw new Error('Aucune modification détectée.')
+    }
 
-  const { data, error } = await supabase
-    .from('catalog_items')
-    .update({
-      ...nextPayload,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('group_id', groupId)
-    .eq('id', resolved)
-    .select('id')
+    let updateResult = await supabase
+      .from('catalog_items')
+      .update({
+        ...nextPayload,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('group_id', groupId)
+      .eq('id', resolved)
+      .select('id')
 
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
+    if (updateResult.error && isItemTypeConstraintError(updateResult.error)) {
+      const candidates = withLegacyDbItemType(nextPayload.category, nextPayload.item_type)
+      for (const candidate of candidates) {
+        if (candidate === nextPayload.item_type) continue
+        updateResult = await supabase
+          .from('catalog_items')
+          .update({
+            ...nextPayload,
+            item_type: candidate,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('group_id', groupId)
+          .eq('id', resolved)
+          .select('id')
+        if (!updateResult.error) break
+      }
+    }
 
-  if (args.imageFile) {
+    if (updateResult.error) throw updateResult.error
+    if (!updateResult.data || updateResult.data.length === 0) throw new Error('Impossible de modifier: item introuvable ou non autorisé.')
+
+    if (args.imageFile) {
     const ext = getExt(args.imageFile)
     const path = `catalog/${resolved}.${ext}`
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, args.imageFile, {
@@ -825,7 +858,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
     if (imageUpdateError) throw imageUpdateError
   }
 
-  await upsertLegacyMirror({
+    await upsertLegacyMirror({
     category: args.category,
     name: nextPayload.name,
     description: nextPayload.description,
@@ -835,7 +868,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
     lookupName: current?.name,
   })
 
-  const { data: refreshed, error: refreshError } = await supabase
+    const { data: refreshed, error: refreshError } = await supabase
     .from('catalog_items')
     .select('name,buy_price,sell_price,stock,category,item_type,fivem_item_id,description,image_url')
     .eq('group_id', groupId)
@@ -852,9 +885,9 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
       image_url: string | null
     }>()
 
-  if (refreshError) throw refreshError
+    if (refreshError) throw refreshError
 
-  const updateApplied = (
+    const updateApplied = (
     refreshed.name === nextPayload.name &&
     refreshed.category === nextPayload.category &&
     normalizeItemType(refreshed.item_type, refreshed.category) === nextPayload.item_type &&
@@ -865,11 +898,11 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
     toNullableString(refreshed.fivem_item_id) === nextPayload.fivem_item_id
   )
 
-  if (!updateApplied) {
-    throw new Error("La mise à jour n'a pas été appliquée correctement.")
-  }
+    if (!updateApplied) {
+      throw new Error("La mise à jour n'a pas été appliquée correctement.")
+    }
 
-  if (groupId === 'admin') {
+    if (groupId === 'admin') {
     const globalPayload = {
       category: refreshed.category,
       item_type: normalizeItemType(refreshed.item_type, refreshed.category),
@@ -986,6 +1019,13 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
 
       if (propagateError) throw new Error(`catalog_items propagation update: ${propagateError.message}`)
     }
+    }
+  } catch (error: unknown) {
+    if (error instanceof Error) throw error
+    if (typeof error === 'object' && error && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+      throw new Error((error as { message: string }).message)
+    }
+    throw new Error("Impossible de modifier l'item.")
   }
 }
 

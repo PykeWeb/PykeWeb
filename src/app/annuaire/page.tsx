@@ -1,5 +1,5 @@
-import AnnuaireClient from './ui/AnnuaireClient'
+import { redirect } from 'next/navigation'
 
 export default function AnnuairePage() {
-  return <AnnuaireClient />
+  redirect('/annuaire/contact')
 }

@@ -35,7 +35,7 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
-type ActivityView = 'summary' | 'transactions' | 'expenses' | 'stock' | 'production' | 'activities'
+type ActivityView = 'summary' | 'expenses' | 'stock' | 'production' | 'activities'
 type StockActivityCategory = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs'
 type StockBubbleKey = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom'
 
@@ -309,7 +309,7 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'transactions', 'expenses', 'stock', 'production', 'activities']
+    const views: ActivityView[] = ['summary', 'expenses', 'stock', 'production', 'activities']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
@@ -495,11 +495,10 @@ export function DashboardClient() {
           <div className="mt-3 flex flex-wrap gap-2">
             {[
               { key: 'summary', label: 'Résumé', active: 'border-violet-300/65 bg-gradient-to-r from-violet-500/35 to-fuchsia-500/30 text-violet-50', idle: 'border-violet-300/25 bg-violet-500/10 text-violet-100/85 hover:bg-violet-500/18' },
-              { key: 'transactions', label: 'Transactions', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
               { key: 'expenses', label: 'Dépenses', active: 'border-amber-300/65 bg-gradient-to-r from-amber-500/35 to-orange-500/30 text-amber-50', idle: 'border-amber-300/25 bg-amber-500/10 text-amber-100/85 hover:bg-amber-500/18' },
               { key: 'stock', label: 'Stock', active: 'border-emerald-300/65 bg-gradient-to-r from-emerald-500/35 to-teal-500/30 text-emerald-50', idle: 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100/85 hover:bg-emerald-500/18' },
-              { key: 'production', label: `Suivi de production (${recentDrugTrackings.filter((row) => row.status === 'in_progress').length})`, active: 'border-fuchsia-300/65 bg-gradient-to-r from-fuchsia-500/35 to-violet-500/30 text-fuchsia-50', idle: 'border-fuchsia-300/25 bg-fuchsia-500/10 text-fuchsia-100/85 hover:bg-fuchsia-500/18' },
-              { key: 'activities', label: `Activités (${recentActivities.length})`, active: 'border-sky-300/65 bg-gradient-to-r from-sky-500/35 to-indigo-500/30 text-sky-50', idle: 'border-sky-300/25 bg-sky-500/10 text-sky-100/85 hover:bg-sky-500/18' },
+              { key: 'production', label: 'Production', active: 'border-fuchsia-300/65 bg-gradient-to-r from-fuchsia-500/35 to-violet-500/30 text-fuchsia-50', idle: 'border-fuchsia-300/25 bg-fuchsia-500/10 text-fuchsia-100/85 hover:bg-fuchsia-500/18' },
+              { key: 'activities', label: 'Activités', active: 'border-sky-300/65 bg-gradient-to-r from-sky-500/35 to-indigo-500/30 text-sky-50', idle: 'border-sky-300/25 bg-sky-500/10 text-sky-100/85 hover:bg-sky-500/18' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -555,43 +554,6 @@ export function DashboardClient() {
                   </Link>
                 </div>
               </div>
-            ) : null}
-            {activityView === 'transactions' && recentTx.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucune transaction pour le moment.</div>
-            ) : null}
-            {activityView === 'transactions' ? (
-              recentTx.map((t) => (
-                <Link href={toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) || '#'} aria-disabled={!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)} onClick={(event) => { if (!toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`)) event.preventDefault() }} key={t.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref(`/finance/transactions/${t.source}/${encodeURIComponent(t.entry_id)}`) ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-                      {t.item_image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={t.item_image_url} alt={t.counterparty || 'Transaction'} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-white/40"><ImageIcon className="h-4 w-4" /></div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      <span
-                        className={`mr-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
-                          t.type === 'purchase' || t.type === 'stock_in'
-                            ? 'border-emerald-300/40 bg-emerald-500/10 text-emerald-100'
-                            : 'border-orange-300/40 bg-orange-500/10 text-orange-100'
-                        }`}
-                      >
-                        {t.type === 'purchase' || t.type === 'stock_in' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
-                        {t.type === 'purchase' || t.type === 'stock_in' ? 'Entrée' : 'Sortie'}
-                      </span>
-                      {t.counterparty ? `• ${t.counterparty}` : '• Interlocuteur non renseigné'}
-                    </p>
-                    <p className="text-xs text-white/60">{new Date(t.created_at).toLocaleString()}</p>
-                    <p className="truncate text-xs text-white/50">{t.transaction_items?.map((item) => `${item.name_snapshot || 'Item'} x${Math.max(1, Number(item.quantity) || 1)}`).join(' · ') || 'Aucun item lié'}</p>
-                    </div>
-                  </div>
-                  <div className="text-sm font-semibold text-white/80">{t.total ?? '—'}</div>
-                </Link>
-              ))
             ) : null}
             {activityView === 'expenses' ? (
               recentExpenses.length === 0 ? (

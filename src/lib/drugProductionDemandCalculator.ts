@@ -8,6 +8,7 @@ export type DemandMode =
 
 export type DemandInputs = {
   mode: DemandMode
+  isMeth?: boolean
   quantitySeeds: number
   quantityLeaves: number
   quantityBricks: number
@@ -28,6 +29,31 @@ export function computeDemandMetrics(input: DemandInputs) {
 
   const taxRate = 0.05
   const pouchesPerBrick = 10
+  const methPouchesPerTable = 32
+
+  if (input.isMeth) {
+    const expectedOutput = seedQty * methPouchesPerTable
+    const seedCostTotal = seedQty * seedPrice
+    const totalSaleEstimate = expectedOutput * pouchSalePrice
+    const transformCostTotal = 0
+    const totalCost = seedCostTotal + transformCostTotal
+    const estimatedProfit = totalSaleEstimate - totalCost
+    return {
+      taxRate,
+      pouchesPerBrick,
+      seedQty,
+      leafQty,
+      brickQty,
+      netBricks: 0,
+      pouches: expectedOutput,
+      expectedOutput,
+      seedCostTotal,
+      totalSaleEstimate,
+      transformCostTotal,
+      totalCost,
+      estimatedProfit,
+    }
+  }
 
   const leavesBase =
     input.mode === 'full_chain' || input.mode === 'two_steps_seed_to_brick'

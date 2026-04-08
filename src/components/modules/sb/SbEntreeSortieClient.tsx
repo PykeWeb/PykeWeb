@@ -42,6 +42,13 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
+  const [manualItemLabel, setManualItemLabel] = useState('')
+  const [manualCashAmount, setManualCashAmount] = useState('')
+  const [manualReason, setManualReason] = useState('')
+  const [methKitMachines, setMethKitMachines] = useState('1')
+  const [methKitUnitPrice, setMethKitUnitPrice] = useState('3300')
+  const [showManualCashEditor, setShowManualCashEditor] = useState(false)
+  const [showMethKitEditor, setShowMethKitEditor] = useState(false)
   const memberSelectOptions = useMemo(() => {
     const current = member.trim()
     if (!current) return memberOptions
@@ -92,6 +99,11 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     Object.fromEntries(items.map((item) => [item.id, Math.max(0, Number(item.stock || 0))]))
   ), [items])
 
+  const cashItem = useMemo(
+    () => items.find((item) => String(item.name || '').trim().toLowerCase() === 'argent') ?? null,
+    [items]
+  )
+
   const safeTotalItems = useMemo(
     () => selectedItems.reduce((sum, entry) => sum + Math.max(0, Number(entry.quantity || 0)), 0),
     [selectedItems]
@@ -101,6 +113,11 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     () => selectedItems.reduce((sum, entry) => sum + (entry.quantity * Math.max(0, Number(entry.price || 0))), 0),
     [selectedItems]
   )
+
+  function findItemByAliases(aliases: string[]) {
+    const normalizedAliases = aliases.map((alias) => alias.trim().toLowerCase())
+    return items.find((item) => normalizedAliases.some((alias) => item.name.trim().toLowerCase().includes(alias))) || null
+  }
 
   const addItem = (item: CatalogItem, increment = 1) => {
     const baseQuantity = Math.max(1, Math.floor(Number(increment) || 1))
@@ -178,10 +195,75 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setSelectedItems([])
     setCounterparty('')
     setMember(defaultMemberName)
+    setManualItemLabel('')
+    setManualCashAmount('')
+    setManualReason('')
+    setMethKitMachines('1')
+    setMethKitUnitPrice('3300')
+    setShowManualCashEditor(false)
+    setShowMethKitEditor(false)
+  }
+
+  function addMethKitToSelection() {
+    const machineQty = Math.max(1, Math.floor(Number(methKitMachines || 1) || 1))
+    const machineUnitPrice = Math.max(0, Number(methKitUnitPrice || 0))
+
+    const machine = findItemByAliases(['machine de meth', 'machine meth'])
+    const battery = findItemByAliases(['batterie', 'battery'])
+    const ammonia = findItemByAliases(['ammoniaque', 'ammonia'])
+    const methylamine = findItemByAliases(['methylamine', 'méthylamine'])
+
+    if (!machine || !battery || !ammonia || !methylamine) {
+      toast.error('Kit meth incomplet: vérifie les items Machine/Batterie/Ammoniaque/Methylamine.')
+      return
+    }
+
+    addItem(machine, machineQty)
+    addItem(battery, machineQty * 2)
+    addItem(ammonia, machineQty * 6)
+    addItem(methylamine, machineQty * 5)
+
+    setSelectedItems((prev) => prev.map((entry) => {
+      if (entry.id === machine.id) return { ...entry, price: machineUnitPrice }
+      if (entry.id === battery.id || entry.id === ammonia.id || entry.id === methylamine.id) return { ...entry, price: 0 }
+      return entry
+    }))
+    toast.success('Kit complet meth ajouté.')
+  }
+
+  function addOtherQuickItemToSelection() {
+    const tablette = findItemByAliases(['tablette', 'tablet'])
+    if (!tablette) {
+      toast.error('Item "Tablette" introuvable dans le catalogue.')
+      return
+    }
+    addItem(tablette, 1)
+    toast.success('Tablette ajoutée.')
+  }
+
+  const submitManualCashFlow = async () => {
+    const amount = Math.max(0, Number(manualCashAmount || 0))
+    if (amount <= 0) return
+    if (!cashItem?.id) throw new Error('Aucun item "argent" actif trouvé.')
+    if (!manualReason.trim()) throw new Error('Ajoute une raison pour le mouvement d’argent.')
+    const memberNote = member.trim() ? `Membre: ${member.trim()}` : null
+    const itemNote = manualItemLabel.trim() ? `Item non listé: ${manualItemLabel.trim()}` : 'Item non listé'
+    const reasonNote = `Flux ${mode === 'sortie' ? 'sortie' : 'entrée'} argent • ${itemNote} • Raison: ${manualReason.trim()}`
+    const notes = memberNote ? `${reasonNote} • ${memberNote}` : reasonNote
+    await createFinanceTransaction({
+      item_id: cashItem.id,
+      mode: mode === 'sortie' ? 'sell' : 'buy',
+      quantity: 1,
+      unit_price: amount,
+      counterparty: counterparty.trim() || manualItemLabel.trim() || undefined,
+      notes,
+      payment_mode: 'other',
+    })
   }
 
   const submitTransaction = async () => {
-    if (selectedItems.length === 0) {
+    const manualAmount = Math.max(0, Number(manualCashAmount || 0))
+    if (selectedItems.length === 0 && manualAmount <= 0) {
       toast.error('Ajoute au moins un article.')
       return
     }
@@ -200,6 +282,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           payment_mode: 'other',
         })
       }
+      await submitManualCashFlow()
 
       toast.success('Transaction enregistrée.')
       clearTransaction()
@@ -231,7 +314,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           { key: 'weapons', label: 'Armes', value: stats.weapons, icon: Swords, tone: 'from-rose-500/30 to-red-600/20 border-rose-200/35' },
           { key: 'equipment', label: 'Équipement', value: stats.equipment, icon: Shield, tone: 'from-amber-600/35 to-orange-700/20 border-amber-200/35' },
           { key: 'drugs', label: 'Drogues', value: stats.drugs, icon: Pill, tone: 'from-emerald-500/30 to-teal-600/20 border-emerald-200/35' },
-          { key: 'other', label: 'Autres\u200b', value: stats.other, icon: Sparkles, tone: 'from-violet-500/30 to-fuchsia-600/20 border-violet-200/35' },
+          { key: 'other', label: 'Autre(s)', value: stats.other, icon: Sparkles, tone: 'from-violet-500/30 to-fuchsia-600/20 border-violet-200/35' },
         ].map((card) => (
           <button
             key={card.key}
@@ -284,8 +367,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             onChange={(event) => setMember(event.target.value)}
             className="h-11 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
           >
-            <option value="">Choisir un joueur</option>
-            {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+            <option value="" className="bg-[#0b1228] text-white">Choisir un joueur</option>
+            {memberSelectOptions.map((name) => <option key={name} value={name} className="bg-[#0b1228] text-white">{name}</option>)}
           </select>
           <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-5 text-sm font-semibold text-cyan-100">
             <span>Qté : {safeTotalItems}</span>
@@ -301,6 +384,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             Valider
           </PrimaryButton>
         </div>
+
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-5 xl:items-stretch">
@@ -321,6 +405,54 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           <div className="flex-1 space-y-2 overflow-y-auto pr-1">
             {isLoading ? <p className="py-10 text-center text-white/60">Chargement des articles…</p> : null}
             {!isLoading && filteredItems.length === 0 ? <p className="py-10 text-center text-white/60">Aucun article trouvé.</p> : null}
+            {category === 'custom' ? (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowManualCashEditor(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setShowManualCashEditor(true)
+                  }
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-violet-300/25 bg-violet-500/[0.08] px-3 py-2 text-left transition hover:border-violet-300/45 hover:bg-violet-500/[0.14]"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-lg border border-violet-300/35 bg-violet-500/[0.14]">
+                    <Sparkles className="h-5 w-5 text-violet-100" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">Argent / item non listé</p>
+                    <p className="text-xs text-white/70">Clique pour saisir montant, raison et item libre.</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {isTradeVariant && mode === 'entree' && category === 'drugs' ? (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowMethKitEditor(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setShowMethKitEditor(true)
+                  }
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] px-3 py-2 text-left transition hover:border-cyan-300/45 hover:bg-cyan-500/[0.14]"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-lg border border-cyan-300/35 bg-cyan-500/[0.14]">
+                    <Pill className="h-5 w-5 text-cyan-100" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">Achat kit complet Meth</p>
+                    <p className="text-xs text-white/70">Ajoute machine + accessoires avec prix machine modifiable.</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {filteredItems.map((item) => {
               const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
               const CategoryIcon =
@@ -371,6 +503,33 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         <Panel className="flex h-full max-h-[44vh] flex-col xl:col-span-2">
           <h2 className="text-xl font-semibold text-white">Objets sélectionnés</h2>
           <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+            {showManualCashEditor ? (
+              <div className="rounded-xl border border-violet-300/25 bg-violet-500/[0.08] p-2">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-violet-100">Argent / item non listé</p>
+                  {isTradeVariant && mode === 'entree' ? (
+                    <SecondaryButton onClick={addOtherQuickItemToSelection} className="h-8 px-3 text-xs">+ Tablette</SecondaryButton>
+                  ) : null}
+                </div>
+                <div className="grid gap-2">
+                  <Input value={manualItemLabel} onChange={(event) => setManualItemLabel(event.target.value)} placeholder="Nom item non listé (optionnel)" className="h-9" />
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <Input value={manualCashAmount} onChange={(event) => setManualCashAmount(event.target.value)} inputMode="decimal" placeholder={`Montant argent (${mode === 'sortie' ? 'sortie' : 'entrée'})`} className="h-9" />
+                    <Input value={manualReason} onChange={(event) => setManualReason(event.target.value)} placeholder="Raison (obligatoire si montant)" className="h-9" />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {showMethKitEditor && isTradeVariant && mode === 'entree' ? (
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-2">
+                <p className="text-sm font-semibold text-cyan-100">Kit complet Meth</p>
+                <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                  <Input value={methKitMachines} onChange={(event) => setMethKitMachines(event.target.value)} inputMode="numeric" placeholder="Nb machines" className="h-9" />
+                  <Input value={methKitUnitPrice} onChange={(event) => setMethKitUnitPrice(event.target.value)} inputMode="decimal" placeholder="Prix machine" className="h-9" />
+                  <SecondaryButton onClick={addMethKitToSelection} className="h-9">Ajouter kit</SecondaryButton>
+                </div>
+              </div>
+            ) : null}
             {selectedItems.length === 0 ? <p className="py-8 text-center text-sm text-white/55">Aucun objet sélectionné.</p> : null}
             {selectedItems.map((entry) => {
               const ItemIcon =

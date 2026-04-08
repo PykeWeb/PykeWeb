@@ -37,6 +37,8 @@ const NEW_REQUEST_INITIAL = {
   createdAt: new Date().toISOString().slice(0, 10),
   expectedDate: '',
   note: '',
+  expectedOutputManual: 0,
+  receivedOutputManual: 0,
 }
 
 type FlowMode = 'seed_only' | 'leaf_to_brick' | 'brick_to_pouch' | 'two_steps_seed_to_brick' | 'two_steps_transforms' | 'full_chain'
@@ -87,16 +89,39 @@ function typeToken(type: string) {
   return ''
 }
 
+function resolveFlowMode(type: ProductionType, flowMode: FlowMode): FlowMode {
+  if (type === 'meth') return 'seed_only'
+  return flowMode
+}
+
+function cokeFlowQuantities(flowMode: FlowMode, seedQty: number, leafQty: number, brickQty: number) {
+  const safeSeed = Math.max(0, seedQty)
+  const safeLeaf = Math.max(0, leafQty)
+  const safeBrick = Math.max(0, brickQty)
+  const leavesInput = flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick'
+    ? safeSeed
+    : flowMode === 'leaf_to_brick' || flowMode === 'two_steps_transforms'
+      ? safeLeaf
+      : 0
+  const bricksInput = flowMode === 'brick_to_pouch'
+    ? safeBrick
+    : Math.floor(leavesInput * (1 - BRICK_TAX_PERCENT / 100))
+  const pouchesOutput = (flowMode === 'brick_to_pouch' || flowMode === 'two_steps_transforms' || flowMode === 'full_chain')
+    ? Math.max(0, Math.floor(bricksInput * POUCHES_PER_BRICK))
+    : 0
+  return { leavesInput, bricksInput, pouchesOutput }
+}
+
 async function findDrugItemId(stage: 'seed' | 'leaf' | 'brick' | 'pouch', type: string) {
   const token = typeToken(type)
   const items = await listDrugItems()
   const stageHints = stage === 'seed'
-    ? ['graine', 'seed']
+    ? (token === 'meth' ? ['meth', 'machine'] : ['graine', 'seed'])
     : stage === 'leaf'
       ? ['feuille', 'leaf']
       : stage === 'brick'
         ? ['brick', 'brique']
-        : ['pochon', 'pouch', 'sachet']
+        : (token === 'meth' ? ['pochon meth', 'sachet meth', 'meth', 'pochon', 'pouch', 'sachet'] : ['pochon coke', 'sachet coke', 'coke', 'pochon', 'pouch', 'sachet'])
 
   const withStage = items.filter((item) => {
     const name = normalize(item.name)
@@ -147,13 +172,34 @@ export default function SuiviProductionClient() {
   const [pouchTransformCost, setPouchTransformCost] = useState(0)
   const [assetImages, setAssetImages] = useState<{ pouch: string | null; brick: string | null; leaf: string | null }>({ pouch: null, brick: null, leaf: null })
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed'>('all')
+  const [deliveryModal, setDeliveryModal] = useState<{ row: DrugProductionTrackingRow; realPouches: string } | null>(null)
+  const isMeth = newRequest.type === 'meth'
+  const [catalogItems, setCatalogItems] = useState<Array<{ name: string; buy_price: number | null; sell_price: number | null; image_url: string | null }>>([])
 
   useEffect(() => {
     const initialType = String(searchParams.get('type') || '').toLowerCase()
     if (initialType === 'meth' || initialType === 'coke') {
-      setNewRequest((prev) => ({ ...prev, type: initialType as ProductionType }))
+      setNewRequest((prev) => ({
+        ...prev,
+        type: initialType as ProductionType,
+        flowMode: initialType === 'meth' ? 'seed_only' : prev.flowMode,
+        seedQty: initialType === 'meth' ? 3 : prev.seedQty,
+        expectedOutputManual: initialType === 'meth' ? 48 : prev.expectedOutputManual,
+      }))
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (!isMeth) return
+    setNewRequest((prev) => ({
+      ...prev,
+      flowMode: 'seed_only',
+      seedQty: prev.seedQty > 0 ? prev.seedQty : 3,
+      expectedOutputManual: prev.expectedOutputManual > 0 ? prev.expectedOutputManual : Math.max(0, (prev.seedQty > 0 ? prev.seedQty : 3) * 16),
+    }))
+    setBrickTransformCost(0)
+    setPouchTransformCost(0)
+  }, [isMeth])
 
   useEffect(() => {
     if (!creating) return
@@ -175,43 +221,57 @@ export default function SuiviProductionClient() {
   }, [rows, statusFilter])
 
   const expectedFromForm = useMemo(() => {
-    const baseLeaves = newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick'
+    const flowMode = resolveFlowMode(newRequest.type, newRequest.flowMode)
+    if (newRequest.type === 'meth') return Math.max(0, Number(newRequest.expectedOutputManual || (newRequest.seedQty * 16) || 0))
+    const baseLeaves = flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick'
       ? Math.max(0, Number(newRequest.seedQty || 0))
       : Math.max(0, Number(newRequest.leafQty || 0))
-    const netBricks = newRequest.flowMode === 'brick_to_pouch'
+    const netBricks = flowMode === 'brick_to_pouch'
       ? Math.max(0, Number(newRequest.brickQty || 0))
       : Math.floor(baseLeaves * (1 - BRICK_TAX_PERCENT / 100))
-    if (newRequest.flowMode === 'seed_only') return Math.max(0, Number(newRequest.seedQty || 0))
-    if (newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_seed_to_brick') return Math.max(0, netBricks)
+    if (flowMode === 'seed_only') return Math.max(0, Number(newRequest.seedQty || 0))
+    if (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick') return Math.max(0, netBricks)
     return Math.max(0, netBricks * POUCHES_PER_BRICK)
-  }, [newRequest.brickQty, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty])
+  }, [newRequest.brickQty, newRequest.expectedOutputManual, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty, newRequest.type])
 
   const conversionFromForm = useMemo(() => {
+    if (newRequest.type === 'meth') {
+      const tableQty = Math.max(0, Number(newRequest.seedQty || 0))
+      const expectedMeth = Math.max(0, Number(newRequest.expectedOutputManual || (tableQty * 16) || 0))
+      return { seedQty: tableQty, leaves: 0, netBricks: 0, pouches: expectedMeth * 2 }
+    }
+    const flowMode = resolveFlowMode(newRequest.type, newRequest.flowMode)
     const seedQty = Math.max(0, Number(newRequest.seedQty || 0))
-    const leaves = newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick'
-      ? seedQty
-      : newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms'
-        ? Math.max(0, Number(newRequest.leafQty || 0))
-        : 0
-    const netBricks = newRequest.flowMode === 'brick_to_pouch'
-      ? Math.max(0, Number(newRequest.brickQty || 0))
-      : Math.floor(leaves * (1 - BRICK_TAX_PERCENT / 100))
-    const pouches = Math.max(0, Math.floor(netBricks * POUCHES_PER_BRICK))
+    const quantities = cokeFlowQuantities(
+      flowMode,
+      seedQty,
+      Math.max(0, Number(newRequest.leafQty || 0)),
+      Math.max(0, Number(newRequest.brickQty || 0)),
+    )
+    const leaves = quantities.leavesInput
+    const netBricks = quantities.bricksInput
+    const pouches = quantities.pouchesOutput
     return { seedQty, leaves, netBricks, pouches }
-  }, [newRequest.brickQty, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty])
+  }, [newRequest.brickQty, newRequest.expectedOutputManual, newRequest.flowMode, newRequest.leafQty, newRequest.seedQty, newRequest.type])
 
   const previewFinance = useMemo(() => {
-    const seedCostTotal = (newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick')
-      ? conversionFromForm.seedQty * seedPrice
+    if (newRequest.type === 'meth') {
+      const totalCost = conversionFromForm.seedQty * seedPrice
+      const totalSale = conversionFromForm.pouches * pouchSalePrice
+      return {
+        seedCostTotal: totalCost,
+        totalSale,
+        totalTransformCost: 0,
+        totalCost,
+        estimatedProfit: totalSale - totalCost,
+      }
+    }
+    const flowMode = resolveFlowMode(newRequest.type, newRequest.flowMode)
+    const seedCostTotal = (flowMode === 'seed_only' || flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick') ? conversionFromForm.seedQty * seedPrice : 0
+    const brickCostTotal = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? conversionFromForm.leaves * brickTransformCost : 0
+    const pouchCostTotal = (flowMode === 'brick_to_pouch' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms')
+      ? conversionFromForm.netBricks * pouchTransformCost
       : 0
-    const brickCostTotal = (newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_seed_to_brick' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_transforms')
-      ? conversionFromForm.leaves * brickTransformCost
-      : 0
-    const pouchCostTotal = newRequest.flowMode === 'brick_to_pouch'
-      ? Math.max(0, Number(newRequest.brickQty || 0)) * pouchTransformCost
-      : (newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_transforms')
-        ? conversionFromForm.leaves * pouchTransformCost
-        : 0
     const totalTransformCost = brickCostTotal + pouchCostTotal
     const totalCost = seedCostTotal + totalTransformCost
     const totalSale = conversionFromForm.pouches * pouchSalePrice
@@ -222,7 +282,13 @@ export default function SuiviProductionClient() {
       totalCost,
       estimatedProfit: totalSale - totalCost,
     }
-  }, [brickTransformCost, conversionFromForm.leaves, conversionFromForm.pouches, conversionFromForm.seedQty, newRequest.brickQty, newRequest.flowMode, pouchSalePrice, pouchTransformCost, seedPrice])
+  }, [brickTransformCost, conversionFromForm.leaves, conversionFromForm.netBricks, conversionFromForm.pouches, conversionFromForm.seedQty, newRequest.flowMode, newRequest.type, pouchSalePrice, pouchTransformCost, seedPrice])
+
+  const methApproxPouches = useMemo(() => {
+    if (!isMeth) return 0
+    const referenceMethBrut = Math.max(0, Number(newRequest.receivedOutputManual || newRequest.expectedOutputManual || 0))
+    return referenceMethBrut * 2
+  }, [isMeth, newRequest.expectedOutputManual, newRequest.receivedOutputManual])
 
   const stats = useMemo(() => {
     const inProgress = rows.filter((r) => r.status === 'in_progress').length
@@ -270,62 +336,59 @@ export default function SuiviProductionClient() {
   }, [])
 
   useEffect(() => {
-    void listCatalogItemsUnified()
-      .then((items) => {
-        const pouch = items.find((item) => normalize(item.name).includes('pochon'))
-        const brick = items.find((item) => normalize(item.name).includes('brique'))
-        const leaf = items.find((item) => normalize(item.name).includes('feuille'))
-        const seed = items.find((item) => normalize(item.name).includes('graine'))
-        if (pouch) {
-          setPouchSalePrice(Math.max(0, Number(pouch.sell_price || pouch.buy_price || 0)))
-        }
-        if (seed) {
-          setSeedPrice(Math.max(0, Number(seed.buy_price || seed.sell_price || 0)))
-        }
-        setAssetImages({
-          pouch: pouch?.image_url || null,
-          brick: brick?.image_url || null,
-          leaf: leaf?.image_url || null,
-        })
-      })
-      .catch(() => undefined)
+    void listCatalogItemsUnified().then(setCatalogItems).catch(() => undefined)
   }, [])
 
-  const progress = useMemo(() => {
-    if (!selected) return 0
-    if (!selected.expected_output) return 0
-    return Math.min(100, Math.round((selected.received_output / selected.expected_output) * 100))
-  }, [selected])
-
-  const remaining = useMemo(() => {
-    if (!selected) return 0
-    return Math.max(0, Number(selected.expected_output || 0) - Number(selected.received_output || 0))
-  }, [selected])
+  useEffect(() => {
+    if (!catalogItems.length) return
+    const findByAliases = (aliases: string[]) => catalogItems.find((item) => aliases.some((alias) => normalize(item.name).includes(normalize(alias))))
+    const pouch = isMeth
+      ? findByAliases(['pochon de meth', 'pochon meth', 'sachet meth'])
+      : findByAliases(['pochon de coke', 'pochon coke', 'sachet coke', 'pochon'])
+    const brick = findByAliases(['brique', 'brick'])
+    const leaf = isMeth ? findByAliases(['meth', 'machine de meth']) : findByAliases(['feuille', 'leaf'])
+    const seed = isMeth ? findByAliases(['machine de meth', 'meth']) : findByAliases(['graine'])
+    if (pouch) setPouchSalePrice(Math.max(0, Number(pouch.sell_price || pouch.buy_price || 0)))
+    if (seed) setSeedPrice(Math.max(0, Number(seed.buy_price || seed.sell_price || 0)))
+    setAssetImages({ pouch: pouch?.image_url || null, brick: brick?.image_url || null, leaf: leaf?.image_url || null })
+  }, [catalogItems, isMeth])
 
   const selectedFinance = useMemo(() => {
-    if (!selected) return { brickCount: 0, seedCost: 0, pouchCost: 0, brickCost: 0, transformCost: 0, revenue: 0, totalCost: 0, hasSalePrice: false, estimatedProfit: 0 }
-    const flowMode = inferFlowModeFromNote(selected.note)
+    if (!selected) return { machinePurchaseCost: 0, saleUnitPrice: 130, revenue: 0, totalCost: 0, hasSalePrice: true, estimatedProfit: 0 }
+    const flowMode = selected.type === 'meth' ? 'seed_only' : inferFlowModeFromNote(selected.note)
     const seedUnitPrice = Number(selected.seed_price ?? seedPrice ?? 0)
-    const saleUnitPrice = Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
+    const saleUnitPrice = selected.type === 'meth' ? Math.max(120, Math.min(220, Number(selected.pouch_sale_price ?? pouchSalePrice ?? 170))) : Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
     const brickUnitCost = Number(selected.brick_transform_cost ?? brickTransformCost ?? 0)
     const pouchUnitCost = Number(selected.pouch_transform_cost ?? pouchTransformCost ?? 0)
     const qtySent = Math.max(0, Number(selected.quantity_sent || 0))
-    const brickCount = selected.expected_output / POUCHES_PER_BRICK
+    const expectedOutput = Math.max(0, Number(selected.expected_output || 0))
+    const receivedOutput = Math.max(0, Number(selected.received_output || 0))
+    const effectiveOutput = receivedOutput > 0 ? receivedOutput : expectedOutput
     const hasSalePrice = saleUnitPrice > 0
-    const revenue = hasSalePrice ? selected.expected_output * saleUnitPrice : 0
+    const quantities = cokeFlowQuantities(
+      flowMode,
+      qtySent,
+      qtySent,
+      qtySent,
+    )
+    const expectedPouches = selected.type === 'meth'
+      ? effectiveOutput
+      : (flowMode === 'seed_only' || flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick'
+        ? 0
+        : effectiveOutput)
+    const revenue = hasSalePrice ? expectedPouches * saleUnitPrice : 0
     const seedCost = (flowMode === 'seed_only' || flowMode === 'full_chain' || flowMode === 'two_steps_seed_to_brick') ? (qtySent * seedUnitPrice) : 0
-    const brickCost = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (qtySent * brickUnitCost) : 0
+    const brickCost = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms')
+      ? (quantities.leavesInput * brickUnitCost)
+      : 0
     const pouchCost = flowMode === 'brick_to_pouch'
       ? (qtySent * pouchUnitCost)
-      : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (qtySent * pouchUnitCost) : 0
+      : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (Math.max(0, Math.floor(effectiveOutput / POUCHES_PER_BRICK)) * pouchUnitCost) : 0
     const transformCost = brickCost + pouchCost
     const totalCost = seedCost + transformCost
     return {
-      brickCount,
-      seedCost,
-      brickCost,
-      pouchCost,
-      transformCost,
+      machinePurchaseCost: seedCost,
+      saleUnitPrice,
       revenue,
       totalCost,
       hasSalePrice,
@@ -339,18 +402,20 @@ export default function SuiviProductionClient() {
       return
     }
 
-    const quantitySent = newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick'
+    const effectiveFlowMode = resolveFlowMode(newRequest.type, newRequest.flowMode)
+    const quantitySent = effectiveFlowMode === 'seed_only' || effectiveFlowMode === 'full_chain' || effectiveFlowMode === 'two_steps_seed_to_brick'
       ? Math.max(0, Number(newRequest.seedQty || 0))
-      : newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms'
+      : effectiveFlowMode === 'leaf_to_brick' || effectiveFlowMode === 'two_steps_transforms'
         ? Math.max(0, Number(newRequest.leafQty || 0))
         : Math.max(0, Number(newRequest.brickQty || 0))
 
     const flowLabel =
-      newRequest.flowMode === 'seed_only' ? 'Achat graines'
-        : newRequest.flowMode === 'leaf_to_brick' ? 'Feuille->Brick'
-          : newRequest.flowMode === 'brick_to_pouch' ? 'Brick->Pochon'
-            : newRequest.flowMode === 'two_steps_seed_to_brick' ? '2 étapes (Graine->Brick)'
-              : newRequest.flowMode === 'two_steps_transforms' ? '2 étapes (Feuille->Pochon)'
+      newRequest.type === 'meth' ? 'Table + Transfo'
+        : effectiveFlowMode === 'seed_only' ? 'Achat graines'
+          : effectiveFlowMode === 'leaf_to_brick' ? 'Feuille->Brick'
+            : effectiveFlowMode === 'brick_to_pouch' ? 'Brick->Pochon'
+              : effectiveFlowMode === 'two_steps_seed_to_brick' ? '2 étapes (Graine->Brick)'
+                : effectiveFlowMode === 'two_steps_transforms' ? '2 étapes (Feuille->Pochon)'
             : 'Les 3 étapes'
 
     setSaving(true)
@@ -361,6 +426,7 @@ export default function SuiviProductionClient() {
         quantitySent,
         ratio: 1,
         expectedOutput: expectedFromForm,
+        receivedOutput: newRequest.type === 'meth' ? Math.max(0, Number(newRequest.receivedOutputManual || 0)) : undefined,
         note: `[${flowLabel}] ${newRequest.note || ''}`.trim(),
         createdAt: newRequest.createdAt || undefined,
         expectedDate: newRequest.expectedDate || undefined,
@@ -372,9 +438,9 @@ export default function SuiviProductionClient() {
       setRows((prev) => [created, ...prev])
       setSelectedId(created.id)
       try {
-        const stockStage = newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms'
+        const stockStage = effectiveFlowMode === 'leaf_to_brick' || effectiveFlowMode === 'two_steps_transforms'
           ? 'leaf'
-          : newRequest.flowMode === 'brick_to_pouch'
+          : effectiveFlowMode === 'brick_to_pouch'
             ? 'brick'
             : 'seed'
         const inputItemId = await findDrugItemId(stockStage, newRequest.type)
@@ -400,6 +466,7 @@ export default function SuiviProductionClient() {
         quantitySent,
         ratio: 1,
         expectedOutput: expectedFromForm,
+        receivedOutput: newRequest.type === 'meth' ? Math.max(0, Number(newRequest.receivedOutputManual || 0)) : undefined,
         createdAt: newRequest.createdAt || undefined,
         note: newRequest.note?.trim() || undefined,
         seedPrice,
@@ -446,10 +513,10 @@ export default function SuiviProductionClient() {
     }
   }
 
-  async function markAsDelivered(row: DrugProductionTrackingRow) {
-    const deliveredQty = Math.max(0, Number(row.expected_output || 0))
+  async function confirmDelivered(row: DrugProductionTrackingRow, deliveredQtyRaw: number) {
+    const deliveredQty = Math.max(0, Math.floor(Number(deliveredQtyRaw || 0)))
     if (deliveredQty <= 0) {
-      toast.error('Quantité attendue invalide.')
+      toast.error('Quantité de pochons invalide.')
       return
     }
 
@@ -470,15 +537,22 @@ export default function SuiviProductionClient() {
       })
       setRows((prev) => prev.map((entry) => (entry.id === row.id ? updated : entry)))
       setSelectedId(updated.id)
-      toast.success('Marqué comme livrée et stock mis à jour.')
+      toast.success('Transformation validée et stock mis à jour.')
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Livraison impossible.')
     }
   }
 
+  function openDeliveryModal(row: DrugProductionTrackingRow) {
+    setDeliveryModal({
+      row,
+      realPouches: String(Math.max(0, Math.floor(Number(row.expected_output || 0)))),
+    })
+  }
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Suivi Production" subtitle="Suivi des transformations externes (coke, meth...)" />
+      <PageHeader title="Transfo groupes" subtitle="Demandes envoyées à un groupe externe (coke / meth)" />
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <button type="button" onClick={() => setStatusFilter('in_progress')} className={`rounded-2xl border px-4 py-3 text-left ${statusFilter === 'in_progress' ? 'border-sky-200/60 bg-gradient-to-br from-sky-500/30 to-blue-600/20' : 'border-sky-300/25 bg-gradient-to-br from-sky-500/15 to-blue-600/15'}`}>
@@ -527,14 +601,13 @@ export default function SuiviProductionClient() {
                   <th className="px-3 py-3">Type</th>
                   <th className="px-3 py-3">Envoyé</th>
                   <th className="px-3 py-3">Attendu</th>
-                  <th className="px-3 py-3">Reçu</th>
                   <th className="px-3 py-3">Statut</th>
                   <th className="px-3 py-3">Date</th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={7}>Chargement…</td></tr> : null}
-                {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={7}>Aucune demande.</td></tr> : null}
+                {loading ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={6}>Chargement…</td></tr> : null}
+                {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-8 text-center text-white/60" colSpan={6}>Aucune demande.</td></tr> : null}
                 {visibleRows.map((row) => {
                   const active = row.id === selectedId
                   return (
@@ -559,9 +632,8 @@ export default function SuiviProductionClient() {
                       <td className="px-3 py-3">
                         <span className="inline-flex rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-xs font-semibold text-white">{typeLabel(row.type)}</span>
                       </td>
-                      <td className="px-3 py-3 font-medium">{row.quantity_sent}</td>
+                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${Math.round(Number(row.expected_output || 0) / 2)} meth brut` : row.quantity_sent}</td>
                       <td className="px-3 py-3 font-medium">{row.expected_output}</td>
-                      <td className="px-3 py-3 font-medium">{row.received_output}</td>
                       <td className="px-3 py-3">
                         <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(row.status)}`}>
                           {statusLabel(row.status)}
@@ -582,28 +654,23 @@ export default function SuiviProductionClient() {
             <div className="mt-4 space-y-3">
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
                 <p><span className="text-white/60">Groupe :</span> <span className="font-semibold">{selected.partner_name}</span></p>
-                <p><span className="text-white/60">Type :</span> <span className="font-semibold">{typeLabel(selected.type)}</span></p>
-                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.quantity_sent}</span></p>
-                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{selected.expected_output}</span></p>
-                <p><span className="text-white/60">Reçu :</span> <span className="font-semibold">{selected.received_output}</span></p>
+                <p><span className="text-white/60">Type :</span> <span className="font-semibold">{selected.type === 'meth' ? 'Meth' : typeLabel(selected.type)}</span></p>
+                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.type === 'meth' ? `${Math.round(Number(selected.expected_output || 0) / 2)} meth brut` : selected.quantity_sent}</span></p>
+                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{selected.expected_output} pochons</span></p>
                 <p><span className="text-white/60">Statut :</span> <span className="font-semibold">{statusLabel(selected.status)}</span></p>
-              </div>
-
-              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/[0.08] p-3 text-sm text-cyan-100">
-                {progress}% - Reste {remaining}
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
-                  <p className="text-xs text-white/65">Bricks nets estimés</p>
-                  <p className="font-semibold">{Math.round(selectedFinance.brickCount)}</p>
+                  <p className="text-xs text-white/65">Prix vente pochon</p>
+                  <p className="font-semibold">{Math.round(selectedFinance.saleUnitPrice)} $</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
                   <p className="text-xs text-white/65">Total estimé vente</p>
                   <p className="font-semibold">{money(selectedFinance.revenue)}</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
-                  <p className="text-xs text-white/65">Coût transfo total</p>
-                  <p className="font-semibold">{money(selectedFinance.transformCost)}</p>
+                  <p className="text-xs text-white/65">Prix machines meth achetées</p>
+                  <p className="font-semibold">{money(selectedFinance.machinePurchaseCost)}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2.5 text-sm">
                   <p className="text-xs text-emerald-100/70">Bénéfice estimé</p>
@@ -616,7 +683,7 @@ export default function SuiviProductionClient() {
                 </div>
               ) : null}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button type="button" onClick={() => void markAsDelivered(selected)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 font-semibold text-emerald-100 transition hover:bg-emerald-500/25">
+                <button type="button" onClick={() => openDeliveryModal(selected)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 font-semibold text-emerald-100 transition hover:bg-emerald-500/25">
                   Livrée
                 </button>
                 <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-3 font-semibold text-amber-100 transition hover:bg-amber-500/25">
@@ -648,12 +715,22 @@ export default function SuiviProductionClient() {
                 <label className="flex items-center gap-1.5 text-xs text-violet-100/80"><Tags className="h-3.5 w-3.5" /> Type</label>
                 <GlassSelect
                   value={newRequest.type}
-                  onChange={(value) => setNewRequest((prev) => ({ ...prev, type: value as ProductionType }))}
+                  onChange={(value) => setNewRequest((prev) => ({
+                    ...prev,
+                    type: value as ProductionType,
+                    flowMode: value === 'meth' ? 'seed_only' : prev.flowMode,
+                    seedQty: value === 'meth' ? 3 : 100,
+                    leafQty: value === 'meth' ? prev.leafQty : 100,
+                    brickQty: value === 'meth' ? prev.brickQty : 95,
+                    expectedOutputManual: value === 'meth' ? 48 : 0,
+                    receivedOutputManual: value === 'meth' ? prev.receivedOutputManual : 0,
+                  }))}
                   options={TYPE_OPTIONS}
                 />
               </div>
 
-              <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/[0.08] p-2.5 sm:col-span-2">
+              {!isMeth ? (
+                <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/[0.08] p-2.5 sm:col-span-2">
                 <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sparkles className="h-3.5 w-3.5" /> Mode opération</label>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {FLOW_OPTIONS.map((option) => {
@@ -678,20 +755,30 @@ export default function SuiviProductionClient() {
                     )
                   })}
                 </div>
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/[0.08] p-2.5 sm:col-span-2">
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sparkles className="h-3.5 w-3.5" /> Mode opération</label>
+                  <p className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-white">Machine + Transfo (mode unique)</p>
+                </div>
+              )}
 
-              {newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick' ? (
+              {isMeth || newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick' ? (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
-                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> Quantité graines</label>
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> {isMeth ? 'Quantité de machines' : 'Quantité graines'}</label>
                   <Input
                     value={newRequest.seedQty}
-                    onChange={(event) => setNewRequest((prev) => ({ ...prev, seedQty: Number(event.target.value) || 0 }))}
+                    onChange={(event) => setNewRequest((prev) => {
+                      const machineQty = Number(event.target.value) || 0
+                      if (!isMeth) return { ...prev, seedQty: machineQty }
+                      return { ...prev, seedQty: machineQty, expectedOutputManual: Math.max(0, machineQty * 16) }
+                    })}
                     inputMode="numeric"
                   />
                 </div>
               ) : null}
 
-              {newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms' ? (
+              {!isMeth && (newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_transforms') ? (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
                   <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> Quantité feuilles</label>
                   <Input
@@ -702,7 +789,7 @@ export default function SuiviProductionClient() {
                 </div>
               ) : null}
 
-              {newRequest.flowMode === 'brick_to_pouch' ? (
+              {!isMeth && newRequest.flowMode === 'brick_to_pouch' ? (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
                   <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Package className="h-3.5 w-3.5" /> Quantité bricks</label>
                   <Input
@@ -714,10 +801,18 @@ export default function SuiviProductionClient() {
               ) : null}
 
               <div className="space-y-1 rounded-xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/12 to-blue-500/[0.09] p-2.5">
-                <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Beaker className="h-3.5 w-3.5" /> Attendu (auto)</label>
-                <Input value={expectedFromForm} readOnly className="opacity-80" />
+                <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Beaker className="h-3.5 w-3.5" /> {isMeth ? 'Meth brut approximatif (estimatif modifiable)' : 'Attendu (auto)'}</label>
+                {isMeth ? (
+                  <Input
+                    value={newRequest.expectedOutputManual || expectedFromForm}
+                    onChange={(event) => setNewRequest((prev) => ({ ...prev, expectedOutputManual: Number(event.target.value) || 0 }))}
+                    inputMode="numeric"
+                  />
+                ) : <Input value={expectedFromForm} readOnly className="opacity-80" />}
                 <p className="text-[11px] text-white/55">
-                  {newRequest.flowMode === 'seed_only'
+                  {isMeth
+                    ? `${conversionFromForm.seedQty} machines → estimatif ${Number(newRequest.expectedOutputManual || 0)} meth brut (12 à 20 par machine).`
+                    : newRequest.flowMode === 'seed_only'
                     ? `${conversionFromForm.seedQty} graines achetées.`
                     : newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_seed_to_brick'
                       ? `${Math.round(conversionFromForm.leaves)} feuilles → ${Math.round(conversionFromForm.netBricks)} bricks (taxe 5%).`
@@ -728,6 +823,23 @@ export default function SuiviProductionClient() {
                         : `${conversionFromForm.seedQty} graines → ${Math.round(conversionFromForm.netBricks)} bricks (taxe 5%) → ${conversionFromForm.pouches} pochons.`}
                 </p>
               </div>
+              {isMeth ? (
+                <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Beaker className="h-3.5 w-3.5" /> Quantité réelle récupérée meth brut (modifiable)</label>
+                  <Input
+                    value={newRequest.receivedOutputManual}
+                    onChange={(event) => setNewRequest((prev) => ({ ...prev, receivedOutputManual: Number(event.target.value) || 0 }))}
+                    inputMode="numeric"
+                  />
+                </div>
+              ) : null}
+              {isMeth ? (
+                <div className="space-y-1 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><Package className="h-3.5 w-3.5" /> Pochons approximatifs (calcul)</label>
+                  <Input value={methApproxPouches} readOnly className="opacity-90" />
+                  <p className="text-[11px] text-cyan-100/70">Calcul: meth brut × 2.</p>
+                </div>
+              ) : null}
 
               <div className="space-y-1 rounded-xl border border-violet-300/20 bg-gradient-to-br from-violet-500/10 to-indigo-500/[0.08] p-2.5">
                 <label className="flex items-center gap-1.5 text-xs text-violet-100/80"><CalendarDays className="h-3.5 w-3.5" /> Date</label>
@@ -777,7 +889,7 @@ export default function SuiviProductionClient() {
                           <img src={assetImages.leaf} alt="Graine" className="h-full w-full object-cover" />
                         ) : <div className="grid h-full w-full place-items-center text-white/60"><Sprout className="h-4 w-4" /></div>}
                       </div>
-                      <p className="text-xs text-white/70">Prix graine</p>
+                      <p className="text-xs text-white/70">{isMeth ? 'Prix circuit table (unité)' : 'Prix graine'}</p>
                     </div>
                     <Input value={seedPrice} onChange={(event) => setSeedPrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
                   </div>
@@ -789,11 +901,11 @@ export default function SuiviProductionClient() {
                           <img src={assetImages.pouch} alt="Pochon" className="h-full w-full object-cover" />
                         ) : <div className="grid h-full w-full place-items-center text-white/60"><Sparkles className="h-4 w-4" /></div>}
                       </div>
-                      <p className="text-xs text-white/70">Prix vente pochon</p>
+                      <p className="text-xs text-white/70">{isMeth ? 'Prix vente meth pur (unité)' : 'Prix vente pochon'}</p>
                     </div>
                     <Input value={pouchSalePrice} onChange={(event) => setPouchSalePrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                  {!isMeth ? <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                     <div className="mb-1 flex items-center gap-2">
                       <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/15 bg-white/[0.05]">
                         {assetImages.brick ? (
@@ -803,9 +915,9 @@ export default function SuiviProductionClient() {
                       </div>
                       <p className="text-xs text-white/70">Coût transfo brick</p>
                     </div>
-                    <Input value={brickTransformCost} onChange={(event) => setBrickTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <Input value={brickTransformCost} onChange={(event) => setBrickTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" disabled={isMeth} />
+                  </div> : null}
+                  {!isMeth ? <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                     <div className="mb-1 flex items-center gap-2">
                       <div className="h-8 w-8 overflow-hidden rounded-lg border border-white/15 bg-white/[0.05]">
                         {assetImages.leaf ? (
@@ -815,10 +927,10 @@ export default function SuiviProductionClient() {
                       </div>
                       <p className="text-xs text-white/70">Coût transfo pochon (lot)</p>
                     </div>
-                    <Input value={pouchTransformCost} onChange={(event) => setPouchTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
-                  </div>
+                    <Input value={pouchTransformCost} onChange={(event) => setPouchTransformCost(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" disabled={isMeth} />
+                  </div> : null}
                 </div>
-                <div className="mt-2 grid gap-2 sm:grid-cols-4">
+                <div className={`mt-2 grid gap-2 ${isMeth ? 'sm:grid-cols-3' : 'sm:grid-cols-4'}`}>
                   <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs">
                     <p className="text-amber-100/80">Coût graines</p>
                     <p className="text-base font-semibold">{money(previewFinance.seedCostTotal)}</p>
@@ -827,10 +939,10 @@ export default function SuiviProductionClient() {
                     <p className="text-emerald-100/80">Total vente estimé</p>
                     <p className="text-base font-semibold">{money(previewFinance.totalSale)}</p>
                   </div>
-                  <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs">
+                  {!isMeth ? <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs">
                     <p className="text-amber-100/80">Coût transfo total</p>
                     <p className="text-base font-semibold">{money(previewFinance.totalTransformCost)}</p>
-                  </div>
+                  </div> : null}
                   <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2 text-xs">
                     <p className="text-cyan-100/80">Bénéfice estimé</p>
                     <p className="text-base font-semibold">{money(previewFinance.estimatedProfit)}</p>
@@ -844,6 +956,42 @@ export default function SuiviProductionClient() {
               <PrimaryButton onClick={() => void handleCreateRequest()} disabled={saving} className="h-10 px-4">
                 <Plus className="h-4 w-4" />
                 Créer la demande
+              </PrimaryButton>
+            </div>
+          </Panel>
+        </div>
+      ) : null}
+
+      {deliveryModal ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#040916]/75 p-4 backdrop-blur-sm">
+          <Panel className="w-full max-w-md">
+            <h3 className="text-lg font-semibold text-white">Validation de la transformation</h3>
+            <p className="mt-1 text-sm text-white/70">
+              {deliveryModal.row.partner_name} • {typeLabel(deliveryModal.row.type)}
+            </p>
+            <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3 text-sm">
+              <p className="text-white/70">Quantité estimée</p>
+              <p className="font-semibold text-cyan-100">{Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0)))} pochons</p>
+            </div>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-white/75">Pochons réellement récupérés</span>
+              <Input
+                value={deliveryModal.realPouches}
+                onChange={(event) => setDeliveryModal((prev) => (prev ? { ...prev, realPouches: event.target.value } : prev))}
+                inputMode="numeric"
+              />
+              <span className="text-xs text-white/60">La valeur saisie sera ajoutée au stock final.</span>
+            </label>
+            <div className="mt-4 flex justify-end gap-2">
+              <SecondaryButton onClick={() => setDeliveryModal(null)}>Annuler</SecondaryButton>
+              <PrimaryButton
+                onClick={async () => {
+                  const qty = Math.max(0, Math.floor(Number(deliveryModal.realPouches || 0)))
+                  await confirmDelivered(deliveryModal.row, qty)
+                  setDeliveryModal(null)
+                }}
+              >
+                Valider la transformation
               </PrimaryButton>
             </div>
           </Panel>
