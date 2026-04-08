@@ -14,7 +14,7 @@ import {
   type ActivityObjectLineInput,
   type ActivityType,
 } from '@/lib/types/activities'
-import { listCatalogItemsUnified, resolveCatalogItemId } from '@/lib/itemsApi'
+import { listCatalogItemsUnified } from '@/lib/itemsApi'
 import { getTenantSession } from '@/lib/tenantSession'
 import type { CatalogItem } from '@/lib/types/itemsFinance'
 import { copy } from '@/lib/copy'
@@ -240,12 +240,8 @@ export default function ActivitesPage() {
     if (selectedObjectRows.length === 0) return setError('Ajoute au moins un objet.')
     if (activityType !== 'Boite au lettre' && selectedEquipmentRows.length === 0) return setError('Ajoute au moins un équipement.')
 
-    const objectLines: ActivityObjectLineInput[] = await Promise.all(
-      selectedObjectRows.map(async (row) => ({ object_item_id: await resolveCatalogItemId(row.item.id), quantity: row.qty }))
-    )
-    const equipmentLines: ActivityEquipmentLineInput[] = await Promise.all(
-      selectedEquipmentRows.map(async (row) => ({ equipment_item_id: await resolveCatalogItemId(row.item.id), quantity: row.qty }))
-    )
+    const objectLines: ActivityObjectLineInput[] = selectedObjectRows.map((row) => ({ object_item_id: row.item.id, quantity: row.qty }))
+    const equipmentLines: ActivityEquipmentLineInput[] = selectedEquipmentRows.map((row) => ({ equipment_item_id: row.item.id, quantity: row.qty }))
 
     try {
       setSaving(true)

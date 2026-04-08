@@ -231,6 +231,10 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     toast.success('Kit complet meth ajouté.')
   }
 
+  function closeMethKitEditor() {
+    setShowMethKitEditor(false)
+  }
+
   function addOtherQuickItemToSelection() {
     const tablette = findItemByAliases(['tablette', 'tablet'])
     if (!tablette) {
@@ -423,7 +427,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                     <Sparkles className="h-5 w-5 text-violet-100" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">Argent / item non listé</p>
+                    <p className="truncate text-sm font-semibold text-white">Autres / item non listé</p>
                     <p className="text-xs text-white/70">Clique pour saisir montant, raison et item libre.</p>
                   </div>
                 </div>
@@ -506,7 +510,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             {showManualCashEditor ? (
               <div className="rounded-xl border border-violet-300/25 bg-violet-500/[0.08] p-2">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-violet-100">Argent / item non listé</p>
+                  <p className="text-sm font-semibold text-violet-100">Autres / item non listé</p>
                   {isTradeVariant && mode === 'entree' ? (
                     <SecondaryButton onClick={addOtherQuickItemToSelection} className="h-8 px-3 text-xs">+ Tablette</SecondaryButton>
                   ) : null}
@@ -522,7 +526,12 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             ) : null}
             {showMethKitEditor && isTradeVariant && mode === 'entree' ? (
               <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-2">
-                <p className="text-sm font-semibold text-cyan-100">Kit complet Meth</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-cyan-100">Kit complet Meth</p>
+                  <button type="button" onClick={closeMethKitEditor} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
                 <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
                   <Input value={methKitMachines} onChange={(event) => setMethKitMachines(event.target.value)} inputMode="numeric" placeholder="Nb machines" className="h-9" />
                   <Input value={methKitUnitPrice} onChange={(event) => setMethKitUnitPrice(event.target.value)} inputMode="decimal" placeholder="Prix machine" className="h-9" />

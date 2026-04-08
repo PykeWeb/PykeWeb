@@ -278,16 +278,16 @@ export function NouvelleDepenseForm({
                 {option.label}
               </TabPill>
             ))}
-            <button
-              type="button"
+            <TabPill
+              active={useTemporaryItem}
               onClick={() => {
                 setUseTemporaryItem(true)
                 setTemporaryName((prev) => prev || itemQuery.trim())
               }}
-              className="inline-flex h-8 items-center rounded-xl border border-fuchsia-300/35 bg-fuchsia-500/12 px-3 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20"
+              className="h-8 rounded-xl border-fuchsia-300/35 bg-fuchsia-500/12 px-3 text-xs text-fuchsia-100 data-[active=true]:border-fuchsia-300/60 data-[active=true]:bg-fuchsia-500/25 data-[active=true]:text-fuchsia-50"
             >
               Item absent ? Saisie libre
-            </button>
+            </TabPill>
           </div>
           <div className="ml-auto inline-flex h-8 items-center rounded-xl border border-white/20 bg-white/[0.05] px-3 text-right text-xs">
             <span className="text-sm font-semibold text-white">{`Total : ${Number.isFinite(total) ? total.toFixed(2) : '0.00'} $`}</span>
