@@ -493,7 +493,7 @@ export default function ItemsClient({
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-[220px] flex-1">
-                <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
+                <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Accueil drogues' }]} />
               </div>
               {calcMode === 'meth' ? (
                 <>

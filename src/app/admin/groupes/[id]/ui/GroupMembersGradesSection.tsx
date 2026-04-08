@@ -14,6 +14,7 @@ import {
 import { expandAccessPrefixes, GROUP_OPERATIONS_PREFIX, normalizeRolePrefixes, ROLE_ACCESS_OPTIONS } from '@/lib/types/groupRoles'
 import type { GroupMember, GroupMemberCandidate, GroupMemberRole, GroupMembersGradesPayload } from '@/lib/types/groupMembers'
 import { copyToClipboard, generatePassword } from '@/lib/utils/password'
+import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
 
 type Props = {
   groupId: string
@@ -53,6 +54,12 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [memberSearch, setMemberSearch] = useState('')
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
+  const [roleOrder, setRoleOrder] = useState<string[]>([])
+
+  const sortRolesByOrder = (input: GroupMemberRole[], order: string[]) => {
+    const orderIndex = new Map(order.map((id, idx) => [id, idx]))
+    return [...input].sort((a, b) => (orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+  }
 
   useEffect(() => {
     let alive = true
@@ -62,7 +69,10 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       try {
         const payload = await listGroupMembersGrades(groupId)
         if (!alive) return
-        applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
+        const savedOrder = await getLayoutOrder(`group.roles.order.${groupId}`)
+        const nextOrder = savedOrder.length ? savedOrder : payload.grades.map((role) => role.id)
+        setRoleOrder(nextOrder)
+        applyPayload((next) => setRoles(sortRolesByOrder(next, nextOrder)), setMembers, setPlayerCandidates, payload)
         setError(null)
       } catch (e: unknown) {
         if (!alive) return
@@ -175,7 +185,10 @@ export function GroupMembersGradesSection({ groupId }: Props) {
         name: newRoleName.trim(),
         permissions: newRolePermissions,
       })
-      applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
+      const nextOrder = [...roleOrder, ...payload.grades.map((role) => role.id).filter((id) => !roleOrder.includes(id))]
+      setRoleOrder(nextOrder)
+      await saveLayoutOrder(`group.roles.order.${groupId}`, nextOrder, 'group')
+      applyPayload((next) => setRoles(sortRolesByOrder(next, nextOrder)), setMembers, setPlayerCandidates, payload)
       setNewRoleName('')
       setNewRolePermissions([GROUP_OPERATIONS_PREFIX])
       setError(null)
@@ -197,7 +210,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
         name: role.name.trim(),
         permissions: role.permissions,
       })
-      applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
+      applyPayload((next) => setRoles(sortRolesByOrder(next, roleOrder)), setMembers, setPlayerCandidates, payload)
       setError(null)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Mise à jour du rôle impossible.')
@@ -210,13 +223,29 @@ export function GroupMembersGradesSection({ groupId }: Props) {
     try {
       setBusy(true)
       const payload = await deleteGroupMemberGrade(groupId, roleId)
-      applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
+      const nextOrder = roleOrder.filter((id) => id !== roleId)
+      setRoleOrder(nextOrder)
+      await saveLayoutOrder(`group.roles.order.${groupId}`, nextOrder, 'group')
+      applyPayload((next) => setRoles(sortRolesByOrder(next, nextOrder)), setMembers, setPlayerCandidates, payload)
       setError(null)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Suppression du rôle impossible.')
     } finally {
       setBusy(false)
     }
+  }
+
+  async function moveRole(roleId: string, direction: 'up' | 'down') {
+    const base = roleOrder.length > 0 ? roleOrder : roles.map((role) => role.id)
+    const index = base.indexOf(roleId)
+    if (index < 0) return
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= base.length) return
+    const next = [...base]
+    ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
+    setRoleOrder(next)
+    setRoles((prev) => sortRolesByOrder(prev, next))
+    await saveLayoutOrder(`group.roles.order.${groupId}`, next, 'group')
   }
 
   async function createMemberEntry() {
@@ -383,8 +412,12 @@ export function GroupMembersGradesSection({ groupId }: Props) {
 
           {selectedRole ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="grid gap-2 md:grid-cols-[1fr_auto_auto] md:items-center">
+              <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
                 <input value={selectedRole.name} onChange={(e) => updateRoleDraft(selectedRole.id, { name: e.target.value })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+                <div className="flex items-center gap-1.5">
+                  <button type="button" onClick={() => void moveRole(selectedRole.id, 'up')} className="h-10 rounded-xl border border-white/15 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Monter</button>
+                  <button type="button" onClick={() => void moveRole(selectedRole.id, 'down')} className="h-10 rounded-xl border border-white/15 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Descendre</button>
+                </div>
                 <button disabled={busy} onClick={() => void saveRole(selectedRole)} className="h-10 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 text-sm text-cyan-50 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50">Enregistrer</button>
                 <button disabled={busy} onClick={() => void removeRole(selectedRole.id)} className="h-10 rounded-xl border border-rose-300/35 bg-rose-500/15 px-3 text-sm text-rose-100 hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-50">Supprimer</button>
               </div>

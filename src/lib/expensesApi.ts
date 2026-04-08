@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/client'
 import { currentGroupId } from '@/lib/tenantScope'
 import { createAppLog } from '@/lib/logsApi'
 import { resolveCatalogItemId } from '@/lib/itemsApi'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 
 export type ExpenseStatus = 'pending' | 'paid'
 
@@ -72,13 +73,10 @@ function normalizeExpenseRow(row: ExpenseRow): DbExpense {
 }
 
 export async function listExpenses(): Promise<DbExpense[]> {
-  const { data, error } = await supabase
-    .from('expenses')
-    .select('id,member_name,item_source,item_id,item_label,unit_price,unit_price_override,quantity,total,description,proof_image_url,status,created_at,paid_at')
-    .eq('group_id', currentGroupId())
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []).map((row) => normalizeExpenseRow(row as ExpenseRow))
+  const response = await fetch('/api/expenses', withTenantSessionHeader({ cache: 'no-store' }))
+  const json = await response.json() as { rows?: ExpenseRow[]; error?: string }
+  if (!response.ok) throw new Error(json.error || 'Impossible de charger les dépenses.')
+  return (json.rows ?? []).map((row) => normalizeExpenseRow(row))
 }
 
 export async function createExpense(args: {
@@ -99,10 +97,10 @@ export async function createExpense(args: {
   const hasOverride = Math.abs(normalizedUnitPrice - defaultUnitPrice) > 0.0001
   const total = normalizedUnitPrice * normalizedQuantity
 
-  const { data: inserted, error: insertError } = await supabase
-    .from('expenses')
-    .insert({
-      group_id: currentGroupId(),
+  const response = await fetch('/api/expenses', withTenantSessionHeader({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       member_name: args.member_name,
       item_source: args.item_source,
       item_id: resolvedItemId,
@@ -112,12 +110,11 @@ export async function createExpense(args: {
       quantity: normalizedQuantity,
       total,
       description: args.description || null,
-      status: 'pending',
-    })
-    .select('id,member_name,item_source,item_id,item_label,unit_price,unit_price_override,quantity,total,description,proof_image_url,status,created_at,paid_at')
-    .single<ExpenseRow>()
-
-  if (insertError) throw insertError
+    }),
+  }))
+  const payload = await response.json() as { row?: ExpenseRow; error?: string }
+  if (!response.ok) throw new Error(payload.error || 'Insert failed')
+  const inserted = payload.row
   if (!inserted) throw new Error('Insert failed')
 
   if (args.proofFile) {
@@ -177,20 +174,20 @@ export async function updateExpense(args: {
   const unit_price = toNonNegative(args.unit_price)
   const total = quantity * unit_price
 
-  const { error } = await supabase
-    .from('expenses')
-    .update({
+  const response = await fetch(`/api/expenses/${args.expenseId}`, withTenantSessionHeader({
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       member_name: args.member_name.trim(),
       item_label: args.item_label.trim(),
       quantity,
       unit_price,
       total,
       description: args.description?.trim() || null,
-    })
-    .eq('id', args.expenseId)
-    .eq('group_id', currentGroupId())
-
-  if (error) throw error
+    }),
+  }))
+  const payload = await response.json() as { error?: string }
+  if (!response.ok) throw new Error(payload.error || 'Update failed')
   void createAppLog({
     area: 'finance.expenses',
     action: 'update',
@@ -207,8 +204,13 @@ export async function setExpenseStatus(args: { expenseId: string; status: Expens
     paid_at: args.status === 'paid' ? new Date().toISOString() : null,
   }
 
-  const { error } = await supabase.from('expenses').update(patch).eq('id', args.expenseId).eq('group_id', currentGroupId())
-  if (error) throw error
+  const response = await fetch(`/api/expenses/${args.expenseId}`, withTenantSessionHeader({
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  }))
+  const payload = await response.json() as { error?: string }
+  if (!response.ok) throw new Error(payload.error || 'Update failed')
   void createAppLog({
     area: 'finance.expenses',
     action: 'status',
@@ -220,17 +222,10 @@ export async function setExpenseStatus(args: { expenseId: string; status: Expens
 }
 
 export async function deleteExpense(expenseId: string) {
-  const groupId = currentGroupId()
-  const scopedDelete = await supabase.from('expenses').delete().eq('id', expenseId).eq('group_id', groupId).select('id')
-  if (scopedDelete.error) throw scopedDelete.error
-
-  if (!scopedDelete.data || scopedDelete.data.length === 0) {
-    const legacyFallback = await supabase.from('expenses').delete().eq('id', expenseId).is('group_id', null).select('id')
-    if (legacyFallback.error) throw legacyFallback.error
-    if (!legacyFallback.data || legacyFallback.data.length === 0) {
-      throw new Error('Dépense introuvable ou déjà supprimée.')
-    }
-  }
+  currentGroupId()
+  const response = await fetch(`/api/expenses/${expenseId}`, withTenantSessionHeader({ method: 'DELETE' }))
+  const payload = await response.json() as { error?: string }
+  if (!response.ok) throw new Error(payload.error || 'Suppression impossible.')
 
   void createAppLog({
     area: 'finance.expenses',
