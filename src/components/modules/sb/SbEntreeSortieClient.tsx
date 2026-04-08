@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
-import { createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
+import { createCatalogItem, createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
 import { getTypeFilterOptions, matchesTypeFilter, normalizeCatalogCategory, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { getTenantSession } from '@/lib/tenantSession'
@@ -16,7 +16,21 @@ import type { CatalogItem, ItemCategory } from '@/lib/types/itemsFinance'
 
 type Mode = 'entree' | 'sortie'
 type FilterCategory = 'all' | ItemCategory
-type SelectedItem = { id: string; name: string; quantity: number; price: number; imageUrl?: string; category?: ItemCategory | 'custom'; buyPrice?: number; sellPrice?: number }
+const CUSTOM_FREE_INPUT_ITEM_ID = '__custom_free_input__'
+
+type SelectedItem = {
+  id: string
+  selectionKey: string
+  name: string
+  quantity: number
+  price: number
+  imageUrl?: string
+  category?: ItemCategory | 'custom'
+  buyPrice?: number
+  sellPrice?: number
+  isManual?: boolean
+  manualLabel?: string
+}
 
 function resolveModePrice(item: CatalogItem, mode: Mode) {
   if (mode === 'entree') return Math.max(0, Number(item.buy_price || item.sell_price || item.internal_value || 0))
@@ -42,12 +56,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
-  const [manualItemLabel, setManualItemLabel] = useState('')
-  const [manualCashAmount, setManualCashAmount] = useState('')
-  const [manualReason, setManualReason] = useState('')
   const [methKitMachines, setMethKitMachines] = useState('1')
   const [methKitUnitPrice, setMethKitUnitPrice] = useState('3300')
-  const [showManualCashEditor, setShowManualCashEditor] = useState(false)
   const [showMethKitEditor, setShowMethKitEditor] = useState(false)
   const memberSelectOptions = useMemo(() => {
     const current = member.trim()
@@ -99,11 +109,6 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     Object.fromEntries(items.map((item) => [item.id, Math.max(0, Number(item.stock || 0))]))
   ), [items])
 
-  const cashItem = useMemo(
-    () => items.find((item) => String(item.name || '').trim().toLowerCase() === 'argent') ?? null,
-    [items]
-  )
-
   const safeTotalItems = useMemo(
     () => selectedItems.reduce((sum, entry) => sum + Math.max(0, Number(entry.quantity || 0)), 0),
     [selectedItems]
@@ -127,7 +132,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
 
     setSelectedItems((prev) => {
-      const index = prev.findIndex((entry) => entry.id === item.id)
+      const index = prev.findIndex((entry) => entry.id === item.id && !entry.isManual)
       if (index >= 0) {
         const next = [...prev]
         const nextQuantity = mode === 'sortie'
@@ -140,6 +145,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       const sellPrice = Math.max(0, Number(item.sell_price || item.internal_value || item.buy_price || 0))
       return [...prev, {
         id: item.id,
+        selectionKey: item.id,
         name: item.name,
         quantity: safeQuantity,
         price: resolveModePrice(item, mode),
@@ -168,17 +174,17 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   }, [items, mode, variant])
 
   const removeItem = (itemId: string) => {
-    setSelectedItems((prev) => prev.filter((entry) => entry.id !== itemId))
+    setSelectedItems((prev) => prev.filter((entry) => entry.selectionKey !== itemId))
   }
 
   const updateQuantity = (itemId: string, quantity: number) => {
     const maxStock = stockById[itemId] ?? 0
     setSelectedItems((prev) => prev.map((entry) => (
-      entry.id === itemId
+      entry.selectionKey === itemId
         ? {
           ...entry,
           quantity: mode === 'sortie'
-            ? Math.max(1, Math.min(Math.floor(quantity || 1), Math.max(1, maxStock)))
+            ? Math.max(1, Math.min(Math.floor(quantity || 1), Math.max(1, entry.isManual ? Number.MAX_SAFE_INTEGER : maxStock)))
             : Math.max(1, Math.floor(quantity || 1)),
         }
         : entry
@@ -187,7 +193,13 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
 
   const updatePrice = (itemId: string, price: number) => {
     setSelectedItems((prev) => prev.map((entry) => (
-      entry.id === itemId ? { ...entry, price: Math.max(0, Number(price || 0)) } : entry
+      entry.selectionKey === itemId ? { ...entry, price: Math.max(0, Number(price || 0)) } : entry
+    )))
+  }
+
+  const updateManualLabel = (itemId: string, value: string) => {
+    setSelectedItems((prev) => prev.map((entry) => (
+      entry.selectionKey === itemId ? { ...entry, manualLabel: value } : entry
     )))
   }
 
@@ -195,12 +207,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setSelectedItems([])
     setCounterparty('')
     setMember(defaultMemberName)
-    setManualItemLabel('')
-    setManualCashAmount('')
-    setManualReason('')
     setMethKitMachines('1')
     setMethKitUnitPrice('3300')
-    setShowManualCashEditor(false)
     setShowMethKitEditor(false)
   }
 
@@ -235,36 +243,51 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setShowMethKitEditor(false)
   }
 
-  function closeManualCashEditor() {
-    setShowManualCashEditor(false)
-    setManualItemLabel('')
-    setManualCashAmount('')
-    setManualReason('')
+  function addManualItemToSelection() {
+    const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    setSelectedItems((prev) => [
+      ...prev,
+      {
+        id: `${CUSTOM_FREE_INPUT_ITEM_ID}:${uid}`,
+        selectionKey: `${CUSTOM_FREE_INPUT_ITEM_ID}:${uid}`,
+        name: 'Autres / item non listé',
+        quantity: 1,
+        price: 0,
+        imageUrl: '/images/finance/multi-expense.svg',
+        category: 'custom',
+        isManual: true,
+        manualLabel: '',
+      },
+    ])
   }
 
-  const submitManualCashFlow = async () => {
-    const amount = Math.max(0, Number(manualCashAmount || 0))
-    if (amount <= 0) return
-    if (!cashItem?.id) throw new Error('Aucun item "argent" actif trouvé.')
-    if (!manualReason.trim()) throw new Error('Ajoute une raison pour le mouvement d’argent.')
-    const memberNote = member.trim() ? `Membre: ${member.trim()}` : null
-    const itemNote = manualItemLabel.trim() ? `Item non listé: ${manualItemLabel.trim()}` : 'Item non listé'
-    const reasonNote = `Flux ${mode === 'sortie' ? 'sortie' : 'entrée'} argent • ${itemNote} • Raison: ${manualReason.trim()}`
-    const notes = memberNote ? `${reasonNote} • ${memberNote}` : reasonNote
-    await createFinanceTransaction({
-      item_id: cashItem.id,
-      mode: mode === 'sortie' ? 'sell' : 'buy',
-      quantity: 1,
-      unit_price: amount,
-      counterparty: counterparty.trim() || manualItemLabel.trim() || undefined,
-      notes,
-      payment_mode: 'other',
+  async function ensureManualCatalogItemId(label: string) {
+    const normalized = label.trim().toLowerCase()
+    const existing = items.find((item) => item.category === 'custom' && item.name.trim().toLowerCase() === normalized)
+    if (existing?.id) return existing.id
+    const created = await createCatalogItem({
+      name: label.trim(),
+      category: 'custom',
+      item_type: 'other',
+      buy_price: 0,
+      sell_price: 0,
+      internal_value: 0,
+      show_in_finance: true,
+      is_active: true,
+      stock: 0,
+      low_stock_threshold: 0,
+      stackable: true,
+      max_stack: 100,
+      description: 'Créé automatiquement depuis Achat/Vente - Entrée/Sortie',
+      imageFile: null,
+      weight: null,
     })
+    setItems((prev) => [created, ...prev])
+    return created.id
   }
 
   const submitTransaction = async () => {
-    const manualAmount = Math.max(0, Number(manualCashAmount || 0))
-    if (selectedItems.length === 0 && manualAmount <= 0) {
+    if (selectedItems.length === 0) {
       toast.error('Ajoute au moins un article.')
       return
     }
@@ -272,18 +295,19 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setIsSubmitting(true)
     try {
       for (const entry of selectedItems) {
-        const notes = member.trim() ? `Membre: ${member.trim()}` : undefined
+        const manualLabel = entry.isManual ? (entry.manualLabel?.trim() || 'Autres / item non listé') : ''
+        const notes = [member.trim() ? `Membre: ${member.trim()}` : null, entry.isManual ? `Item non listé: ${manualLabel}` : null].filter(Boolean).join(' • ') || undefined
+        const resolvedItemId = entry.isManual ? await ensureManualCatalogItemId(manualLabel) : entry.id
         await createFinanceTransaction({
-          item_id: entry.id,
+          item_id: resolvedItemId,
           mode: mode === 'entree' ? 'buy' : 'sell',
           quantity: entry.quantity,
           unit_price: variant === 'trade' ? entry.price : 0,
-          counterparty: counterparty.trim() || undefined,
+          counterparty: counterparty.trim() || (entry.isManual ? manualLabel : undefined),
           notes,
           payment_mode: 'other',
         })
       }
-      await submitManualCashFlow()
 
       toast.success('Transaction enregistrée.')
       clearTransaction()
@@ -410,22 +434,23 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => setShowManualCashEditor(true)}
+                onClick={addManualItemToSelection}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    setShowManualCashEditor(true)
+                    addManualItemToSelection()
                   }
                 }}
                 className="flex w-full items-center justify-between gap-3 rounded-xl border border-violet-300/25 bg-violet-500/[0.08] px-3 py-2 text-left transition hover:border-violet-300/45 hover:bg-violet-500/[0.14]"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-lg border border-violet-300/35 bg-violet-500/[0.14]">
-                    <Sparkles className="h-5 w-5 text-violet-100" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/images/finance/multi-expense.svg" alt="Autres item non listé" className="h-full w-full object-cover" loading="lazy" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">Autres</p>
-                    <p className="text-xs text-white/70">Clique pour saisir montant, raison et item libre.</p>
+                    <p className="truncate text-sm font-semibold text-white">Autres / item non listé</p>
+                    <p className="text-xs text-white/70">Ajoute une ligne libre (multi sélection).</p>
                   </div>
                 </div>
               </div>
@@ -504,23 +529,6 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         <Panel className="flex h-full max-h-[44vh] flex-col xl:col-span-2">
           <h2 className="text-xl font-semibold text-white">Objets sélectionnés</h2>
           <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
-            {showManualCashEditor ? (
-              <div className="rounded-xl border border-violet-300/25 bg-violet-500/[0.08] p-2">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-violet-100">Autres</p>
-                  <button type="button" onClick={closeManualCashEditor} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="grid gap-2">
-                  <Input value={manualItemLabel} onChange={(event) => setManualItemLabel(event.target.value)} placeholder="Nom item non listé (optionnel)" className="h-9" />
-                  <div className="grid gap-2 md:grid-cols-2">
-                    <Input value={manualCashAmount} onChange={(event) => setManualCashAmount(event.target.value)} inputMode="decimal" placeholder={`Montant argent (${mode === 'sortie' ? 'sortie' : 'entrée'})`} className="h-9" />
-                    <Input value={manualReason} onChange={(event) => setManualReason(event.target.value)} placeholder="Raison (obligatoire si montant)" className="h-9" />
-                  </div>
-                </div>
-              </div>
-            ) : null}
             {showMethKitEditor && isTradeVariant && mode === 'entree' ? (
               <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-2">
                 <div className="flex items-center justify-between gap-2">
@@ -545,7 +553,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                       : entry.category === 'drugs' ? Pill
                         : Shapes
               return (
-              <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+              <div key={entry.selectionKey} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.08]">
@@ -554,9 +562,11 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                         <img src={entry.imageUrl} alt={entry.name} className="h-full w-full object-cover" loading="lazy" />
                       ) : <ItemIcon className="h-5 w-5 text-white/70" />}
                     </div>
-                    <p className="truncate text-sm font-semibold text-white">{entry.name}</p>
+                    {entry.isManual ? (
+                      <Input value={entry.manualLabel || ''} onChange={(event) => updateManualLabel(entry.selectionKey, event.target.value)} placeholder="Nom item non listé" className="h-8 max-w-[15rem]" />
+                    ) : <p className="truncate text-sm font-semibold text-white">{entry.name}</p>}
                   </div>
-                  <button type="button" onClick={() => removeItem(entry.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100">
+                  <button type="button" onClick={() => removeItem(entry.selectionKey)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -564,20 +574,20 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                   <div className="inline-flex h-9 items-center overflow-hidden rounded-lg border border-white/15 bg-white/[0.04]">
                     <button
                       type="button"
-                      onClick={() => updateQuantity(entry.id, entry.quantity - 1)}
+                      onClick={() => updateQuantity(entry.selectionKey, entry.quantity - 1)}
                       className="inline-flex h-full w-9 items-center justify-center border-r border-white/10 text-white/90"
                     >
                       <Minus className="h-4 w-4" />
                     </button>
                     <Input
                       value={entry.quantity}
-                      onChange={(event) => updateQuantity(entry.id, Number(event.target.value))}
+                      onChange={(event) => updateQuantity(entry.selectionKey, Number(event.target.value))}
                       inputMode="numeric"
                       className="h-full w-16 rounded-none border-0 bg-transparent px-2 text-center text-sm"
                     />
                     <button
                       type="button"
-                      onClick={() => updateQuantity(entry.id, entry.quantity + 1)}
+                      onClick={() => updateQuantity(entry.selectionKey, entry.quantity + 1)}
                       className="inline-flex h-full w-9 items-center justify-center border-l border-white/10 text-white/90"
                     >
                       <Plus className="h-4 w-4" />
@@ -589,7 +599,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                       <span className="text-xs text-white/65">PU</span>
                       <Input
                         value={entry.price}
-                        onChange={(event) => updatePrice(entry.id, Number(event.target.value))}
+                        onChange={(event) => updatePrice(entry.selectionKey, Number(event.target.value))}
                         inputMode="decimal"
                         className="h-9 w-24 text-right text-sm"
                       />

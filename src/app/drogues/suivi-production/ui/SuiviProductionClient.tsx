@@ -78,6 +78,16 @@ function money(value: number) {
   return `${Math.round(value)} $`
 }
 
+function toPouchesEquivalent(row: Pick<DrugProductionTrackingRow, 'type' | 'expected_output'>) {
+  const expected = Math.max(0, Number(row.expected_output || 0))
+  return row.type === 'meth' ? expected * 2 : expected
+}
+
+function toReceivedPouchesEquivalent(row: Pick<DrugProductionTrackingRow, 'type' | 'received_output'>) {
+  const received = Math.max(0, Number(row.received_output || 0))
+  return row.type === 'meth' ? received * 2 : received
+}
+
 function normalize(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
@@ -293,8 +303,8 @@ export default function SuiviProductionClient() {
   const stats = useMemo(() => {
     const inProgress = rows.filter((r) => r.status === 'in_progress').length
     const completed = rows.filter((r) => r.status === 'completed').length
-    const expected = rows.reduce((sum, r) => sum + Number(r.expected_output || 0), 0)
-    const received = rows.reduce((sum, r) => sum + Number(r.received_output || 0), 0)
+    const expected = rows.reduce((sum, r) => sum + toPouchesEquivalent(r), 0)
+    const received = rows.reduce((sum, r) => sum + toReceivedPouchesEquivalent(r), 0)
     const expectedRevenue = expected * pouchSalePrice
     const receivedRevenue = received * pouchSalePrice
     return { inProgress, completed, expected, received, expectedRevenue, receivedRevenue }
@@ -357,7 +367,7 @@ export default function SuiviProductionClient() {
     if (!selected) return { machinePurchaseCost: 0, saleUnitPrice: 130, revenue: 0, totalCost: 0, hasSalePrice: true, estimatedProfit: 0 }
     const flowMode = selected.type === 'meth' ? 'seed_only' : inferFlowModeFromNote(selected.note)
     const seedUnitPrice = Number(selected.seed_price ?? seedPrice ?? 0)
-    const saleUnitPrice = selected.type === 'meth' ? Math.max(120, Math.min(220, Number(selected.pouch_sale_price ?? pouchSalePrice ?? 170))) : Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
+    const saleUnitPrice = Number(selected.pouch_sale_price ?? pouchSalePrice ?? 0)
     const brickUnitCost = Number(selected.brick_transform_cost ?? brickTransformCost ?? 0)
     const pouchUnitCost = Number(selected.pouch_transform_cost ?? pouchTransformCost ?? 0)
     const qtySent = Math.max(0, Number(selected.quantity_sent || 0))
@@ -372,7 +382,7 @@ export default function SuiviProductionClient() {
       qtySent,
     )
     const expectedPouches = selected.type === 'meth'
-      ? effectiveOutput
+      ? effectiveOutput * 2
       : (flowMode === 'seed_only' || flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick'
         ? 0
         : effectiveOutput)
@@ -381,7 +391,9 @@ export default function SuiviProductionClient() {
     const brickCost = (flowMode === 'leaf_to_brick' || flowMode === 'two_steps_seed_to_brick' || flowMode === 'full_chain' || flowMode === 'two_steps_transforms')
       ? (quantities.leavesInput * brickUnitCost)
       : 0
-    const pouchCost = flowMode === 'brick_to_pouch'
+    const pouchCost = selected.type === 'meth'
+      ? 0
+      : flowMode === 'brick_to_pouch'
       ? (qtySent * pouchUnitCost)
       : (flowMode === 'full_chain' || flowMode === 'two_steps_transforms') ? (Math.max(0, Math.floor(effectiveOutput / POUCHES_PER_BRICK)) * pouchUnitCost) : 0
     const transformCost = brickCost + pouchCost
@@ -516,7 +528,7 @@ export default function SuiviProductionClient() {
   async function confirmDelivered(row: DrugProductionTrackingRow, deliveredQtyRaw: number) {
     const deliveredQty = Math.max(0, Math.floor(Number(deliveredQtyRaw || 0)))
     if (deliveredQty <= 0) {
-      toast.error('Quantité de pochons invalide.')
+      toast.error(row.type === 'meth' ? 'Quantité meth brut invalide.' : 'Quantité de pochons invalide.')
       return
     }
 
@@ -526,9 +538,10 @@ export default function SuiviProductionClient() {
         toast.error('Aucun item stock "pochon" trouvé pour cette drogue.')
         return
       }
+      const deliveredPouches = row.type === 'meth' ? deliveredQty * 2 : deliveredQty
       await adjustDrugStock({
         itemId: outputItemId,
-        delta: deliveredQty,
+        delta: deliveredPouches,
         note: `Entrée auto livrée ${row.id} (${row.partner_name})`,
       })
       const updated = await updateDrugProductionTracking(row.id, {
@@ -552,7 +565,7 @@ export default function SuiviProductionClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Transfo groupes" subtitle="Demandes envoyées à un groupe externe (coke / meth)" />
+      <PageHeader title="Transfo groupes" subtitle="Lecture simplifiée (envoyé, attendu, reçu) + équivalence pochons pour meth." />
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <button type="button" onClick={() => setStatusFilter('in_progress')} className={`rounded-2xl border px-4 py-3 text-left ${statusFilter === 'in_progress' ? 'border-sky-200/60 bg-gradient-to-br from-sky-500/30 to-blue-600/20' : 'border-sky-300/25 bg-gradient-to-br from-sky-500/15 to-blue-600/15'}`}>
@@ -564,11 +577,11 @@ export default function SuiviProductionClient() {
           <p className="mt-3 text-3xl font-semibold">{stats.completed}</p>
         </button>
         <button type="button" onClick={() => setStatusFilter('all')} className={`rounded-2xl border px-4 py-3 text-left ${statusFilter === 'all' ? 'border-emerald-200/60 bg-gradient-to-br from-emerald-500/30 to-teal-600/20' : 'border-emerald-300/25 bg-gradient-to-br from-emerald-500/15 to-teal-600/15'}`}>
-          <div className="flex items-center justify-between text-emerald-100/90"><p className="text-xs">Pochons attendus</p><FlaskConical className="h-4 w-4" /></div>
+          <div className="flex items-center justify-between text-emerald-100/90"><p className="text-xs">Pochons attendus (équiv.)</p><FlaskConical className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.expected}</p>
         </button>
         <button type="button" onClick={() => setStatusFilter('all')} className="rounded-2xl border border-rose-300/25 bg-gradient-to-br from-rose-500/15 to-red-600/15 px-4 py-3 text-left">
-          <div className="flex items-center justify-between text-rose-100/90"><p className="text-xs">Pochons reçus</p><Beaker className="h-4 w-4" /></div>
+          <div className="flex items-center justify-between text-rose-100/90"><p className="text-xs">Pochons reçus (équiv.)</p><Beaker className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.received}</p>
         </button>
         <Link href="/drogues/partenaires" className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-left text-sm">
@@ -632,8 +645,8 @@ export default function SuiviProductionClient() {
                       <td className="px-3 py-3">
                         <span className="inline-flex rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-xs font-semibold text-white">{typeLabel(row.type)}</span>
                       </td>
-                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${Math.round(Number(row.expected_output || 0) / 2)} meth brut` : row.quantity_sent}</td>
-                      <td className="px-3 py-3 font-medium">{row.expected_output}</td>
+                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${row.quantity_sent} machines` : row.quantity_sent}</td>
+                      <td className="px-3 py-3 font-medium">{row.type === 'meth' ? `${Math.max(0, Number(row.expected_output || 0))} meth brut (≈ ${toPouchesEquivalent(row)} pochons)` : row.expected_output}</td>
                       <td className="px-3 py-3">
                         <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(row.status)}`}>
                           {statusLabel(row.status)}
@@ -655,9 +668,10 @@ export default function SuiviProductionClient() {
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
                 <p><span className="text-white/60">Groupe :</span> <span className="font-semibold">{selected.partner_name}</span></p>
                 <p><span className="text-white/60">Type :</span> <span className="font-semibold">{selected.type === 'meth' ? 'Meth' : typeLabel(selected.type)}</span></p>
-                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.type === 'meth' ? `${Math.round(Number(selected.expected_output || 0) / 2)} meth brut` : selected.quantity_sent}</span></p>
-                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{selected.expected_output} pochons</span></p>
+                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{selected.type === 'meth' ? `${selected.quantity_sent} machines` : selected.quantity_sent}</span></p>
+                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{selected.type === 'meth' ? `${selected.expected_output} meth brut (≈ ${toPouchesEquivalent(selected)} pochons)` : `${selected.expected_output} pochons`}</span></p>
                 <p><span className="text-white/60">Statut :</span> <span className="font-semibold">{statusLabel(selected.status)}</span></p>
+                <p><span className="text-white/60">Reçu :</span> <span className="font-semibold">{selected.type === 'meth' ? `${selected.received_output || 0} meth brut (≈ ${toReceivedPouchesEquivalent(selected)} pochons)` : `${selected.received_output || 0} pochons`}</span></p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
@@ -971,10 +985,14 @@ export default function SuiviProductionClient() {
             </p>
             <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3 text-sm">
               <p className="text-white/70">Quantité estimée</p>
-              <p className="font-semibold text-cyan-100">{Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0)))} pochons</p>
+              <p className="font-semibold text-cyan-100">
+                {deliveryModal.row.type === 'meth'
+                  ? `${Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0)))} meth brut (≈ ${Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0))) * 2} pochons)`
+                  : `${Math.max(0, Math.floor(Number(deliveryModal.row.expected_output || 0)))} pochons`}
+              </p>
             </div>
             <label className="mt-3 block space-y-1 text-sm">
-              <span className="text-white/75">Pochons réellement récupérés</span>
+              <span className="text-white/75">{deliveryModal.row.type === 'meth' ? 'Meth brut réellement récupéré' : 'Pochons réellement récupérés'}</span>
               <Input
                 value={deliveryModal.realPouches}
                 onChange={(event) => setDeliveryModal((prev) => (prev ? { ...prev, realPouches: event.target.value } : prev))}
