@@ -45,6 +45,7 @@ type SbEntreeSortieClientProps = {
 
 export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieClientProps) {
   const [mode, setMode] = useState<Mode>('entree')
+  const [mirrorExchange, setMirrorExchange] = useState(false)
   const [items, setItems] = useState<CatalogItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -207,6 +208,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     setSelectedItems([])
     setCounterparty('')
     setMember(defaultMemberName)
+    setMirrorExchange(false)
     setMethKitMachines('1')
     setMethKitUnitPrice('3300')
     setShowMethKitEditor(false)
@@ -307,6 +309,17 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           notes,
           payment_mode: 'other',
         })
+        if (isTradeVariant && mirrorExchange) {
+          await createFinanceTransaction({
+            item_id: resolvedItemId,
+            mode: mode === 'entree' ? 'sell' : 'buy',
+            quantity: entry.quantity,
+            unit_price: variant === 'trade' ? entry.price : 0,
+            counterparty: counterparty.trim() || (entry.isManual ? manualLabel : undefined),
+            notes: `${notes || ''}${notes ? ' • ' : ''}Échange miroir`,
+            payment_mode: 'other',
+          })
+        }
       }
 
       toast.success('Transaction enregistrée.')
@@ -384,6 +397,12 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             </button>
           </div>
         </div>
+        {isTradeVariant ? (
+          <label className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white/80">
+            <input type="checkbox" checked={mirrorExchange} onChange={(event) => setMirrorExchange(event.target.checked)} />
+            Échange (entrée + sortie en même temps)
+          </label>
+        ) : null}
 
         <div className={`grid gap-3 ${isTradeVariant ? 'xl:grid-cols-[1fr_1fr_auto_auto_auto_auto]' : 'xl:grid-cols-[1fr_1fr_auto_auto_auto]'}`}>
           <Input value={counterparty} onChange={(event) => setCounterparty(event.target.value)} placeholder="Interlocuteur" className="h-11" />

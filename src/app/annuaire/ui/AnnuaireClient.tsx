@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
-import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
+import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
   createDirectoryContact,
@@ -86,6 +86,7 @@ export default function AnnuaireClient() {
   const [filter, setFilter] = useState<'all' | DirectoryActivity>('all')
   const [form, setForm] = useState<FormState>(INITIAL_FORM)
   const [editing, setEditing] = useState<DirectoryContact | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
   const [selected, setSelected] = useState<DirectoryContact | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [copiedNameId, setCopiedNameId] = useState<string | null>(null)
@@ -156,6 +157,7 @@ export default function AnnuaireClient() {
       }
       setForm(INITIAL_FORM)
       setEditing(null)
+      setFormOpen(false)
       await refresh()
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Enregistrement impossible.')
@@ -166,6 +168,7 @@ export default function AnnuaireClient() {
 
   function startEdit(contact: DirectoryContact) {
     setEditing(contact)
+    setFormOpen(true)
     setForm({
       name: contact.name,
       partner_group: contact.partner_group || '',
@@ -180,7 +183,7 @@ export default function AnnuaireClient() {
     <div className="space-y-4">
       <PageHeader title="Annuaire" subtitle="Gère rapidement tes contacts utiles (nom, numéro, activité, notes)." />
       <div className="flex flex-wrap gap-2">
-        <Link href="/annuaire/contact"><PrimaryButton>Contacts</PrimaryButton></Link>
+        <PrimaryButton onClick={() => { setEditing(null); setForm(INITIAL_FORM); setFormOpen(true) }}>Nouveau contact</PrimaryButton>
         <Link href="/annuaire/darkchat"><SecondaryButton>Dark Chat</SecondaryButton></Link>
       </div>
 
@@ -212,60 +215,8 @@ export default function AnnuaireClient() {
       </div>
 
       <Panel>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-white/60">Création rapide</p>
-            <h2 className="text-xl font-semibold text-white">Nouveau contact</h2>
-          </div>
-          {editing ? <span className="rounded-full border border-cyan-300/40 bg-cyan-500/14 px-3 py-1 text-xs font-semibold text-cyan-100">Mode modification</span> : null}
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <Input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Nom" className="h-11" />
-          <Input value={form.partner_group} onChange={(event) => setForm((prev) => ({ ...prev, partner_group: event.target.value }))} placeholder="Groupe" className="h-11" />
-          <Input value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="Numéro" className="h-11" />
-          <select
-            value={form.activity}
-            onChange={(event) => setForm((prev) => ({ ...prev, activity: event.target.value as DirectoryActivity }))}
-            className="h-11 rounded-xl border border-white/15 bg-white/[0.05] px-3 text-sm text-white outline-none"
-          >
-            {ACTIVITY_OPTIONS.map((option) => <option key={option.value} value={option.value} className="bg-[#0b1228]">{option.label}</option>)}
-          </select>
-          <textarea
-            value={form.note}
-            onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
-            placeholder="Note"
-            className="min-h-[88px] rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-sm text-white outline-none md:col-span-2 xl:col-span-4"
-          />
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-          {editing ? (
-            <SecondaryButton
-              onClick={() => {
-                setEditing(null)
-                setForm(INITIAL_FORM)
-              }}
-              className="h-10"
-            >
-              Annuler modification
-            </SecondaryButton>
-          ) : null}
-          <PrimaryButton disabled={saving} onClick={() => void handleSubmit()} className="h-10 px-4">
-            {editing ? 'Enregistrer' : 'Créer le contact'}
-          </PrimaryButton>
-        </div>
-      </Panel>
-
-      <Panel>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <SearchInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Recherche nom / groupe / numéro" className="w-full max-w-sm" />
-          <div className="ml-auto flex flex-wrap gap-2">
-            <TabPill active={filter === 'all'} onClick={() => setFilter('all')}>Tous</TabPill>
-            {ACTIVITY_OPTIONS.map((option) => (
-              <TabPill key={option.value} active={filter === option.value} onClick={() => setFilter(option.value)}>{option.label}</TabPill>
-            ))}
-          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-white/10">
@@ -423,6 +374,29 @@ export default function AnnuaireClient() {
           }
         }}
       />
+
+      {formOpen ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#040916]/75 p-4 backdrop-blur-sm">
+          <Panel className="w-full max-w-4xl">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold text-white">{editing ? 'Modifier contact' : 'Nouveau contact'}</h2>
+              <SecondaryButton onClick={() => { setFormOpen(false); setEditing(null); setForm(INITIAL_FORM) }}>Fermer</SecondaryButton>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <Input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Nom" className="h-11" />
+              <Input value={form.partner_group} onChange={(event) => setForm((prev) => ({ ...prev, partner_group: event.target.value }))} placeholder="Groupe" className="h-11" />
+              <Input value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="Numéro" className="h-11" />
+              <select value={form.activity} onChange={(event) => setForm((prev) => ({ ...prev, activity: event.target.value as DirectoryActivity }))} className="h-11 rounded-xl border border-white/15 bg-white/[0.05] px-3 text-sm text-white outline-none">
+                {ACTIVITY_OPTIONS.map((option) => <option key={option.value} value={option.value} className="bg-[#0b1228]">{option.label}</option>)}
+              </select>
+              <textarea value={form.note} onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))} placeholder="Note" className="min-h-[88px] rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-sm text-white outline-none md:col-span-2 xl:col-span-4" />
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <PrimaryButton disabled={saving} onClick={() => void handleSubmit()}>{editing ? 'Enregistrer' : 'Créer le contact'}</PrimaryButton>
+            </div>
+          </Panel>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -376,9 +376,6 @@ export async function POST(request: Request) {
       payout_per_run?: number
       action?: 'run' | 'init_budget' | 'update_budget' | 'reset_budget'
     }
-    const member = normalizeMemberName(body.member_name)
-    if (!member.raw) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
-
     const options = await getGlobalTabletOptions()
     const dayKey = toDayKey()
     if (body.action === 'init_budget' || body.action === 'update_budget') {
@@ -414,6 +411,9 @@ export async function POST(request: Request) {
       await saveTodayBudget(session.groupId, resetBudget)
       return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, resetBudget) })
     }
+
+    const member = normalizeMemberName(body.member_name)
+    if (!member.raw) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
 
     const quantities = body.quantities || {}
 

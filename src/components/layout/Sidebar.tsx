@@ -196,7 +196,7 @@ export function Sidebar() {
               <Image src="/logo.png" alt="Logo" fill className="object-cover" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[1.85rem] font-semibold leading-[0.98] tracking-tight text-white">{labels.site_name || BRAND.name}</p>
+              <p className="truncate text-[1.85rem] font-semibold leading-[0.98] tracking-tight text-white">{isAdmin ? (labels.site_name || BRAND.name) : groupName}</p>
               <p className="mt-1 inline-flex items-center gap-1.5 text-[0.9rem] text-white/68">
                 <Sparkles className="h-3.5 w-3.5 text-cyan-200/75" />
                 {labels.nav_dashboard || 'Dashboard'}

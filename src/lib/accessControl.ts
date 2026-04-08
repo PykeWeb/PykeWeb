@@ -23,6 +23,7 @@ function resolveRequiredPrefix(pathname: string) {
   if (path === '/drogues/sessions' || path.startsWith('/drogues/sessions/') || path === '/drogues/partenaires' || path.startsWith('/drogues/partenaires/')) return '/drogues/partenaires'
   if (path === '/drogues/suivi-production' || path.startsWith('/drogues/suivi-production/') || path === '/drogues/demandes' || path.startsWith('/drogues/demandes/')) return '/drogues/suivi-production'
   if (path === '/tablette/paiement' || path.startsWith('/tablette/paiement/')) return '/tablette/paiement'
+  if (path === '/cash/paye' || path.startsWith('/cash/paye/')) return '/cash/paye'
   if (path === '/tablette' || path.startsWith('/tablette/')) return '/operations'
   if (path === '/activites' || path.startsWith('/activites/')) return '/operations'
   if (path === '/finance' || path.startsWith('/finance/')) return '/finance'
@@ -39,6 +40,7 @@ export function hasRequiredPrefixAccess(allowedPrefixes: string[], requiredPrefi
   if (requiredPrefix === '/dashboard') return prefixes.includes('/dashboard')
   if (requiredPrefix === '/operations') return prefixes.includes('/operations') || prefixes.includes('/activites') || prefixes.includes('/tablette')
   if (requiredPrefix.startsWith('/finance/')) return prefixes.includes('/finance') || prefixes.includes(requiredPrefix)
+  if (requiredPrefix.startsWith('/cash/')) return prefixes.includes('/cash') || prefixes.includes(requiredPrefix)
   return prefixes.includes(requiredPrefix)
 }
 
