@@ -80,7 +80,7 @@ async function resolveActivityCatalogItemId(
   supabase: ReturnType<typeof getSupabaseAdmin>,
   groupId: string,
   itemId: string,
-  expectedCategory: 'objects' | 'equipment',
+  expectedCategory?: 'objects' | 'equipment',
 ) {
   const raw = String(itemId || '').trim()
   if (!raw) throw new Error('ID item vide.')
@@ -115,7 +115,7 @@ async function resolveActivityCatalogItemId(
     if (override?.is_hidden) throw new Error('Cet item est masqué pour ce groupe.')
 
     const category = String(globalRow.category || '').trim()
-    if (category !== expectedCategory) throw new Error('Catégorie globale invalide pour cette activité.')
+    if (expectedCategory && category !== expectedCategory) throw new Error('Catégorie globale invalide pour cette activité.')
     const name = String(override?.override_name || globalRow.name || '').trim()
     if (!name) throw new Error('Nom item global invalide.')
     const buyPrice = toNonNegative(override?.override_price ?? globalRow.price ?? 0)
@@ -278,7 +278,7 @@ export async function POST(request: Request) {
     const normalizedObjectLines = await Promise.all(
       objectLines.map(async (line) => ({
         ...line,
-        object_item_id: await resolveActivityCatalogItemId(supabase, session.groupId, String(line.object_item_id || ''), 'objects'),
+        object_item_id: await resolveActivityCatalogItemId(supabase, session.groupId, String(line.object_item_id || '')),
       }))
     )
     const objectIds = [...new Set(normalizedObjectLines.map((line) => String(line.object_item_id).trim()).filter(Boolean))]
@@ -291,9 +291,7 @@ export async function POST(request: Request) {
 
     if (objectErr) throw objectErr
     const objectMap = new Map<string, CatalogItemRow>()
-    for (const row of (objectRows ?? []) as CatalogItemRow[]) {
-      if (row.category === 'objects') objectMap.set(row.id, row)
-    }
+    for (const row of (objectRows ?? []) as CatalogItemRow[]) objectMap.set(row.id, row)
     if (objectMap.size !== objectIds.length) return NextResponse.json({ error: 'Un ou plusieurs objets sont invalides.' }, { status: 400 })
 
     let equipmentDisplay = ''

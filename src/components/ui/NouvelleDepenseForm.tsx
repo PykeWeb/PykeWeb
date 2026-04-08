@@ -25,6 +25,8 @@ type SelectedExpenseItem = PickItem & {
   selectionKey: string
   quantity: number
   unitPrice: number
+  isManual?: boolean
+  manualLabel?: string
 }
 
 const ITEMS_JSON_MARKER = '__ITEMS_JSON__:'
@@ -153,7 +155,7 @@ export function NouvelleDepenseForm({
         const withImages = await enrichMissingImagesByName(category, mapped)
         if (category === 'custom') {
           setItems([
-            { type: 'custom', id: CUSTOM_FREE_INPUT_ITEM_ID, name: 'Autres / item non listé', price: 0, image_url: null },
+            { type: 'custom', id: CUSTOM_FREE_INPUT_ITEM_ID, name: 'Autres / item non listé', price: 0, image_url: '/images/finance/multi-expense.svg' },
             ...withImages,
           ])
           return
@@ -170,8 +172,19 @@ export function NouvelleDepenseForm({
 
   function toggleSelectedItem(item: PickItem) {
     if (item.type === 'custom' && item.id === CUSTOM_FREE_INPUT_ITEM_ID) {
-      setUseTemporaryItem(true)
-      setTemporaryName((prev) => prev || itemQuery.trim())
+      const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      setSelectedItems((prev) => [
+        ...prev,
+        {
+          ...item,
+          id: `${CUSTOM_FREE_INPUT_ITEM_ID}:${uid}`,
+          selectionKey: `${CUSTOM_FREE_INPUT_ITEM_ID}:${uid}`,
+          quantity: 1,
+          unitPrice: 0,
+          isManual: true,
+          manualLabel: '',
+        },
+      ])
       return
     }
     const selectionKey = getSelectionKey(item)
@@ -202,6 +215,8 @@ export function NouvelleDepenseForm({
     setError(null)
     try {
       const item = useTemporaryItem ? null : selectedItems[0] || null
+      const isSingleManual = !useTemporaryItem && selectedItems.length === 1 && Boolean(selectedItems[0]?.isManual)
+      const resolveRowName = (row: SelectedExpenseItem) => (row.isManual ? (row.manualLabel?.trim() || 'Autres / item non listé') : row.name)
       const totalQuantity = !useTemporaryItem
         ? selectedItems.reduce((sum, row) => sum + Math.max(1, row.quantity), 0)
         : quantity
@@ -209,22 +224,22 @@ export function NouvelleDepenseForm({
         ? selectedItems.reduce((sum, row) => sum + Math.max(1, row.quantity) * Math.max(0, row.unitPrice), 0)
         : Number(unitPrice) * quantity
       const normalizedUnit = totalQuantity > 0 ? totalAmount / totalQuantity : 0
-      const multiLabel = selectedItems.length > 1 ? 'Multiple' : item?.name || 'Item'
+      const multiLabel = selectedItems.length > 1 ? 'Multiple' : (item ? resolveRowName(item) : 'Item')
       const isMultiCatalogExpense = !useTemporaryItem && selectedItems.length > 1
       const mergedDescription = !useTemporaryItem && selectedItems.length > 1
-        ? `${description.trim() || ''}${description.trim() ? '\n\n' : ''}Items:\n${selectedItems.map((row) => `- ${row.name} × ${Math.max(1, row.quantity)}`).join('\n')}\n\n${ITEMS_JSON_MARKER}${JSON.stringify(selectedItems.map((row) => ({
-          name: row.name,
+        ? `${description.trim() || ''}${description.trim() ? '\n\n' : ''}Items:\n${selectedItems.map((row) => `- ${resolveRowName(row)} × ${Math.max(1, row.quantity)}`).join('\n')}\n\n${ITEMS_JSON_MARKER}${JSON.stringify(selectedItems.map((row) => ({
+          name: resolveRowName(row),
           quantity: Math.max(1, row.quantity),
           unit_price: Math.max(0, row.unitPrice),
           image_url: row.image_url || null,
-          item_source: row.type,
-          item_id: row.id,
+          item_source: row.isManual ? 'custom' : row.type,
+          item_id: row.isManual ? null : row.id,
         })))}`
         : description.trim()
       await createExpense({
         member_name: memberName.trim(),
-        item_source: useTemporaryItem || isMultiCatalogExpense ? 'custom' : itemType,
-        item_id: useTemporaryItem || selectedItems.length !== 1 ? null : item?.id || null,
+        item_source: useTemporaryItem || isMultiCatalogExpense || isSingleManual ? 'custom' : itemType,
+        item_id: useTemporaryItem || selectedItems.length !== 1 || isSingleManual ? null : item?.id || null,
         item_label: useTemporaryItem ? temporaryName.trim() : multiLabel,
         unit_price: useTemporaryItem ? Number(unitPrice) : normalizedUnit,
         default_unit_price: useTemporaryItem ? null : normalizedUnit,
@@ -355,7 +370,16 @@ export function NouvelleDepenseForm({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{item.name}</p>
+                        {item.isManual ? (
+                          <Input
+                            value={item.manualLabel || ''}
+                            onChange={(event) => setSelectedItems((prev) => prev.map((row) => (row.selectionKey === item.selectionKey ? { ...row, manualLabel: event.target.value } : row)))}
+                            placeholder="Nom item non listé"
+                            className="h-8"
+                          />
+                        ) : (
+                          <p className="truncate text-sm font-medium">{item.name}</p>
+                        )}
                         <p className="text-xs text-white/60">{item.unitPrice.toFixed(2)} $ / unité</p>
                       </div>
                       <SecondaryButton onClick={() => setSelectedItems((prev) => prev.filter((row) => row.selectionKey !== item.selectionKey))}>Retirer</SecondaryButton>
