@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
-import { listCatalogItemsUnified } from '@/lib/itemsApi'
+import { listCatalogItemsStockLite } from '@/lib/itemsApi'
 import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
@@ -119,6 +119,8 @@ export function DashboardClient() {
   const [ticketStatus, setTicketStatus] = useState('')
   const [supportOpen, setSupportOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
+  const loadInFlightRef = useRef(false)
+  const firstLoadDoneRef = useRef(false)
   const cardLongPressTimerRef = useRef<number | null>(null)
   const longPressTriggeredRef = useRef(false)
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
@@ -211,12 +213,15 @@ export function DashboardClient() {
   useEffect(() => {
     let alive = true
     const loadDashboardData = async () => {
-      setLoading(true)
+      if (loadInFlightRef.current) return
+      loadInFlightRef.current = true
+      const isInitialLoad = !firstLoadDoneRef.current
+      if (isInitialLoad) setLoading(true)
       try {
         currentGroupId()
         const [financeEntries, catalogItems, drugTrackings, activities, tabletRes] = await Promise.all([
-          listFinanceEntries(),
-          listCatalogItemsUnified(),
+          listFinanceEntries(160),
+          listCatalogItemsStockLite(),
           listDrugProductionTrackings().catch(() => []),
           listActivities().catch(() => ({ entries: [], summaries: [], settings: { group_id: '', default_percent_per_object: 2 } })),
           fetch('/api/tablette/atelier', withTenantSessionHeader({ cache: 'no-store' })).catch(() => null),
@@ -286,8 +291,10 @@ export function DashboardClient() {
         }
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
+        firstLoadDoneRef.current = true
       } finally {
-        if (alive) setLoading(false)
+        loadInFlightRef.current = false
+        if (alive && isInitialLoad) setLoading(false)
       }
     }
 
@@ -298,7 +305,7 @@ export function DashboardClient() {
     const intervalId = window.setInterval(() => {
       if (document.hidden) return
       void loadDashboardData().catch(() => undefined)
-    }, 5000)
+    }, 30000)
 
     const onWindowFocus = () => {
       void loadDashboardData().catch(() => undefined)
@@ -327,7 +334,7 @@ export function DashboardClient() {
         const idx = views.indexOf(prev)
         return views[(idx + 1) % views.length]
       })
-    }, 5000)
+    }, 12000)
     return () => window.clearInterval(timer)
   }, [pauseAutoUntil])
 

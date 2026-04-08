@@ -15,7 +15,7 @@ import { hasRequiredPrefixAccess } from '@/lib/accessControl'
 import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
 import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
-import { listCatalogItemsUnified } from '@/lib/itemsApi'
+import { listCatalogItemsStockLite } from '@/lib/itemsApi'
 import { changeMemberPassword } from '@/lib/tenantAuthApi'
 
 type AccessInfo = { paid_until: string | null; active: boolean } | null
@@ -76,7 +76,7 @@ export function Sidebar() {
     setIsSbGroup(isSbTenantSession(session))
     let mounted = true
     const loadCash = () => {
-      void listCatalogItemsUnified()
+      void listCatalogItemsStockLite()
         .then((rows) => {
           if (!mounted) return
           const cashItem = rows.find((row) => String(row.name || '').trim().toLowerCase() === 'argent')
@@ -88,7 +88,7 @@ export function Sidebar() {
         })
     }
     loadCash()
-    const interval = window.setInterval(loadCash, 15000)
+    const interval = window.setInterval(loadCash, 45000)
     const onVisibility = () => {
       if (!document.hidden) loadCash()
     }

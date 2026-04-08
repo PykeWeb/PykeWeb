@@ -118,6 +118,34 @@ export async function listCatalogItems(includeInactive = false): Promise<Catalog
   return (data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
 }
 
+export type CatalogItemStockLite = {
+  id: string
+  name: string
+  category: ItemCategory
+  item_type: ItemType
+  stock: number
+}
+
+export async function listCatalogItemsStockLite(includeInactive = false): Promise<CatalogItemStockLite[]> {
+  let query = supabase
+    .from('catalog_items')
+    .select('id,name,category,item_type,stock,is_active')
+    .eq('group_id', currentGroupId())
+  if (!includeInactive) query = query.eq('is_active', true)
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []).map((row) => {
+    const category = normalizeCatalogCategory(String(row.category || '')) || 'objects'
+    return {
+      id: String(row.id),
+      name: String(row.name || ''),
+      category,
+      item_type: normalizeItemType(row.item_type, category),
+      stock: toNonNegative(row.stock),
+    }
+  })
+}
+
 
 
 
