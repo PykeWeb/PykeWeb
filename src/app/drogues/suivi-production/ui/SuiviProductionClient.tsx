@@ -161,7 +161,7 @@ function typeLabel(rawType: string) {
 function statusLabel(status: ProductionStatus) {
   if (status === 'completed') return 'Terminé'
   if (status === 'cancelled') return 'Annulé'
-  return 'En cours'
+  return 'En attente'
 }
 
 function statusClass(status: ProductionStatus) {

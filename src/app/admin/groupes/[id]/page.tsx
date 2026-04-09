@@ -81,8 +81,9 @@ export default function AdminGroupDetailsPage() {
     if (!group || !file) return
     try {
       setUploadingLogo(true)
+      const preparedFile = await prepareLogoFile(file)
       const formData = new FormData()
-      formData.set('file', file)
+      formData.set('file', preparedFile)
       const uploadRes = await fetch('/api/admin/groups/upload-image', {
         method: 'POST',
         body: formData,
@@ -100,6 +101,43 @@ export default function AdminGroupDetailsPage() {
       setError(e instanceof Error ? e.message : 'Upload logo impossible.')
     } finally {
       setUploadingLogo(false)
+    }
+  }
+
+  async function prepareLogoFile(file: File) {
+    const maxBytes = 2_000_000
+    if (file.size <= maxBytes) return file
+
+    const objectUrl = URL.createObjectURL(file)
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(img)
+        img.onerror = () => reject(new Error('Image invalide.'))
+        img.src = objectUrl
+      })
+
+      const maxSide = 1200
+      const ratio = Math.min(1, maxSide / Math.max(image.width, image.height))
+      const width = Math.max(1, Math.round(image.width * ratio))
+      const height = Math.max(1, Math.round(image.height * ratio))
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Canvas non disponible pour compresser l’image.')
+      ctx.drawImage(image, 0, 0, width, height)
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (!result) reject(new Error('Compression impossible.'))
+          else resolve(result)
+        }, 'image/webp', 0.82)
+      })
+      if (blob.size > maxBytes) throw new Error('Image trop lourde même après compression. Vise moins de 2 Mo.')
+      return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'group-logo'}.webp`, { type: 'image/webp' })
+    } finally {
+      URL.revokeObjectURL(objectUrl)
     }
   }
 

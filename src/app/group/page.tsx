@@ -51,7 +51,7 @@ export default function GroupSettingsPage() {
           size="compact"
         />
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
             <p className="text-white/60">Groupe</p>
             <p className="mt-1 font-semibold">{groupName}{groupBadge ? ` (${groupBadge})` : ''}</p>
@@ -66,6 +66,12 @@ export default function GroupSettingsPage() {
               {accessInfo ? (accessInfo.active ? (accessInfo.paid_until ? new Date(accessInfo.paid_until).toLocaleDateString('fr-FR') : 'Illimitée') : 'Inactive') : '—'}
             </p>
           </div>
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm">
+            <p className="text-emerald-100/80">Gestion de paye</p>
+            <Link href="/cash/paye" className="mt-1 inline-flex text-sm font-semibold text-emerald-100 underline-offset-4 hover:underline">
+              Ouvrir la paye
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -73,15 +79,6 @@ export default function GroupSettingsPage() {
         <GroupMembersGradesSection groupId={groupId} />
       </div>
 
-      <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-4">
-        <p className="text-sm font-semibold text-emerald-100">Gestion de paye</p>
-        <p className="mt-1 text-sm text-emerald-50/85">Paye un membre individuellement depuis l’outil dédié.</p>
-        <div className="mt-3">
-          <Link href="/cash/paye" className="inline-flex h-10 items-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25">
-            Ouvrir la gestion paye
-          </Link>
-        </div>
-      </div>
     </div>
   )
 }

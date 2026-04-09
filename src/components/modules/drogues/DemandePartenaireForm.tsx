@@ -25,12 +25,9 @@ export type DemandFormValue = {
 }
 
 const MODE_OPTIONS: { value: DemandMode; label: string }[] = [
-  { value: 'seed_only', label: 'Achat graines' },
-  { value: 'leaf_to_brick', label: 'Feuille → Brick' },
-  { value: 'brick_to_pouch', label: 'Brick → Pochon' },
-  { value: 'two_steps_seed_to_brick', label: 'Les 2 étapes (Graine → Brick)' },
-  { value: 'two_steps_transforms', label: 'Les 2 étapes (Feuille → Pochon)' },
-  { value: 'full_chain', label: 'Les 3 étapes' },
+  { value: 'coke_leaf_to_brick', label: 'Feuille → Brick (1 transfo)' },
+  { value: 'coke_brick_to_pouch', label: 'Brick → Pochon (1 transfo)' },
+  { value: 'coke_leaf_to_pouch', label: 'Feuille → Pochon (2 transfo)' },
 ]
 
 const TYPE_OPTIONS: { value: ProductionType; label: string }[] = [
@@ -40,7 +37,7 @@ const TYPE_OPTIONS: { value: ProductionType; label: string }[] = [
 ]
 
 const MODE_OPTIONS_METH: { value: DemandMode; label: string }[] = [
-  { value: 'full_chain', label: 'Envoi tables (transfo incluse)' },
+  { value: 'meth_table_transform', label: 'Achat table + transfo' },
 ]
 
 function normalizeProductionType(raw: string): ProductionType {
@@ -70,9 +67,9 @@ export function DemandePartenaireForm({
     if (!isMeth) return
     setForm((prev) => ({
       ...prev,
-      mode: 'full_chain',
+      mode: 'meth_table_transform',
       brickTransformCost: 0,
-      pouchTransformCost: 0,
+      pouchTransformCost: prev.pouchTransformCost > 0 ? prev.pouchTransformCost : 0,
       seedPrice: prev.seedPrice > 0 ? prev.seedPrice : 3300,
     }))
   }, [isMeth])
@@ -91,19 +88,19 @@ export function DemandePartenaireForm({
 
   const quantityLabel =
     isMeth
-      ? 'Quantité tables envoyées'
-      : form.mode === 'brick_to_pouch'
-      ? 'Quantité bricks'
-      : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
-        ? 'Quantité feuilles'
-        : 'Quantité graines'
+      ? 'Quantité de machine achetée'
+      : form.mode === 'coke_brick_to_pouch'
+        ? 'Quantité de bricks'
+        : 'Quantité de feuilles'
 
   const quantityValue =
-    form.mode === 'brick_to_pouch'
+    form.mode === 'coke_brick_to_pouch'
       ? form.quantityBricks
-      : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
+      : form.mode === 'coke_leaf_to_brick' || form.mode === 'coke_leaf_to_pouch'
         ? form.quantityLeaves
-        : form.quantitySeeds
+        : isMeth
+          ? form.quantitySeeds
+          : form.quantityLeaves
 
   return (
     <div className="space-y-3">
@@ -133,27 +130,31 @@ export function DemandePartenaireForm({
               onChange={(e) => {
                 const nextValue = Number(e.target.value) || 0
                 setForm((p) => (
-                  form.mode === 'brick_to_pouch'
+                  isMeth
+                    ? { ...p, quantitySeeds: nextValue }
+                    : form.mode === 'coke_brick_to_pouch'
                     ? { ...p, quantityBricks: nextValue }
-                    : isMeth
-                      ? { ...p, quantitySeeds: nextValue }
-                      : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
+                      : form.mode === 'coke_leaf_to_brick' || form.mode === 'coke_leaf_to_pouch'
                       ? { ...p, quantityLeaves: nextValue }
-                      : { ...p, quantitySeeds: nextValue }
+                      : { ...p, quantityLeaves: nextValue }
                 ))
               }}
               inputMode="numeric"
             />
           </div>
-          <div><p className="mb-1 text-xs text-white/70">Attendu (auto)</p><Input value={calc.expectedOutput} readOnly /></div>
-          <div><p className="mb-1 text-xs text-white/70">{isMeth ? 'Coût table envoyée' : 'Prix graine'}</p><Input value={form.seedPrice} onChange={(e) => setForm((p) => ({ ...p, seedPrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
+          <div><p className="mb-1 text-xs text-white/70">{isMeth ? 'Pochons attendus (approx)' : 'Attendu (approx)'}</p><Input value={calc.expectedOutput} readOnly /></div>
+          <div><p className="mb-1 text-xs text-white/70">{isMeth ? 'Prix d’une table' : 'Prix graine'}</p><Input value={form.seedPrice} onChange={(e) => setForm((p) => ({ ...p, seedPrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/70">Prix vente pochon</p><Input value={form.pouchSalePrice} onChange={(e) => setForm((p) => ({ ...p, pouchSalePrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
-          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo brick</p><Input value={form.brickTransformCost} onChange={(e) => setForm((p) => ({ ...p, brickTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
-          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo pochon</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
+          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo feuille → brick</p><Input value={form.brickTransformCost} onChange={(e) => setForm((p) => ({ ...p, brickTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
+          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo brick → pochon</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
+          {isMeth ? <div><p className="mb-1 text-xs text-white/70">Meth brut produite</p><Input value={form.quantityLeaves} onChange={(e) => setForm((p) => ({ ...p, quantityLeaves: Number(e.target.value) || 0 }))} inputMode="numeric" /></div> : null}
+          {isMeth ? <div><p className="mb-1 text-xs text-white/70">Pochons à récupérer (approx)</p><Input value={form.quantityBricks} onChange={(e) => setForm((p) => ({ ...p, quantityBricks: Number(e.target.value) || 0 }))} inputMode="numeric" /></div> : null}
+          {isMeth ? <div><p className="mb-1 text-xs text-white/70">Prix total transfo</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
+          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Graine achetée (quantité)</p><Input value={form.quantitySeeds} onChange={(e) => setForm((p) => ({ ...p, quantitySeeds: Number(e.target.value) || 0 }))} inputMode="numeric" /></div> : null}
           <div><p className="mb-1 text-xs text-white/70">Date</p><Input type="date" value={form.createdAt} onChange={(e) => setForm((p) => ({ ...p, createdAt: e.target.value }))} /></div>
           <div><p className="mb-1 text-xs text-white/70">Date estimée retour</p><Input type="date" value={form.expectedDate} onChange={(e) => setForm((p) => ({ ...p, expectedDate: e.target.value }))} /></div>
         </div>
-        {isMeth ? <p className="text-xs text-cyan-100/80">Pour la meth: 1 table donne en général 12 à 20 meth brut. Indique le vrai meth brut reçu à la validation.</p> : null}
+        {isMeth ? <p className="text-xs text-cyan-100/80">Pour la meth: mode unique achat table + transfo. Mets en avant meth brut envoyé, pochons récupérés, coût transfo, vente estimée et bénéfice approx.</p> : null}
 
         {showNote ? (
           <div>
@@ -162,11 +163,13 @@ export function DemandePartenaireForm({
           </div>
         ) : null}
 
-        <div className="grid gap-2 sm:grid-cols-4">
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs"><p>Coût graines</p><p className="text-lg font-semibold">{Math.round(calc.seedCostTotal)} $</p></div>
-          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs"><p>Total vente estimé</p><p className="text-lg font-semibold">{Math.round(calc.totalSaleEstimate)} $</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs"><p>Coût transfo total</p><p className="text-lg font-semibold">{Math.round(calc.transformCostTotal)} $</p></div>
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2 text-xs"><p>Bénéfice estimé</p><p className="text-lg font-semibold">{Math.round(calc.estimatedProfit)} $</p></div>
+        <div className="grid gap-2 sm:grid-cols-6">
+          <div className="rounded-xl border border-indigo-300/25 bg-indigo-500/10 p-2 text-xs"><p>{isMeth ? 'Meth brut envoyé' : 'Feuilles envoyées'}</p><p className="text-lg font-semibold">{Math.round(calc.netBricks)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs"><p>{isMeth ? 'Coût tables' : 'Coût graines'}</p><p className="text-lg font-semibold">{Math.round(calc.seedCostTotal)} $</p></div>
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs"><p>Pochons récupérés (approx)</p><p className="text-lg font-semibold">{Math.round(calc.expectedOutput)}</p></div>
+          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs"><p>Prix transfo</p><p className="text-lg font-semibold">{Math.round(calc.transformCostTotal)} $</p></div>
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs"><p>Vente pochons estimée</p><p className="text-lg font-semibold">{Math.round(calc.totalSaleEstimate)} $</p></div>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2 text-xs"><p>Bénéf approx</p><p className="text-lg font-semibold">{Math.round(calc.estimatedProfit)} $</p></div>
         </div>
       </div>
 

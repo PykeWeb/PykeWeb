@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { assertAdminSession } from '@/server/auth/admin'
 
 const BUCKET = 'group-logos'
+const MAX_UPLOAD_SIZE = 2 * 1024 * 1024
 
 async function ensureBucket() {
   const supabase = getSupabaseAdmin()
@@ -12,7 +13,7 @@ async function ensureBucket() {
   if (exists) return
   const { error: createError } = await supabase.storage.createBucket(BUCKET, {
     public: true,
-    fileSizeLimit: 5 * 1024 * 1024,
+    fileSizeLimit: MAX_UPLOAD_SIZE,
     allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
   })
   if (createError) throw new Error(createError.message)
@@ -26,6 +27,10 @@ export async function POST(request: Request) {
     const form = await request.formData()
     const file = form.get('file')
     if (!(file instanceof File)) return NextResponse.json({ error: 'Fichier manquant.' }, { status: 400 })
+
+    if (file.size > MAX_UPLOAD_SIZE) {
+      return NextResponse.json({ error: 'Image trop lourde. Limite: 2 Mo.' }, { status: 413 })
+    }
 
     const ext = file.type.includes('png') ? 'png' : file.type.includes('webp') ? 'webp' : 'jpg'
     const path = `groups/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
@@ -42,4 +47,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Upload impossible.' }, { status: 400 })
   }
 }
-

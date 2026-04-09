@@ -50,11 +50,11 @@ export default function DemandeDetailPage() {
   async function onUpdate(value: DemandFormValue, expectedOutput: number) {
     if (!row) return
     const nextStatus = row.received_output >= expectedOutput ? 'completed' : 'in_progress'
-    const quantitySent = value.mode === 'seed_only' || value.mode === 'full_chain'
+    const quantitySent = value.type === 'meth'
       ? value.quantitySeeds
-      : value.mode === 'leaf_to_brick'
-        ? value.quantityLeaves
-        : value.quantityBricks
+      : value.mode === 'coke_brick_to_pouch'
+        ? value.quantityBricks
+        : value.quantityLeaves
     const updated = await updateDrugProductionTracking(row.id, {
       partnerName: value.partnerName,
       type: value.type,
@@ -84,7 +84,7 @@ export default function DemandeDetailPage() {
       {editMode ? (
         <Panel>
           <DemandePartenaireForm
-            initial={{ partnerName: row.partner_name, type: row.type, mode: 'full_chain', createdAt: row.created_at.slice(0, 10), quantitySeeds: row.quantity_sent, quantityLeaves: row.quantity_sent, quantityBricks: Math.floor(row.expected_output / 10), seedPrice: Number(row.seed_price || 0), pouchSalePrice: Number(row.pouch_sale_price || 0), brickTransformCost: Number(row.brick_transform_cost || 0), pouchTransformCost: Number(row.pouch_transform_cost || 0), note: row.note || '', expectedDate: row.expected_date || '' }}
+            initial={{ partnerName: row.partner_name, type: row.type, mode: row.type === 'meth' ? 'meth_table_transform' : 'coke_leaf_to_pouch', createdAt: row.created_at.slice(0, 10), quantitySeeds: row.quantity_sent, quantityLeaves: row.quantity_sent, quantityBricks: Math.floor(row.expected_output / 10), seedPrice: Number(row.seed_price || 0), pouchSalePrice: Number(row.pouch_sale_price || 0), brickTransformCost: Number(row.brick_transform_cost || 0), pouchTransformCost: Number(row.pouch_transform_cost || 0), note: row.note || '', expectedDate: row.expected_date || '' }}
             submitLabel="Modifier"
             onSubmit={onUpdate}
             onCancel={() => router.replace(`/drogues/demandes/${row.id}`)}
