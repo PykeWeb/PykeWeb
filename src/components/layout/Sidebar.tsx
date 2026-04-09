@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles, BookUser, Loader2, X } from 'lucide-react'
@@ -42,7 +41,6 @@ export function Sidebar() {
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
   const [isAdmin, setIsAdmin] = useState(false)
-  const [groupLogoUrl, setGroupLogoUrl] = useState<string | null>(null)
   const [isMember, setIsMember] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'annuaire', 'drogues', 'group', 'activites'])
@@ -67,7 +65,6 @@ export function Sidebar() {
     const nextGroupBadge = session?.groupBadge || 'GROUPE'
     setGroupName(nextGroupName)
     setIsAdmin(isAdminTenantSession(session))
-    setGroupLogoUrl(session?.groupLogoUrl || null)
     setIsMember(isMemberTenantSession(session))
     setHasMemberSessionId(Boolean(session?.memberId))
     setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Boss' : ''))
@@ -193,17 +190,12 @@ export function Sidebar() {
       <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
       <div className="rounded-[2rem] border border-[#5b6fc7]/28 bg-gradient-to-br from-[#11173a]/95 via-[#101633]/95 to-[#0b1027]/96 p-5 shadow-[0_16px_42px_rgba(4,8,28,0.58)] backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3.5">
-            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/18 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.14)]">
-              <Image src={isAdmin ? "/logo.png" : (groupLogoUrl || "/logo.png")} alt="Logo" fill className="object-cover" unoptimized />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[1.45rem] font-semibold leading-tight tracking-tight text-white break-words">{isAdmin ? (labels.site_name || BRAND.name) : groupName}</p>
-              <p className="mt-1 inline-flex items-center gap-1.5 text-[0.9rem] text-white/68">
-                <Sparkles className="h-3.5 w-3.5 text-cyan-200/75" />
-                {labels.nav_dashboard || 'Dashboard'}
-              </p>
-            </div>
+          <div className="min-w-0">
+            <p className="text-[1.45rem] font-semibold leading-tight tracking-tight text-white break-words">{isAdmin ? (labels.site_name || BRAND.name) : groupName}</p>
+            <p className="mt-1 inline-flex items-center gap-1.5 text-[0.9rem] text-white/68">
+              <Sparkles className="h-3.5 w-3.5 text-cyan-200/75" />
+              {labels.nav_dashboard || 'Dashboard'}
+            </p>
           </div>
           <div className="mt-1 flex shrink-0 flex-col items-end gap-0">
             <button

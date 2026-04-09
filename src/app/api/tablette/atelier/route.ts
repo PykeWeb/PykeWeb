@@ -559,11 +559,10 @@ export async function POST(request: Request) {
 
     try {
       await adjustCashStock(session.groupId, -totalCost)
-      for (const line of lines) {
-        const option = options.find((item) => item.key === line.key)
-        if (!option) continue
-        await addToCatalog(session.groupId, option, line.quantity)
-      }
+      const lineOptions = lines
+        .map((line) => ({ line, option: options.find((item) => item.key === line.key) }))
+        .filter((entry): entry is { line: TabletRunItemLine; option: TabletCatalogItemConfig } => Boolean(entry.option))
+      await Promise.all(lineOptions.map(({ line, option }) => addToCatalog(session.groupId, option, line.quantity)))
       await appendTabletCashHistory({
         groupId: session.groupId,
         memberName: member.raw,

@@ -7,13 +7,31 @@ export const TABLET_DAILY_ITEM_OPTIONS: TabletCatalogItemConfig[] = [
 
 export const TABLET_TIMEZONE = 'Europe/Paris'
 
-export function toDayKey(date = new Date()): string {
+function formatDay(date: Date): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: TABLET_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   }).format(date)
+}
+
+function formatHour(date: Date): number {
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: TABLET_TIMEZONE,
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0)
+  return Number.isFinite(hour) ? hour : 0
+}
+
+export function toDayKey(date = new Date()): string {
+  // Reset window starts every day at 08:00 (Paris time), not midnight.
+  const parisHour = formatHour(date)
+  if (parisHour >= 8) return formatDay(date)
+  const previousDay = new Date(date.getTime() - 24 * 60 * 60 * 1000)
+  return formatDay(previousDay)
 }
 
 export function normalizeTabletOptions(options: TabletCatalogItemConfig[] | null | undefined): TabletCatalogItemConfig[] {

@@ -269,7 +269,7 @@ export default function SuiviProductionClient() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      <div className={`grid gap-6 ${selected ? 'xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]' : 'xl:grid-cols-1'}`}>
         <Panel className="space-y-4 p-5">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base font-semibold">Liste des demandes</h3>
@@ -313,12 +313,12 @@ export default function SuiviProductionClient() {
           </div>
         </Panel>
 
+        {selected ? (
         <Panel className="space-y-5 p-5 xl:sticky xl:top-6 xl:self-start">
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3">
             <h3 className="text-base font-semibold text-cyan-100">Validation finale</h3>
             <p className="mt-1 text-xs text-cyan-100/75">Confirme la quantité reçue et clôture la demande proprement.</p>
           </div>
-          {!selected ? <p className="text-sm text-white/65">Sélectionne une demande pour la valider/modifier.</p> : (
             <div className="space-y-5">
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm sm:grid-cols-2">
                 <p className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />Groupe: <b>{selected.partner_name}</b></p>
@@ -350,8 +350,8 @@ export default function SuiviProductionClient() {
 
               <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/25">Ouvrir la page détail / édition</Link>
             </div>
-          )}
         </Panel>
+        ) : null}
       </div>
 
       {creating ? (
