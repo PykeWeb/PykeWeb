@@ -296,6 +296,8 @@ async function loadTodayBudget(groupId: string, dayKey: string): Promise<StoredB
     .eq('scope_type', 'group')
     .eq('scope_id', groupId)
     .eq('page_key', `tablette.coffre.${dayKey}`)
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .maybeSingle<{ order: string[] | null }>()
   if (error) throw error
   return parseBudgetOrder(dayKey, data?.order)
@@ -354,7 +356,15 @@ export async function GET(request: Request) {
 
     const runs = (data ?? []) as TabletDailyRun[]
 
-    const budget = canManageTabletBudget(session) ? await loadTodayBudget(session.groupId, today) : null
+    let budget = canManageTabletBudget(session) ? await loadTodayBudget(session.groupId, today) : null
+    if (budget) {
+      const todayRuns = runs.filter((run) => run.day_key === today)
+      const distributedFromRuns = Number(todayRuns.reduce((sum, run) => sum + Math.max(0, Number(run.total_cost || 0)), 0).toFixed(2))
+      if (budget.distributed_total !== distributedFromRuns || budget.paid_runs !== todayRuns.length) {
+        budget = { ...budget, distributed_total: distributedFromRuns, paid_runs: todayRuns.length }
+        await saveTodayBudget(session.groupId, budget)
+      }
+    }
     return NextResponse.json({
       today,
       items: await getGlobalTabletOptions(),
@@ -451,6 +461,7 @@ export async function POST(request: Request) {
       .eq('group_id', session.groupId)
       .eq('day_key', dayKey)
       .eq('member_name_normalized', member.normalized)
+      .limit(1)
       .maybeSingle<{ id: string }>()
 
     if (exists?.id) {

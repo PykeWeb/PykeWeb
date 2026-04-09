@@ -13,11 +13,11 @@ import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugPr
 
 function inferDemandMode(note: string | null | undefined): DemandFormValue['mode'] {
   const raw = String(note || '').toLowerCase()
-  if (raw.includes('feuille->brick')) return 'coke_leaf_to_brick'
-  if (raw.includes('brick->pochon')) return 'coke_brick_to_pouch'
-  if (raw.includes('feuille->pochon')) return 'coke_leaf_to_pouch'
-  if (raw.includes('meth') || raw.includes('table')) return 'meth_table_transform'
-  return 'coke_leaf_to_pouch'
+  if (raw.includes('feuille->brick')) return 'leaf_to_brick'
+  if (raw.includes('brick->pochon')) return 'brick_to_pouch'
+  if (raw.includes('feuille->pochon')) return 'leaf_to_pouch'
+  if (raw.includes('meth') || raw.includes('table')) return 'machine_transform'
+  return 'leaf_to_pouch'
 }
 
 function isMethType(rawType: string) {
@@ -56,10 +56,10 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
     const nextReceived = Math.max(0, Number(receivedDraft || row.received_output || 0))
     const status = nextReceived >= expectedOutput ? 'completed' : 'in_progress'
     const nextQuantitySent = isMethType(row.type)
-      ? Math.max(0, Number(value.quantitySeeds || 0))
-      : (value.mode === 'coke_brick_to_pouch'
+      ? Math.max(0, Number(value.quantityLeaves || 0))
+      : (value.mode === 'brick_to_pouch'
         ? Math.max(0, Number(value.quantityBricks || 0))
-        : value.mode === 'coke_leaf_to_brick' || value.mode === 'coke_leaf_to_pouch'
+        : value.mode === 'leaf_to_brick' || value.mode === 'leaf_to_pouch'
           ? Math.max(0, Number(value.quantityLeaves || 0))
           : Math.max(0, Number(value.quantitySeeds || 0)))
     const updated = await updateDrugProductionTracking(row.id, {

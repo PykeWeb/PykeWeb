@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { NotebookPen, Plus, Tags, User } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ArrowRightLeft, Beaker, Factory, NotebookPen, Package, Sparkles, Waves, type LucideIcon } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
-import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
-import { computeDemandMetrics, type DemandMode } from '@/lib/drugProductionDemandCalculator'
 import type { ProductionType } from '@/lib/drugProductionTrackingApi'
+
+export type CokeMode = 'leaf_to_brick' | 'brick_to_pouch' | 'leaf_to_pouch'
+export type MethMode = 'machine_transform'
+export type DemandMode = CokeMode | MethMode
 
 export type DemandFormValue = {
   partnerName: string
@@ -24,27 +26,86 @@ export type DemandFormValue = {
   expectedDate: string
 }
 
-const MODE_OPTIONS: { value: DemandMode; label: string }[] = [
-  { value: 'coke_leaf_to_brick', label: 'Feuille → Brick (1 transfo)' },
-  { value: 'coke_brick_to_pouch', label: 'Brick → Pochon (1 transfo)' },
-  { value: 'coke_leaf_to_pouch', label: 'Feuille → Pochon (2 transfo)' },
+type SummaryMetrics = {
+  sentValue: number
+  sentLabel: string
+  recoveredPouches: number
+  seedCost: number
+  transformCost: number
+  resaleEstimate: number
+  estimatedProfit: number
+}
+
+const COKE_MODES: Array<{ value: CokeMode; label: string; description: string; icon: LucideIcon }> = [
+  { value: 'leaf_to_brick', label: 'Feuille → Brick', description: '1 transformation', icon: ArrowRightLeft },
+  { value: 'brick_to_pouch', label: 'Brick → Pochon', description: '1 transformation', icon: Package },
+  { value: 'leaf_to_pouch', label: 'Feuille → Pochon', description: '2 transformations', icon: Sparkles },
 ]
 
-const TYPE_OPTIONS: { value: ProductionType; label: string }[] = [
-  { value: 'coke', label: 'Coke' },
-  { value: 'meth', label: 'Meth' },
-  { value: 'other', label: 'Autres' },
-]
+function sanitizeNumber(value: unknown) {
+  return Math.max(0, Number(value || 0) || 0)
+}
 
-const MODE_OPTIONS_METH: { value: DemandMode; label: string }[] = [
-  { value: 'meth_table_transform', label: 'Achat table + transfo' },
-]
+function computeSummary(form: DemandFormValue): SummaryMetrics {
+  const seedQty = Math.floor(sanitizeNumber(form.quantitySeeds))
+  const leavesQty = Math.floor(sanitizeNumber(form.quantityLeaves))
+  const bricksQty = Math.floor(sanitizeNumber(form.quantityBricks))
+  const seedPrice = sanitizeNumber(form.seedPrice)
+  const pouchSalePrice = sanitizeNumber(form.pouchSalePrice)
+  const leafToBrickCost = sanitizeNumber(form.brickTransformCost)
+  const brickToPouchCost = sanitizeNumber(form.pouchTransformCost)
 
-function normalizeProductionType(raw: string): ProductionType {
-  const value = String(raw || '').toLowerCase()
-  if (value.includes('meth')) return 'meth'
-  if (value.includes('coke')) return 'coke'
-  return 'other'
+  if (form.type === 'meth') {
+    const tableQty = seedQty
+    const methBrutQty = leavesQty
+    const expectedPouches = Math.max(0, bricksQty > 0 ? bricksQty : methBrutQty * 2)
+    const seedCost = tableQty * seedPrice
+    const transformCost = brickToPouchCost
+    const resaleEstimate = expectedPouches * pouchSalePrice
+    return {
+      sentValue: methBrutQty,
+      sentLabel: 'Meth brut envoyée',
+      recoveredPouches: expectedPouches,
+      seedCost,
+      transformCost,
+      resaleEstimate,
+      estimatedProfit: resaleEstimate - seedCost - transformCost,
+    }
+  }
+
+  const netBricks = Math.floor(leavesQty * 0.95)
+  const estimatedPouches =
+    form.mode === 'brick_to_pouch'
+      ? bricksQty * 10
+      : form.mode === 'leaf_to_brick'
+        ? netBricks * 10
+        : netBricks * 10
+
+  const seedCost = seedQty * seedPrice
+  const transformCost =
+    form.mode === 'leaf_to_brick'
+      ? leavesQty * leafToBrickCost
+      : form.mode === 'brick_to_pouch'
+        ? bricksQty * brickToPouchCost
+        : leavesQty * (leafToBrickCost + brickToPouchCost)
+
+  const resaleEstimate = estimatedPouches * pouchSalePrice
+
+  return {
+    sentValue: leavesQty,
+    sentLabel: 'Feuilles envoyées',
+    recoveredPouches: estimatedPouches,
+    seedCost,
+    transformCost,
+    resaleEstimate,
+    estimatedProfit: resaleEstimate - seedCost - transformCost,
+  }
+}
+
+function normalizeInitialMode(initial: DemandFormValue): DemandMode {
+  if (initial.type === 'meth') return 'machine_transform'
+  if (initial.mode === 'leaf_to_brick' || initial.mode === 'brick_to_pouch' || initial.mode === 'leaf_to_pouch') return initial.mode
+  return 'leaf_to_pouch'
 }
 
 export function DemandePartenaireForm({
@@ -58,123 +119,132 @@ export function DemandePartenaireForm({
   onSubmit: (value: DemandFormValue, expectedOutput: number) => Promise<void>
   onCancel?: () => void
 }) {
-  const [form, setForm] = useState<DemandFormValue>({ ...initial, type: normalizeProductionType(initial.type) })
+  const [form, setForm] = useState<DemandFormValue>({
+    ...initial,
+    type: initial.type === 'meth' ? 'meth' : 'coke',
+    mode: normalizeInitialMode(initial),
+  })
   const [showNote, setShowNote] = useState(Boolean(initial.note))
   const [saving, setSaving] = useState(false)
+
+  const summary = useMemo(() => computeSummary(form), [form])
   const isMeth = form.type === 'meth'
 
-  useEffect(() => {
-    if (!isMeth) return
-    setForm((prev) => ({
-      ...prev,
-      mode: 'meth_table_transform',
-      brickTransformCost: 0,
-      pouchTransformCost: prev.pouchTransformCost > 0 ? prev.pouchTransformCost : 0,
-      seedPrice: prev.seedPrice > 0 ? prev.seedPrice : 3300,
-    }))
-  }, [isMeth])
-
-  const calc = useMemo(() => computeDemandMetrics({
-    mode: form.mode,
-    isMeth,
-    quantitySeeds: form.quantitySeeds,
-    quantityLeaves: form.quantityLeaves,
-    quantityBricks: form.quantityBricks,
-    seedPrice: form.seedPrice,
-    pouchSalePrice: form.pouchSalePrice,
-    brickTransformCost: form.brickTransformCost,
-    pouchTransformCost: form.pouchTransformCost,
-  }), [form, isMeth])
-
-  const quantityLabel =
-    isMeth
-      ? 'Quantité de machine achetée'
-      : form.mode === 'coke_brick_to_pouch'
-        ? 'Quantité de bricks'
-        : 'Quantité de feuilles'
-
-  const quantityValue =
-    form.mode === 'coke_brick_to_pouch'
-      ? form.quantityBricks
-      : form.mode === 'coke_leaf_to_brick' || form.mode === 'coke_leaf_to_pouch'
-        ? form.quantityLeaves
-        : isMeth
-          ? form.quantitySeeds
-          : form.quantityLeaves
-
   return (
-    <div className="space-y-3">
-      <div className="grid gap-2 md:grid-cols-[1fr_220px_auto]">
-        <div className="space-y-1 rounded-xl border border-cyan-300/20 bg-cyan-500/[0.08] p-2.5">
-          <label className="flex items-center gap-1.5 text-xs text-cyan-100/80"><User className="h-3.5 w-3.5" />Nom du groupe</label>
-          <Input value={form.partnerName} onChange={(e) => setForm((p) => ({ ...p, partnerName: e.target.value }))} />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="inline-flex rounded-2xl border border-white/15 bg-white/[0.04] p-1">
+          <button
+            type="button"
+            onClick={() => setForm((prev) => ({ ...prev, type: 'coke', mode: prev.mode === 'machine_transform' ? 'leaf_to_pouch' : prev.mode }))}
+            className={`h-9 rounded-xl px-4 text-sm font-semibold ${!isMeth ? 'bg-cyan-500/25 text-cyan-100' : 'text-white/75 hover:bg-white/10'}`}
+          >
+            Coke
+          </button>
+          <button
+            type="button"
+            onClick={() => setForm((prev) => ({ ...prev, type: 'meth', mode: 'machine_transform' }))}
+            className={`h-9 rounded-xl px-4 text-sm font-semibold ${isMeth ? 'bg-violet-500/25 text-violet-100' : 'text-white/75 hover:bg-white/10'}`}
+          >
+            Meth
+          </button>
         </div>
-        <div className="space-y-1 rounded-xl border border-violet-300/20 bg-violet-500/[0.08] p-2.5">
-          <label className="flex items-center gap-1.5 text-xs text-violet-100/80"><Tags className="h-3.5 w-3.5" />Type</label>
-          <GlassSelect value={form.type} onChange={(v) => setForm((p) => ({ ...p, type: v as ProductionType }))} options={TYPE_OPTIONS} />
-        </div>
-        <div className="flex items-end gap-2">
-          <button type="button" onClick={() => setShowNote((v) => !v)} className="h-10 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 text-sm font-semibold text-amber-100">Note</button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setShowNote((v) => !v)} className="h-9 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 text-xs font-semibold text-amber-100">Note</button>
           {onCancel ? <SecondaryButton onClick={onCancel}>Retour</SecondaryButton> : null}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.07] p-3 space-y-3">
-        <p className="text-sm font-semibold text-cyan-100">Prix & estimation</p>
-        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-          <div><p className="mb-1 text-xs text-white/70">Mode opération</p><GlassSelect value={form.mode} onChange={(v) => setForm((p) => ({ ...p, mode: v as DemandMode }))} options={isMeth ? MODE_OPTIONS_METH : MODE_OPTIONS} /></div>
-          <div>
-            <p className="mb-1 text-xs text-white/70">{quantityLabel}</p>
-            <Input
-              value={quantityValue}
-              onChange={(e) => {
-                const nextValue = Number(e.target.value) || 0
-                setForm((p) => (
-                  isMeth
-                    ? { ...p, quantitySeeds: nextValue }
-                    : form.mode === 'coke_brick_to_pouch'
-                    ? { ...p, quantityBricks: nextValue }
-                      : form.mode === 'coke_leaf_to_brick' || form.mode === 'coke_leaf_to_pouch'
-                      ? { ...p, quantityLeaves: nextValue }
-                      : { ...p, quantityLeaves: nextValue }
-                ))
-              }}
-              inputMode="numeric"
-            />
+      <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.07] p-4">
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="space-y-1 text-sm text-white/80">
+            <span>Nom du groupe</span>
+            <Input value={form.partnerName} onChange={(e) => setForm((prev) => ({ ...prev, partnerName: e.target.value }))} />
+          </label>
+          <div className="space-y-1 text-sm text-white/80">
+            <span>Mode opération</span>
+            {isMeth ? (
+              <div className="h-10 rounded-xl border border-white/20 bg-white/[0.06] px-3 text-sm font-semibold leading-10 text-white">Machine + transfo (mode unique)</div>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-3">
+                {COKE_MODES.map((mode) => {
+                  const Icon = mode.icon
+                  const active = form.mode === mode.value
+                  return (
+                    <button
+                      key={mode.value}
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, mode: mode.value }))}
+                      className={`rounded-xl border p-2 text-left ${active ? 'border-cyan-300/40 bg-cyan-500/15' : 'border-white/15 bg-white/[0.03] hover:bg-white/[0.08]'}`}
+                    >
+                      <p className="flex items-center gap-1 text-sm font-semibold"><Icon className="h-3.5 w-3.5" />{mode.label}</p>
+                      <p className="text-xs text-white/65">{mode.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
-          <div><p className="mb-1 text-xs text-white/70">{isMeth ? 'Pochons attendus (approx)' : 'Attendu (approx)'}</p><Input value={calc.expectedOutput} readOnly /></div>
-          <div><p className="mb-1 text-xs text-white/70">{isMeth ? 'Prix d’une table' : 'Prix graine'}</p><Input value={form.seedPrice} onChange={(e) => setForm((p) => ({ ...p, seedPrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
-          <div><p className="mb-1 text-xs text-white/70">Prix vente pochon</p><Input value={form.pouchSalePrice} onChange={(e) => setForm((p) => ({ ...p, pouchSalePrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
-          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo feuille → brick</p><Input value={form.brickTransformCost} onChange={(e) => setForm((p) => ({ ...p, brickTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
-          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo brick → pochon</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
-          {isMeth ? <div><p className="mb-1 text-xs text-white/70">Meth brut produite</p><Input value={form.quantityLeaves} onChange={(e) => setForm((p) => ({ ...p, quantityLeaves: Number(e.target.value) || 0 }))} inputMode="numeric" /></div> : null}
-          {isMeth ? <div><p className="mb-1 text-xs text-white/70">Pochons à récupérer (approx)</p><Input value={form.quantityBricks} onChange={(e) => setForm((p) => ({ ...p, quantityBricks: Number(e.target.value) || 0 }))} inputMode="numeric" /></div> : null}
-          {isMeth ? <div><p className="mb-1 text-xs text-white/70">Prix total transfo</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
-          {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Graine achetée (quantité)</p><Input value={form.quantitySeeds} onChange={(e) => setForm((p) => ({ ...p, quantitySeeds: Number(e.target.value) || 0 }))} inputMode="numeric" /></div> : null}
-          <div><p className="mb-1 text-xs text-white/70">Date</p><Input type="date" value={form.createdAt} onChange={(e) => setForm((p) => ({ ...p, createdAt: e.target.value }))} /></div>
-          <div><p className="mb-1 text-xs text-white/70">Date estimée retour</p><Input type="date" value={form.expectedDate} onChange={(e) => setForm((p) => ({ ...p, expectedDate: e.target.value }))} /></div>
+
+          {isMeth ? (
+            <>
+              <label className="space-y-1 text-sm text-white/80"><span>Quantité de machines achetées</span><Input value={form.quantitySeeds} onChange={(e) => setForm((prev) => ({ ...prev, quantitySeeds: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Prix d’une table</span><Input value={form.seedPrice} onChange={(e) => setForm((prev) => ({ ...prev, seedPrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Meth brut produite</span><Input value={form.quantityLeaves} onChange={(e) => setForm((prev) => ({ ...prev, quantityLeaves: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Pochons à récupérer (estimé)</span><Input value={form.quantityBricks} onChange={(e) => setForm((prev) => ({ ...prev, quantityBricks: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Prix revente pochon</span><Input value={form.pouchSalePrice} onChange={(e) => setForm((prev) => ({ ...prev, pouchSalePrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Prix total transfo</span><Input value={form.pouchTransformCost} onChange={(e) => setForm((prev) => ({ ...prev, pouchTransformCost: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+            </>
+          ) : (
+            <>
+              <label className="space-y-1 text-sm text-white/80"><span>Graine achetée (quantité)</span><Input value={form.quantitySeeds} onChange={(e) => setForm((prev) => ({ ...prev, quantitySeeds: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Prix d’achat graines</span><Input value={form.seedPrice} onChange={(e) => setForm((prev) => ({ ...prev, seedPrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Quantité de feuilles</span><Input value={form.quantityLeaves} onChange={(e) => setForm((prev) => ({ ...prev, quantityLeaves: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              {form.mode === 'brick_to_pouch' ? <label className="space-y-1 text-sm text-white/80"><span>Quantité de bricks</span><Input value={form.quantityBricks} onChange={(e) => setForm((prev) => ({ ...prev, quantityBricks: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label> : null}
+              <label className="space-y-1 text-sm text-white/80"><span>Prix transfo feuille → brick</span><Input value={form.brickTransformCost} onChange={(e) => setForm((prev) => ({ ...prev, brickTransformCost: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Prix transfo brick → pochon</span><Input value={form.pouchTransformCost} onChange={(e) => setForm((prev) => ({ ...prev, pouchTransformCost: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Prix revente pochon</span><Input value={form.pouchSalePrice} onChange={(e) => setForm((prev) => ({ ...prev, pouchSalePrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+            </>
+          )}
+
+          <label className="space-y-1 text-sm text-white/80"><span>Date</span><Input type="date" value={form.createdAt} onChange={(e) => setForm((prev) => ({ ...prev, createdAt: e.target.value }))} /></label>
+          <label className="space-y-1 text-sm text-white/80"><span>Date estimée retour</span><Input type="date" value={form.expectedDate} onChange={(e) => setForm((prev) => ({ ...prev, expectedDate: e.target.value }))} /></label>
         </div>
-        {isMeth ? <p className="text-xs text-cyan-100/80">Pour la meth: mode unique achat table + transfo. Mets en avant meth brut envoyé, pochons récupérés, coût transfo, vente estimée et bénéfice approx.</p> : null}
 
         {showNote ? (
-          <div>
-            <p className="mb-1 flex items-center gap-1.5 text-xs text-white/70"><NotebookPen className="h-3.5 w-3.5" />Note</p>
-            <textarea value={form.note} onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} rows={3} className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none" />
+          <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/8 p-3">
+            <p className="mb-1 flex items-center gap-1.5 text-xs text-amber-100/90"><NotebookPen className="h-3.5 w-3.5" />Note</p>
+            <textarea value={form.note} onChange={(e) => setForm((prev) => ({ ...prev, note: e.target.value }))} rows={3} className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none" />
           </div>
         ) : null}
+      </div>
 
-        <div className="grid gap-2 sm:grid-cols-6">
-          <div className="rounded-xl border border-indigo-300/25 bg-indigo-500/10 p-2 text-xs"><p>{isMeth ? 'Meth brut envoyé' : 'Feuilles envoyées'}</p><p className="text-lg font-semibold">{Math.round(calc.netBricks)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs"><p>{isMeth ? 'Coût tables' : 'Coût graines'}</p><p className="text-lg font-semibold">{Math.round(calc.seedCostTotal)} $</p></div>
-          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs"><p>Pochons récupérés (approx)</p><p className="text-lg font-semibold">{Math.round(calc.expectedOutput)}</p></div>
-          <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2 text-xs"><p>Prix transfo</p><p className="text-lg font-semibold">{Math.round(calc.transformCostTotal)} $</p></div>
-          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs"><p>Vente pochons estimée</p><p className="text-lg font-semibold">{Math.round(calc.totalSaleEstimate)} $</p></div>
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-2 text-xs"><p>Bénéf approx</p><p className="text-lg font-semibold">{Math.round(calc.estimatedProfit)} $</p></div>
+      <div className="rounded-2xl border border-violet-300/20 bg-violet-500/[0.07] p-4">
+        <p className="mb-3 text-sm font-semibold text-violet-100">Résumé estimation</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">Envoyé</p><p className="mt-1 text-lg font-semibold">{summary.sentValue}</p><p className="text-xs text-white/55">{summary.sentLabel}</p></div>
+          <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">Récupéré (approx)</p><p className="mt-1 text-lg font-semibold">{summary.recoveredPouches}</p><p className="text-xs text-white/55">Pochons</p></div>
+          <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">Prix transfo</p><p className="mt-1 text-lg font-semibold">{Math.round(summary.transformCost)} $</p></div>
+          <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">Revente estimée</p><p className="mt-1 text-lg font-semibold">{Math.round(summary.resaleEstimate)} $</p></div>
+          <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 p-3"><p className="text-xs text-cyan-100/85">Bénéfice approx</p><p className="mt-1 text-lg font-semibold text-cyan-100">{Math.round(summary.estimatedProfit)} $</p><p className="text-xs text-cyan-100/70">Coût graines/tables: {Math.round(summary.seedCost)} $</p></div>
         </div>
       </div>
 
       <div className="flex justify-end">
-        <PrimaryButton disabled={saving} onClick={async () => { setSaving(true); try { await onSubmit(form, calc.expectedOutput) } finally { setSaving(false) } }}><Plus className="h-4 w-4" />{submitLabel}</PrimaryButton>
+        <PrimaryButton
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true)
+            try {
+              await onSubmit(form, summary.recoveredPouches)
+            } finally {
+              setSaving(false)
+            }
+          }}
+        >
+          <Waves className="h-4 w-4" />
+          {submitLabel}
+        </PrimaryButton>
       </div>
     </div>
   )

@@ -58,7 +58,13 @@ export function getDefaultRouteForSession(session: TenantSession) {
   if (allowedPrefixes.length > 0) {
     const first = allowedPrefixes[0]
     if (first === '/operations') return '/activites'
-    return first
+    if (first === '/tablette/coffre') return '/tablette'
+    if (first === '/tablette/paiement') return '/tablette'
+    if (first === '/drogues/suivi-production') return '/drogues/suivi-production'
+    if (first === '/drogues/partenaires') return '/drogues/suivi-production'
+    if (first === '/finance/achat-vente' || first === '/finance/entree-sortie' || first === '/finance/depense') return '/finance'
+    if (first === '/cash/paye') return '/cash'
+    return first.startsWith('/admin') ? '/admin/dashboard' : first
   }
 
   if (isMemberTenantSession(session)) return '/tablette'
