@@ -22,6 +22,8 @@ type RequestMeta = {
   sentLabel: string
   sentQty: number
   estimatedPouches: number
+  tableQty?: number
+  imageUrl?: string | null
 }
 
 const NEW_REQUEST_INITIAL: DemandFormValue = {
@@ -89,14 +91,21 @@ export default function SuiviProductionClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [validationDraft, setValidationDraft] = useState('0')
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'cancelled'>('all')
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null)
+  const [uploadingProof, setUploadingProof] = useState(false)
 
   const selected = useMemo(() => rows.find((row) => row.id === selectedId) ?? null, [rows, selectedId])
-  const counters = useMemo(() => ({
-    total: rows.length,
-    pending: rows.filter((row) => row.status === 'in_progress').length,
-    completed: rows.filter((row) => row.status === 'completed').length,
-    cancelled: rows.filter((row) => row.status === 'cancelled').length,
-  }), [rows])
+  const counters = useMemo(() => {
+    const pending = rows.filter((row) => row.status === 'in_progress')
+    return {
+      total: rows.length,
+      pending: pending.length,
+      completed: rows.filter((row) => row.status === 'completed').length,
+      cancelled: rows.filter((row) => row.status === 'cancelled').length,
+      pendingMethPouches: pending.filter((row) => String(row.type).toLowerCase().includes('meth')).reduce((sum, row) => sum + Math.max(0, Number(row.expected_output || 0)), 0),
+      pendingCokePouches: pending.filter((row) => String(row.type).toLowerCase().includes('coke')).reduce((sum, row) => sum + Math.max(0, Number(row.expected_output || 0)), 0),
+    }
+  }, [rows])
   const visibleRows = useMemo(() => {
     if (statusFilter === 'all') return rows
     return rows.filter((row) => row.status === statusFilter)
@@ -112,6 +121,24 @@ export default function SuiviProductionClient() {
       toast.error('Impossible de charger les demandes transfo.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function uploadProof(file: File | null) {
+    if (!file) return
+    setUploadingProof(true)
+    try {
+      const formData = new FormData()
+      formData.set('file', file)
+      const res = await fetch('/api/drogues/suivi-production/upload-image', { method: 'POST', body: formData })
+      const payload = (await res.json().catch(() => null)) as { publicUrl?: string; error?: string } | null
+      if (!res.ok || !payload?.publicUrl) throw new Error(payload?.error || 'Upload image impossible.')
+      setProofImageUrl(payload.publicUrl)
+      toast.success('Image ajoutée.')
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Upload image impossible.')
+    } finally {
+      setUploadingProof(false)
     }
   }
 
@@ -136,6 +163,8 @@ export default function SuiviProductionClient() {
       sentLabel: isMeth ? 'Meth brut produite' : 'Feuilles envoyées',
       sentQty: isMeth ? Math.max(0, Number(form.quantityLeaves || 0)) : quantitySent,
       estimatedPouches: expectedOutput,
+      tableQty: isMeth ? Math.max(0, Number(form.quantitySeeds || 0)) : undefined,
+      imageUrl: proofImageUrl,
     }
 
     await createDrugProductionTracking({
@@ -161,6 +190,7 @@ export default function SuiviProductionClient() {
       await createRequest(form, expectedOutput)
       toast.success('Demande créée en attente.')
       setCreating(false)
+      setProofImageUrl(null)
       await loadRows()
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Création impossible.')
@@ -195,24 +225,13 @@ export default function SuiviProductionClient() {
     }
   }
 
-  async function markSelectedPending() {
-    if (!selected) return
-    try {
-      const updated = await updateDrugProductionTracking(selected.id, { status: 'in_progress' })
-      setRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
-      toast.success('Demande remise en attente.')
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Action impossible.')
-    }
-  }
-
   return (
     <div className="space-y-4">
       <PageHeader title="Transfo groupes" subtitle="Coke/Meth séparés, estimation métier claire et validation finale de la quantité réellement récupérée." />
 
       <div className="flex flex-wrap gap-2">
         <PrimaryButton onClick={() => setCreating(true)}><Plus className="h-4 w-4" />Nouvelle demande</PrimaryButton>
-        <Link href="/drogues/demandes" className="inline-flex h-10 items-center rounded-xl border border-white/15 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Vue détails</Link>
+        <Link href={selected ? `/drogues/demandes/${selected.id}` : '/drogues/suivi-production'} className="inline-flex h-10 items-center rounded-xl border border-white/15 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Vue détails</Link>
       </div>
 
       <div className="grid gap-2 md:grid-cols-4">
@@ -232,6 +251,16 @@ export default function SuiviProductionClient() {
           <p className="text-xs text-cyan-100/80">Total demandes</p>
           <p className="text-xl font-semibold text-cyan-100">{counters.total}</p>
         </button>
+      </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="rounded-xl border border-fuchsia-300/35 bg-fuchsia-500/12 p-3">
+          <p className="text-xs text-fuchsia-100/80">Pochons meth en attente</p>
+          <p className="text-xl font-semibold text-fuchsia-100">{counters.pendingMethPouches}</p>
+        </div>
+        <div className="rounded-xl border border-sky-300/35 bg-sky-500/12 p-3">
+          <p className="text-xs text-sky-100/80">Pochons coke en attente</p>
+          <p className="text-xl font-semibold text-sky-100">{counters.pendingCokePouches}</p>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
@@ -287,6 +316,12 @@ export default function SuiviProductionClient() {
                 <p>Pochons reçus: <b>{selected.received_output}</b></p>
                 <p>Statut: <b>{statusLabel(selected.status)}</b></p>
               </div>
+              {parseMeta(selected.note)?.imageUrl ? (
+                <div className="overflow-hidden rounded-xl border border-white/15 bg-white/[0.04] p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={parseMeta(selected.note)?.imageUrl || ''} alt="Preuve demande" className="max-h-56 w-full rounded-lg object-cover" />
+                </div>
+              ) : null}
 
               <label className="space-y-1 text-sm text-white/80">
                 <span>Quantité réellement reçue (validation)</span>
@@ -297,9 +332,8 @@ export default function SuiviProductionClient() {
                 <PrimaryButton onClick={() => void validateSelected()}><CheckCircle2 className="h-4 w-4" />Valider la demande</PrimaryButton>
                 <SecondaryButton onClick={() => void cancelSelected()}><XCircle className="h-4 w-4" />Annuler la demande</SecondaryButton>
               </div>
-              <SecondaryButton onClick={() => void markSelectedPending()}>Remettre en attente</SecondaryButton>
 
-              <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex text-sm text-cyan-100 underline-offset-4 hover:underline">Ouvrir la page détail / édition</Link>
+              <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/25">Ouvrir la page détail / édition</Link>
             </div>
           )}
         </Panel>
@@ -318,6 +352,16 @@ export default function SuiviProductionClient() {
               onSubmit={submitCreate}
               onCancel={() => setCreating(false)}
             />
+            <div className="mt-3 rounded-xl border border-white/12 bg-white/[0.03] p-3">
+              <p className="mb-2 text-xs text-white/70">Image (optionnelle)</p>
+              <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => void uploadProof(e.target.files?.[0] || null)} disabled={uploadingProof} className="text-xs text-white/85 file:mr-3 file:rounded-lg file:border file:border-white/25 file:bg-white/[0.08] file:px-3 file:py-1.5" />
+              {proofImageUrl ? (
+                <div className="mt-2 overflow-hidden rounded-lg border border-white/15">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={proofImageUrl} alt="Aperçu preuve" className="max-h-48 w-full object-cover" />
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}

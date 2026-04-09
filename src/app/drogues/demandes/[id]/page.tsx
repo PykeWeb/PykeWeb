@@ -14,7 +14,7 @@ function parseTransfoMeta(note: string | null | undefined) {
   const raw = String(note || '').trim()
   if (!raw.startsWith('[transfo:v2]')) return null
   try {
-    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; tableQty?: number }
+    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; tableQty?: number; imageUrl?: string | null }
   } catch {
     return null
   }
@@ -70,7 +70,7 @@ export default function DemandeDetailPage() {
       type: value.type,
       quantitySent,
       expectedOutput,
-      note: value.note,
+      note: `[transfo:v2]${JSON.stringify({ mode: value.mode, sentQty: value.type === 'meth' ? value.quantityLeaves : quantitySent, tableQty: value.type === 'meth' ? value.quantitySeeds : undefined, imageUrl: parseTransfoMeta(row.note)?.imageUrl || null, note: value.note || '' })}`,
       expectedDate: value.expectedDate || null,
       createdAt: value.createdAt,
       seedPrice: value.seedPrice,
@@ -102,6 +102,12 @@ export default function DemandeDetailPage() {
         </Panel>
       ) : (
         <Panel className="space-y-3">
+          {parseTransfoMeta(row.note)?.imageUrl ? (
+            <div className="overflow-hidden rounded-xl border border-white/15 bg-white/[0.03] p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={parseTransfoMeta(row.note)?.imageUrl || ''} alt="Image demande" className="max-h-72 w-full rounded-lg object-cover" />
+            </div>
+          ) : null}
           <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-2">
             <p>Groupe: <b>{row.partner_name}</b></p><p>Type: <b>{uiTypeLabel(String(row.type))}</b></p>
             <p>Envoyé: <b>{row.quantity_sent}</b></p><p>Attendu: <b>{row.expected_output}</b></p>

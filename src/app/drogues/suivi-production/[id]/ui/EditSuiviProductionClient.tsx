@@ -11,13 +11,13 @@ import { SecondaryButton } from '@/components/ui/design-system'
 import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
-type TransfoMeta = { sentQty?: number; mode?: string; tableQty?: number } | null
+type TransfoMeta = { sentQty?: number; mode?: string; tableQty?: number; imageUrl?: string | null; note?: string } | null
 
 function parseTransfoMeta(note: string | null | undefined): TransfoMeta {
   const raw = String(note || '').trim()
   if (!raw.startsWith('[transfo:v2]')) return null
   try {
-    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; mode?: string; tableQty?: number }
+    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; mode?: string; tableQty?: number; imageUrl?: string | null; note?: string }
   } catch {
     return null
   }
@@ -78,8 +78,9 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
         : value.mode === 'leaf_to_brick' || value.mode === 'leaf_to_pouch'
           ? Math.max(0, Number(value.quantityLeaves || 0))
           : Math.max(0, Number(value.quantitySeeds || 0)))
+    const previousMeta = parseTransfoMeta(row.note)
     const updated = await updateDrugProductionTracking(row.id, {
-      note: `[transfo:v2]${JSON.stringify({ mode: value.mode, sentQty: isMethType(row.type) ? Math.max(0, Number(value.quantityLeaves || 0)) : nextQuantitySent, tableQty: isMethType(row.type) ? Math.max(0, Number(value.quantitySeeds || 0)) : undefined })}`,
+      note: `[transfo:v2]${JSON.stringify({ mode: value.mode, sentQty: isMethType(row.type) ? Math.max(0, Number(value.quantityLeaves || 0)) : nextQuantitySent, tableQty: isMethType(row.type) ? Math.max(0, Number(value.quantitySeeds || 0)) : undefined, imageUrl: previousMeta?.imageUrl || null, note: value.note || '' })}`,
       quantitySent: isMethType(row.type) ? Math.max(0, Number(value.quantityLeaves || 0)) : nextQuantitySent,
       expectedOutput,
       seedPrice: value.seedPrice,
