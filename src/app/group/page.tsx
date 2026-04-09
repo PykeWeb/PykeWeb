@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
 import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
 import { PageHeader } from '@/components/PageHeader'
@@ -70,6 +71,16 @@ export default function GroupSettingsPage() {
 
       <div id="section-members-roles">
         <GroupMembersGradesSection groupId={groupId} />
+      </div>
+
+      <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-4">
+        <p className="text-sm font-semibold text-emerald-100">Gestion de paye</p>
+        <p className="mt-1 text-sm text-emerald-50/85">Paye un membre individuellement depuis l’outil dédié.</p>
+        <div className="mt-3">
+          <Link href="/cash/paye" className="inline-flex h-10 items-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25">
+            Ouvrir la gestion paye
+          </Link>
+        </div>
       </div>
     </div>
   )

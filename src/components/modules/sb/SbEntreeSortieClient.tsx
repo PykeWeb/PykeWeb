@@ -190,14 +190,16 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   }
 
   const updateQuantity = (itemId: string, quantity: number) => {
-    const maxStock = stockById[itemId] ?? 0
     setSelectedItems((prev) => prev.map((entry) => (
       entry.selectionKey === itemId
         ? {
           ...entry,
-          quantity: entry.mode === 'sortie'
-            ? Math.max(1, Math.min(Math.floor(quantity || 1), Math.max(1, entry.isManual ? Number.MAX_SAFE_INTEGER : maxStock)))
-            : Math.max(1, Math.floor(quantity || 1)),
+          ...(entry.mode === 'sortie' ? (() => {
+            const maxStock = stockById[entry.id] ?? 0
+            return {
+              quantity: Math.max(1, Math.min(Math.floor(quantity || 1), Math.max(1, entry.isManual ? Number.MAX_SAFE_INTEGER : maxStock))),
+            }
+          })() : { quantity: Math.max(1, Math.floor(quantity || 1)) }),
         }
         : entry
     )))
@@ -433,7 +435,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
               <span>•</span>
               <span>Vente: {tradeTotals.sellTotal.toFixed(2)} $</span>
               <span>•</span>
-              <span className={tradeTotals.net >= 0 ? 'text-emerald-100' : 'text-rose-100'}>
+              <span className={`rounded-full px-2 py-0.5 ${tradeTotals.net >= 0 ? 'bg-emerald-500/25 text-emerald-100' : 'bg-rose-500/25 text-rose-100'}`}>
                 Net: {tradeTotals.net.toFixed(2)} $
               </span>
             </div>

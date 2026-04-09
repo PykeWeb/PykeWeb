@@ -663,12 +663,12 @@ export default function SuiviProductionClient() {
                       <td className="px-3 py-3">
                         <span className="inline-flex rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-xs font-semibold text-white">{typeLabel(row.type)}</span>
                       </td>
-                      <td className="px-3 py-3 font-medium">{isMethType(row.type) ? `${row.quantity_sent} meth brut` : `${row.quantity_sent} feuilles`}</td>
+                      <td className="px-3 py-3 font-medium">{isMethType(row.type) ? `${row.quantity_sent} tables` : `${row.quantity_sent} feuilles`}</td>
                       <td className="px-3 py-3 font-medium">
                         {isMethType(row.type) ? (
                           <div className="leading-tight">
-                            <p>{Math.max(0, Number(row.expected_output || 0))} meth brut</p>
-                            <p className="text-xs text-white/70">≈ {toPouchesEquivalent(row)} pochons</p>
+                            <p>≈ {toPouchesEquivalent(row)} pochons attendus</p>
+                            <p className="text-xs text-white/70">({Math.max(0, Number(row.expected_output || 0))} meth brut estimés)</p>
                           </div>
                         ) : row.expected_output}
                       </td>
@@ -693,8 +693,8 @@ export default function SuiviProductionClient() {
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
                 <p><span className="text-white/60">Groupe :</span> <span className="font-semibold">{selected.partner_name}</span></p>
                 <p><span className="text-white/60">Type :</span> <span className="font-semibold">{isMethType(selected.type) ? 'Meth' : typeLabel(selected.type)}</span></p>
-                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.quantity_sent} meth brut` : `${selected.quantity_sent} feuilles`}</span></p>
-                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{isMethType(selected.type) ? `≈ ${toPouchesEquivalent(selected)} pochons (${selected.expected_output} meth brut)` : `≈ ${selected.expected_output} pochons`}</span></p>
+                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.quantity_sent} tables` : `${selected.quantity_sent} feuilles`}</span></p>
+                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{isMethType(selected.type) ? `≈ ${toPouchesEquivalent(selected)} pochons (${selected.expected_output} meth brut estimés)` : `≈ ${selected.expected_output} pochons`}</span></p>
                 <p><span className="text-white/60">Statut :</span> <span className="font-semibold">{statusLabel(selected.status)}</span></p>
                 <p><span className="text-white/60">Reçu :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.received_output || 0} meth brut (≈ ${toReceivedPouchesEquivalent(selected)} pochons)` : `${selected.received_output || 0} pochons`}</span></p>
               </div>
@@ -708,7 +708,7 @@ export default function SuiviProductionClient() {
                   <p className="font-semibold">{money(selectedFinance.revenue)}</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
-                  <p className="text-xs text-white/65">Coût meth brut envoyé</p>
+                  <p className="text-xs text-white/65">Coût tables envoyées</p>
                   <p className="font-semibold">{money(selectedFinance.machinePurchaseCost)}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2.5 text-sm">
@@ -804,7 +804,7 @@ export default function SuiviProductionClient() {
 
               {isMeth || newRequest.flowMode === 'seed_only' || newRequest.flowMode === 'full_chain' || newRequest.flowMode === 'two_steps_seed_to_brick' ? (
                 <div className="space-y-1 rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/[0.07] p-2.5">
-                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> {isMeth ? 'Quantité meth brut envoyée' : 'Quantité graines'}</label>
+                  <label className="flex items-center gap-1.5 text-xs text-emerald-100/80"><Sprout className="h-3.5 w-3.5" /> {isMeth ? 'Quantité tables envoyées' : 'Quantité graines'}</label>
                   <Input
                     value={newRequest.seedQty}
                     onChange={(event) => setNewRequest((prev) => {
@@ -850,7 +850,7 @@ export default function SuiviProductionClient() {
                 ) : <Input value={expectedFromForm} readOnly className="opacity-80" />}
                 <p className="text-[11px] text-white/55">
                   {isMeth
-                    ? `${conversionFromForm.seedQty} meth brut envoyés → estimatif ${Number(newRequest.expectedOutputManual || 0)} meth brut reçu.`
+                    ? `${conversionFromForm.seedQty} tables → estimatif ${Math.max(0, Math.floor(conversionFromForm.seedQty * 12))} à ${Math.max(0, Math.floor(conversionFromForm.seedQty * 20))} meth brut (défaut: ${Number(newRequest.expectedOutputManual || 0)}).`
                     : newRequest.flowMode === 'seed_only'
                     ? `${conversionFromForm.seedQty} graines achetées.`
                     : newRequest.flowMode === 'leaf_to_brick' || newRequest.flowMode === 'two_steps_seed_to_brick'
@@ -928,7 +928,7 @@ export default function SuiviProductionClient() {
                           <img src={assetImages.leaf} alt="Graine" className="h-full w-full object-cover" />
                         ) : <div className="grid h-full w-full place-items-center text-white/60"><Sprout className="h-4 w-4" /></div>}
                       </div>
-                      <p className="text-xs text-white/70">{isMeth ? 'Coût unitaire meth brut envoyé' : 'Prix graine'}</p>
+                      <p className="text-xs text-white/70">{isMeth ? 'Coût unitaire table envoyée' : 'Prix graine'}</p>
                     </div>
                     <Input value={seedPrice} onChange={(event) => setSeedPrice(Math.max(0, Number(event.target.value) || 0))} inputMode="decimal" />
                   </div>

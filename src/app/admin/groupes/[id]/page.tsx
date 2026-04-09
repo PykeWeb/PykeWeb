@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ClipboardEvent } from 'react'
 import { useParams } from 'next/navigation'
 import { Copy, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { deleteTenantGroup, getTenantGroup, resetTenantGroupData, updateTenantGroup, type TenantGroup } from '@/lib/tenantAuthApi'
@@ -87,7 +87,13 @@ export default function AdminGroupDetailsPage() {
         method: 'POST',
         body: formData,
       })
-      const uploadJson = (await uploadRes.json()) as { publicUrl?: string; error?: string }
+      const raw = await uploadRes.text()
+      let uploadJson: { publicUrl?: string; error?: string } = {}
+      try {
+        uploadJson = JSON.parse(raw) as { publicUrl?: string; error?: string }
+      } catch {
+        uploadJson = { error: raw || 'Upload logo impossible.' }
+      }
       if (!uploadRes.ok || !uploadJson.publicUrl) throw new Error(uploadJson.error || 'Upload logo impossible.')
       await savePatch({ image_url: uploadJson.publicUrl } as Partial<TenantGroup>)
     } catch (e: unknown) {
@@ -95,6 +101,15 @@ export default function AdminGroupDetailsPage() {
     } finally {
       setUploadingLogo(false)
     }
+  }
+
+  async function onPasteLogo(event: ClipboardEvent<HTMLDivElement>) {
+    const imageItem = [...event.clipboardData.items].find((item) => item.type.startsWith('image/'))
+    if (!imageItem) return
+    const file = imageItem.getAsFile()
+    if (!file) return
+    event.preventDefault()
+    await uploadGroupLogo(file)
   }
 
   async function addDays() {
@@ -159,7 +174,7 @@ export default function AdminGroupDetailsPage() {
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <label className="text-sm md:col-span-3">
             <span className="mb-1 block text-white/70">Logo du groupe</span>
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.04] p-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.04] p-3" onPaste={(event) => void onPasteLogo(event)} tabIndex={0}>
               <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-white/15 bg-white/[0.06]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={group.image_url || '/logo.png'} alt={`Logo ${group.name}`} className="h-full w-full object-cover" />
@@ -179,6 +194,7 @@ export default function AdminGroupDetailsPage() {
               >
                 {uploadingLogo ? 'Upload…' : 'Retirer logo'}
               </button>
+              <p className="text-xs text-white/60">Tu peux aussi coller une image avec Ctrl+V.</p>
             </div>
           </label>
           <label className="text-sm">
