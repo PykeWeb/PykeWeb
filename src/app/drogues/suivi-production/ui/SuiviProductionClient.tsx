@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Plus, XCircle } from 'lucide-react'
+import { Beaker, CalendarClock, CheckCircle2, CircleDollarSign, Factory, FlaskConical, Package, Plus, Rows3, Tags, User2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -58,6 +58,10 @@ function toModeLabel(mode: string) {
   if (mode === 'leaf_to_pouch') return 'Feuille → Pochon'
   if (mode === 'tables_purchase') return 'Achat tables meth'
   return mode || '—'
+}
+
+function typeLabel(type: string) {
+  return String(type || '').toLowerCase().includes('meth') ? 'Meth' : 'Coke'
 }
 
 function statusLabel(status: ProductionStatus) {
@@ -226,15 +230,17 @@ export default function SuiviProductionClient() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8 pb-6">
       <PageHeader title="Transfo groupes" subtitle="Coke/Meth séparés, estimation métier claire et validation finale de la quantité réellement récupérée." />
 
-      <div className="flex flex-wrap gap-2">
-        <PrimaryButton onClick={() => setCreating(true)}><Plus className="h-4 w-4" />Nouvelle demande</PrimaryButton>
-        <Link href={selected ? `/drogues/demandes/${selected.id}` : '/drogues/suivi-production'} className="inline-flex h-10 items-center rounded-xl border border-white/15 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Vue détails</Link>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+        <div className="flex flex-wrap gap-2">
+          <PrimaryButton onClick={() => setCreating(true)}><Plus className="h-4 w-4" />Nouvelle demande</PrimaryButton>
+          <Link href={selected ? `/drogues/demandes/${selected.id}` : '/drogues/suivi-production'} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"><Rows3 className="h-4 w-4" />Vue détails</Link>
+        </div>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-4">
         <button type="button" onClick={() => setStatusFilter('in_progress')} className="rounded-xl border border-amber-300/35 bg-amber-500/12 p-3 text-left">
           <p className="text-xs text-amber-100/80">En attente</p>
           <p className="text-xl font-semibold text-amber-100">{counters.pending}</p>
@@ -252,7 +258,7 @@ export default function SuiviProductionClient() {
           <p className="text-xl font-semibold text-cyan-100">{counters.total}</p>
         </button>
       </div>
-      <div className="grid gap-2 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded-xl border border-fuchsia-300/35 bg-fuchsia-500/12 p-3">
           <p className="text-xs text-fuchsia-100/80">Pochons meth en attente</p>
           <p className="text-xl font-semibold text-fuchsia-100">{counters.pendingMethPouches}</p>
@@ -264,8 +270,11 @@ export default function SuiviProductionClient() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <Panel>
-          <h3 className="mb-3 text-base font-semibold">Liste des demandes</h3>
+        <Panel className="space-y-4 p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base font-semibold">Liste des demandes</h3>
+            <span className="rounded-lg border border-white/15 bg-white/[0.04] px-2 py-1 text-xs text-white/70">{visibleRows.length} affichée(s)</span>
+          </div>
           <div className="overflow-hidden rounded-xl border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.04] text-white/70">
@@ -288,14 +297,14 @@ export default function SuiviProductionClient() {
                   const isSelected = selectedId === row.id
                   return (
                     <tr key={row.id} className={`cursor-pointer ${isSelected ? 'bg-cyan-500/[0.08]' : 'hover:bg-white/[0.03]'}`} onClick={() => setSelectedId(row.id)}>
-                      <td className="px-3 py-2 font-medium">{row.partner_name}</td>
-                      <td className="px-3 py-2">{String(row.type || '').toUpperCase()}</td>
-                      <td className="px-3 py-2">{toModeLabel(meta?.mode || '')}</td>
+                      <td className="px-3 py-2 font-medium"><span className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />{row.partner_name}</span></td>
+                      <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5">{String(row.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}{typeLabel(String(row.type || ''))}</span></td>
+                      <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><Tags className="h-3.5 w-3.5 text-white/60" />{toModeLabel(meta?.mode || '')}</span></td>
                       <td className="px-3 py-2">{meta?.sentQty ?? row.quantity_sent}</td>
                       <td className="px-3 py-2">{row.received_output}/{row.expected_output}</td>
                       <td className="px-3 py-2"><span className={`rounded-lg border px-2 py-1 text-xs ${statusClass(row.status)}`}>{statusLabel(row.status)}</span></td>
-                      <td className="px-3 py-2">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
-                      <td className="px-3 py-2">{Math.round(computeEstimatedProfit(row))} $</td>
+                      <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-white/60" />{new Date(row.created_at).toLocaleDateString('fr-FR')}</span></td>
+                      <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><CircleDollarSign className="h-3.5 w-3.5 text-emerald-200" />{Math.round(computeEstimatedProfit(row))} $</span></td>
                     </tr>
                   )
                 }) : null}
@@ -304,16 +313,16 @@ export default function SuiviProductionClient() {
           </div>
         </Panel>
 
-        <Panel>
-          <h3 className="mb-3 text-base font-semibold">Validation finale</h3>
+        <Panel className="space-y-4 p-5">
+          <h3 className="text-base font-semibold">Validation finale</h3>
           {!selected ? <p className="text-sm text-white/65">Sélectionne une demande pour la valider/modifier.</p> : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
-                <p>Groupe: <b>{selected.partner_name}</b></p>
-                <p>Type: <b>{String(selected.type || '').toUpperCase()}</b></p>
-                <p>Envoyé: <b>{parseMeta(selected.note)?.sentQty ?? selected.quantity_sent}</b></p>
-                <p>Pochons prévus: <b>{selected.expected_output}</b></p>
-                <p>Pochons reçus: <b>{selected.received_output}</b></p>
+                <p className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />Groupe: <b>{selected.partner_name}</b></p>
+                <p className="inline-flex items-center gap-1.5">{String(selected.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}Type: <b>{typeLabel(String(selected.type || ''))}</b></p>
+                <p className="inline-flex items-center gap-1.5"><Factory className="h-3.5 w-3.5 text-white/60" />Envoyé: <b>{parseMeta(selected.note)?.sentQty ?? selected.quantity_sent}</b></p>
+                <p className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-white/60" />Pochons prévus: <b>{selected.expected_output}</b></p>
+                <p className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-cyan-200" />Pochons reçus: <b>{selected.received_output}</b></p>
                 <p>Statut: <b>{statusLabel(selected.status)}</b></p>
               </div>
               {parseMeta(selected.note)?.imageUrl ? (
@@ -324,7 +333,7 @@ export default function SuiviProductionClient() {
               ) : null}
 
               <label className="space-y-1 text-sm text-white/80">
-                <span>Quantité réellement reçue (validation)</span>
+                <span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-cyan-200" />Quantité réellement reçue (validation)</span>
                 <Input value={validationDraft} onChange={(e) => setValidationDraft(e.target.value)} inputMode="numeric" />
               </label>
 

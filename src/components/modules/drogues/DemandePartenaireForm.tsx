@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { ArrowRightLeft, NotebookPen, Package, Sparkles, Waves, type LucideIcon } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowRightLeft, Beaker, BrickWall, Coins, Factory, FlaskConical, NotebookPen, Package, Sparkles, Waves, type LucideIcon } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import type { ProductionType } from '@/lib/drugProductionTrackingApi'
@@ -58,7 +58,7 @@ function computeSummary(form: DemandFormValue): SummaryMetrics {
   if (form.type === 'meth') {
     const tableQty = seedQty
     const methBrutQty = leavesQty
-    const expectedPouches = Math.max(0, bricksQty > 0 ? bricksQty : methBrutQty * 2)
+    const expectedPouches = methBrutQty * 2
     const seedCost = tableQty * seedPrice
     const resaleEstimate = expectedPouches * pouchSalePrice
     return {
@@ -129,6 +129,12 @@ export function DemandePartenaireForm({
   const summary = useMemo(() => computeSummary(form), [form])
   const isMeth = form.type === 'meth'
 
+  useEffect(() => {
+    if (!isMeth) return
+    const autoPouches = Math.floor(sanitizeNumber(form.quantityLeaves)) * 2
+    setForm((prev) => (prev.quantityBricks === autoPouches ? prev : { ...prev, quantityBricks: autoPouches }))
+  }, [form.quantityLeaves, isMeth])
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -187,22 +193,22 @@ export function DemandePartenaireForm({
 
           {isMeth ? (
             <>
-              <label className="space-y-1 text-sm text-white/80"><span>Quantité de machines achetées</span><Input value={form.quantitySeeds} onChange={(e) => setForm((prev) => ({ ...prev, quantitySeeds: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Prix d’une table</span><Input value={form.seedPrice} onChange={(e) => setForm((prev) => ({ ...prev, seedPrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Meth brut produite</span><Input value={form.quantityLeaves} onChange={(e) => setForm((prev) => ({ ...prev, quantityLeaves: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Pochons à récupérer (estimé)</span><Input value={form.quantityBricks} onChange={(e) => setForm((prev) => ({ ...prev, quantityBricks: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Prix revente pochon</span><Input value={form.pouchSalePrice} onChange={(e) => setForm((prev) => ({ ...prev, pouchSalePrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Coût total achat (auto)</span><Input value={Math.round(sanitizeNumber(form.quantitySeeds) * sanitizeNumber(form.seedPrice))} readOnly /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Factory className="h-3.5 w-3.5 text-violet-200" />Nombre de tables</span><Input value={form.quantitySeeds} onChange={(e) => setForm((prev) => ({ ...prev, quantitySeeds: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-violet-200" />Prix d’une table</span><Input value={form.seedPrice} onChange={(e) => setForm((prev) => ({ ...prev, seedPrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><FlaskConical className="h-3.5 w-3.5 text-violet-200" />Meth brut produite</span><Input value={form.quantityLeaves} onChange={(e) => setForm((prev) => ({ ...prev, quantityLeaves: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-violet-200" />Pochons estimés (auto x2)</span><Input value={summary.recoveredPouches} readOnly /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-violet-200" />Prix revente pochon</span><Input value={form.pouchSalePrice} onChange={(e) => setForm((prev) => ({ ...prev, pouchSalePrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Beaker className="h-3.5 w-3.5 text-violet-200" />Coût total achat (auto)</span><Input value={Math.round(sanitizeNumber(form.quantitySeeds) * sanitizeNumber(form.seedPrice))} readOnly /></label>
             </>
           ) : (
             <>
-              <label className="space-y-1 text-sm text-white/80"><span>Graine achetée (quantité)</span><Input value={form.quantitySeeds} onChange={(e) => setForm((prev) => ({ ...prev, quantitySeeds: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Prix d’achat graines</span><Input value={form.seedPrice} onChange={(e) => setForm((prev) => ({ ...prev, seedPrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Quantité de feuilles</span><Input value={form.quantityLeaves} onChange={(e) => setForm((prev) => ({ ...prev, quantityLeaves: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
-              {form.mode === 'brick_to_pouch' ? <label className="space-y-1 text-sm text-white/80"><span>Quantité de bricks</span><Input value={form.quantityBricks} onChange={(e) => setForm((prev) => ({ ...prev, quantityBricks: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label> : null}
-              <label className="space-y-1 text-sm text-white/80"><span>Prix transfo feuille → brick</span><Input value={form.brickTransformCost} onChange={(e) => setForm((prev) => ({ ...prev, brickTransformCost: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Prix transfo brick → pochon</span><Input value={form.pouchTransformCost} onChange={(e) => setForm((prev) => ({ ...prev, pouchTransformCost: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Prix revente pochon</span><Input value={form.pouchSalePrice} onChange={(e) => setForm((prev) => ({ ...prev, pouchSalePrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Beaker className="h-3.5 w-3.5 text-cyan-200" />Graine achetée (quantité)</span><Input value={form.quantitySeeds} onChange={(e) => setForm((prev) => ({ ...prev, quantitySeeds: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-cyan-200" />Prix d’achat graines</span><Input value={form.seedPrice} onChange={(e) => setForm((prev) => ({ ...prev, seedPrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><FlaskConical className="h-3.5 w-3.5 text-cyan-200" />Quantité de feuilles</span><Input value={form.quantityLeaves} onChange={(e) => setForm((prev) => ({ ...prev, quantityLeaves: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
+              {form.mode === 'brick_to_pouch' ? <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><BrickWall className="h-3.5 w-3.5 text-cyan-200" />Quantité de bricks</span><Input value={form.quantityBricks} onChange={(e) => setForm((prev) => ({ ...prev, quantityBricks: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label> : null}
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-cyan-200" />Prix transfo feuille → brick</span><Input value={form.brickTransformCost} onChange={(e) => setForm((prev) => ({ ...prev, brickTransformCost: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-cyan-200" />Prix transfo brick → pochon</span><Input value={form.pouchTransformCost} onChange={(e) => setForm((prev) => ({ ...prev, pouchTransformCost: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span className="inline-flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-cyan-200" />Prix revente pochon</span><Input value={form.pouchSalePrice} onChange={(e) => setForm((prev) => ({ ...prev, pouchSalePrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
             </>
           )}
 
