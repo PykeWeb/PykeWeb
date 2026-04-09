@@ -91,6 +91,8 @@ export default function AnnuaireClient() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [copiedNameId, setCopiedNameId] = useState<string | null>(null)
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<'name' | 'partner_group' | 'activity' | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   async function refresh() {
     try {
@@ -120,12 +122,28 @@ export default function AnnuaireClient() {
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase()
-    return rows.filter((entry) => {
+    const base = rows.filter((entry) => {
       if (filter !== 'all' && entry.activity !== filter) return false
       if (!normalized) return true
       return `${entry.name} ${entry.partner_group || ''} ${entry.phone || ''}`.toLowerCase().includes(normalized)
     })
-  }, [filter, query, rows])
+    if (!sortKey) return base
+    const direction = sortDir === 'asc' ? 1 : -1
+    return [...base].sort((a, b) => {
+      const left = String(a[sortKey] || '').toLowerCase()
+      const right = String(b[sortKey] || '').toLowerCase()
+      return left.localeCompare(right, 'fr') * direction
+    })
+  }, [filter, query, rows, sortDir, sortKey])
+
+  function toggleSort(nextKey: 'name' | 'partner_group' | 'activity') {
+    if (sortKey !== nextKey) {
+      setSortKey(nextKey)
+      setSortDir('asc')
+      return
+    }
+    setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+  }
 
   async function handleSubmit() {
     if (!form.name.trim()) {
@@ -187,28 +205,28 @@ export default function AnnuaireClient() {
         <Link href="/annuaire/darkchat"><SecondaryButton>Dark Chat</SecondaryButton></Link>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <button type="button" onClick={() => setFilter('all')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'all' ? 'border-slate-200/60 bg-gradient-to-br from-slate-500/28 to-slate-700/20' : 'border-slate-300/25 bg-gradient-to-br from-slate-500/12 to-slate-700/12'}`}>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
+        <button type="button" onClick={() => setFilter('all')} className={`rounded-2xl border px-3 py-2.5 text-left ${filter === 'all' ? 'border-slate-200/60 bg-gradient-to-br from-slate-500/28 to-slate-700/20' : 'border-slate-300/25 bg-gradient-to-br from-slate-500/12 to-slate-700/12'}`}>
           <div className="flex items-center justify-between text-slate-100/85"><p className="text-xs">Total contacts</p><Users className="h-4 w-4" /></div>
           <p className="mt-2 text-3xl font-semibold">{stats.total}</p>
         </button>
-        <button type="button" onClick={() => setFilter('coke')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'coke' ? 'border-cyan-200/60 bg-gradient-to-br from-cyan-500/32 to-blue-600/22' : 'border-cyan-300/25 bg-gradient-to-br from-cyan-500/15 to-blue-600/12'}`}>
+        <button type="button" onClick={() => setFilter('coke')} className={`rounded-2xl border px-3 py-2.5 text-left ${filter === 'coke' ? 'border-cyan-200/60 bg-gradient-to-br from-cyan-500/32 to-blue-600/22' : 'border-cyan-300/25 bg-gradient-to-br from-cyan-500/15 to-blue-600/12'}`}>
           <p className="text-xs text-cyan-100/85">Coke</p>
           <p className="mt-2 text-3xl font-semibold">{stats.coke}</p>
         </button>
-        <button type="button" onClick={() => setFilter('meth')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'meth' ? 'border-violet-200/60 bg-gradient-to-br from-violet-500/30 to-fuchsia-600/20' : 'border-violet-300/25 bg-gradient-to-br from-violet-500/12 to-fuchsia-600/12'}`}>
+        <button type="button" onClick={() => setFilter('meth')} className={`rounded-2xl border px-3 py-2.5 text-left ${filter === 'meth' ? 'border-violet-200/60 bg-gradient-to-br from-violet-500/30 to-fuchsia-600/20' : 'border-violet-300/25 bg-gradient-to-br from-violet-500/12 to-fuchsia-600/12'}`}>
           <p className="text-xs text-violet-100/85">Meth</p>
           <p className="mt-2 text-3xl font-semibold">{stats.meth}</p>
         </button>
-        <button type="button" onClick={() => setFilter('objects')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'objects' ? 'border-emerald-200/60 bg-gradient-to-br from-emerald-500/30 to-teal-600/20' : 'border-emerald-300/25 bg-gradient-to-br from-emerald-500/12 to-teal-600/12'}`}>
+        <button type="button" onClick={() => setFilter('objects')} className={`rounded-2xl border px-3 py-2.5 text-left ${filter === 'objects' ? 'border-emerald-200/60 bg-gradient-to-br from-emerald-500/30 to-teal-600/20' : 'border-emerald-300/25 bg-gradient-to-br from-emerald-500/12 to-teal-600/12'}`}>
           <p className="text-xs text-emerald-100/85">Objets</p>
           <p className="mt-2 text-3xl font-semibold">{stats.objects}</p>
         </button>
-        <button type="button" onClick={() => setFilter('group')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'group' ? 'border-indigo-200/60 bg-gradient-to-br from-indigo-500/30 to-violet-600/20' : 'border-indigo-300/25 bg-gradient-to-br from-indigo-500/12 to-violet-600/12'}`}>
+        <button type="button" onClick={() => setFilter('group')} className={`rounded-2xl border px-3 py-2.5 text-left ${filter === 'group' ? 'border-indigo-200/60 bg-gradient-to-br from-indigo-500/30 to-violet-600/20' : 'border-indigo-300/25 bg-gradient-to-br from-indigo-500/12 to-violet-600/12'}`}>
           <p className="text-xs text-indigo-100/85">Groupe</p>
           <p className="mt-2 text-3xl font-semibold">{stats.group}</p>
         </button>
-        <button type="button" onClick={() => setFilter('other')} className={`rounded-2xl border px-4 py-3 text-left ${filter === 'other' ? 'border-amber-200/60 bg-gradient-to-br from-amber-500/28 to-orange-600/20' : 'border-amber-300/25 bg-gradient-to-br from-amber-500/12 to-orange-600/12'}`}>
+        <button type="button" onClick={() => setFilter('other')} className={`rounded-2xl border px-3 py-2.5 text-left ${filter === 'other' ? 'border-amber-200/60 bg-gradient-to-br from-amber-500/28 to-orange-600/20' : 'border-amber-300/25 bg-gradient-to-br from-amber-500/12 to-orange-600/12'}`}>
           <p className="text-xs text-amber-100/85">{'Autres\u200b'}</p>
           <p className="mt-2 text-3xl font-semibold">{stats.other}</p>
         </button>
@@ -223,10 +241,10 @@ export default function AnnuaireClient() {
           <table className="w-full text-sm">
             <thead className="bg-white/[0.03] text-white/70">
               <tr>
-                <th className="px-4 py-3 text-left">Nom</th>
-                <th className="px-4 py-3 text-left">Groupe</th>
+                <th className="px-4 py-3 text-left"><button type="button" onClick={() => toggleSort('name')}>Nom</button></th>
+                <th className="px-4 py-3 text-left"><button type="button" onClick={() => toggleSort('partner_group')}>Groupe</button></th>
                 <th className="px-4 py-3 text-left">Numéro</th>
-                <th className="px-4 py-3 text-left">Activité</th>
+                <th className="px-4 py-3 text-left"><button type="button" onClick={() => toggleSort('activity')}>Activité</button></th>
                 <th className="px-4 py-3 text-left">Note</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>

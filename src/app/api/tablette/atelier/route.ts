@@ -383,12 +383,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Action non autorisée.' }, { status: 403 })
       }
       const budgetInitial = Math.max(0, Number(body.budget_initial || 0))
-      const payoutPerRun = Math.max(0, Number(body.payout_per_run || 0))
       const existing = await loadTodayBudget(session.groupId, dayKey)
       const nextBudget: StoredBudget = {
         day_key: dayKey,
         budget_initial: budgetInitial,
-        payout_per_run: payoutPerRun,
+        payout_per_run: 0,
         paid_runs: existing?.paid_runs ?? 0,
         distributed_total: existing?.distributed_total ?? 0,
         paid_members: existing?.paid_members ?? [],
@@ -437,13 +436,8 @@ export async function POST(request: Request) {
 
     const totalCost = Number(lines.reduce((sum, line) => sum + line.subtotal, 0).toFixed(2))
     const budget = await loadTodayBudget(session.groupId, dayKey)
-    const payoutPerRun = Math.max(0, Number(budget?.payout_per_run || 0))
-    const memberAlreadyPaid = Boolean(budget?.paid_members.includes(member.normalized))
-    if (memberAlreadyPaid) {
-      return NextResponse.json({ error: 'Ce membre a déjà été payé aujourd’hui.' }, { status: 409 })
-    }
     const remainingBefore = Math.max(0, Number(budget?.budget_initial || 0) - Math.max(0, Number(budget?.distributed_total || 0)))
-    if (payoutPerRun > 0 && remainingBefore < payoutPerRun) {
+    if (budget && remainingBefore < totalCost) {
       return NextResponse.json({ error: 'Budget tablette insuffisant.' }, { status: 400 })
     }
 
@@ -502,8 +496,8 @@ export async function POST(request: Request) {
       const nextBudget: StoredBudget = {
         ...budget,
         paid_runs: budget.paid_runs + 1,
-        distributed_total: Number((budget.distributed_total + payoutPerRun).toFixed(2)),
-        paid_members: [...new Set([...budget.paid_members, member.normalized])],
+        distributed_total: Number((budget.distributed_total + totalCost).toFixed(2)),
+        paid_members: budget.paid_members,
       }
       await saveTodayBudget(session.groupId, nextBudget)
     }
