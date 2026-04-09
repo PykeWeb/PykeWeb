@@ -29,6 +29,11 @@ type GroupAccessRow = {
   paid_until: string | null
 }
 
+function isMissingColumnError(message: string, column: string) {
+  const lower = message.toLowerCase()
+  return lower.includes(column.toLowerCase()) && (lower.includes('does not exist') || lower.includes('could not find') || lower.includes('column'))
+}
+
 function clearCookieOn(response: NextResponse) {
   response.cookies.set(TENANT_SESSION_COOKIE_KEY, '', {
     path: '/',
@@ -55,11 +60,21 @@ export async function GET(request: Request) {
   }
 
   const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('tenant_groups')
     .select('id,name,badge,image_url,active,paid_until')
     .eq('id', session.groupId)
     .maybeSingle<GroupAccessRow>()
+
+  if (error && isMissingColumnError(error.message, 'image_url')) {
+    const fallback = await supabase
+      .from('tenant_groups')
+      .select('id,name,badge,active,paid_until')
+      .eq('id', session.groupId)
+      .maybeSingle<Omit<GroupAccessRow, 'image_url'>>()
+    error = fallback.error
+    data = fallback.data ? { ...fallback.data, image_url: null } as GroupAccessRow : null
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data || !data.active) {

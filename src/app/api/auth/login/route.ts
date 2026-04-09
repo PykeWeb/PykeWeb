@@ -72,6 +72,11 @@ function isMissingTableError(message: string) {
   return /does not exist|relation .* does not exist|Could not find the table/i.test(message)
 }
 
+function isMissingColumnError(message: string, column: string) {
+  const lower = message.toLowerCase()
+  return lower.includes(column.toLowerCase()) && (lower.includes('does not exist') || lower.includes('could not find') || lower.includes('column'))
+}
+
 async function resolveMemberRoleInfo(groupId: string, gradeId: string | null) {
   if (!gradeId) return { name: 'Membre', permissions: [] as string[] }
   const supabase = getSupabaseAdmin()
@@ -91,11 +96,21 @@ async function resolveMemberRoleInfo(groupId: string, gradeId: string | null) {
 
 async function findGroupByPrimaryLogin(login: string) {
   const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('tenant_groups')
     .select('id,name,badge,login,password,active,paid_until,image_url')
     .eq('login', login)
     .maybeSingle<GroupRow>()
+
+  if (error && isMissingColumnError(error.message, 'image_url')) {
+    const fallback = await supabase
+      .from('tenant_groups')
+      .select('id,name,badge,login,password,active,paid_until')
+      .eq('login', login)
+      .maybeSingle<Omit<GroupRow, 'image_url'>>()
+    error = fallback.error
+    data = fallback.data ? { ...fallback.data, image_url: null } as GroupRow : null
+  }
 
   if (error) throw new Error(error.message)
   return data
@@ -115,11 +130,21 @@ async function findGroupByMemberLogin(login: string, password: string) {
   if (matchedMembers.length > 1) throw new Error('Ce mot de passe pour cet identifiant est déjà utilisé par un autre groupe. Utilisez un mot de passe unique.')
 
   const member = matchedMembers[0]
-  const { data: group, error: groupError } = await supabase
+  let { data: group, error: groupError } = await supabase
     .from('tenant_groups')
     .select('id,name,badge,login,password,active,paid_until,image_url')
     .eq('id', member.group_id)
     .maybeSingle<GroupRow>()
+
+  if (groupError && isMissingColumnError(groupError.message, 'image_url')) {
+    const fallback = await supabase
+      .from('tenant_groups')
+      .select('id,name,badge,login,password,active,paid_until')
+      .eq('id', member.group_id)
+      .maybeSingle<Omit<GroupRow, 'image_url'>>()
+    groupError = fallback.error
+    group = fallback.data ? { ...fallback.data, image_url: null } as GroupRow : null
+  }
 
   if (groupError) throw new Error(groupError.message)
   if (!group) return null
