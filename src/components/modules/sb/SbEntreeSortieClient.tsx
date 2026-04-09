@@ -19,6 +19,7 @@ type FilterCategory = 'all' | ItemCategory
 const CUSTOM_FREE_INPUT_ITEM_ID = '__custom_free_input__'
 
 type SelectedItem = {
+  mode: Mode
   id: string
   selectionKey: string
   name: string
@@ -132,7 +133,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     const normalizedCategory = normalizeCatalogCategory(item.category) || 'custom'
 
     setSelectedItems((prev) => {
-      const index = prev.findIndex((entry) => entry.id === item.id && !entry.isManual)
+      const index = prev.findIndex((entry) => entry.id === item.id && !entry.isManual && entry.mode === mode)
       if (index >= 0) {
         const next = [...prev]
         const nextQuantity = mode === 'sortie'
@@ -145,7 +146,8 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       const sellPrice = Math.max(0, Number(item.sell_price || item.internal_value || item.buy_price || 0))
       return [...prev, {
         id: item.id,
-        selectionKey: item.id,
+        mode,
+        selectionKey: `${item.id}:${mode}`,
         name: item.name,
         quantity: safeQuantity,
         price: resolveModePrice(item, mode),
@@ -169,7 +171,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       if (!item) return entry
       const buyPrice = Math.max(0, Number(item.buy_price || item.internal_value || item.sell_price || 0))
       const sellPrice = Math.max(0, Number(item.sell_price || item.internal_value || item.buy_price || 0))
-      return { ...entry, price: resolveModePrice(item, mode), buyPrice, sellPrice }
+      return { ...entry, price: resolveModePrice(item, entry.mode), buyPrice, sellPrice }
     }))
   }, [items, mode, variant])
 
@@ -183,7 +185,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       entry.selectionKey === itemId
         ? {
           ...entry,
-          quantity: mode === 'sortie'
+          quantity: entry.mode === 'sortie'
             ? Math.max(1, Math.min(Math.floor(quantity || 1), Math.max(1, entry.isManual ? Number.MAX_SAFE_INTEGER : maxStock)))
             : Math.max(1, Math.floor(quantity || 1)),
         }
@@ -249,6 +251,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       ...prev,
       {
         id: `${CUSTOM_FREE_INPUT_ITEM_ID}:${uid}`,
+        mode,
         selectionKey: `${CUSTOM_FREE_INPUT_ITEM_ID}:${uid}`,
         name: 'Autres / item non listé',
         quantity: 1,
@@ -300,7 +303,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         const resolvedItemId = entry.isManual ? await ensureManualCatalogItemId(manualLabel) : entry.id
         await createFinanceTransaction({
           item_id: resolvedItemId,
-          mode: mode === 'entree' ? 'buy' : 'sell',
+          mode: entry.mode === 'entree' ? 'buy' : 'sell',
           quantity: entry.quantity,
           unit_price: variant === 'trade' ? entry.price : 0,
           counterparty: counterparty.trim() || (entry.isManual ? manualLabel : undefined),
@@ -564,8 +567,9 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                     {entry.isManual ? (
                       <Input value={entry.manualLabel || ''} onChange={(event) => updateManualLabel(entry.selectionKey, event.target.value)} placeholder="Nom item non listé" className="h-8 max-w-[15rem]" />
                     ) : <p className="truncate text-sm font-semibold text-white">{entry.name}</p>}
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/10 text-cyan-100" title={mode === 'entree' ? 'Flux vers sortie' : 'Flux vers entrée'}>
-                      {mode === 'entree' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+                    <span className="rounded-full border border-white/15 bg-white/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/75">{entry.mode === 'entree' ? modeLeftLabel : modeRightLabel}</span>
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/10 text-cyan-100" title={entry.mode === 'entree' ? 'Entrée stock' : 'Sortie stock'}>
+                      {entry.mode === 'entree' ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
                     </span>
                   </div>
                   <button type="button" onClick={() => removeItem(entry.selectionKey)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/35 bg-rose-500/15 text-rose-100">

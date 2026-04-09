@@ -3,6 +3,7 @@ export type GroupMemberRole = {
   group_id: string
   name: string
   permissions: string[]
+  salary: number | null
   created_at: string
   updated_at: string
 }
@@ -20,6 +21,7 @@ export type GroupMember = {
   grade_id: string | null
   created_at: string
   updated_at: string
+  salary: number | null
   grade: GroupMemberRole | null
 }
 

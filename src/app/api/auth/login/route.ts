@@ -22,6 +22,7 @@ type GroupRow = {
   password: string
   active: boolean
   paid_until: string | null
+  image_url: string | null
 }
 
 type GroupMemberRow = {
@@ -92,7 +93,7 @@ async function findGroupByPrimaryLogin(login: string) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('tenant_groups')
-    .select('id,name,badge,login,password,active,paid_until')
+    .select('id,name,badge,login,password,active,paid_until,image_url')
     .eq('login', login)
     .maybeSingle<GroupRow>()
 
@@ -116,7 +117,7 @@ async function findGroupByMemberLogin(login: string, password: string) {
   const member = matchedMembers[0]
   const { data: group, error: groupError } = await supabase
     .from('tenant_groups')
-    .select('id,name,badge,login,password,active,paid_until')
+    .select('id,name,badge,login,password,active,paid_until,image_url')
     .eq('id', member.group_id)
     .maybeSingle<GroupRow>()
 
@@ -165,6 +166,7 @@ export async function POST(request: Request) {
       groupId: isAdmin ? 'admin' : data.id,
       groupName: isAdmin ? 'Administration' : data.name,
       groupBadge: isAdmin ? 'ADMIN' : data.badge,
+      groupLogoUrl: isAdmin ? null : data.image_url,
       isAdmin,
       memberId: groupByMemberLogin?.member.id,
       role: isAdmin ? 'chef' : role.key,

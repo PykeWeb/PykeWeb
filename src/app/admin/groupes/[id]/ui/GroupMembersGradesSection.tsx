@@ -42,6 +42,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
 
   const [newRoleName, setNewRoleName] = useState('')
   const [newRolePermissions, setNewRolePermissions] = useState<string[]>([GROUP_OPERATIONS_PREFIX])
+  const [newRoleSalary, setNewRoleSalary] = useState('0')
 
   const [selectedPlayerName, setSelectedPlayerName] = useState('')
   const [customPlayerName, setCustomPlayerName] = useState('')
@@ -50,6 +51,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
   const [newMemberPasswordVisible, setNewMemberPasswordVisible] = useState(false)
   const [newMemberIsAdmin, setNewMemberIsAdmin] = useState(false)
   const [newMemberRoleId, setNewMemberRoleId] = useState('')
+  const [newMemberSalary, setNewMemberSalary] = useState('0')
   const [memberPasswordVisible, setMemberPasswordVisible] = useState<Record<string, boolean>>({})
   const [memberSearch, setMemberSearch] = useState('')
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
@@ -184,6 +186,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       const payload = await createGroupMemberGrade(groupId, {
         name: newRoleName.trim(),
         permissions: newRolePermissions,
+        salary: Math.max(0, Number(newRoleSalary || 0)),
       })
       const nextOrder = [...roleOrder, ...payload.grades.map((role) => role.id).filter((id) => !roleOrder.includes(id))]
       setRoleOrder(nextOrder)
@@ -191,6 +194,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       applyPayload((next) => setRoles(sortRolesByOrder(next, nextOrder)), setMembers, setPlayerCandidates, payload)
       setNewRoleName('')
       setNewRolePermissions([GROUP_OPERATIONS_PREFIX])
+      setNewRoleSalary('0')
       setError(null)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Création du rôle impossible.')
@@ -209,6 +213,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       const payload = await updateGroupMemberGrade(groupId, role.id, {
         name: role.name.trim(),
         permissions: role.permissions,
+        salary: role.salary,
       })
       applyPayload((next) => setRoles(sortRolesByOrder(next, roleOrder)), setMembers, setPlayerCandidates, payload)
       setError(null)
@@ -272,6 +277,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
         password,
         is_admin: newMemberIsAdmin,
         grade_id: newMemberRoleId || null,
+        salary: Math.max(0, Number(newMemberSalary || 0)),
       })
       applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
       setSelectedPlayerName('')
@@ -281,6 +287,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
       setNewMemberPasswordVisible(false)
       setNewMemberIsAdmin(false)
       setNewMemberRoleId('')
+      setNewMemberSalary('0')
       setError(null)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Création du membre impossible.')
@@ -302,6 +309,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
         password: member.password?.trim() || null,
         is_admin: member.is_admin,
         grade_id: member.grade_id || null,
+        salary: member.salary,
       })
       applyPayload(setRoles, setMembers, setPlayerCandidates, payload)
       setError(null)
@@ -340,6 +348,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
             <p className="text-sm font-semibold text-white/80">Créer un rôle</p>
             <div className="mt-2 grid gap-2">
               <input value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} placeholder="Nom du rôle" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+              <input value={newRoleSalary} onChange={(e) => setNewRoleSalary(e.target.value)} inputMode="decimal" placeholder="Salaire du rôle" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
               <div className="flex flex-wrap gap-2">
                 {ROLE_ACCESS_OPTIONS.map((option) => {
                   const selected = newRolePermissions.includes('/') || expandAccessPrefixes(newRolePermissions).includes(option.prefix)
@@ -383,6 +392,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                   <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+              <input value={newMemberSalary} onChange={(e) => setNewMemberSalary(e.target.value)} inputMode="decimal" placeholder="Salaire membre" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
               <button disabled={busy} onClick={() => void createMemberEntry()} className="h-10 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 text-sm text-emerald-50 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50">Créer membre</button>
             </div>
           </div>
@@ -414,6 +424,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
                 <input value={selectedRole.name} onChange={(e) => updateRoleDraft(selectedRole.id, { name: e.target.value })} className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
+                <input value={String(selectedRole.salary ?? 0)} onChange={(e) => updateRoleDraft(selectedRole.id, { salary: Math.max(0, Number(e.target.value || 0)) })} inputMode="decimal" className="h-10 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-sm" />
                 <div className="flex items-center gap-1.5">
                   <button type="button" onClick={() => void moveRole(selectedRole.id, 'up')} className="h-10 rounded-xl border border-white/15 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Monter</button>
                   <button type="button" onClick={() => void moveRole(selectedRole.id, 'down')} className="h-10 rounded-xl border border-white/15 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12]">Descendre</button>
@@ -501,6 +512,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                   <div>
                     <label className="text-[11px] uppercase tracking-wide text-white/60">Nom du membre</label>
                     <input value={selectedMember.player_name} onChange={(e) => updateMemberDraft(selectedMember.id, { player_name: e.target.value })} className="mt-1 h-10 w-full min-w-[220px] rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Nom du membre" />
+                    <input value={String(selectedMember.salary ?? 0)} onChange={(e) => updateMemberDraft(selectedMember.id, { salary: Math.max(0, Number(e.target.value || 0)) })} inputMode="decimal" className="mt-1 h-10 w-full min-w-[220px] rounded-xl border border-white/20 bg-black/25 px-3 text-sm text-white placeholder:text-white/45 focus:border-cyan-300/50 focus:outline-none" placeholder="Salaire membre" />
                   </div>
                 </div>
                 <div className="w-full max-w-[300px]">

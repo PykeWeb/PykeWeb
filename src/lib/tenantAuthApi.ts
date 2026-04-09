@@ -21,6 +21,7 @@ export type TenantGroup = {
   roles?: GroupRoleDefinition[]
   active: boolean
   paid_until: string | null
+  image_url?: string | null
   created_at?: string
 }
 
@@ -81,7 +82,7 @@ export async function loginTenant(login: string, password: string, remember = tr
     body: JSON.stringify({ login, password, remember }),
   })
   if (!res.ok) throw new Error(await readApiError(res))
-  const json = (await res.json()) as { group: TenantGroup; session: { groupId: string; groupName: string; groupBadge?: string | null; isAdmin?: boolean; memberId?: string; role?: string; roleLabel?: string; allowedPrefixes?: string[] } }
+  const json = (await res.json()) as { group: TenantGroup; session: { groupId: string; groupName: string; groupBadge?: string | null; groupLogoUrl?: string | null; isAdmin?: boolean; memberId?: string; role?: string; roleLabel?: string; allowedPrefixes?: string[] } }
   return json
 }
 
@@ -102,7 +103,7 @@ export async function listGroupMembersGrades(groupId: string) {
   return (await res.json()) as GroupMembersGradesPayload
 }
 
-export async function createGroupMemberGrade(groupId: string, input: { name: string; permissions: string[] }) {
+export async function createGroupMemberGrade(groupId: string, input: { name: string; permissions: string[]; salary?: number | null }) {
   const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
     method: 'POST',
@@ -112,7 +113,7 @@ export async function createGroupMemberGrade(groupId: string, input: { name: str
   return (await res.json()) as GroupMembersGradesPayload
 }
 
-export async function updateGroupMemberGrade(groupId: string, id: string, patch: { name: string; permissions: string[] }) {
+export async function updateGroupMemberGrade(groupId: string, id: string, patch: { name: string; permissions: string[]; salary?: number | null }) {
   const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
     method: 'PUT',
@@ -132,7 +133,7 @@ export async function deleteGroupMemberGrade(groupId: string, id: string) {
   return (await res.json()) as GroupMembersGradesPayload
 }
 
-export async function createGroupMember(groupId: string, input: { player_name: string; player_identifier?: string | null; password?: string | null; is_admin?: boolean; grade_id?: string | null }) {
+export async function createGroupMember(groupId: string, input: { player_name: string; player_identifier?: string | null; password?: string | null; is_admin?: boolean; grade_id?: string | null; salary?: number | null }) {
   const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
     method: 'POST',
@@ -142,7 +143,7 @@ export async function createGroupMember(groupId: string, input: { player_name: s
   return (await res.json()) as GroupMembersGradesPayload
 }
 
-export async function updateGroupMember(groupId: string, id: string, patch: { player_name: string; player_identifier?: string | null; password?: string | null; is_admin?: boolean; grade_id?: string | null }) {
+export async function updateGroupMember(groupId: string, id: string, patch: { player_name: string; player_identifier?: string | null; password?: string | null; is_admin?: boolean; grade_id?: string | null; salary?: number | null }) {
   const res = await fetch(`/api/admin/groups/${groupId}/members-grades`, {
     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
     method: 'PUT',

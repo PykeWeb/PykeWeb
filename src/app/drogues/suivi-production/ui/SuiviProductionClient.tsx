@@ -309,9 +309,15 @@ export default function SuiviProductionClient() {
     const completed = rows.filter((r) => r.status === 'completed').length
     const expected = rows.reduce((sum, r) => sum + toPouchesEquivalent(r), 0)
     const received = rows.reduce((sum, r) => sum + toReceivedPouchesEquivalent(r), 0)
+    const expectedCokePouches = rows
+      .filter((row) => !isMethType(row.type))
+      .reduce((sum, row) => sum + Math.max(0, Number(row.expected_output || 0)), 0)
+    const expectedMethPouches = rows
+      .filter((row) => isMethType(row.type))
+      .reduce((sum, row) => sum + (Math.max(0, Number(row.expected_output || 0)) * 2), 0)
     const expectedRevenue = expected * pouchSalePrice
     const receivedRevenue = received * pouchSalePrice
-    return { inProgress, completed, expected, received, expectedRevenue, receivedRevenue }
+    return { inProgress, completed, expected, received, expectedCokePouches, expectedMethPouches, expectedRevenue, receivedRevenue }
   }, [rows, pouchSalePrice])
 
   const partnerStats = useMemo(() => {
@@ -571,7 +577,7 @@ export default function SuiviProductionClient() {
     <div className="space-y-4">
       <PageHeader title="Transfo groupes" subtitle="Lecture simplifiée (envoyé, attendu, reçu) + équivalence pochons pour meth." />
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
         <button type="button" onClick={() => setStatusFilter('in_progress')} className={`rounded-2xl border px-4 py-3 text-left ${statusFilter === 'in_progress' ? 'border-sky-200/60 bg-gradient-to-br from-sky-500/30 to-blue-600/20' : 'border-sky-300/25 bg-gradient-to-br from-sky-500/15 to-blue-600/15'}`}>
           <div className="flex items-center justify-between text-sky-100/90"><p className="text-xs">Total en cours</p><Clock3 className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.inProgress}</p>
@@ -587,6 +593,14 @@ export default function SuiviProductionClient() {
         <button type="button" onClick={() => setStatusFilter('all')} className="rounded-2xl border border-rose-300/25 bg-gradient-to-br from-rose-500/15 to-red-600/15 px-4 py-3 text-left">
           <div className="flex items-center justify-between text-rose-100/90"><p className="text-xs">Pochons reçus (équiv.)</p><Beaker className="h-4 w-4" /></div>
           <p className="mt-3 text-3xl font-semibold">{stats.received}</p>
+        </button>
+        <button type="button" onClick={() => setStatusFilter('all')} className="rounded-2xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/15 to-blue-600/15 px-4 py-3 text-left">
+          <div className="flex items-center justify-between text-cyan-100/90"><p className="text-xs">Pochons de Coke attendus</p><FlaskConical className="h-4 w-4" /></div>
+          <p className="mt-3 text-3xl font-semibold">{stats.expectedCokePouches}</p>
+        </button>
+        <button type="button" onClick={() => setStatusFilter('all')} className="rounded-2xl border border-violet-300/25 bg-gradient-to-br from-violet-500/15 to-fuchsia-600/15 px-4 py-3 text-left">
+          <div className="flex items-center justify-between text-violet-100/90"><p className="text-xs">Pochons de Meth attendus</p><Beaker className="h-4 w-4" /></div>
+          <p className="mt-3 text-3xl font-semibold">{stats.expectedMethPouches}</p>
         </button>
         <Link href="/drogues/partenaires" className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-left text-sm">
           <p className="text-xs text-violet-100/80">Partenaires utilisés</p>
@@ -649,7 +663,7 @@ export default function SuiviProductionClient() {
                       <td className="px-3 py-3">
                         <span className="inline-flex rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-xs font-semibold text-white">{typeLabel(row.type)}</span>
                       </td>
-                      <td className="px-3 py-3 font-medium">{isMethType(row.type) ? `${row.quantity_sent} machines` : row.quantity_sent}</td>
+                      <td className="px-3 py-3 font-medium">{isMethType(row.type) ? `${row.quantity_sent} meth brut` : `${row.quantity_sent} feuilles`}</td>
                       <td className="px-3 py-3 font-medium">
                         {isMethType(row.type) ? (
                           <div className="leading-tight">
@@ -679,8 +693,8 @@ export default function SuiviProductionClient() {
               <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
                 <p><span className="text-white/60">Groupe :</span> <span className="font-semibold">{selected.partner_name}</span></p>
                 <p><span className="text-white/60">Type :</span> <span className="font-semibold">{isMethType(selected.type) ? 'Meth' : typeLabel(selected.type)}</span></p>
-                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.quantity_sent} machines` : selected.quantity_sent}</span></p>
-                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.expected_output} meth brut (≈ ${toPouchesEquivalent(selected)} pochons)` : `${selected.expected_output} pochons`}</span></p>
+                <p><span className="text-white/60">Envoyé :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.quantity_sent} meth brut` : `${selected.quantity_sent} feuilles`}</span></p>
+                <p><span className="text-white/60">Attendu :</span> <span className="font-semibold">{isMethType(selected.type) ? `≈ ${toPouchesEquivalent(selected)} pochons (${selected.expected_output} meth brut)` : `≈ ${selected.expected_output} pochons`}</span></p>
                 <p><span className="text-white/60">Statut :</span> <span className="font-semibold">{statusLabel(selected.status)}</span></p>
                 <p><span className="text-white/60">Reçu :</span> <span className="font-semibold">{isMethType(selected.type) ? `${selected.received_output || 0} meth brut (≈ ${toReceivedPouchesEquivalent(selected)} pochons)` : `${selected.received_output || 0} pochons`}</span></p>
               </div>

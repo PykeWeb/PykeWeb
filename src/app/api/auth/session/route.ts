@@ -24,6 +24,7 @@ type GroupAccessRow = {
   id: string
   name: string
   badge: string | null
+  image_url: string | null
   active: boolean
   paid_until: string | null
 }
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('tenant_groups')
-    .select('id,name,badge,active,paid_until')
+    .select('id,name,badge,image_url,active,paid_until')
     .eq('id', session.groupId)
     .maybeSingle<GroupAccessRow>()
 
@@ -76,6 +77,7 @@ export async function GET(request: Request) {
     ...session,
     groupName: data.name,
     groupBadge: data.badge,
+    groupLogoUrl: data.image_url,
     v: TENANT_SESSION_VERSION,
   }
 

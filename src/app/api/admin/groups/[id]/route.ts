@@ -11,6 +11,7 @@ type GroupRecord = {
   password: string
   active: boolean
   paid_until: string | null
+  image_url: string | null
   created_at?: string
 }
 

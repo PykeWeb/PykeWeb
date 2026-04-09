@@ -42,6 +42,7 @@ export function Sidebar() {
   const { labels } = useUiSettings()
   const [groupName, setGroupName] = useState('Groupe')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [groupLogoUrl, setGroupLogoUrl] = useState<string | null>(null)
   const [isMember, setIsMember] = useState(false)
   const [accessInfo, setAccessInfo] = useState<AccessInfo>(null)
   const [navOrder, setNavOrder] = useState(['dashboard', 'finance', 'items', 'annuaire', 'drogues', 'group', 'activites'])
@@ -66,6 +67,7 @@ export function Sidebar() {
     const nextGroupBadge = session?.groupBadge || 'GROUPE'
     setGroupName(nextGroupName)
     setIsAdmin(isAdminTenantSession(session))
+    setGroupLogoUrl(session?.groupLogoUrl || null)
     setIsMember(isMemberTenantSession(session))
     setHasMemberSessionId(Boolean(session?.memberId))
     setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Boss' : ''))
@@ -193,7 +195,7 @@ export function Sidebar() {
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3.5">
             <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/18 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.14)]">
-              <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+              <Image src={isAdmin ? "/logo.png" : (groupLogoUrl || "/logo.png")} alt="Logo" fill className="object-cover" unoptimized />
             </div>
             <div className="min-w-0">
               <p className="text-[1.45rem] font-semibold leading-tight tracking-tight text-white break-words">{isAdmin ? (labels.site_name || BRAND.name) : groupName}</p>

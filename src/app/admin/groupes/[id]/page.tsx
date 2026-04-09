@@ -37,6 +37,7 @@ export default function AdminGroupDetailsPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [groupPasswordVisible, setGroupPasswordVisible] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!groupId) return
@@ -73,6 +74,26 @@ export default function AdminGroupDetailsPage() {
       setError(e instanceof Error ? e.message : 'Modification impossible.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function uploadGroupLogo(file: File | null) {
+    if (!group || !file) return
+    try {
+      setUploadingLogo(true)
+      const formData = new FormData()
+      formData.set('file', file)
+      const uploadRes = await fetch('/api/admin/groups/upload-image', {
+        method: 'POST',
+        body: formData,
+      })
+      const uploadJson = (await uploadRes.json()) as { publicUrl?: string; error?: string }
+      if (!uploadRes.ok || !uploadJson.publicUrl) throw new Error(uploadJson.error || 'Upload logo impossible.')
+      await savePatch({ image_url: uploadJson.publicUrl } as Partial<TenantGroup>)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Upload logo impossible.')
+    } finally {
+      setUploadingLogo(false)
     }
   }
 
@@ -136,6 +157,30 @@ export default function AdminGroupDetailsPage() {
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <label className="text-sm md:col-span-3">
+            <span className="mb-1 block text-white/70">Logo du groupe</span>
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.04] p-3">
+              <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-white/15 bg-white/[0.06]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={group.image_url || '/logo.png'} alt={`Logo ${group.name}`} className="h-full w-full object-cover" />
+              </div>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(e) => void uploadGroupLogo(e.target.files?.[0] || null)}
+                disabled={busy || uploadingLogo}
+                className="text-sm text-white/90 file:mr-3 file:rounded-xl file:border file:border-white/20 file:bg-white/[0.08] file:px-3 file:py-2 file:text-xs file:text-white"
+              />
+              <button
+                type="button"
+                disabled={busy || uploadingLogo}
+                onClick={() => void savePatch({ image_url: null } as Partial<TenantGroup>)}
+                className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {uploadingLogo ? 'Upload…' : 'Retirer logo'}
+              </button>
+            </div>
+          </label>
           <label className="text-sm">
             <span className="mb-1 block text-white/70">Nom</span>
             <input defaultValue={group.name} onBlur={(e) => void savePatch({ name: e.target.value.trim() || group.name })} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3" />
