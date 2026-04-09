@@ -33,6 +33,8 @@ type GroupAccessRow = {
   paid_until: string | null
 }
 
+type CashItemRow = { id: string; stock: number | null; name: string }
+
 class ApiError extends Error {
   status: number
 
@@ -197,6 +199,75 @@ async function adjustCashStock(groupId: string, delta: number) {
     .eq('id', cashItem.id)
 
   if (updateCashError) throw updateCashError
+}
+
+async function findCashItem(groupId: string): Promise<CashItemRow> {
+  const supabase = getSupabaseAdmin()
+  const { data: cashItem, error: cashLoadError } = await supabase
+    .from('catalog_items')
+    .select('id,stock,name')
+    .eq('group_id', groupId)
+    .ilike('name', 'argent')
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle<CashItemRow>()
+  if (cashLoadError) throw cashLoadError
+  if (!cashItem?.id) throw new ApiError('Item "argent" introuvable dans le catalogue.', 400)
+  return cashItem
+}
+
+async function appendTabletCashHistory(args: {
+  groupId: string
+  memberName: string
+  runId: string
+  totalCost: number
+  lines: TabletRunItemLine[]
+}) {
+  const supabase = getSupabaseAdmin()
+  const cashItem = await findCashItem(args.groupId)
+  const roundedTotal = Number(Math.max(0, args.totalCost).toFixed(2))
+  const notes = `Tablette - ${args.memberName} - ${roundedTotal.toFixed(2)} $`
+
+  const { data: financeRow, error: financeError } = await supabase
+    .from('finance_transactions')
+    .insert({
+      group_id: args.groupId,
+      item_id: cashItem.id,
+      mode: 'buy',
+      quantity: 1,
+      unit_price: roundedTotal,
+      total: roundedTotal,
+      counterparty: args.memberName,
+      payment_mode: 'cash',
+      notes,
+    })
+    .select('id')
+    .single<{ id: string }>()
+  if (financeError) throw financeError
+
+  const { error: logError } = await supabase.from('app_logs').insert({
+    group_id: args.groupId,
+    group_name: null,
+    actor_name: args.memberName,
+    actor_source: 'web',
+    area: 'tablette',
+    action: 'run_validated',
+    entity_type: 'tablet_daily_run',
+    entity_id: args.runId,
+    message: notes,
+    payload: {
+      member_name: args.memberName,
+      cash_item_id: cashItem.id,
+      cash_moved: roundedTotal,
+      item_lines: args.lines,
+      finance_transaction_id: financeRow.id,
+    },
+  })
+  if (logError) {
+    await supabase.from('finance_transactions').delete().eq('id', financeRow.id).eq('group_id', args.groupId)
+    throw logError
+  }
 }
 
 function buildGroupStats(runs: TabletDailyRun[]): GroupTabletStats {
@@ -493,6 +564,13 @@ export async function POST(request: Request) {
         if (!option) continue
         await addToCatalog(session.groupId, option, line.quantity)
       }
+      await appendTabletCashHistory({
+        groupId: session.groupId,
+        memberName: member.raw,
+        runId: inserted.id,
+        totalCost,
+        lines,
+      })
     } catch (catalogError: unknown) {
       await supabase.from('tablet_daily_runs').delete().eq('id', inserted.id).eq('group_id', session.groupId)
       try {

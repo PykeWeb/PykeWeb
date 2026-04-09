@@ -269,7 +269,7 @@ export default function SuiviProductionClient() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <Panel className="space-y-4 p-5">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base font-semibold">Liste des demandes</h3>
@@ -313,11 +313,14 @@ export default function SuiviProductionClient() {
           </div>
         </Panel>
 
-        <Panel className="space-y-4 p-5">
-          <h3 className="text-base font-semibold">Validation finale</h3>
+        <Panel className="space-y-5 p-5 xl:sticky xl:top-6 xl:self-start">
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3">
+            <h3 className="text-base font-semibold text-cyan-100">Validation finale</h3>
+            <p className="mt-1 text-xs text-cyan-100/75">Confirme la quantité reçue et clôture la demande proprement.</p>
+          </div>
           {!selected ? <p className="text-sm text-white/65">Sélectionne une demande pour la valider/modifier.</p> : (
-            <div className="space-y-4">
-              <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm sm:grid-cols-2">
+            <div className="space-y-5">
+              <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm sm:grid-cols-2">
                 <p className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />Groupe: <b>{selected.partner_name}</b></p>
                 <p className="inline-flex items-center gap-1.5">{String(selected.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}Type: <b>{typeLabel(String(selected.type || ''))}</b></p>
                 <p className="inline-flex items-center gap-1.5"><Factory className="h-3.5 w-3.5 text-white/60" />Envoyé: <b>{parseMeta(selected.note)?.sentQty ?? selected.quantity_sent}</b></p>
@@ -332,10 +335,13 @@ export default function SuiviProductionClient() {
                 </div>
               ) : null}
 
-              <label className="space-y-1 text-sm text-white/80">
-                <span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-cyan-200" />Quantité réellement reçue (validation)</span>
-                <Input value={validationDraft} onChange={(e) => setValidationDraft(e.target.value)} inputMode="numeric" />
-              </label>
+              <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
+                <label className="space-y-1 text-sm text-white/80">
+                  <span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-cyan-200" />Quantité réellement reçue (validation)</span>
+                  <Input value={validationDraft} onChange={(e) => setValidationDraft(e.target.value)} inputMode="numeric" />
+                </label>
+                <p className="mt-2 text-xs text-white/60">La demande passe en validée si la quantité reçue couvre le prévu.</p>
+              </div>
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <PrimaryButton onClick={() => void validateSelected()}><CheckCircle2 className="h-4 w-4" />Valider la demande</PrimaryButton>

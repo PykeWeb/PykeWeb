@@ -39,6 +39,7 @@ function normalizeActorSource(value: unknown): AppLogSource {
 function mergeActorPayload(args: {
   payload: Record<string, unknown> | null | undefined
   actorSource: AppLogSource
+  memberName: string | null
   characterName: string | null
   steamName: string | null
   steamIdentifier: string | null
@@ -47,6 +48,7 @@ function mergeActorPayload(args: {
 }): Record<string, unknown> | null {
   const base = args.payload ? { ...args.payload } : {}
 
+  if (args.memberName) base.member_name = args.memberName
   if (args.characterName) base.character_name = args.characterName
   if (args.steamName) base.steam_name = args.steamName
   if (args.steamIdentifier) base.steam_identifier = args.steamIdentifier
@@ -118,6 +120,7 @@ export async function POST(request: Request) {
 
     const actorName = pickFirstText(
       body.actor_name,
+      session.memberName,
       headerPlayerName,
       characterName,
       steamName,
@@ -140,6 +143,7 @@ export async function POST(request: Request) {
       payload: mergeActorPayload({
         payload: body.payload,
         actorSource,
+        memberName: toText(session.memberName),
         characterName,
         steamName,
         steamIdentifier,
