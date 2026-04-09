@@ -54,7 +54,7 @@ function toModeLabel(mode: string) {
   if (mode === 'leaf_to_brick') return 'Feuille → Brick'
   if (mode === 'brick_to_pouch') return 'Brick → Pochon'
   if (mode === 'leaf_to_pouch') return 'Feuille → Pochon'
-  if (mode === 'machine_transform') return 'Machine + transfo'
+  if (mode === 'tables_purchase') return 'Achat tables meth'
   return mode || '—'
 }
 
@@ -74,8 +74,7 @@ function computeEstimatedProfit(row: DrugProductionTrackingRow) {
   const sale = Math.max(0, Number(row.expected_output || 0)) * Math.max(0, Number(row.pouch_sale_price || 0))
   if (String(row.type || '').toLowerCase().includes('meth')) {
     const tableCost = Math.max(0, Number(row.quantity_sent || 0)) * Math.max(0, Number(row.seed_price || 0))
-    const transform = Math.max(0, Number(row.pouch_transform_cost || 0))
-    return sale - tableCost - transform
+    return sale - tableCost
   }
   const seedCost = Math.max(0, Number(row.seed_price || 0)) * Math.max(0, Number(row.quantity_sent || 0))
   const transform = Math.max(0, Number(row.brick_transform_cost || 0)) + Math.max(0, Number(row.pouch_transform_cost || 0))
@@ -116,14 +115,14 @@ export default function SuiviProductionClient() {
   async function createRequest(form: DemandFormValue, expectedOutput: number) {
     const isMeth = form.type === 'meth'
     const quantitySent = isMeth
-      ? Math.max(0, Number(form.quantityLeaves || 0))
+      ? Math.max(0, Number(form.quantitySeeds || 0))
       : form.mode === 'brick_to_pouch'
         ? Math.max(0, Number(form.quantityBricks || 0))
         : Math.max(0, Number(form.quantityLeaves || 0))
 
     const meta: RequestMeta = {
       mode: form.mode,
-      sentLabel: isMeth ? 'Meth brut envoyée' : 'Feuilles envoyées',
+      sentLabel: isMeth ? 'Meth brut produite' : 'Feuilles envoyées',
       sentQty: quantitySent,
       estimatedPouches: expectedOutput,
     }
@@ -141,7 +140,7 @@ export default function SuiviProductionClient() {
       seedPrice: form.seedPrice,
       pouchSalePrice: form.pouchSalePrice,
       brickTransformCost: form.brickTransformCost,
-      pouchTransformCost: form.pouchTransformCost,
+      pouchTransformCost: isMeth ? 0 : form.pouchTransformCost,
     })
   }
 

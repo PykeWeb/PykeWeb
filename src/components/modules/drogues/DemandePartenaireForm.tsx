@@ -1,13 +1,13 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ArrowRightLeft, Beaker, Factory, NotebookPen, Package, Sparkles, Waves, type LucideIcon } from 'lucide-react'
+import { ArrowRightLeft, NotebookPen, Package, Sparkles, Waves, type LucideIcon } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import type { ProductionType } from '@/lib/drugProductionTrackingApi'
 
 export type CokeMode = 'leaf_to_brick' | 'brick_to_pouch' | 'leaf_to_pouch'
-export type MethMode = 'machine_transform'
+export type MethMode = 'tables_purchase'
 export type DemandMode = CokeMode | MethMode
 
 export type DemandFormValue = {
@@ -60,16 +60,15 @@ function computeSummary(form: DemandFormValue): SummaryMetrics {
     const methBrutQty = leavesQty
     const expectedPouches = Math.max(0, bricksQty > 0 ? bricksQty : methBrutQty * 2)
     const seedCost = tableQty * seedPrice
-    const transformCost = brickToPouchCost
     const resaleEstimate = expectedPouches * pouchSalePrice
     return {
       sentValue: methBrutQty,
       sentLabel: 'Meth brut envoyée',
       recoveredPouches: expectedPouches,
       seedCost,
-      transformCost,
+      transformCost: 0,
       resaleEstimate,
-      estimatedProfit: resaleEstimate - seedCost - transformCost,
+      estimatedProfit: resaleEstimate - seedCost,
     }
   }
 
@@ -103,7 +102,7 @@ function computeSummary(form: DemandFormValue): SummaryMetrics {
 }
 
 function normalizeInitialMode(initial: DemandFormValue): DemandMode {
-  if (initial.type === 'meth') return 'machine_transform'
+  if (initial.type === 'meth') return 'tables_purchase'
   if (initial.mode === 'leaf_to_brick' || initial.mode === 'brick_to_pouch' || initial.mode === 'leaf_to_pouch') return initial.mode
   return 'leaf_to_pouch'
 }
@@ -136,14 +135,14 @@ export function DemandePartenaireForm({
         <div className="inline-flex rounded-2xl border border-white/15 bg-white/[0.04] p-1">
           <button
             type="button"
-            onClick={() => setForm((prev) => ({ ...prev, type: 'coke', mode: prev.mode === 'machine_transform' ? 'leaf_to_pouch' : prev.mode }))}
+            onClick={() => setForm((prev) => ({ ...prev, type: 'coke', mode: prev.mode === 'tables_purchase' ? 'leaf_to_pouch' : prev.mode }))}
             className={`h-9 rounded-xl px-4 text-sm font-semibold ${!isMeth ? 'bg-cyan-500/25 text-cyan-100' : 'text-white/75 hover:bg-white/10'}`}
           >
             Coke
           </button>
           <button
             type="button"
-            onClick={() => setForm((prev) => ({ ...prev, type: 'meth', mode: 'machine_transform' }))}
+            onClick={() => setForm((prev) => ({ ...prev, type: 'meth', mode: 'tables_purchase' }))}
             className={`h-9 rounded-xl px-4 text-sm font-semibold ${isMeth ? 'bg-violet-500/25 text-violet-100' : 'text-white/75 hover:bg-white/10'}`}
           >
             Meth
@@ -164,7 +163,7 @@ export function DemandePartenaireForm({
           <div className="space-y-1 text-sm text-white/80">
             <span>Mode opération</span>
             {isMeth ? (
-              <div className="h-10 rounded-xl border border-white/20 bg-white/[0.06] px-3 text-sm font-semibold leading-10 text-white">Machine + transfo (mode unique)</div>
+              <div className="h-10 rounded-xl border border-white/20 bg-white/[0.06] px-3 text-sm font-semibold leading-10 text-white">Achat de tables meth</div>
             ) : (
               <div className="grid gap-2 sm:grid-cols-3">
                 {COKE_MODES.map((mode) => {
@@ -193,7 +192,7 @@ export function DemandePartenaireForm({
               <label className="space-y-1 text-sm text-white/80"><span>Meth brut produite</span><Input value={form.quantityLeaves} onChange={(e) => setForm((prev) => ({ ...prev, quantityLeaves: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
               <label className="space-y-1 text-sm text-white/80"><span>Pochons à récupérer (estimé)</span><Input value={form.quantityBricks} onChange={(e) => setForm((prev) => ({ ...prev, quantityBricks: sanitizeNumber(e.target.value) }))} inputMode="numeric" /></label>
               <label className="space-y-1 text-sm text-white/80"><span>Prix revente pochon</span><Input value={form.pouchSalePrice} onChange={(e) => setForm((prev) => ({ ...prev, pouchSalePrice: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
-              <label className="space-y-1 text-sm text-white/80"><span>Prix total transfo</span><Input value={form.pouchTransformCost} onChange={(e) => setForm((prev) => ({ ...prev, pouchTransformCost: sanitizeNumber(e.target.value) }))} inputMode="decimal" /></label>
+              <label className="space-y-1 text-sm text-white/80"><span>Coût total achat (auto)</span><Input value={Math.round(sanitizeNumber(form.quantitySeeds) * sanitizeNumber(form.seedPrice))} readOnly /></label>
             </>
           ) : (
             <>
@@ -224,7 +223,7 @@ export function DemandePartenaireForm({
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">Envoyé</p><p className="mt-1 text-lg font-semibold">{summary.sentValue}</p><p className="text-xs text-white/55">{summary.sentLabel}</p></div>
           <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">Récupéré (approx)</p><p className="mt-1 text-lg font-semibold">{summary.recoveredPouches}</p><p className="text-xs text-white/55">Pochons</p></div>
-          <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">Prix transfo</p><p className="mt-1 text-lg font-semibold">{Math.round(summary.transformCost)} $</p></div>
+          <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">{isMeth ? 'Coût achat' : 'Prix transfo'}</p><p className="mt-1 text-lg font-semibold">{Math.round(isMeth ? summary.seedCost : summary.transformCost)} $</p></div>
           <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3"><p className="text-xs text-white/70">Revente estimée</p><p className="mt-1 text-lg font-semibold">{Math.round(summary.resaleEstimate)} $</p></div>
           <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 p-3"><p className="text-xs text-cyan-100/85">Bénéfice approx</p><p className="mt-1 text-lg font-semibold text-cyan-100">{Math.round(summary.estimatedProfit)} $</p><p className="text-xs text-cyan-100/70">Coût graines/tables: {Math.round(summary.seedCost)} $</p></div>
         </div>

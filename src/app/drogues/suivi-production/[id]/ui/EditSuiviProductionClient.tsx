@@ -16,7 +16,7 @@ function inferDemandMode(note: string | null | undefined): DemandFormValue['mode
   if (raw.includes('feuille->brick')) return 'leaf_to_brick'
   if (raw.includes('brick->pochon')) return 'brick_to_pouch'
   if (raw.includes('feuille->pochon')) return 'leaf_to_pouch'
-  if (raw.includes('meth') || raw.includes('table')) return 'machine_transform'
+  if (raw.includes('meth') || raw.includes('table')) return 'tables_purchase'
   return 'leaf_to_pouch'
 }
 
@@ -56,7 +56,7 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
     const nextReceived = Math.max(0, Number(receivedDraft || row.received_output || 0))
     const status = nextReceived >= expectedOutput ? 'completed' : 'in_progress'
     const nextQuantitySent = isMethType(row.type)
-      ? Math.max(0, Number(value.quantityLeaves || 0))
+      ? Math.max(0, Number(value.quantitySeeds || 0))
       : (value.mode === 'brick_to_pouch'
         ? Math.max(0, Number(value.quantityBricks || 0))
         : value.mode === 'leaf_to_brick' || value.mode === 'leaf_to_pouch'
