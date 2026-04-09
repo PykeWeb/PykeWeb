@@ -56,8 +56,17 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
     if (!row) return
     const nextReceived = Math.max(0, Number(receivedDraft || row.received_output || 0))
     const status = nextReceived >= expectedOutput ? 'completed' : 'in_progress'
+    const nextQuantitySent = isMethType(row.type)
+      ? Math.max(0, Number(value.quantitySeeds || 0))
+      : (value.mode === 'brick_to_pouch'
+        ? Math.max(0, Number(value.quantityBricks || 0))
+        : value.mode === 'leaf_to_brick' || value.mode === 'two_steps_transforms'
+          ? Math.max(0, Number(value.quantityLeaves || 0))
+          : Math.max(0, Number(value.quantitySeeds || 0)))
     const updated = await updateDrugProductionTracking(row.id, {
       note: `[${value.mode}] ${value.note || ''}`.trim(),
+      quantitySent: nextQuantitySent,
+      expectedOutput,
       seedPrice: value.seedPrice,
       pouchSalePrice: value.pouchSalePrice,
       brickTransformCost: value.brickTransformCost,

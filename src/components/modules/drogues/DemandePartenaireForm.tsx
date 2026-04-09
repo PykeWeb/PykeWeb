@@ -40,7 +40,7 @@ const TYPE_OPTIONS: { value: ProductionType; label: string }[] = [
 ]
 
 const MODE_OPTIONS_METH: { value: DemandMode; label: string }[] = [
-  { value: 'full_chain', label: 'Achat table (transfo incluse)' },
+  { value: 'full_chain', label: 'Envoi meth brut (transfo incluse)' },
 ]
 
 function normalizeProductionType(raw: string): ProductionType {
@@ -91,7 +91,7 @@ export function DemandePartenaireForm({
 
   const quantityLabel =
     isMeth
-      ? 'Quantité tables'
+      ? 'Quantité meth brut envoyée'
       : form.mode === 'brick_to_pouch'
       ? 'Quantité bricks'
       : form.mode === 'leaf_to_brick' || form.mode === 'two_steps_transforms'
@@ -146,14 +146,14 @@ export function DemandePartenaireForm({
             />
           </div>
           <div><p className="mb-1 text-xs text-white/70">Attendu (auto)</p><Input value={calc.expectedOutput} readOnly /></div>
-          <div><p className="mb-1 text-xs text-white/70">{isMeth ? 'Prix table (transfo incluse)' : 'Prix graine'}</p><Input value={form.seedPrice} onChange={(e) => setForm((p) => ({ ...p, seedPrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
+          <div><p className="mb-1 text-xs text-white/70">{isMeth ? 'Coût meth brut envoyé' : 'Prix graine'}</p><Input value={form.seedPrice} onChange={(e) => setForm((p) => ({ ...p, seedPrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
           <div><p className="mb-1 text-xs text-white/70">Prix vente pochon</p><Input value={form.pouchSalePrice} onChange={(e) => setForm((p) => ({ ...p, pouchSalePrice: Number(e.target.value) || 0 }))} inputMode="decimal" /></div>
           {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo brick</p><Input value={form.brickTransformCost} onChange={(e) => setForm((p) => ({ ...p, brickTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
           {!isMeth ? <div><p className="mb-1 text-xs text-white/70">Coût transfo pochon</p><Input value={form.pouchTransformCost} onChange={(e) => setForm((p) => ({ ...p, pouchTransformCost: Number(e.target.value) || 0 }))} inputMode="decimal" /></div> : null}
           <div><p className="mb-1 text-xs text-white/70">Date</p><Input type="date" value={form.createdAt} onChange={(e) => setForm((p) => ({ ...p, createdAt: e.target.value }))} /></div>
           <div><p className="mb-1 text-xs text-white/70">Date estimée retour</p><Input type="date" value={form.expectedDate} onChange={(e) => setForm((p) => ({ ...p, expectedDate: e.target.value }))} /></div>
         </div>
-        {isMeth ? <p className="text-xs text-cyan-100/80">Pour la Meth: 1 table = 1 recette. Prix conseillé: 3 300$ (transformation comprise, équipements fournis).</p> : null}
+        {isMeth ? <p className="text-xs text-cyan-100/80">Pour la meth: indique directement le nombre de meth brut envoyé.</p> : null}
 
         {showNote ? (
           <div>

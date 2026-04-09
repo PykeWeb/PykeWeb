@@ -57,6 +57,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
   const [memberOptions, setMemberOptions] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({})
   const [methKitMachines, setMethKitMachines] = useState('1')
   const [methKitUnitPrice, setMethKitUnitPrice] = useState('3300')
   const [showMethKitEditor, setShowMethKitEditor] = useState(false)
@@ -115,10 +116,19 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     [selectedItems]
   )
 
-  const totalAmount = useMemo(
-    () => selectedItems.reduce((sum, entry) => sum + (entry.quantity * Math.max(0, Number(entry.price || 0))), 0),
-    [selectedItems]
-  )
+  const tradeTotals = useMemo(() => {
+    const buyTotal = selectedItems
+      .filter((entry) => entry.mode === 'entree')
+      .reduce((sum, entry) => sum + (entry.quantity * Math.max(0, Number(entry.price || 0))), 0)
+    const sellTotal = selectedItems
+      .filter((entry) => entry.mode === 'sortie')
+      .reduce((sum, entry) => sum + (entry.quantity * Math.max(0, Number(entry.price || 0))), 0)
+    return {
+      buyTotal,
+      sellTotal,
+      net: sellTotal - buyTotal,
+    }
+  }, [selectedItems])
 
   function findItemByAliases(aliases: string[]) {
     const normalizedAliases = aliases.map((alias) => alias.trim().toLowerCase())
@@ -191,6 +201,11 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         }
         : entry
     )))
+    setQuantityDrafts((prev) => {
+      const next = { ...prev }
+      delete next[itemId]
+      return next
+    })
   }
 
   const updatePrice = (itemId: string, price: number) => {
@@ -207,6 +222,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
 
   const clearTransaction = () => {
     setSelectedItems([])
+    setQuantityDrafts({})
     setCounterparty('')
     setMember(defaultMemberName)
     setMethKitMachines('1')
@@ -331,6 +347,17 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     ? 'Interface rapide achat/vente avec prix.'
     : 'Interface rapide entrée/sortie de stock.'
 
+  useEffect(() => {
+    setQuantityDrafts((prev) => {
+      const allowed = new Set(selectedItems.map((entry) => entry.selectionKey))
+      const next: Record<string, string> = {}
+      for (const [key, value] of Object.entries(prev)) {
+        if (allowed.has(key)) next[key] = value
+      }
+      return next
+    })
+  }, [selectedItems])
+
   return (
     <div className="space-y-4">
       <PageHeader title={headerTitle} subtitle={headerSubtitle} />
@@ -401,8 +428,14 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
             <span>Qté : {safeTotalItems}</span>
           </div>
           {isTradeVariant ? (
-            <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-5 text-sm font-semibold text-emerald-100">
-              Total: {totalAmount.toFixed(2)} $
+            <div className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-4 text-xs font-semibold text-emerald-100">
+              <span>Achat: {tradeTotals.buyTotal.toFixed(2)} $</span>
+              <span>•</span>
+              <span>Vente: {tradeTotals.sellTotal.toFixed(2)} $</span>
+              <span>•</span>
+              <span className={tradeTotals.net >= 0 ? 'text-emerald-100' : 'text-rose-100'}>
+                Net: {tradeTotals.net.toFixed(2)} $
+              </span>
             </div>
           ) : null}
           <SecondaryButton onClick={clearTransaction} className="h-11 px-6">Annuler</SecondaryButton>
@@ -586,8 +619,14 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
                       <Minus className="h-4 w-4" />
                     </button>
                     <Input
-                      value={entry.quantity}
-                      onChange={(event) => updateQuantity(entry.selectionKey, Number(event.target.value))}
+                      value={quantityDrafts[entry.selectionKey] ?? String(entry.quantity)}
+                      onChange={(event) => setQuantityDrafts((prev) => ({ ...prev, [entry.selectionKey]: event.target.value }))}
+                      onBlur={() => {
+                        const raw = quantityDrafts[entry.selectionKey]
+                        if (raw == null) return
+                        const parsed = Number(raw)
+                        updateQuantity(entry.selectionKey, Number.isFinite(parsed) ? parsed : entry.quantity)
+                      }}
                       inputMode="numeric"
                       className="h-full w-16 rounded-none border-0 bg-transparent px-2 text-center text-sm"
                     />

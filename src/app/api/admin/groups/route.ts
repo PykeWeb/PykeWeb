@@ -24,6 +24,7 @@ function normalizeGroupRecord(row: GroupRecord) {
   const credentials = parseGroupCredentials(row.password)
   return {
     ...row,
+    image_url: row.image_url ?? null,
     password: credentials.chefPassword,
     password_member: credentials.memberPassword,
     roles: parseGroupRolesConfig(row.password).roles,
@@ -203,7 +204,7 @@ export async function GET(request: Request) {
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from(TABLE)
-      .select('id,name,badge,login,password,active,paid_until,image_url,created_at')
+      .select('id,name,badge,login,password,active,paid_until,created_at')
       .neq('login', 'pwr')
       .order('created_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -226,7 +227,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from(TABLE)
       .insert(body)
-      .select('id,name,badge,login,password,active,paid_until,image_url,created_at')
+      .select('id,name,badge,login,password,active,paid_until,created_at')
       .single()
     if (error) {
       const isDuplicateLogin = error.code === '23505' || /duplicate key value/i.test(error.message)
@@ -259,7 +260,7 @@ export async function PUT(request: Request) {
       .from(TABLE)
       .update(patch)
       .eq('id', String(body.id))
-      .select('id,name,badge,login,password,active,paid_until,image_url,created_at')
+      .select('id,name,badge,login,password,active,paid_until,created_at')
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(normalizeGroupRecord(data as GroupRecord))

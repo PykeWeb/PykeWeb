@@ -19,6 +19,7 @@ function normalizeGroupRecord(row: GroupRecord) {
   const credentials = parseGroupCredentials(row.password)
   return {
     ...row,
+    image_url: row.image_url ?? null,
     password: credentials.chefPassword,
     password_member: credentials.memberPassword,
     roles: parseGroupRolesConfig(row.password).roles,
