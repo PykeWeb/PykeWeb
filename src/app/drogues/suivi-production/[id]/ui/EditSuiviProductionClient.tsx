@@ -11,8 +11,24 @@ import { SecondaryButton } from '@/components/ui/design-system'
 import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
+type TransfoMeta = { sentQty?: number; mode?: string; tableQty?: number } | null
+
+function parseTransfoMeta(note: string | null | undefined): TransfoMeta {
+  const raw = String(note || '').trim()
+  if (!raw.startsWith('[transfo:v2]')) return null
+  try {
+    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; mode?: string; tableQty?: number }
+  } catch {
+    return null
+  }
+}
+
 function inferDemandMode(note: string | null | undefined): DemandFormValue['mode'] {
   const raw = String(note || '').toLowerCase()
+  const meta = parseTransfoMeta(note)
+  if (meta?.mode === 'tables_purchase' || meta?.mode === 'leaf_to_brick' || meta?.mode === 'brick_to_pouch' || meta?.mode === 'leaf_to_pouch') {
+    return meta.mode
+  }
   if (raw.includes('feuille->brick')) return 'leaf_to_brick'
   if (raw.includes('brick->pochon')) return 'brick_to_pouch'
   if (raw.includes('feuille->pochon')) return 'leaf_to_pouch'
@@ -63,8 +79,8 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
           ? Math.max(0, Number(value.quantityLeaves || 0))
           : Math.max(0, Number(value.quantitySeeds || 0)))
     const updated = await updateDrugProductionTracking(row.id, {
-      note: `[${value.mode}] ${value.note || ''}`.trim(),
-      quantitySent: nextQuantitySent,
+      note: `[transfo:v2]${JSON.stringify({ mode: value.mode, sentQty: isMethType(row.type) ? Math.max(0, Number(value.quantityLeaves || 0)) : nextQuantitySent, tableQty: isMethType(row.type) ? Math.max(0, Number(value.quantitySeeds || 0)) : undefined })}`,
+      quantitySent: isMethType(row.type) ? Math.max(0, Number(value.quantityLeaves || 0)) : nextQuantitySent,
       expectedOutput,
       seedPrice: value.seedPrice,
       pouchSalePrice: value.pouchSalePrice,
@@ -147,14 +163,14 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
               </div>
             </div>
 
-            <DemandePartenaireForm
+          <DemandePartenaireForm
               initial={{
                 partnerName: row.partner_name,
                 type: normalizeDemandType(row.type),
                 mode: inferDemandMode(row.note),
                 createdAt: row.created_at.slice(0, 10),
-                quantitySeeds: row.quantity_sent,
-                quantityLeaves: row.quantity_sent,
+                quantitySeeds: Number(parseTransfoMeta(row.note)?.tableQty ?? row.quantity_sent),
+                quantityLeaves: Number(parseTransfoMeta(row.note)?.sentQty ?? row.quantity_sent),
                 quantityBricks: Math.floor(row.expected_output / 10),
                 seedPrice: Number(row.seed_price || 0),
                 pouchSalePrice: Number(row.pouch_sale_price || 0),

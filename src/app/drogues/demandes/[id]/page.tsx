@@ -10,6 +10,16 @@ import { DemandePartenaireForm, type DemandFormValue } from '@/components/module
 import { adjustDrugStock, listDrugItems } from '@/lib/drugsApi'
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
 
+function parseTransfoMeta(note: string | null | undefined) {
+  const raw = String(note || '').trim()
+  if (!raw.startsWith('[transfo:v2]')) return null
+  try {
+    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; tableQty?: number }
+  } catch {
+    return null
+  }
+}
+
 function uiTypeLabel(rawType: string) {
   const type = String(rawType || '').trim().toLowerCase()
   if (type.includes('coke')) return 'Coke'
@@ -51,7 +61,7 @@ export default function DemandeDetailPage() {
     if (!row) return
     const nextStatus = row.received_output >= expectedOutput ? 'completed' : 'in_progress'
     const quantitySent = value.type === 'meth'
-      ? value.quantitySeeds
+      ? value.quantityLeaves
       : value.mode === 'brick_to_pouch'
         ? value.quantityBricks
         : value.quantityLeaves
@@ -84,7 +94,7 @@ export default function DemandeDetailPage() {
       {editMode ? (
         <Panel>
           <DemandePartenaireForm
-            initial={{ partnerName: row.partner_name, type: row.type, mode: row.type === 'meth' ? 'tables_purchase' : 'leaf_to_pouch', createdAt: row.created_at.slice(0, 10), quantitySeeds: row.quantity_sent, quantityLeaves: row.quantity_sent, quantityBricks: Math.floor(row.expected_output / 10), seedPrice: Number(row.seed_price || 0), pouchSalePrice: Number(row.pouch_sale_price || 0), brickTransformCost: Number(row.brick_transform_cost || 0), pouchTransformCost: Number(row.pouch_transform_cost || 0), note: row.note || '', expectedDate: row.expected_date || '' }}
+            initial={{ partnerName: row.partner_name, type: row.type, mode: row.type === 'meth' ? 'tables_purchase' : 'leaf_to_pouch', createdAt: row.created_at.slice(0, 10), quantitySeeds: Number(parseTransfoMeta(row.note)?.tableQty ?? row.quantity_sent), quantityLeaves: Number(parseTransfoMeta(row.note)?.sentQty ?? row.quantity_sent), quantityBricks: Math.floor(row.expected_output / 10), seedPrice: Number(row.seed_price || 0), pouchSalePrice: Number(row.pouch_sale_price || 0), brickTransformCost: Number(row.brick_transform_cost || 0), pouchTransformCost: Number(row.pouch_transform_cost || 0), note: row.note || '', expectedDate: row.expected_date || '' }}
             submitLabel="Modifier"
             onSubmit={onUpdate}
             onCancel={() => router.replace(`/drogues/demandes/${row.id}`)}

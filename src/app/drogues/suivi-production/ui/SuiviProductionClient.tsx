@@ -88,8 +88,19 @@ export default function SuiviProductionClient() {
   const [saving, setSaving] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [validationDraft, setValidationDraft] = useState('0')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'cancelled'>('all')
 
   const selected = useMemo(() => rows.find((row) => row.id === selectedId) ?? null, [rows, selectedId])
+  const counters = useMemo(() => ({
+    total: rows.length,
+    pending: rows.filter((row) => row.status === 'in_progress').length,
+    completed: rows.filter((row) => row.status === 'completed').length,
+    cancelled: rows.filter((row) => row.status === 'cancelled').length,
+  }), [rows])
+  const visibleRows = useMemo(() => {
+    if (statusFilter === 'all') return rows
+    return rows.filter((row) => row.status === statusFilter)
+  }, [rows, statusFilter])
 
   async function loadRows() {
     setLoading(true)
@@ -123,7 +134,7 @@ export default function SuiviProductionClient() {
     const meta: RequestMeta = {
       mode: form.mode,
       sentLabel: isMeth ? 'Meth brut produite' : 'Feuilles envoyées',
-      sentQty: quantitySent,
+      sentQty: isMeth ? Math.max(0, Number(form.quantityLeaves || 0)) : quantitySent,
       estimatedPouches: expectedOutput,
     }
 
@@ -184,6 +195,17 @@ export default function SuiviProductionClient() {
     }
   }
 
+  async function markSelectedPending() {
+    if (!selected) return
+    try {
+      const updated = await updateDrugProductionTracking(selected.id, { status: 'in_progress' })
+      setRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
+      toast.success('Demande remise en attente.')
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Action impossible.')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader title="Transfo groupes" subtitle="Coke/Meth séparés, estimation métier claire et validation finale de la quantité réellement récupérée." />
@@ -191,6 +213,25 @@ export default function SuiviProductionClient() {
       <div className="flex flex-wrap gap-2">
         <PrimaryButton onClick={() => setCreating(true)}><Plus className="h-4 w-4" />Nouvelle demande</PrimaryButton>
         <Link href="/drogues/demandes" className="inline-flex h-10 items-center rounded-xl border border-white/15 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]">Vue détails</Link>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-4">
+        <button type="button" onClick={() => setStatusFilter('in_progress')} className="rounded-xl border border-amber-300/35 bg-amber-500/12 p-3 text-left">
+          <p className="text-xs text-amber-100/80">En attente</p>
+          <p className="text-xl font-semibold text-amber-100">{counters.pending}</p>
+        </button>
+        <button type="button" onClick={() => setStatusFilter('completed')} className="rounded-xl border border-emerald-300/35 bg-emerald-500/12 p-3 text-left">
+          <p className="text-xs text-emerald-100/80">Validées</p>
+          <p className="text-xl font-semibold text-emerald-100">{counters.completed}</p>
+        </button>
+        <button type="button" onClick={() => setStatusFilter('cancelled')} className="rounded-xl border border-rose-300/35 bg-rose-500/12 p-3 text-left">
+          <p className="text-xs text-rose-100/80">Annulées</p>
+          <p className="text-xl font-semibold text-rose-100">{counters.cancelled}</p>
+        </button>
+        <button type="button" onClick={() => setStatusFilter('all')} className="rounded-xl border border-cyan-300/35 bg-cyan-500/12 p-3 text-left">
+          <p className="text-xs text-cyan-100/80">Total demandes</p>
+          <p className="text-xl font-semibold text-cyan-100">{counters.total}</p>
+        </button>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
@@ -212,8 +253,8 @@ export default function SuiviProductionClient() {
               </thead>
               <tbody className="divide-y divide-white/10">
                 {loading ? <tr><td className="px-3 py-6 text-center text-white/65" colSpan={8}>Chargement…</td></tr> : null}
-                {!loading && rows.length === 0 ? <tr><td className="px-3 py-6 text-center text-white/65" colSpan={8}>Aucune demande.</td></tr> : null}
-                {!loading ? rows.map((row) => {
+                {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-6 text-center text-white/65" colSpan={8}>Aucune demande.</td></tr> : null}
+                {!loading ? visibleRows.map((row) => {
                   const meta = parseMeta(row.note)
                   const isSelected = selectedId === row.id
                   return (
@@ -256,6 +297,7 @@ export default function SuiviProductionClient() {
                 <PrimaryButton onClick={() => void validateSelected()}><CheckCircle2 className="h-4 w-4" />Valider la demande</PrimaryButton>
                 <SecondaryButton onClick={() => void cancelSelected()}><XCircle className="h-4 w-4" />Annuler la demande</SecondaryButton>
               </div>
+              <SecondaryButton onClick={() => void markSelectedPending()}>Remettre en attente</SecondaryButton>
 
               <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex text-sm text-cyan-100 underline-offset-4 hover:underline">Ouvrir la page détail / édition</Link>
             </div>
