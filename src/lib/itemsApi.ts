@@ -1394,33 +1394,58 @@ export async function createFinanceTransaction(args: {
     if (nextCash < 0) throw new Error('Argent insuffisant pour cet achat.')
   }
 
-  const { error: stockErr } = await supabase.from('catalog_items').update({ stock: nextStock }).eq('group_id', currentGroupId()).eq('id', resolvedItemId)
-  if (stockErr) throw stockErr
-
-  if (shouldMoveCash) {
-    const currentCash = toNonNegative(cashItem?.stock)
-    const nextCash = args.mode === 'sell' ? currentCash + totalAmount : currentCash - totalAmount
-    const { error: cashErr } = await supabase.from('catalog_items').update({ stock: nextCash }).eq('group_id', currentGroupId()).eq('id', cashItem?.id as string)
-    if (cashErr) throw cashErr
+  const isPaymentModeEnumError = (message: string | null | undefined) => String(message || '').toLowerCase().includes('payment_mode')
+  async function insertFinanceRow(paymentMode: FinancePaymentMode) {
+    const { data, error } = await supabase
+      .from('finance_transactions')
+      .insert({
+        group_id: currentGroupId(),
+        item_id: resolvedItemId,
+        mode: args.mode,
+        quantity: qty,
+        unit_price: unit,
+        total: totalAmount,
+        counterparty: args.counterparty || null,
+        notes: args.notes || null,
+        payment_mode: paymentMode,
+      })
+      .select('*')
+      .single<FinanceTransaction>()
+    if (error) throw error
+    return data
   }
 
-  const { data, error } = await supabase
-    .from('finance_transactions')
-    .insert({
-      group_id: currentGroupId(),
-      item_id: resolvedItemId,
-      mode: args.mode,
-      quantity: qty,
-      unit_price: unit,
-      total: totalAmount,
-      counterparty: args.counterparty || null,
-      notes: args.notes || null,
-      payment_mode: args.payment_mode || 'cash',
-    })
-    .select('*')
-    .single<FinanceTransaction>()
+  const requestedPaymentMode = (args.payment_mode || 'cash') as FinancePaymentMode
+  let data: FinanceTransaction
+  try {
+    data = await insertFinanceRow(requestedPaymentMode)
+  } catch (insertError: unknown) {
+    const canFallbackToOther = requestedPaymentMode === 'stock_in' || requestedPaymentMode === 'stock_out'
+    if (canFallbackToOther && insertError instanceof Error && isPaymentModeEnumError(insertError.message)) {
+      data = await insertFinanceRow('other')
+    } else {
+      throw insertError
+    }
+  }
 
-  if (error) throw error
+  try {
+    const { error: stockErr } = await supabase
+      .from('catalog_items')
+      .update({ stock: nextStock })
+      .eq('group_id', currentGroupId())
+      .eq('id', resolvedItemId)
+    if (stockErr) throw stockErr
+    if (shouldMoveCash) {
+      const currentCash = toNonNegative(cashItem?.stock)
+      const nextCash = args.mode === 'sell' ? currentCash + totalAmount : currentCash - totalAmount
+      const { error: cashErr } = await supabase.from('catalog_items').update({ stock: nextCash }).eq('group_id', currentGroupId()).eq('id', cashItem?.id as string)
+      if (cashErr) throw cashErr
+    }
+  } catch (syncError) {
+    await supabase.from('finance_transactions').delete().eq('group_id', currentGroupId()).eq('id', data.id)
+    throw syncError
+  }
+
   void createAppLog({
     area: 'finance.transactions',
     action: args.mode,
