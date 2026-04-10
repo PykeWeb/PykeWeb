@@ -17,6 +17,9 @@ import { getCategoryLabel, getTypeFilterOptions, getTypeLabel, matchesTypeFilter
 import { markStockOutNote } from '@/lib/financeStockFlow'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
+import { getTenantSession } from '@/lib/tenantSession'
+import { expandAccessPrefixes } from '@/lib/types/groupRoles'
+import { hasRequiredPrefixAccess } from '@/lib/accessControl'
 
 type CategoryFilter = 'all' | ItemCategory
 type TypeFilter = UnifiedTypeFilterValue
@@ -107,6 +110,14 @@ export default function ItemsClient({
   const searchParams = useSearchParams()
   const router = useRouter()
   const refreshInFlightRef = useRef(false)
+  const session = getTenantSession()
+  const allowedPrefixes = useMemo(() => expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : []), [session?.allowedPrefixes])
+  const hasFullAccess = Boolean(session?.isAdmin || allowedPrefixes.includes('/'))
+  const canOpenDrugRoute = useCallback((route: '/drogues/sessions' | '/drogues/benefice' | '/drogues/suivi-production' | '/drogues/vente') => {
+    if (hasFullAccess) return true
+    if (route === '/drogues/sessions') return hasRequiredPrefixAccess(allowedPrefixes, '/drogues/partenaires')
+    return hasRequiredPrefixAccess(allowedPrefixes, route)
+  }, [allowedPrefixes, hasFullAccess])
 
   const refresh = useCallback(async () => {
     if (refreshInFlightRef.current) return
@@ -491,25 +502,6 @@ export default function ItemsClient({
       ) : (
         <div className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="min-w-[220px] flex-1">
-                <GlassSelect value={calcMode} onChange={(v) => setCalcMode(v as DrugCalcMode)} options={[{ value: 'coke', label: 'Coke' }, { value: 'meth', label: 'Meth' }]} />
-              </div>
-              {calcMode === 'meth' ? (
-                <>
-                  <div className="min-w-[180px]">
-                    <label className="mb-1 block text-xs text-white/60">Quantité</label>
-                    <input
-                      value={String(calcQuantity)}
-                      onChange={(e) => setCalcQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-                      className="h-10 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm"
-                      inputMode="numeric"
-                    />
-                  </div>
-                </>
-              ) : null}
-            </div>
-
             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm">
                 <p className="text-xs text-cyan-100/80">Items requis (total)</p>
@@ -534,16 +526,16 @@ export default function ItemsClient({
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                   <p className="text-sm font-semibold">Accès rapide</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-4">
-                    <Link href="/drogues/sessions">
+                    <Link href={canOpenDrugRoute('/drogues/sessions') ? '/drogues/sessions' : '#'} aria-disabled={!canOpenDrugRoute('/drogues/sessions')} onClick={(event) => { if (!canOpenDrugRoute('/drogues/sessions')) event.preventDefault() }} className={!canOpenDrugRoute('/drogues/sessions') ? 'pointer-events-none opacity-45' : ''}>
                       <PrimaryButton className="w-full">Sessions</PrimaryButton>
                     </Link>
-                    <Link href="/drogues/benefice">
+                    <Link href={canOpenDrugRoute('/drogues/benefice') ? '/drogues/benefice' : '#'} aria-disabled={!canOpenDrugRoute('/drogues/benefice')} onClick={(event) => { if (!canOpenDrugRoute('/drogues/benefice')) event.preventDefault() }} className={!canOpenDrugRoute('/drogues/benefice') ? 'pointer-events-none opacity-45' : ''}>
                       <SecondaryButton className="w-full">Bénéfice drogue</SecondaryButton>
                     </Link>
-                    <Link href="/drogues/suivi-production">
+                    <Link href={canOpenDrugRoute('/drogues/suivi-production') ? '/drogues/suivi-production' : '#'} aria-disabled={!canOpenDrugRoute('/drogues/suivi-production')} onClick={(event) => { if (!canOpenDrugRoute('/drogues/suivi-production')) event.preventDefault() }} className={!canOpenDrugRoute('/drogues/suivi-production') ? 'pointer-events-none opacity-45' : ''}>
                       <SecondaryButton className="w-full">Transfo groupes</SecondaryButton>
                     </Link>
-                    <Link href="/drogues/vente">
+                    <Link href={canOpenDrugRoute('/drogues/vente') ? '/drogues/vente' : '#'} aria-disabled={!canOpenDrugRoute('/drogues/vente')} onClick={(event) => { if (!canOpenDrugRoute('/drogues/vente')) event.preventDefault() }} className={!canOpenDrugRoute('/drogues/vente') ? 'pointer-events-none opacity-45' : ''}>
                       <SecondaryButton className="w-full">Vente pochons</SecondaryButton>
                     </Link>
                   </div>

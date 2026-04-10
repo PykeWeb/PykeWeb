@@ -16,6 +16,7 @@ type GroupRecord = {
   password: string
   active: boolean
   paid_until: string | null
+  image_url: string | null
   created_at?: string
 }
 
@@ -23,6 +24,7 @@ function normalizeGroupRecord(row: GroupRecord) {
   const credentials = parseGroupCredentials(row.password)
   return {
     ...row,
+    image_url: row.image_url ?? null,
     password: credentials.chefPassword,
     password_member: credentials.memberPassword,
     roles: parseGroupRolesConfig(row.password).roles,
@@ -46,6 +48,10 @@ function normalizePayload(payload: Record<string, unknown>) {
 
 function isMissingTableError(message: string) {
   return /does not exist|relation .* does not exist|Could not find the table/i.test(message)
+}
+
+function isMissingImageUrlColumnError(message: string) {
+  return /image_url/i.test(message) && /could not find|column .* does not exist/i.test(message)
 }
 
 async function resolveRoleTableName() {
@@ -228,6 +234,19 @@ export async function POST(request: Request) {
       .select('id,name,badge,login,password,active,paid_until,created_at')
       .single()
     if (error) {
+      if (isMissingImageUrlColumnError(error.message) && 'image_url' in body) {
+        delete (body as Record<string, unknown>).image_url
+        const fallbackInsert = await supabase
+          .from(TABLE)
+          .insert(body)
+          .select('id,name,badge,login,password,active,paid_until,created_at')
+          .single()
+        if (fallbackInsert.error) return NextResponse.json({ error: fallbackInsert.error.message }, { status: 500 })
+        createdGroupId = (fallbackInsert.data as GroupRecord).id
+        await createBossAccessForGroup(fallbackInsert.data as GroupRecord)
+        await seedCatalogForGroup((fallbackInsert.data as GroupRecord).id)
+        return NextResponse.json(normalizeGroupRecord(fallbackInsert.data as GroupRecord))
+      }
       const isDuplicateLogin = error.code === '23505' || /duplicate key value/i.test(error.message)
       return NextResponse.json({ error: isDuplicateLogin ? 'Cet identifiant de groupe existe déjà.' : error.message }, { status: isDuplicateLogin ? 400 : 500 })
     }
@@ -260,7 +279,21 @@ export async function PUT(request: Request) {
       .eq('id', String(body.id))
       .select('id,name,badge,login,password,active,paid_until,created_at')
       .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      if (isMissingImageUrlColumnError(error.message) && 'image_url' in patch) {
+        const fallbackPatch = { ...patch }
+        delete (fallbackPatch as Record<string, unknown>).image_url
+        const fallbackUpdate = await supabase
+          .from(TABLE)
+          .update(fallbackPatch)
+          .eq('id', String(body.id))
+          .select('id,name,badge,login,password,active,paid_until,created_at')
+          .single()
+        if (fallbackUpdate.error) return NextResponse.json({ error: fallbackUpdate.error.message }, { status: 500 })
+        return NextResponse.json(normalizeGroupRecord(fallbackUpdate.data as GroupRecord))
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
     return NextResponse.json(normalizeGroupRecord(data as GroupRecord))
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Erreur' }, { status: 400 })

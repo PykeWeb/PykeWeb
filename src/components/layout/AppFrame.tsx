@@ -14,42 +14,31 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const [authChecked, setAuthChecked] = useState(isLogin)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (pathname !== '/' && pathname !== '/login') return
-
-    const key = pathname === '/login' ? 'pyke-refresh-login-v1' : 'pyke-refresh-home-v1'
-    if (window.sessionStorage.getItem(key)) return
-
-    window.sessionStorage.setItem(key, '1')
-    window.location.reload()
-  }, [pathname])
-
-  useEffect(() => {
     if (isLogin) {
       setAuthChecked(true)
       return
     }
 
     if (pathname === '/dashboard') {
-      window.location.href = '/'
+      window.location.replace('/')
       return
     }
 
     const session = getTenantSession()
     if (!session?.groupId || !session.groupName?.trim()) {
-      window.location.href = '/login'
+      window.location.replace('/login')
       return
     }
 
     if (!canAccessPath(session, pathname)) {
-      window.location.href = getDefaultRouteForSession(session)
+      window.location.replace(getDefaultRouteForSession(session))
       return
     }
 
     if (pathname === '/') {
       const nextPath = getDefaultRouteForSession(session)
       if (nextPath !== '/') {
-        window.location.href = nextPath
+        window.location.replace(nextPath)
         return
       }
     }

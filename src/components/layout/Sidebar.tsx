@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutGrid, Boxes, LifeBuoy, ScrollText, Wallet, Smartphone, ClipboardList, Truck, Pill, LogOut, Shield, KeyRound, PanelsTopLeft, Users, BadgeCheck, Sparkles, BookUser, Loader2, X } from 'lucide-react'
@@ -11,10 +10,11 @@ import type { ReactNode } from 'react'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, isAdminTenantSession, isMemberTenantSession, isSbTenantSession } from '@/lib/tenantSession'
 import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
 import { expandAccessPrefixes } from '@/lib/types/groupRoles'
+import { hasRequiredPrefixAccess } from '@/lib/accessControl'
 import clsx from 'clsx'
 import { LongPressReorderableRow } from '@/components/drag/LongPressReorderables'
 import { getLayoutOrder, saveLayoutOrder } from '@/lib/uiLayoutsApi'
-import { listCatalogItemsUnified } from '@/lib/itemsApi'
+import { listCatalogItemsStockLite } from '@/lib/itemsApi'
 import { changeMemberPassword } from '@/lib/tenantAuthApi'
 
 type AccessInfo = { paid_until: string | null; active: boolean } | null
@@ -75,7 +75,7 @@ export function Sidebar() {
     setIsSbGroup(isSbTenantSession(session))
     let mounted = true
     const loadCash = () => {
-      void listCatalogItemsUnified()
+      void listCatalogItemsStockLite()
         .then((rows) => {
           if (!mounted) return
           const cashItem = rows.find((row) => String(row.name || '').trim().toLowerCase() === 'argent')
@@ -87,7 +87,7 @@ export function Sidebar() {
         })
     }
     loadCash()
-    const interval = window.setInterval(loadCash, 15000)
+    const interval = window.setInterval(loadCash, 45000)
     const onVisibility = () => {
       if (!document.hidden) loadCash()
     }
@@ -147,19 +147,13 @@ export function Sidebar() {
   ]
 
   const hasFullAccess = allowedPrefixes.includes('/')
-  const isLinkAllowedByPrefix = (href: string, prefix: string) => {
-    if (href === '/') return prefix === '/' || prefix === '/dashboard'
-    return href === prefix || href.startsWith(`${prefix}/`) || prefix.startsWith(`${href}/`)
-  }
   const canAccessPrefix = (href: string) => {
     if (isAdmin || hasFullAccess) return true
-    return allowedPrefixes.some((prefix) => isLinkAllowedByPrefix(href, prefix))
+    return hasRequiredPrefixAccess(allowedPrefixes, href === '/' ? '/dashboard' : href)
   }
   const filteredUserLinks = hasFullAccess
     ? defaultUserLinks
-    : defaultUserLinks.filter((link) =>
-      allowedPrefixes.some((prefix) => isLinkAllowedByPrefix(link.href, prefix))
-    )
+    : defaultUserLinks.filter((link) => canAccessPrefix(link.href))
 
   const hasExplicitRoleRestrictions = allowedPrefixes.length > 0
   const canOpenPasswordModal = true
@@ -196,17 +190,12 @@ export function Sidebar() {
       <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
       <div className="rounded-[2rem] border border-[#5b6fc7]/28 bg-gradient-to-br from-[#11173a]/95 via-[#101633]/95 to-[#0b1027]/96 p-5 shadow-[0_16px_42px_rgba(4,8,28,0.58)] backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3.5">
-            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/18 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.14)]">
-              <Image src="/logo.png" alt="Logo" fill className="object-cover" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-[1.85rem] font-semibold leading-[0.98] tracking-tight text-white">{labels.site_name || BRAND.name}</p>
-              <p className="mt-1 inline-flex items-center gap-1.5 text-[0.9rem] text-white/68">
-                <Sparkles className="h-3.5 w-3.5 text-cyan-200/75" />
-                {labels.nav_dashboard || 'Dashboard'}
-              </p>
-            </div>
+          <div className="min-w-0">
+            <p className="text-[1.45rem] font-semibold leading-tight tracking-tight text-white break-words">{isAdmin ? (labels.site_name || BRAND.name) : groupName}</p>
+            <p className="mt-1 inline-flex items-center gap-1.5 text-[0.9rem] text-white/68">
+              <Sparkles className="h-3.5 w-3.5 text-cyan-200/75" />
+              {labels.nav_dashboard || 'Dashboard'}
+            </p>
           </div>
           <div className="mt-1 flex shrink-0 flex-col items-end gap-0">
             <button
@@ -236,13 +225,15 @@ export function Sidebar() {
               <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">{groupName}</span></p>
             </div>
 
-            <Link href={canAccessPrefix('/cash') ? '/cash' : '#'} aria-disabled={!canAccessPrefix('/cash')} onClick={(event) => { if (!canAccessPrefix('/cash')) event.preventDefault() }} className={`group flex min-h-[88px] flex-col items-center justify-center rounded-xl border p-3 text-center transition ${canAccessPrefix('/cash') ? 'border-white/10 bg-white/[0.03] hover:border-amber-300/35 hover:bg-amber-500/12' : 'cursor-not-allowed border-white/8 bg-white/[0.02] opacity-60'}`}>
+            {canAccessPrefix('/cash') ? (
+              <Link href="/cash" className="group flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center transition hover:border-amber-300/35 hover:bg-amber-500/12">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
                 <PanelsTopLeft className="h-3.5 w-3.5" />
                 Cash
               </p>
               <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-amber-300/38 bg-amber-500/22 px-3 text-sm font-semibold text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.18)]"><span className="max-w-[10rem] truncate">{cashLabel}</span></p>
             </Link>
+            ) : null}
 
             <div className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
@@ -260,15 +251,18 @@ export function Sidebar() {
               <p className="mt-2 inline-flex h-8 max-w-full items-center rounded-full border border-cyan-300/38 bg-cyan-500/20 px-3 text-sm font-semibold text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.2)]"><span className="max-w-[10rem] truncate">{roleLabel || 'Boss'}</span></p>
             </div>
 
-            <Link href={canAccessPrefix('/tablette/paiement') ? '/tablette/paiement' : '#'} aria-disabled={!canAccessPrefix('/tablette/paiement')} onClick={(event) => { if (!canAccessPrefix('/tablette/paiement')) event.preventDefault() }} className={`group flex min-h-[88px] flex-col items-center justify-center rounded-xl border p-3 text-center transition ${canAccessPrefix('/tablette/paiement') ? 'border-white/10 bg-white/[0.03] hover:border-amber-300/35 hover:bg-amber-500/12' : 'cursor-not-allowed border-white/8 bg-white/[0.02] opacity-60'}`}>
+            {canAccessPrefix('/tablette/paiement') ? (
+              <Link href="/tablette/paiement" className="group flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center transition hover:border-amber-300/35 hover:bg-amber-500/12">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
                 <KeyRound className="h-3.5 w-3.5" />
                 Licence
               </p>
               <p className={`mt-2 inline-flex h-8 max-w-full items-center rounded-full border px-3 text-sm font-semibold ${accessStatus.className}`}><span className="max-w-[10rem] truncate">{accessStatus.label}</span></p>
             </Link>
+            ) : null}
 
-            <Link href={canAccessPrefix('/group') ? '/group' : '#'} aria-disabled={!canAccessPrefix('/group')} onClick={(event) => { if (!canAccessPrefix('/group')) event.preventDefault() }} className={`group flex min-h-[88px] flex-col items-center justify-center rounded-xl border p-3 text-center transition ${canAccessPrefix('/group') ? 'border-white/10 bg-white/[0.03] hover:border-cyan-300/35 hover:bg-cyan-500/12' : 'cursor-not-allowed border-white/8 bg-white/[0.02] opacity-60'}`}>
+            {canAccessPrefix('/group') ? (
+              <Link href="/group" className="group flex min-h-[88px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center transition hover:border-cyan-300/35 hover:bg-cyan-500/12">
               <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-white/56">
                 <PanelsTopLeft className="h-3.5 w-3.5" />
                 Gestion
@@ -277,6 +271,7 @@ export function Sidebar() {
                 <span className="max-w-[10rem] truncate">Groupe</span>
               </p>
             </Link>
+            ) : null}
           </div>
         </div>
       </div>

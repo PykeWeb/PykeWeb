@@ -7,16 +7,19 @@ import { Panel } from '@/components/ui/Panel'
 import { Input } from '@/components/ui/Input'
 import { PrimaryButton } from '@/components/ui/design-system'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { MemberSelect } from '@/components/ui/MemberSelect'
 import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { clearTenantSession, clearTenantSessionOnServer, getTenantSession, saveTenantSession } from '@/lib/tenantSession'
-import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyRun } from '@/lib/types/tablette'
+import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyBudget, TabletDailyRun } from '@/lib/types/tablette'
 import { ActivitiesCategoryTabs } from '@/components/activities/ActivitiesCategoryTabs'
+import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 
 type AtelierResponse = {
   today: string
   items: TabletCatalogItemConfig[]
   runs: TabletDailyRun[]
   stats: GroupTabletStats
+  budget: TabletDailyBudget | null
 }
 
 function formatDay(value: string) {
@@ -38,11 +41,16 @@ export default function TablettePage() {
   const [runs, setRuns] = useState<TabletDailyRun[]>([])
   const [stats, setStats] = useState<GroupTabletStats | null>(null)
   const [today, setToday] = useState('')
+  const [budget, setBudget] = useState<TabletDailyBudget | null>(null)
+  const [budgetInitialDraft, setBudgetInitialDraft] = useState('0')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [memberOptions, setMemberOptions] = useState<string[]>([])
+  const session = getTenantSession()
+  const allowedPrefixes = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
+  const canSeeTabletBudget = Boolean(session?.isAdmin || allowedPrefixes.includes('/') || allowedPrefixes.includes('/tablette/coffre'))
   const memberSelectOptions = useMemo(() => {
     const current = memberName.trim()
     if (!current) return memberOptions
@@ -117,6 +125,8 @@ export default function TablettePage() {
       setRuns(data.runs)
       setToday(data.today)
       setStats(data.stats)
+      setBudget(data.budget || null)
+      setBudgetInitialDraft(String(Math.max(0, Number(data.budget?.budget_initial || 0))))
       setQuantities((prev) => {
         const next: Record<string, number> = {}
         for (const item of data.items) {
@@ -172,18 +182,71 @@ export default function TablettePage() {
           </div>
         ) : null}
 
+        {canSeeTabletBudget ? (
+        <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/[0.08] p-4">
+          <h2 className="text-base font-semibold">Coffre tablette du jour</h2>
+          <p className="mb-3 text-xs text-white/65">Budget journalier pour payer les passages tablette.</p>
+          <div className="grid gap-3 md:grid-cols-1">
+            <label className="space-y-1 text-xs text-white/70">
+              <span>Budget initial</span>
+              <Input value={budgetInitialDraft} onChange={(event) => setBudgetInitialDraft(event.target.value)} inputMode="decimal" />
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <PrimaryButton
+              onClick={async () => {
+                const action = budget ? 'update_budget' : 'init_budget'
+                const res = await fetch('/api/tablette/atelier', {
+                  ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+                  method: 'POST',
+                  body: JSON.stringify({
+                    action,
+                    budget_initial: Math.max(0, Number(budgetInitialDraft || 0)),
+                  }),
+                })
+                if (!res.ok) {
+                  const payload = (await res.json().catch(() => null)) as { error?: string } | null
+                  setError(payload?.error || 'Impossible de sauvegarder le coffre.')
+                  return
+                }
+                await load()
+              }}
+            >
+              {budget ? 'Modifier coffre' : 'Initialiser coffre'}
+            </PrimaryButton>
+            <PrimaryButton
+              onClick={async () => {
+                const res = await fetch('/api/tablette/atelier', {
+                  ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
+                  method: 'POST',
+                  body: JSON.stringify({ action: 'reset_budget' }),
+                })
+                if (!res.ok) {
+                  const payload = (await res.json().catch(() => null)) as { error?: string } | null
+                  setError(payload?.error || 'Reset impossible.')
+                  return
+                }
+                await load()
+              }}
+            >
+              Reset jour
+            </PrimaryButton>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm md:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Date: <span className="font-semibold">{formatDay(today)}</span></div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Budget: <span className="font-semibold">{Number(budget?.budget_initial || 0).toFixed(2)} $</span></div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Distribué: <span className="font-semibold">{Number(budget?.distributed_total || 0).toFixed(2)} $</span></div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Restant: <span className="font-semibold">{Number(budget?.remaining || 0).toFixed(2)} $</span></div>
+          </div>
+          <p className="mt-2 text-xs text-white/65">Passages payés: <span className="font-semibold text-white">{budget?.paid_runs || 0}</span></p>
+        </div>
+        ) : null}
+
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-white/60">Nom du membre</label>
-              <select
-                value={memberName}
-                onChange={(event) => setMemberName(event.target.value)}
-                className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
-              >
-                <option value="">Choisir un joueur</option>
-                {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
+              <MemberSelect value={memberName} onChange={setMemberName} options={memberSelectOptions} />
               {doneTodayByMember ? <p className="mt-1 text-xs text-amber-200">Ce membre a déjà validé aujourd’hui.</p> : null}
             </div>
 
@@ -234,7 +297,7 @@ export default function TablettePage() {
                   const res = await fetch('/api/tablette/atelier', {
                     ...withTenantSessionHeader({ headers: { 'Content-Type': 'application/json' } }),
                     method: 'POST',
-                    body: JSON.stringify({ member_name: memberName, quantities }),
+                    body: JSON.stringify({ action: 'run', member_name: memberName, quantities }),
                   })
 
                   if (!res.ok) {
@@ -247,7 +310,7 @@ export default function TablettePage() {
                   }
 
                   resetForm()
-                  setSuccess('Tablette validée et items ajoutés au catalogue.')
+                  setSuccess('Tablette validée, items ajoutés et coffre mis à jour.')
                   await load()
                 } catch (submitError: unknown) {
                   setError(submitError instanceof Error ? submitError.message : 'Validation impossible.')
@@ -275,22 +338,31 @@ export default function TablettePage() {
                   <th className="px-3 py-2 text-left">Membre</th>
                   <th className="px-3 py-2 text-left">Items</th>
                   <th className="px-3 py-2 text-left">Total</th>
+                  <th className="px-3 py-2 text-left">Retiré coffre</th>
+                  <th className="px-3 py-2 text-left">Restant</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {loading ? (
-                  <tr><td colSpan={4} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
                 ) : runs.length === 0 ? (
-                  <tr><td colSpan={4} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
                 ) : (
-                  runs.map((row) => (
+                  runs.map((row, index) => {
+                    const deductedUntilRow = runs
+                      .slice(index)
+                      .reduce((sum, entry) => sum + Math.max(0, Number(entry.total_cost || 0)), 0)
+                    const remainingAfter = Math.max(0, Number(budget?.budget_initial || 0) - deductedUntilRow)
+                    return (
                     <tr key={row.id}>
                       <td className="px-3 py-2 text-white/70">{formatDateTime(row.created_at)}</td>
                       <td className="px-3 py-2 font-medium">{row.member_name}</td>
                       <td className="px-3 py-2">{row.total_items}</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
+                      <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
+                      <td className="px-3 py-2">{remainingAfter.toFixed(2)} $</td>
                     </tr>
-                  ))
+                  )})
                 )}
               </tbody>
             </table>

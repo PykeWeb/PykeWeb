@@ -38,6 +38,9 @@ const typeLabels: Record<FinanceMovementType, string> = { expense: 'Dépense', p
 const categoryLabels: Record<FinanceCategory, string> = { objects: 'Objets', weapons: 'Armes', equipment: 'Équipement', drugs: 'Drogues', custom: 'Autres', other: 'Autres' }
 
 function movementTypeLabel(entry: FinanceEntry) {
+  const notes = String(entry.notes || '').toLowerCase()
+  if (notes.includes('tablette -')) return 'Tablette'
+  if (notes.includes('activite') || notes.includes('activité')) return 'Activité'
   if (entry.category === 'drugs' && entry.movement_type !== 'expense') return 'Drogue'
   return typeLabels[entry.movement_type]
 }

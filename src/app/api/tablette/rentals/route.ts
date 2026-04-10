@@ -69,7 +69,8 @@ export async function POST(request: Request) {
         status: 'open',
       })
       .select('id,group_id,message,image_url,status,created_at')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (insertErr || !inserted) return NextResponse.json({ error: insertErr?.message || 'Insertion impossible' }, { status: 500 })
 
@@ -86,7 +87,8 @@ export async function POST(request: Request) {
       .update({ image_url: pub.publicUrl })
       .eq('id', inserted.id)
       .select('id,group_id,message,image_url,status,created_at')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (updateErr || !updated) return NextResponse.json({ error: updateErr?.message || 'Update impossible' }, { status: 500 })
 

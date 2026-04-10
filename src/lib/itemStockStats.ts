@@ -10,7 +10,9 @@ export type ItemStockCategoryStats = {
   other: number
 }
 
-export function computeItemStockCategoryStats(items: CatalogItem[]): ItemStockCategoryStats {
+type StockLikeItem = Pick<CatalogItem, 'category' | 'stock'>
+
+export function computeItemStockCategoryStats(items: StockLikeItem[]): ItemStockCategoryStats {
   const sumStock = (predicate: (category: CatalogItem['category']) => boolean) => (
     items.reduce((total, item) => {
       const category = normalizeCatalogCategory(String(item.category || '')) || 'objects'

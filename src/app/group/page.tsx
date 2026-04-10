@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { getTenantSession, isAdminTenantSession } from '@/lib/tenantSession'
 import { getCurrentGroupAccessInfo } from '@/lib/communicationApi'
 import { PageHeader } from '@/components/PageHeader'
@@ -50,7 +51,7 @@ export default function GroupSettingsPage() {
           size="compact"
         />
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
             <p className="text-white/60">Groupe</p>
             <p className="mt-1 font-semibold">{groupName}{groupBadge ? ` (${groupBadge})` : ''}</p>
@@ -65,12 +66,19 @@ export default function GroupSettingsPage() {
               {accessInfo ? (accessInfo.active ? (accessInfo.paid_until ? new Date(accessInfo.paid_until).toLocaleDateString('fr-FR') : 'Illimitée') : 'Inactive') : '—'}
             </p>
           </div>
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm">
+            <p className="text-emerald-100/80">Gestion de paye</p>
+            <Link href="/cash/paye" className="mt-1 inline-flex text-sm font-semibold text-emerald-100 underline-offset-4 hover:underline">
+              Ouvrir la paye
+            </Link>
+          </div>
         </div>
       </div>
 
       <div id="section-members-roles">
         <GroupMembersGradesSection groupId={groupId} />
       </div>
+
     </div>
   )
 }

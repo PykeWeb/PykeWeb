@@ -23,7 +23,8 @@ export async function POST(request: Request) {
       .from('support_tickets')
       .insert({ group_id: session.groupId, kind, message, status: 'open' })
       .select('id,group_id,kind,message,image_url,status,created_at')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (insertErr || !inserted) return NextResponse.json({ error: insertErr?.message || 'Insert failed' }, { status: 500 })
 
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
       .update({ image_url: pub.publicUrl })
       .eq('id', inserted.id)
       .select('id,group_id,kind,message,image_url,status,created_at')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
     return NextResponse.json(updated)

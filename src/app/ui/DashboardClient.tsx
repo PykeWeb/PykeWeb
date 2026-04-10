@@ -5,6 +5,7 @@ import type { ClipboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { currentGroupId } from '@/lib/tenantScope'
+import { withTenantSessionHeader } from '@/lib/tenantRequest'
 import { canAccessPath } from '@/lib/accessControl'
 import { getTenantSession } from '@/lib/tenantSession'
 import { StatCard } from '@/components/modules/dashboard/StatCard'
@@ -13,7 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { createSupportTicket } from '@/lib/communicationApi'
 import { listFinanceEntries, type FinanceCategory, type FinanceMovementType } from '@/lib/financeApi'
 import { getFinanceListImage } from '@/lib/financeVisuals'
-import { listCatalogItemsUnified } from '@/lib/itemsApi'
+import { listCatalogItemsStockLite } from '@/lib/itemsApi'
 import { Box, ArrowDownRight, ArrowUpRight, Receipt, ShoppingCart, ChevronRight, Bug, MessageSquare, LifeBuoy, X, Wallet, PlusCircle, ChevronUp, ChevronDown, Image as ImageIcon, Shapes, Pill, Swords, Shield } from 'lucide-react'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { useUiThemeConfig } from '@/hooks/useUiThemeConfig'
@@ -35,9 +36,10 @@ type Tx = {
 }
 
 type Expense = { id: string; item_label: string; total: number; quantity: number; created_at: string; item_image_url: string | null }
-type ActivityView = 'summary' | 'expenses' | 'stock' | 'production' | 'activities'
+type ActivityView = 'summary' | 'expenses' | 'stock' | 'production' | 'activities' | 'tablet'
 type StockActivityCategory = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs'
 type StockBubbleKey = 'all' | 'objects' | 'weapons' | 'equipment' | 'drugs' | 'custom'
+type TabletRun = { id: string; member_name: string; total_items: number; total_cost: number; created_at: string }
 
 type CardKey = 'catObjects' | 'catWeapons' | 'catEquipment' | 'catDrugs' | 'mvExpense' | 'mvPurchase' | 'mvSale' | 'calculator'
 
@@ -104,6 +106,7 @@ export function DashboardClient() {
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
   const [recentDrugTrackings, setRecentDrugTrackings] = useState<DrugProductionTrackingRow[]>([])
   const [recentActivities, setRecentActivities] = useState<ActivityEntry[]>([])
+  const [recentTabletRuns, setRecentTabletRuns] = useState<TabletRun[]>([])
 
   const [financeCategoryCounts, setFinanceCategoryCounts] = useState<Record<FinanceCategory, number>>(createEmptyCategoryCounts)
   const [financeMovementCounts, setFinanceMovementCounts] = useState<Record<FinanceMovementType, number>>(createEmptyMovementCounts)
@@ -116,6 +119,8 @@ export function DashboardClient() {
   const [ticketStatus, setTicketStatus] = useState('')
   const [supportOpen, setSupportOpen] = useState(false)
   const supportPanelRef = useRef<HTMLDivElement | null>(null)
+  const loadInFlightRef = useRef(false)
+  const firstLoadDoneRef = useRef(false)
   const cardLongPressTimerRef = useRef<number | null>(null)
   const longPressTriggeredRef = useRef(false)
   const [dashboardCards, setDashboardCards] = useState<CardKey[]>(DEFAULT_DASHBOARD_CARDS)
@@ -208,14 +213,18 @@ export function DashboardClient() {
   useEffect(() => {
     let alive = true
     const loadDashboardData = async () => {
-      setLoading(true)
+      if (loadInFlightRef.current) return
+      loadInFlightRef.current = true
+      const isInitialLoad = !firstLoadDoneRef.current
+      if (isInitialLoad) setLoading(true)
       try {
         currentGroupId()
-        const [financeEntries, catalogItems, drugTrackings, activities] = await Promise.all([
-          listFinanceEntries(),
-          listCatalogItemsUnified(),
+        const [financeEntries, catalogItems, drugTrackings, activities, tabletRes] = await Promise.all([
+          listFinanceEntries(160),
+          listCatalogItemsStockLite(),
           listDrugProductionTrackings().catch(() => []),
           listActivities().catch(() => ({ entries: [], summaries: [], settings: { group_id: '', default_percent_per_object: 2 } })),
+          fetch('/api/tablette/atelier', withTenantSessionHeader({ cache: 'no-store' })).catch(() => null),
         ])
 
         if (!alive) return
@@ -273,10 +282,19 @@ export function DashboardClient() {
         setRecentExpenses(recentExpenseRows)
         setRecentDrugTrackings((drugTrackings ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
         setRecentActivities((activities.entries ?? []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
+        if (tabletRes?.ok) {
+          const tabletPayload = (await tabletRes.json()) as { runs?: TabletRun[] }
+          const runs = Array.isArray(tabletPayload.runs) ? tabletPayload.runs : []
+          setRecentTabletRuns(runs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
+        } else {
+          setRecentTabletRuns([])
+        }
         setFinanceCategoryCounts(categoryCounts)
         setFinanceMovementCounts(movementCounts)
+        firstLoadDoneRef.current = true
       } finally {
-        if (alive) setLoading(false)
+        loadInFlightRef.current = false
+        if (alive && isInitialLoad) setLoading(false)
       }
     }
 
@@ -287,7 +305,7 @@ export function DashboardClient() {
     const intervalId = window.setInterval(() => {
       if (document.hidden) return
       void loadDashboardData().catch(() => undefined)
-    }, 5000)
+    }, 30000)
 
     const onWindowFocus = () => {
       void loadDashboardData().catch(() => undefined)
@@ -309,14 +327,14 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    const views: ActivityView[] = ['summary', 'expenses', 'stock', 'production', 'activities']
+    const views: ActivityView[] = ['summary', 'expenses', 'stock', 'production', 'activities', 'tablet']
     const timer = window.setInterval(() => {
       if (Date.now() < pauseAutoUntil) return
       setActivityView((prev) => {
         const idx = views.indexOf(prev)
         return views[(idx + 1) % views.length]
       })
-    }, 5000)
+    }, 12000)
     return () => window.clearInterval(timer)
   }, [pauseAutoUntil])
 
@@ -499,6 +517,7 @@ export function DashboardClient() {
               { key: 'stock', label: 'Stock', active: 'border-emerald-300/65 bg-gradient-to-r from-emerald-500/35 to-teal-500/30 text-emerald-50', idle: 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100/85 hover:bg-emerald-500/18' },
               { key: 'production', label: 'Production', active: 'border-fuchsia-300/65 bg-gradient-to-r from-fuchsia-500/35 to-violet-500/30 text-fuchsia-50', idle: 'border-fuchsia-300/25 bg-fuchsia-500/10 text-fuchsia-100/85 hover:bg-fuchsia-500/18' },
               { key: 'activities', label: 'Activités', active: 'border-sky-300/65 bg-gradient-to-r from-sky-500/35 to-indigo-500/30 text-sky-50', idle: 'border-sky-300/25 bg-sky-500/10 text-sky-100/85 hover:bg-sky-500/18' },
+              { key: 'tablet', label: 'Tablette', active: 'border-cyan-300/65 bg-gradient-to-r from-cyan-500/35 to-blue-500/30 text-cyan-50', idle: 'border-cyan-300/25 bg-cyan-500/10 text-cyan-100/85 hover:bg-cyan-500/18' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -668,6 +687,21 @@ export function DashboardClient() {
                       <p className="text-xs text-white/60">{new Date(entry.created_at).toLocaleString()}</p>
                     </div>
                     <p className="text-sm font-semibold text-white/80">x{Math.max(1, Number(entry.quantity || 1))}</p>
+                  </Link>
+                ))
+              )
+            ) : null}
+            {activityView === 'tablet' ? (
+              recentTabletRuns.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">Aucun passage tablette récent.</div>
+              ) : (
+                recentTabletRuns.map((run) => (
+                  <Link href={toAllowedHref('/tablette') || '#'} aria-disabled={!toAllowedHref('/tablette')} onClick={(event) => { if (!toAllowedHref('/tablette')) event.preventDefault() }} key={run.id} className={`flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 transition ${toAllowedHref('/tablette') ? 'hover:bg-white/[0.06]' : 'cursor-not-allowed opacity-80'}`}>
+                    <div>
+                      <p className="text-sm font-medium">{run.member_name}</p>
+                      <p className="text-xs text-white/60">{new Date(run.created_at).toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-white/80">{Math.max(0, Number(run.total_items || 0))} items • {Math.max(0, Number(run.total_cost || 0)).toFixed(2)} $</p>
                   </Link>
                 ))
               )

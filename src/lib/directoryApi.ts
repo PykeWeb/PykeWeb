@@ -63,6 +63,17 @@ function encodeActivityPayload(activity: DirectoryActivity, note: string | null 
   return { dbActivity: activity, dbNote: noteWithoutTag || null }
 }
 
+
+
+function sanitizeLegacyDrugLabel(value: string | null | undefined) {
+  const normalized = String(value || '').trim()
+  if (!normalized) return null
+  const simplified = normalized.toLowerCase().replace(/\s+/g, ' ')
+  if (simplified === 'coke (1 graine)' || simplified === 'coke(1 graine)') return 'Coke'
+  if (simplified === 'meth (1 table)' || simplified === 'meth(1 table)') return 'Meth'
+  return normalized
+}
+
 function normalizeRow(row: DirectoryContactRow): DirectoryContact {
   const normalizedActivity = normalizeActivity(row.activity)
   const rawNote = row.note?.trim() || ''
@@ -73,8 +84,8 @@ function normalizeRow(row: DirectoryContactRow): DirectoryContact {
   return {
     id: row.id,
     group_id: row.group_id,
-    name: String(row.name || '').trim(),
-    partner_group: row.partner_group?.trim() || null,
+    name: sanitizeLegacyDrugLabel(String(row.name || '').trim()) || '',
+    partner_group: sanitizeLegacyDrugLabel(row.partner_group) || null,
     phone: row.phone?.trim() || null,
     activity: normalizedActivity === 'other' && tagMatch ? taggedActivity : normalizedActivity,
     note: cleanedNote || null,

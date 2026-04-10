@@ -118,6 +118,34 @@ export async function listCatalogItems(includeInactive = false): Promise<Catalog
   return (data ?? []).map((row) => mapCatalogItem(row as CatalogItemRow))
 }
 
+export type CatalogItemStockLite = {
+  id: string
+  name: string
+  category: ItemCategory
+  item_type: ItemType
+  stock: number
+}
+
+export async function listCatalogItemsStockLite(includeInactive = false): Promise<CatalogItemStockLite[]> {
+  let query = supabase
+    .from('catalog_items')
+    .select('id,name,category,item_type,stock,is_active')
+    .eq('group_id', currentGroupId())
+  if (!includeInactive) query = query.eq('is_active', true)
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []).map((row) => {
+    const category = normalizeCatalogCategory(String(row.category || '')) || 'objects'
+    return {
+      id: String(row.id),
+      name: String(row.name || ''),
+      category,
+      item_type: normalizeItemType(row.item_type, category),
+      stock: toNonNegative(row.stock),
+    }
+  })
+}
+
 
 
 
@@ -758,7 +786,7 @@ function withLegacyDbItemType(category: ItemCategory, itemType: ItemType): ItemT
 
 export async function updateCatalogItem(args: UpdateCatalogItemInput) {
   try {
-    const resolved = await ensureCatalogItemId(args.id)
+    const resolved = await resolveCatalogItemId(args.id)
     const groupId = currentGroupId()
     const { data: current, error: currentError } = await supabase
       .from('catalog_items')
@@ -1030,7 +1058,7 @@ export async function updateCatalogItem(args: UpdateCatalogItemInput) {
 }
 
 export async function deleteCatalogItem(itemId: string) {
-  const resolved = await ensureCatalogItemId(itemId)
+  const resolved = await resolveCatalogItemId(itemId)
   const groupId = currentGroupId()
   const { data: current } = await supabase
     .from('catalog_items')
@@ -1068,7 +1096,7 @@ export async function deleteCatalogItem(itemId: string) {
 
 
 
-async function ensureCatalogItemId(itemId: string): Promise<string> {
+export async function resolveCatalogItemId(itemId: string): Promise<string> {
   const groupId = currentGroupId()
 
   if (itemId.startsWith('global:')) {
@@ -1335,7 +1363,7 @@ export async function createFinanceTransaction(args: {
   const qty = toPositiveInt(args.quantity)
   const unit = toNonNegative(args.unit_price)
   const totalAmount = calcTotal(qty, unit)
-  const resolvedItemId = await ensureCatalogItemId(args.item_id)
+  const resolvedItemId = await resolveCatalogItemId(args.item_id)
 
   const { data: item, error: itemErr } = await supabase
     .from('catalog_items')

@@ -43,13 +43,13 @@ function isMissingImageSnapshotColumn(errorMessage: string | null | undefined) {
   return msg.includes('image_url_snapshot') || msg.includes('column')
 }
 
-async function listTransactionsWithOptionalImageSnapshot(groupId: string) {
+async function listTransactionsWithOptionalImageSnapshot(groupId: string, limit = 500) {
   const withSnapshot = await supabase
     .from('transactions')
     .select('id,type,counterparty,total,notes,created_at,transaction_items(name_snapshot,quantity,image_url_snapshot)')
     .eq('group_id', groupId)
     .order('created_at', { ascending: false })
-    .limit(500)
+    .limit(limit)
 
   if (!withSnapshot.error) {
     return withSnapshot
@@ -64,12 +64,12 @@ async function listTransactionsWithOptionalImageSnapshot(groupId: string) {
     .select('id,type,counterparty,total,notes,created_at,transaction_items(name_snapshot,quantity)')
     .eq('group_id', groupId)
     .order('created_at', { ascending: false })
-    .limit(500)
+    .limit(limit)
 
   return fallback
 }
 
-export async function listFinanceEntries(): Promise<FinanceEntry[]> {
+export async function listFinanceEntries(limit = 500): Promise<FinanceEntry[]> {
   const groupId = currentGroupId()
 
   const [expensesRes, txRes, customTxRes] = await Promise.all([
@@ -78,14 +78,14 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
       .select('id,item_source,item_id,item_label,member_name,quantity,total,unit_price,status,description,created_at')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
-      .limit(500),
-    listTransactionsWithOptionalImageSnapshot(groupId),
+      .limit(limit),
+    listTransactionsWithOptionalImageSnapshot(groupId, limit),
     supabase
       .from('finance_transactions')
       .select('id,mode,quantity,unit_price,total,counterparty,payment_mode,notes,created_at,catalog_items(name,category,image_url)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
-      .limit(500),
+      .limit(limit),
   ])
 
   if (expensesRes.error) throw expensesRes.error
@@ -150,7 +150,9 @@ export async function listFinanceEntries(): Promise<FinanceEntry[]> {
     entries.push({
       id: tx.id,
       source: 'transactions',
-      movement_type: tx.type === 'purchase' ? 'purchase' : 'sale',
+      movement_type: tx.type === 'purchase'
+        ? (isStockInNote(tx.notes) ? 'stock_in' : 'purchase')
+        : (isStockOutNote(tx.notes) ? 'stock_out' : 'sale'),
       category: 'objects',
       item_label: itemName,
       item_image_url: txItems.length > 1 ? null : firstImage,

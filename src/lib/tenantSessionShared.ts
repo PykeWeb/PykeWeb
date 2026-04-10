@@ -5,6 +5,7 @@ export type TenantSessionPayload = {
   groupId: string
   groupName: string
   groupBadge?: string | null
+  groupLogoUrl?: string | null
   isAdmin?: boolean
   memberId?: string
   role?: TenantRole
@@ -13,7 +14,7 @@ export type TenantSessionPayload = {
   allowedPrefixes?: string[]
 }
 
-export const TENANT_SESSION_VERSION = 4
+export const TENANT_SESSION_VERSION = 5
 export const TENANT_SESSION_COOKIE_KEY = 'tenant_session_v4'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i

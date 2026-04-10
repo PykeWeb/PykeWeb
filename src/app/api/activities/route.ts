@@ -9,8 +9,30 @@ import {
 } from '@/lib/types/activities'
 
 type CatalogItemRow = { id: string; name: string; category: string; buy_price: number | null; stock?: number | null }
+type GlobalCatalogRow = {
+  id: string
+  category: string
+  item_type: string | null
+  name: string
+  description: string | null
+  image_url: string | null
+  price: number | null
+  default_quantity: number | null
+  weapon_id: string | null
+}
+type GlobalCatalogOverrideRow = {
+  global_item_id: string
+  is_hidden: boolean | null
+  override_name: string | null
+  override_price: number | null
+  override_description: string | null
+  override_image_url: string | null
+  override_item_type: string | null
+  override_weapon_id: string | null
+}
 
 const MAX_PROOF_LENGTH = 3_000_000
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function toErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message
@@ -47,6 +69,99 @@ function getCurrentWeekRange() {
   const weekStart = toWeekStart()
   const weekEnd = toWeekEnd(weekStart)
   return { weekStart, weekEnd }
+}
+
+function toNonNegative(value: unknown) {
+  const parsed = Number(value ?? 0)
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+}
+
+async function resolveActivityCatalogItemId(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  groupId: string,
+  itemId: string,
+  expectedCategory?: 'objects' | 'equipment',
+) {
+  const raw = String(itemId || '').trim()
+  if (!raw) throw new Error('ID item vide.')
+  if (UUID_RE.test(raw)) return raw
+
+  if (raw.startsWith('global:')) {
+    const globalId = raw.slice('global:'.length).trim()
+    if (!UUID_RE.test(globalId)) throw new Error('ID item global invalide.')
+
+    const { data: existing } = await supabase
+      .from('catalog_items')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('internal_id', `global-${globalId}`)
+      .maybeSingle<{ id: string }>()
+    if (existing?.id) return existing.id
+
+    const [{ data: globalRow, error: globalErr }, { data: override }] = await Promise.all([
+      supabase
+        .from('catalog_items_global')
+        .select('id,category,item_type,name,description,image_url,price,default_quantity,weapon_id')
+        .eq('id', globalId)
+        .single<GlobalCatalogRow>(),
+      supabase
+        .from('catalog_items_group_overrides')
+        .select('global_item_id,is_hidden,override_name,override_price,override_description,override_image_url,override_item_type,override_weapon_id')
+        .eq('group_id', groupId)
+        .eq('global_item_id', globalId)
+        .maybeSingle<GlobalCatalogOverrideRow>(),
+    ])
+    if (globalErr || !globalRow) throw globalErr || new Error('Item global introuvable.')
+    if (override?.is_hidden) throw new Error('Cet item est masqué pour ce groupe.')
+
+    const category = String(globalRow.category || '').trim()
+    if (expectedCategory && category !== expectedCategory) throw new Error('Catégorie globale invalide pour cette activité.')
+    const name = String(override?.override_name || globalRow.name || '').trim()
+    if (!name) throw new Error('Nom item global invalide.')
+    const buyPrice = toNonNegative(override?.override_price ?? globalRow.price ?? 0)
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('catalog_items')
+      .insert({
+        group_id: groupId,
+        internal_id: `global-${globalId}`,
+        name,
+        category,
+        item_type: override?.override_item_type || globalRow.item_type || 'other',
+        description: override?.override_description ?? globalRow.description,
+        image_url: override?.override_image_url ?? globalRow.image_url,
+        buy_price: buyPrice,
+        sell_price: buyPrice,
+        internal_value: 0,
+        show_in_finance: true,
+        is_active: true,
+        stock: toNonNegative(globalRow.default_quantity ?? 0),
+        low_stock_threshold: 0,
+        stackable: true,
+        max_stack: 100,
+        weight: null,
+        fivem_item_id: override?.override_weapon_id ?? globalRow.weapon_id,
+        hash: null,
+        rarity: null,
+      })
+      .select('id')
+      .single<{ id: string }>()
+
+    if (insertErr) throw insertErr
+    return inserted.id
+  }
+
+  if (raw.startsWith('legacy:')) {
+    const { data: existing } = await supabase
+      .from('catalog_items')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('internal_id', raw.replace(/:/g, '-'))
+      .maybeSingle<{ id: string }>()
+    if (existing?.id) return existing.id
+  }
+
+  return raw
 }
 
 export async function GET(request: Request) {
@@ -160,7 +275,13 @@ export async function POST(request: Request) {
 
     if (percent <= 0) return NextResponse.json({ error: 'Pourcentage invalide.' }, { status: 400 })
 
-    const objectIds = [...new Set(objectLines.map((line) => String(line.object_item_id).trim()).filter(Boolean))]
+    const normalizedObjectLines = await Promise.all(
+      objectLines.map(async (line) => ({
+        ...line,
+        object_item_id: await resolveActivityCatalogItemId(supabase, session.groupId, String(line.object_item_id || '')),
+      }))
+    )
+    const objectIds = [...new Set(normalizedObjectLines.map((line) => String(line.object_item_id).trim()).filter(Boolean))]
     const { data: objectRows, error: objectErr } = await supabase
       .from('catalog_items')
       .select('id,name,category,buy_price,stock')
@@ -170,18 +291,23 @@ export async function POST(request: Request) {
 
     if (objectErr) throw objectErr
     const objectMap = new Map<string, CatalogItemRow>()
-    for (const row of (objectRows ?? []) as CatalogItemRow[]) {
-      if (row.category === 'objects') objectMap.set(row.id, row)
-    }
+    for (const row of (objectRows ?? []) as CatalogItemRow[]) objectMap.set(row.id, row)
     if (objectMap.size !== objectIds.length) return NextResponse.json({ error: 'Un ou plusieurs objets sont invalides.' }, { status: 400 })
 
     let equipmentDisplay = ''
     let equipmentTotalQty = 0
     let firstEquipmentId: string | null = null
     const equipmentStockMap = new Map<string, CatalogItemRow>()
+    let normalizedEquipmentLines: ActivityEquipmentLineInput[] = []
 
     if (activityType !== 'Boite au lettre') {
-      const equipmentIds = [...new Set(equipmentLines.map((line) => String(line.equipment_item_id).trim()).filter(Boolean))]
+      normalizedEquipmentLines = await Promise.all(
+        equipmentLines.map(async (line) => ({
+          ...line,
+          equipment_item_id: await resolveActivityCatalogItemId(supabase, session.groupId, String(line.equipment_item_id || ''), 'equipment'),
+        }))
+      )
+      const equipmentIds = [...new Set(normalizedEquipmentLines.map((line) => String(line.equipment_item_id).trim()).filter(Boolean))]
       const { data: equipmentRows, error: equipmentErr } = await supabase
         .from('catalog_items')
         .select('id,name,category,buy_price,stock')
@@ -198,7 +324,7 @@ export async function POST(request: Request) {
 
       const requiredQtyByEquipment = new Map<string, number>()
       const parts: string[] = []
-      for (const line of equipmentLines) {
+      for (const line of normalizedEquipmentLines) {
         const item = equipmentMap.get(line.equipment_item_id)
         if (!item) continue
         const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
@@ -223,7 +349,7 @@ export async function POST(request: Request) {
       equipmentDisplay = parts.join(' • ')
     }
 
-    const rowsToInsert = objectLines.map((line) => {
+    const rowsToInsert = normalizedObjectLines.map((line) => {
       const item = objectMap.get(line.object_item_id) as CatalogItemRow
       const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
       const objectPrice = Math.max(0, Number(item.buy_price) || 0)
@@ -258,7 +384,7 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
-    for (const line of objectLines) {
+    for (const line of normalizedObjectLines) {
       const objectItem = objectMap.get(line.object_item_id)
       if (!objectItem) continue
       const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
@@ -273,7 +399,7 @@ export async function POST(request: Request) {
     }
 
     if (activityType !== 'Boite au lettre') {
-      for (const line of equipmentLines) {
+      for (const line of normalizedEquipmentLines) {
         const equipmentItem = equipmentStockMap.get(line.equipment_item_id)
         if (!equipmentItem) continue
         const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))

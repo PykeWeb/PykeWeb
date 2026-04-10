@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
-import { PrimaryButton, SearchInput, SecondaryButton, TabPill } from '@/components/ui/design-system'
+import { PrimaryButton, SearchInput, SecondaryButton } from '@/components/ui/design-system'
 
 type DarkCategory = 'drogues' | 'objets' | 'armes' | 'kit_disqueuses'
 
@@ -142,12 +142,20 @@ export default function DarkChatClient() {
       </Panel>
 
       <Panel>
+        <div className="mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <button type="button" onClick={() => setFilter('all')} className={`rounded-2xl border px-3 py-2.5 text-left ${filter === 'all' ? 'border-slate-200/60 bg-gradient-to-br from-slate-500/28 to-slate-700/20' : 'border-slate-300/25 bg-gradient-to-br from-slate-500/12 to-slate-700/12'}`}>
+            <p className="text-xs text-slate-100/85">Toutes</p>
+            <p className="mt-1 text-2xl font-semibold">{cards.length}</p>
+          </button>
+          {(Object.keys(CATEGORY_LABELS) as DarkCategory[]).map((key) => (
+            <button key={key} type="button" onClick={() => setFilter(key)} className={`rounded-2xl border px-3 py-2.5 text-left ${filter === key ? 'border-cyan-200/60 bg-gradient-to-br from-cyan-500/30 to-blue-600/20' : 'border-cyan-300/25 bg-gradient-to-br from-cyan-500/12 to-blue-600/12'}`}>
+              <p className="text-xs text-cyan-100/85">{CATEGORY_LABELS[key]}</p>
+              <p className="mt-1 text-2xl font-semibold">{cards.filter((entry) => entry.category === key).length}</p>
+            </button>
+          ))}
+        </div>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <SearchInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher un nom darkchat" className="w-full max-w-sm" />
-          <div className="ml-auto flex flex-wrap gap-2">
-            <TabPill active={filter === 'all'} onClick={() => setFilter('all')}>Tous</TabPill>
-            {(Object.keys(CATEGORY_LABELS) as DarkCategory[]).map((key) => <TabPill key={key} active={filter === key} onClick={() => setFilter(key)}>{CATEGORY_LABELS[key]}</TabPill>)}
-          </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

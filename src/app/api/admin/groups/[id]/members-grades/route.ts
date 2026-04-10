@@ -14,6 +14,7 @@ type MemberRow = {
   password: string | null
   is_admin: boolean
   grade_id: string | null
+  salary: number | null
   created_at: string
   updated_at: string
 }
@@ -23,6 +24,7 @@ type RoleRow = {
   group_id: string
   name: string
   permissions: string[] | null
+  salary: number | null
   created_at: string
   updated_at: string
 }
@@ -32,6 +34,11 @@ type RoleTableName = typeof ROLE_TABLE_CANDIDATES[number]
 
 function isMissingTableError(message: string) {
   return /does not exist|relation .* does not exist|Could not find the table/i.test(message)
+}
+
+function isMissingColumnError(message: string, column: string) {
+  const lower = message.toLowerCase()
+  return lower.includes(column.toLowerCase()) && (lower.includes('does not exist') || lower.includes('could not find') || lower.includes('column'))
 }
 
 async function resolveRoleTableName(): Promise<RoleTableName> {
@@ -137,12 +144,12 @@ async function fetchPayload(groupId: string, roleTableName: RoleTableName) {
   const [{ data: roleRows, error: rolesError }, { data: memberRows, error: membersError }, playerCandidates] = await Promise.all([
     supabase
       .from(roleTableName)
-      .select('id,group_id,name,permissions,created_at,updated_at')
+      .select('*')
       .eq('group_id', groupId)
       .order('created_at', { ascending: true }),
     supabase
       .from('group_members')
-      .select('id,group_id,player_name,player_identifier,password,is_admin,grade_id,created_at,updated_at')
+      .select('*')
       .eq('group_id', groupId)
       .order('created_at', { ascending: true }),
     readPlayerCandidates(groupId),
@@ -154,12 +161,14 @@ async function fetchPayload(groupId: string, roleTableName: RoleTableName) {
   const roles: GroupMemberRole[] = ((roleRows ?? []) as RoleRow[]).map((row) => ({
     ...row,
     permissions: normalizePermissions(row.permissions),
+    salary: row.salary == null ? null : Math.max(0, Number(row.salary) || 0),
   }))
 
   const roleById = new Map(roles.map((role) => [role.id, role]))
 
   const members: GroupMember[] = ((memberRows ?? []) as MemberRow[]).map((row) => ({
     ...row,
+    salary: row.salary == null ? null : Math.max(0, Number(row.salary) || 0),
     grade: row.grade_id ? (roleById.get(row.grade_id) ?? null) : null,
   }))
 
@@ -213,13 +222,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (entity === 'grade') {
       const name = typeof body.name === 'string' ? body.name.trim() : ''
       const permissions = normalizePermissions(body.permissions)
+      const salary = body.salary == null ? null : Math.max(0, Number(body.salary) || 0)
       if (!name) return NextResponse.json({ error: 'Nom du rôle requis.' }, { status: 400 })
 
-      const { error } = await supabase.from(roleTableName).insert({
+      let { error } = await supabase.from(roleTableName).insert({
         group_id: groupId,
         name,
         permissions,
+        salary,
       })
+      if (error && isMissingColumnError(error.message, 'salary')) {
+        const retry = await supabase.from(roleTableName).insert({
+          group_id: groupId,
+          name,
+          permissions,
+        })
+        error = retry.error
+      }
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
       return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
@@ -230,6 +249,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       const password = typeof body.password === 'string' ? body.password.trim() : ''
       const isAdmin = Boolean(body.is_admin)
       const gradeId = typeof body.grade_id === 'string' ? body.grade_id.trim() : ''
+      const salary = body.salary == null ? null : Math.max(0, Number(body.salary) || 0)
 
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
       if (!playerIdentifier) return NextResponse.json({ error: 'Identifiant requis.' }, { status: 400 })
@@ -250,14 +270,26 @@ export async function POST(request: Request, { params }: { params: { id: string 
         if (!roleExists) return NextResponse.json({ error: 'Rôle introuvable pour ce groupe.' }, { status: 400 })
       }
 
-      const { error } = await supabase.from('group_members').insert({
+      let { error } = await supabase.from('group_members').insert({
         group_id: groupId,
         player_name: playerName,
         player_identifier: playerIdentifier || null,
         password: password || null,
         is_admin: isAdmin,
         grade_id: gradeId || null,
+        salary,
       })
+      if (error && isMissingColumnError(error.message, 'salary')) {
+        const retry = await supabase.from('group_members').insert({
+          group_id: groupId,
+          player_name: playerName,
+          player_identifier: playerIdentifier || null,
+          password: password || null,
+          is_admin: isAdmin,
+          grade_id: gradeId || null,
+        })
+        error = retry.error
+      }
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
       return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
@@ -285,13 +317,22 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       const patch = body.patch as Record<string, unknown> | undefined
       const name = typeof patch?.name === 'string' ? patch.name.trim() : ''
       const permissions = normalizePermissions(patch?.permissions)
+      const salary = patch?.salary == null ? null : Math.max(0, Number(patch?.salary) || 0)
       if (!name) return NextResponse.json({ error: 'Nom du rôle requis.' }, { status: 400 })
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from(roleTableName)
-        .update({ name, permissions })
+        .update({ name, permissions, salary })
         .eq('id', id)
         .eq('group_id', groupId)
+      if (error && isMissingColumnError(error.message, 'salary')) {
+        const retry = await supabase
+          .from(roleTableName)
+          .update({ name, permissions })
+          .eq('id', id)
+          .eq('group_id', groupId)
+        error = retry.error
+      }
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
       return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }
@@ -303,6 +344,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       const password = typeof patch?.password === 'string' ? patch.password.trim() : ''
       const isAdmin = Boolean(patch?.is_admin)
       const gradeId = typeof patch?.grade_id === 'string' ? patch.grade_id.trim() : ''
+      const salary = patch?.salary == null ? null : Math.max(0, Number(patch?.salary) || 0)
       if (!playerName) return NextResponse.json({ error: 'Nom du membre requis.' }, { status: 400 })
       if (!playerIdentifier) return NextResponse.json({ error: 'Identifiant requis.' }, { status: 400 })
       if (!password) return NextResponse.json({ error: 'Mot de passe requis.' }, { status: 400 })
@@ -322,7 +364,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         if (!roleExists) return NextResponse.json({ error: 'Rôle introuvable pour ce groupe.' }, { status: 400 })
       }
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('group_members')
         .update({
           player_name: playerName,
@@ -330,9 +372,24 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           password: password || null,
           is_admin: isAdmin,
           grade_id: gradeId || null,
+          salary,
         })
         .eq('id', id)
         .eq('group_id', groupId)
+      if (error && isMissingColumnError(error.message, 'salary')) {
+        const retry = await supabase
+          .from('group_members')
+          .update({
+            player_name: playerName,
+            player_identifier: playerIdentifier || null,
+            password: password || null,
+            is_admin: isAdmin,
+            grade_id: gradeId || null,
+          })
+          .eq('id', id)
+          .eq('group_id', groupId)
+        error = retry.error
+      }
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
       return NextResponse.json(await fetchPayload(groupId, roleTableName))
     }

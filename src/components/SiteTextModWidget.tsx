@@ -18,6 +18,7 @@ type EditableAlign = 'left' | 'center' | 'right'
 type VisualStyle = {
   fontSize: number
   color: string
+  fontWeight: number
   align: EditableAlign
   marginTop: number
   padding: number
@@ -49,6 +50,7 @@ type VisualState = {
 const defaultStyle: VisualStyle = {
   fontSize: 16,
   color: '#ffffff',
+  fontWeight: 400,
   align: 'left',
   marginTop: 0,
   padding: 0,
@@ -78,6 +80,7 @@ function deriveStyleFromElement(element: HTMLElement): VisualStyle {
   return normalizeStyle({
     fontSize: parsePx(computed.fontSize, defaultStyle.fontSize),
     color: toHexColor(computed.color, defaultStyle.color),
+    fontWeight: parsePx(computed.fontWeight, defaultStyle.fontWeight),
     align,
     marginTop: parsePx(computed.marginTop, defaultStyle.marginTop),
     padding: parsePx(computed.paddingTop, defaultStyle.padding),
@@ -90,6 +93,7 @@ function shouldSkipApplyingStoredStyle(style: VisualStyle, element: HTMLElement)
   const isDefaultStored =
     style.fontSize === defaultStyle.fontSize
     && style.color.toLowerCase() === defaultStyle.color
+    && style.fontWeight === defaultStyle.fontWeight
     && style.align === defaultStyle.align
     && style.marginTop === defaultStyle.marginTop
     && style.padding === defaultStyle.padding
@@ -109,6 +113,7 @@ function normalizeStyle(input?: Partial<VisualStyle> | null): VisualStyle {
   return {
     fontSize: clampNumber(Number(input?.fontSize), 10, 72, defaultStyle.fontSize),
     color: typeof input?.color === 'string' && input.color.trim() ? input.color : defaultStyle.color,
+    fontWeight: clampNumber(Number(input?.fontWeight), 300, 900, defaultStyle.fontWeight),
     align: input?.align === 'center' || input?.align === 'right' ? input.align : 'left',
     marginTop: clampNumber(Number(input?.marginTop), -200, 200, defaultStyle.marginTop),
     padding: clampNumber(Number(input?.padding), 0, 120, defaultStyle.padding),
@@ -290,6 +295,7 @@ function findElementByDomPath(path: string): HTMLElement | null {
 function applyVisualStyle(target: HTMLElement, style: VisualStyle) {
   target.style.fontSize = `${style.fontSize}px`
   target.style.color = style.color
+  target.style.fontWeight = String(style.fontWeight)
   target.style.textAlign = style.align
   target.style.marginTop = `${style.marginTop}px`
   target.style.padding = `${style.padding}px`

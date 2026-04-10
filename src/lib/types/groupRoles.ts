@@ -22,6 +22,7 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Achat / Vente', prefix: '/finance/achat-vente' },
   { label: 'Items', prefix: '/items' },
   { label: 'Argent', prefix: '/cash' },
+  { label: 'Paye', prefix: '/cash/paye' },
   { label: 'Annuaire', prefix: '/annuaire' },
   { label: 'Drogues (Accueil)', prefix: '/drogues' },
   { label: 'Drogues - Session', prefix: '/drogues/partenaires' },
@@ -29,6 +30,7 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Drogues - Bénéfice', prefix: '/drogues/benefice' },
   { label: 'Drogues - Vente', prefix: '/drogues/vente' },
   { label: 'Activités', prefix: GROUP_OPERATIONS_PREFIX },
+  { label: 'Coffre tablette', prefix: '/tablette/coffre' },
   { label: 'Licence', prefix: '/tablette/paiement' },
   { label: 'Gestion chef', prefix: '/activites/gestion-chef' },
 ] as const

@@ -1,4 +1,8 @@
 export type DemandMode =
+  | 'coke_leaf_to_brick'
+  | 'coke_brick_to_pouch'
+  | 'coke_leaf_to_pouch'
+  | 'meth_table_transform'
   | 'seed_only'
   | 'leaf_to_brick'
   | 'brick_to_pouch'
@@ -29,13 +33,22 @@ export function computeDemandMetrics(input: DemandInputs) {
 
   const taxRate = 0.05
   const pouchesPerBrick = 10
-  const methPouchesPerTable = 32
+  const normalizedMode = input.isMeth
+    ? 'meth_table_transform'
+    : input.mode === 'leaf_to_brick'
+      ? 'coke_leaf_to_brick'
+      : input.mode === 'brick_to_pouch'
+        ? 'coke_brick_to_pouch'
+        : input.mode === 'two_steps_transforms' || input.mode === 'full_chain' || input.mode === 'two_steps_seed_to_brick'
+          ? 'coke_leaf_to_pouch'
+          : 'coke_leaf_to_pouch'
 
-  if (input.isMeth) {
-    const expectedOutput = seedQty * methPouchesPerTable
+  if (normalizedMode === 'meth_table_transform') {
+    const methBrutQty = leafQty
+    const expectedOutput = brickQty > 0 ? brickQty : methBrutQty * 2
     const seedCostTotal = seedQty * seedPrice
     const totalSaleEstimate = expectedOutput * pouchSalePrice
-    const transformCostTotal = 0
+    const transformCostTotal = pouchTransformCost
     const totalCost = seedCostTotal + transformCostTotal
     const estimatedProfit = totalSaleEstimate - totalCost
     return {
@@ -44,7 +57,7 @@ export function computeDemandMetrics(input: DemandInputs) {
       seedQty,
       leafQty,
       brickQty,
-      netBricks: 0,
+      netBricks: methBrutQty,
       pouches: expectedOutput,
       expectedOutput,
       seedCostTotal,
@@ -55,32 +68,17 @@ export function computeDemandMetrics(input: DemandInputs) {
     }
   }
 
-  const leavesBase =
-    input.mode === 'full_chain' || input.mode === 'two_steps_seed_to_brick'
-      ? seedQty
-      : input.mode === 'leaf_to_brick' || input.mode === 'two_steps_transforms'
-        ? leafQty
-        : 0
-  const netBricks = input.mode === 'brick_to_pouch' ? brickQty : Math.max(0, Math.floor(leavesBase * (1 - taxRate)))
-  const pouches = Math.max(0, netBricks * pouchesPerBrick)
-
-  const expectedOutput = input.mode === 'seed_only'
-    ? seedQty
-    : input.mode === 'leaf_to_brick' || input.mode === 'two_steps_seed_to_brick'
-      ? netBricks
-      : pouches
-
-  const seedCostTotal = (input.mode === 'seed_only' || input.mode === 'full_chain' || input.mode === 'two_steps_seed_to_brick')
-    ? seedQty * seedPrice
-    : 0
+  const leavesBase = normalizedMode === 'coke_brick_to_pouch' ? 0 : leafQty
+  const netBricks = normalizedMode === 'coke_brick_to_pouch' ? brickQty : Math.max(0, Math.floor(leavesBase * (1 - taxRate)))
+  const pouches = normalizedMode === 'coke_leaf_to_brick' ? netBricks * pouchesPerBrick : Math.max(0, netBricks * pouchesPerBrick)
+  const expectedOutput = normalizedMode === 'coke_leaf_to_brick' ? netBricks : pouches
+  const seedCostTotal = seedQty * seedPrice
   const totalSaleEstimate = pouches * pouchSalePrice
-  const transformCostTotal = input.mode === 'seed_only'
-    ? 0
-    : input.mode === 'leaf_to_brick' || input.mode === 'two_steps_seed_to_brick'
-      ? (leavesBase * brickTransformCost)
-      : input.mode === 'brick_to_pouch'
-        ? (brickQty * pouchTransformCost)
-        : (leavesBase * (brickTransformCost + pouchTransformCost))
+  const transformCostTotal = normalizedMode === 'coke_leaf_to_brick'
+    ? leavesBase * brickTransformCost
+    : normalizedMode === 'coke_brick_to_pouch'
+      ? brickQty * pouchTransformCost
+      : leavesBase * (brickTransformCost + pouchTransformCost)
   const totalCost = seedCostTotal + transformCostTotal
   const estimatedProfit = totalSaleEstimate - totalCost
 

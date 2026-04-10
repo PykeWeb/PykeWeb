@@ -22,6 +22,17 @@ type GroupedMember = {
   entries: ActivityEntry[]
 }
 
+type MemberActivitySummary = {
+  activityType: string
+  runCount: number
+  totalSalary: number
+  totalObjects: number
+  objectLines: Array<{ name: string; qty: number }>
+  equipmentLines: Array<{ name: string; qty: number }>
+  latestProof: string
+  latestAt: string
+}
+
 function groupEntriesByMember(entries: ActivityEntry[]): GroupedMember[] {
   const map = new Map<string, GroupedMember>()
   for (const entry of entries) {
@@ -33,6 +44,46 @@ function groupEntriesByMember(entries: ActivityEntry[]): GroupedMember[] {
     map.set(memberName, current)
   }
   return [...map.values()].sort((a, b) => b.totalSalary - a.totalSalary)
+}
+
+function summarizeMemberActivities(entries: ActivityEntry[]): MemberActivitySummary[] {
+  const summaryMap = new Map<string, MemberActivitySummary>()
+  for (const entry of entries) {
+    const key = String(entry.activity_type || 'Inconnue').trim() || 'Inconnue'
+    const current = summaryMap.get(key) ?? {
+      activityType: key,
+      runCount: 0,
+      totalSalary: 0,
+      totalObjects: 0,
+      objectLines: [],
+      equipmentLines: [],
+      latestProof: entry.proof_image_data,
+      latestAt: entry.created_at,
+    }
+    current.runCount += 1
+    current.totalSalary += Math.max(0, Number(entry.salary_amount) || 0)
+    current.totalObjects += Math.max(0, Number(entry.quantity) || 0)
+    current.latestProof = new Date(entry.created_at) > new Date(current.latestAt) ? entry.proof_image_data : current.latestProof
+    current.latestAt = new Date(entry.created_at) > new Date(current.latestAt) ? entry.created_at : current.latestAt
+
+    const objName = String(entry.object_name || '').trim()
+    if (objName) {
+      const existing = current.objectLines.find((line) => line.name === objName)
+      if (existing) existing.qty += Math.max(0, Number(entry.quantity) || 0)
+      else current.objectLines.push({ name: objName, qty: Math.max(0, Number(entry.quantity) || 0) })
+    }
+
+    const equipParts = String(entry.equipment_name || '').split(',').map((part) => part.trim()).filter(Boolean)
+    for (const rawEquip of equipParts) {
+      const [name, qtyPart] = rawEquip.split(' x')
+      const qty = Math.max(1, Number(qtyPart || 1) || 1)
+      const existing = current.equipmentLines.find((line) => line.name === name.trim())
+      if (existing) existing.qty += qty
+      else current.equipmentLines.push({ name: name.trim(), qty })
+    }
+    summaryMap.set(key, current)
+  }
+  return [...summaryMap.values()].sort((a, b) => b.latestAt.localeCompare(a.latestAt))
 }
 
 export default function ActivitesGestionChefPage() {
@@ -98,7 +149,6 @@ export default function ActivitesGestionChefPage() {
   }
 
   const groupedForChef = useMemo(() => groupEntriesByMember(data?.entries ?? []), [data?.entries])
-  const catalogItemMap = useMemo(() => new Map(catalogItems.map((item) => [item.id, item])), [catalogItems])
   const activitiesBubbleStats = useMemo(() => {
     const entries = data?.entries ?? []
     const todayIso = new Date().toISOString().slice(0, 10)
@@ -163,27 +213,40 @@ export default function ActivitesGestionChefPage() {
 
                 {isOpen ? (
                   <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                    {member.entries.map((entry) => {
-                      const objectCatalog = catalogItemMap.get(entry.object_item_id)
+                    {summarizeMemberActivities(member.entries).map((activitySummary) => {
                       return (
-                        <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                        <div key={`${member.memberName}-${activitySummary.activityType}`} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
                           <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-2">
-                            <p className="mb-2 text-xs text-white/60">Preuve</p>
-                            <Image src={entry.proof_image_data} alt={`Preuve ${entry.member_name}`} width={420} height={240} unoptimized className="h-44 w-full rounded-lg object-cover" />
+                            <p className="mb-2 text-xs text-white/60">Dernière preuve ({new Date(activitySummary.latestAt).toLocaleString('fr-FR')})</p>
+                            <Image src={activitySummary.latestProof} alt={`Preuve ${member.memberName}`} width={420} height={240} unoptimized className="h-44 w-full rounded-lg object-cover" />
                           </div>
                           <div className="space-y-2 text-sm">
-                            <p><span className="text-white/65">Date:</span> {new Date(entry.created_at).toLocaleString('fr-FR')}</p>
-                            <p><span className="text-white/65">Activité:</span> {entry.activity_type}</p>
-                            <div className="flex items-center gap-2">
-                              {objectCatalog?.image_url ? (
-                                <Image src={objectCatalog.image_url} alt={entry.object_name} width={36} height={36} className="h-9 w-9 rounded object-cover" unoptimized />
-                              ) : (
-                                <div className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.05] text-[10px] text-white/55">IMG</div>
-                              )}
-                              <p><span className="text-white/65">Objet:</span> {entry.object_name} x{entry.quantity}</p>
+                            <p><span className="text-white/65">Activité:</span> {activitySummary.activityType} ({activitySummary.runCount} run{activitySummary.runCount > 1 ? 's' : ''})</p>
+                            <p><span className="text-white/65">Objets récupérés:</span> {activitySummary.totalObjects}</p>
+                            <div>
+                              <p className="text-white/65">Objets utilisés:</p>
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {activitySummary.objectLines.map((line) => {
+                                  const objectCatalog = catalogItems.find((item) => item.name.trim().toLowerCase() === line.name.trim().toLowerCase())
+                                  return (
+                                    <span key={`${activitySummary.activityType}-obj-${line.name}`} className="inline-flex items-center gap-1 rounded-full border border-cyan-300/35 bg-cyan-500/10 px-2 py-1 text-xs">
+                                      {objectCatalog?.image_url ? <Image src={objectCatalog.image_url} alt={line.name} width={16} height={16} className="h-4 w-4 rounded object-cover" unoptimized /> : null}
+                                      {line.name} x{line.qty}
+                                    </span>
+                                  )
+                                })}
+                              </div>
                             </div>
-                            <p><span className="text-white/65">Équipements:</span> {entry.equipment_name || '—'}</p>
-                            <p><span className="text-white/65">Salaire:</span> {Math.max(0, Number(entry.salary_amount) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
+                            <div>
+                              <p className="text-white/65">Équipements utilisés:</p>
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {activitySummary.equipmentLines.length === 0 ? <span className="text-xs text-white/55">—</span> : null}
+                                {activitySummary.equipmentLines.map((line) => (
+                                  <span key={`${activitySummary.activityType}-eq-${line.name}`} className="inline-flex rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-1 text-xs">{line.name} x{line.qty}</span>
+                                ))}
+                              </div>
+                            </div>
+                            <p><span className="text-white/65">Salaire cumulé:</span> {Math.max(0, Number(activitySummary.totalSalary) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</p>
                           </div>
                         </div>
                       )

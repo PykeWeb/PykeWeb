@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ClipboardEvent } from 'react'
 import { useParams } from 'next/navigation'
 import { Copy, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { deleteTenantGroup, getTenantGroup, resetTenantGroupData, updateTenantGroup, type TenantGroup } from '@/lib/tenantAuthApi'
@@ -37,6 +37,7 @@ export default function AdminGroupDetailsPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [groupPasswordVisible, setGroupPasswordVisible] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!groupId) return
@@ -74,6 +75,79 @@ export default function AdminGroupDetailsPage() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function uploadGroupLogo(file: File | null) {
+    if (!group || !file) return
+    try {
+      setUploadingLogo(true)
+      const preparedFile = await prepareLogoFile(file)
+      const formData = new FormData()
+      formData.set('file', preparedFile)
+      const uploadRes = await fetch('/api/admin/groups/upload-image', {
+        method: 'POST',
+        body: formData,
+      })
+      const raw = await uploadRes.text()
+      let uploadJson: { publicUrl?: string; error?: string } = {}
+      try {
+        uploadJson = JSON.parse(raw) as { publicUrl?: string; error?: string }
+      } catch {
+        uploadJson = { error: raw || 'Upload logo impossible.' }
+      }
+      if (!uploadRes.ok || !uploadJson.publicUrl) throw new Error(uploadJson.error || 'Upload logo impossible.')
+      await savePatch({ image_url: uploadJson.publicUrl } as Partial<TenantGroup>)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Upload logo impossible.')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  async function prepareLogoFile(file: File) {
+    const maxBytes = 2_000_000
+    if (file.size <= maxBytes) return file
+
+    const objectUrl = URL.createObjectURL(file)
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(img)
+        img.onerror = () => reject(new Error('Image invalide.'))
+        img.src = objectUrl
+      })
+
+      const maxSide = 1200
+      const ratio = Math.min(1, maxSide / Math.max(image.width, image.height))
+      const width = Math.max(1, Math.round(image.width * ratio))
+      const height = Math.max(1, Math.round(image.height * ratio))
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Canvas non disponible pour compresser l’image.')
+      ctx.drawImage(image, 0, 0, width, height)
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (!result) reject(new Error('Compression impossible.'))
+          else resolve(result)
+        }, 'image/webp', 0.82)
+      })
+      if (blob.size > maxBytes) throw new Error('Image trop lourde même après compression. Vise moins de 2 Mo.')
+      return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'group-logo'}.webp`, { type: 'image/webp' })
+    } finally {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }
+
+  async function onPasteLogo(event: ClipboardEvent<HTMLDivElement>) {
+    const imageItem = [...event.clipboardData.items].find((item) => item.type.startsWith('image/'))
+    if (!imageItem) return
+    const file = imageItem.getAsFile()
+    if (!file) return
+    event.preventDefault()
+    await uploadGroupLogo(file)
   }
 
   async function addDays() {
@@ -136,6 +210,31 @@ export default function AdminGroupDetailsPage() {
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <label className="text-sm md:col-span-3">
+            <span className="mb-1 block text-white/70">Logo du groupe</span>
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.04] p-3" onPaste={(event) => void onPasteLogo(event)} tabIndex={0}>
+              <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-white/15 bg-white/[0.06]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={group.image_url || '/logo.png'} alt={`Logo ${group.name}`} className="h-full w-full object-cover" />
+              </div>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(e) => void uploadGroupLogo(e.target.files?.[0] || null)}
+                disabled={busy || uploadingLogo}
+                className="text-sm text-white/90 file:mr-3 file:rounded-xl file:border file:border-white/20 file:bg-white/[0.08] file:px-3 file:py-2 file:text-xs file:text-white"
+              />
+              <button
+                type="button"
+                disabled={busy || uploadingLogo}
+                onClick={() => void savePatch({ image_url: null } as Partial<TenantGroup>)}
+                className="h-9 rounded-xl border border-white/12 bg-white/[0.06] px-3 text-xs hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {uploadingLogo ? 'Upload…' : 'Retirer logo'}
+              </button>
+              <p className="text-xs text-white/60">Tu peux aussi coller une image avec Ctrl+V.</p>
+            </div>
+          </label>
           <label className="text-sm">
             <span className="mb-1 block text-white/70">Nom</span>
             <input defaultValue={group.name} onBlur={(e) => void savePatch({ name: e.target.value.trim() || group.name })} className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3" />

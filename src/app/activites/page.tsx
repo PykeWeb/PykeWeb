@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { Button } from '@/components/ui/Button'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { Input } from '@/components/ui/Input'
+import { MemberSelect } from '@/components/ui/MemberSelect'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { createActivity, listActivities, type ActivityListResponse } from '@/lib/activitiesApi'
 import {
@@ -32,7 +33,10 @@ const ACTIVITY_EQUIPMENT_RULES: Partial<Record<ActivityType, string[]>> = {
 }
 
 const ACTIVITY_SPECIAL_OBJECT_NAMES = new Set([
+  "bouteille d'eau",
   "bouteilles d'eau",
+  'bouteille deau',
+  'bouteilles deau',
   'argent',
   'telephone de hack',
   'téléphone de hack',
@@ -318,14 +322,7 @@ export default function ActivitesPage() {
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Membre</span>
-            <select
-              value={memberName}
-              onChange={(event) => setMemberName(event.target.value)}
-              className="h-10 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm text-white outline-none transition focus:border-white/30 focus:bg-white/[0.1]"
-            >
-              <option value="">Choisir un joueur</option>
-              {memberSelectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
+            <MemberSelect value={memberName} onChange={setMemberName} options={memberSelectOptions} />
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-white/70">Activité</span>
