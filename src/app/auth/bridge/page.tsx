@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getTenantSession, syncTenantSessionToServer } from '@/lib/tenantSession'
 import { normalizeAppPath } from '@/lib/appRoutes'
+import { canAccessPath, getDefaultRouteForSession } from '@/lib/accessControl'
 
 export default function AuthBridgePage() {
   const params = useSearchParams()
@@ -17,9 +18,13 @@ export default function AuthBridgePage() {
       return
     }
 
+    const dashboardTarget = canAccessPath(session, '/') ? '/' : getDefaultRouteForSession(session)
+    const preferredTarget = normalizeAppPath(nextPath)
+    const finalTarget = canAccessPath(session, preferredTarget) ? preferredTarget : dashboardTarget
+
     void syncTenantSessionToServer(session)
       .then(() => {
-        window.location.replace(nextPath)
+        window.location.replace(finalTarget)
       })
       .catch(() => {
         setError('Impossible de finaliser la session. Réessayez.')

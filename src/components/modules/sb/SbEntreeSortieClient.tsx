@@ -9,6 +9,7 @@ import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createCatalogItem, createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
+import { markStockInNote, markStockOutNote } from '@/lib/financeStockFlow'
 import { getTypeFilterOptions, matchesTypeFilter, normalizeCatalogCategory, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { getTenantSession } from '@/lib/tenantSession'
@@ -317,7 +318,13 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
     try {
       for (const entry of selectedItems) {
         const manualLabel = entry.isManual ? (entry.manualLabel?.trim() || 'Autres / item non listé') : ''
-        const notes = [member.trim() ? `Membre: ${member.trim()}` : null, entry.isManual ? `Item non listé: ${manualLabel}` : null].filter(Boolean).join(' • ') || undefined
+        const baseNotes = [member.trim() ? `Membre: ${member.trim()}` : null, entry.isManual ? `Item non listé: ${manualLabel}` : null].filter(Boolean).join(' • ') || ''
+        const notes = variant === 'stockFlow'
+          ? (entry.mode === 'entree' ? markStockInNote(baseNotes) : markStockOutNote(baseNotes))
+          : (baseNotes || undefined)
+        const paymentMode = variant === 'stockFlow'
+          ? (entry.mode === 'entree' ? 'stock_in' : 'stock_out')
+          : 'other'
         const resolvedItemId = entry.isManual ? await ensureManualCatalogItemId(manualLabel) : entry.id
         await createFinanceTransaction({
           item_id: resolvedItemId,
@@ -326,7 +333,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           unit_price: variant === 'trade' ? entry.price : 0,
           counterparty: counterparty.trim() || (entry.isManual ? manualLabel : undefined),
           notes,
-          payment_mode: 'other',
+          payment_mode: paymentMode,
         })
       }
 
