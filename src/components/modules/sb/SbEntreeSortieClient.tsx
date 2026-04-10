@@ -322,9 +322,6 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
         const notes = variant === 'stockFlow'
           ? (entry.mode === 'entree' ? markStockInNote(baseNotes) : markStockOutNote(baseNotes))
           : (baseNotes || undefined)
-        const paymentMode = variant === 'stockFlow'
-          ? (entry.mode === 'entree' ? 'stock_in' : 'stock_out')
-          : 'other'
         const resolvedItemId = entry.isManual ? await ensureManualCatalogItemId(manualLabel) : entry.id
         await createFinanceTransaction({
           item_id: resolvedItemId,
@@ -333,7 +330,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           unit_price: variant === 'trade' ? entry.price : 0,
           counterparty: counterparty.trim() || (entry.isManual ? manualLabel : undefined),
           notes,
-          payment_mode: paymentMode,
+          payment_mode: 'other',
         })
       }
 

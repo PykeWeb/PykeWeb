@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Ban, CheckCircle2, Clock3, Coins, FlaskConical, NotebookPen, PackageCheck, Trash2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock3, Coins, FlaskConical, NotebookPen, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -107,32 +107,7 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
     router.replace('/drogues/suivi-production')
   }
 
-  async function recordReceived() {
-    if (!row) return
-    try {
-      const receivedOutput = Math.max(0, Number(receivedDraft || 0))
-      const receivedMoney = Math.max(0, Number(receivedMoneyDraft || 0))
-      const meta = parseTransfoMeta(row.note)
-      const updated = await updateDrugProductionTracking(row.id, {
-        receivedOutput,
-        status: row.status === 'cancelled' ? 'cancelled' : 'in_progress',
-        note: `[transfo:v2]${JSON.stringify({
-          mode: meta?.mode || inferDemandMode(row.note),
-          sentQty: meta?.sentQty ?? row.quantity_sent,
-          tableQty: meta?.tableQty,
-          imageUrl: meta?.imageUrl || null,
-          note: getUserNote(row.note),
-          receivedMoney,
-        })}`,
-      })
-      setRow(updated)
-      toast.success('Réception enregistrée.')
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Enregistrement impossible.')
-    }
-  }
-
-  async function quickStatus(action: 'completed' | 'in_progress' | 'cancelled') {
+  async function quickStatus(action: 'completed' | 'in_progress') {
     if (!row) return
     try {
       if (action === 'completed' && Math.max(0, Number(receivedDraft || row.received_output || 0)) <= 0) {
@@ -174,10 +149,8 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/65">Actions rapides</p>
               <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void recordReceived()} className="inline-flex h-10 min-w-[148px] items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-100"><PackageCheck className="h-4 w-4" />Enregistrer reçu</button>
-              <button type="button" onClick={() => void quickStatus('completed')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100"><CheckCircle2 className="h-4 w-4" />Valider</button>
-              <button type="button" onClick={() => void quickStatus('in_progress')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-sky-300/35 bg-sky-500/15 px-4 text-sm font-semibold text-sky-100"><Clock3 className="h-4 w-4" />En attente</button>
-              <button type="button" onClick={() => void quickStatus('cancelled')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-rose-300/35 bg-rose-500/15 px-4 text-sm font-semibold text-rose-100"><Ban className="h-4 w-4" />Annuler</button>
+              <button type="button" onClick={() => void quickStatus('completed')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-100"><CheckCircle2 className="h-4 w-4" />Valider</button>
+              <button type="button" onClick={() => void quickStatus('in_progress')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-4 text-sm font-semibold text-amber-100"><Clock3 className="h-4 w-4" />En attente</button>
               <button type="button" onClick={() => void onDelete()} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-red-300/35 bg-red-500/15 px-4 text-sm font-semibold text-red-100"><Trash2 className="h-4 w-4" />Supprimer</button>
             </div>
             </div>

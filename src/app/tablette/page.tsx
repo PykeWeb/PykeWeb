@@ -348,11 +348,10 @@ export default function TablettePage() {
                 ) : runs.length === 0 ? (
                   <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
                 ) : (
-                  runs.map((row, index) => {
-                    const deductedUntilRow = runs
-                      .slice(index)
-                      .reduce((sum, entry) => sum + Math.max(0, Number(entry.total_cost || 0)), 0)
-                    const remainingAfter = Math.max(0, Number(budget?.budget_initial || 0) - deductedUntilRow)
+                  runs.map((row) => {
+                    const remainingAfter = row.day_key === today && row.remaining_after != null
+                      ? Math.max(0, Number(row.remaining_after || 0))
+                      : null
                     return (
                     <tr key={row.id}>
                       <td className="px-3 py-2 text-white/70">{formatDateTime(row.created_at)}</td>
@@ -360,7 +359,7 @@ export default function TablettePage() {
                       <td className="px-3 py-2">{row.total_items}</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
-                      <td className="px-3 py-2">{remainingAfter.toFixed(2)} $</td>
+                      <td className="px-3 py-2">{remainingAfter == null ? '—' : `${remainingAfter.toFixed(2)} $`}</td>
                     </tr>
                   )})
                 )}

@@ -450,11 +450,29 @@ export async function GET(request: Request) {
         await saveTodayBudget(session.groupId, budget)
       }
     }
+    const remainingByRunId = new Map<string, number>()
+    if (budget) {
+      const todayRunsAsc = runs
+        .filter((run) => run.day_key === today && isRunVisibleForCurrentWindow(run, budget))
+        .slice()
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      let rollingRemaining = Math.max(0, Number(budget.budget_initial || 0))
+      for (const run of todayRunsAsc) {
+        rollingRemaining = Math.max(0, Number((rollingRemaining - Math.max(0, Number(run.total_cost || 0))).toFixed(2)))
+        remainingByRunId.set(run.id, rollingRemaining)
+      }
+    }
+
+    const runsWithRemaining = runs.map((run) => ({
+      ...run,
+      remaining_after: remainingByRunId.has(run.id) ? remainingByRunId.get(run.id) : null,
+    }))
+
     return NextResponse.json({
       today,
       items: await getGlobalTabletOptions(),
-      runs,
-      stats: buildGroupStats(runs, budget),
+      runs: runsWithRemaining,
+      stats: buildGroupStats(runsWithRemaining, budget),
       budget: toPublicBudget(today, budget),
     })
   } catch (error: unknown) {
