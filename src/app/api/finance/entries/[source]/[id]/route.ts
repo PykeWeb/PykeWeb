@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import type { FinanceEntryDetail, FinanceEntryDetailLine, FinanceEntryDetailResponse, FinanceEntrySource } from '@/lib/types/financeDetail'
 import { requireGroupSession } from '@/server/auth/requireSession'
-import { isStockInNote, stripStockFlowMarker } from '@/lib/financeStockFlow'
+import { isStockInNote, isStockOutNote, stripStockFlowMarker } from '@/lib/financeStockFlow'
 
 type RouteParams = { params: { source: string; id: string } }
 
@@ -17,6 +17,14 @@ type FinanceTransactionRow = {
   notes: string | null
   created_at: string
   catalog_items: { name: string | null; image_url: string | null } | { name: string | null; image_url: string | null }[] | null
+}
+
+function isLegacyStockFlowRow(row: Pick<FinanceTransactionRow, 'payment_mode' | 'unit_price' | 'notes'>) {
+  if (row.payment_mode !== 'other') return false
+  const unitPrice = Number(row.unit_price ?? 0)
+  if (unitPrice !== 0) return false
+  const notes = String(row.notes || '').toLowerCase()
+  return notes.includes('membre:') || notes.includes('item non listé:')
 }
 
 type TransactionItemRow = {
@@ -264,7 +272,9 @@ export async function GET(request: Request, { params }: RouteParams) {
         id,
         source: 'finance_transactions',
         display_name: isMulti ? 'Transaction multiple' : lines[0].name,
-        movement_kind: first.mode === 'sell' ? (first.payment_mode === 'stock_out' ? 'stock_out' : 'sale') : ((first.payment_mode === 'stock_in' || isStockInNote(first.notes)) ? 'stock_in' : 'purchase'),
+        movement_kind: first.mode === 'sell'
+          ? ((first.payment_mode === 'stock_out' || isStockOutNote(first.notes) || isLegacyStockFlowRow(first)) ? 'stock_out' : 'sale')
+          : ((first.payment_mode === 'stock_in' || isStockInNote(first.notes) || isLegacyStockFlowRow(first)) ? 'stock_in' : 'purchase'),
         created_at: first.created_at,
         counterparty: first.counterparty,
         notes: stripStockFlowMarker(first.notes),

@@ -50,7 +50,7 @@ export type CatalogItem = {
   updated_at: string
 }
 
-export type FinancePaymentMode = 'cash' | 'bank' | 'item' | 'other'
+export type FinancePaymentMode = 'cash' | 'bank' | 'item' | 'other' | 'stock_in' | 'stock_out'
 
 export type FinanceTransaction = {
   id: string

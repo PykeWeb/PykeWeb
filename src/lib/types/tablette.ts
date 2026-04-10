@@ -25,7 +25,7 @@ export type TabletDailyRun = {
   total_items: number
   total_cost: number
   payout_amount?: number
-  remaining_after?: number
+  remaining_after?: number | null
   items_json?: TabletRunItemLine[]
   created_at: string
 }

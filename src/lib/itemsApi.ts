@@ -1394,33 +1394,77 @@ export async function createFinanceTransaction(args: {
     if (nextCash < 0) throw new Error('Argent insuffisant pour cet achat.')
   }
 
-  const { error: stockErr } = await supabase.from('catalog_items').update({ stock: nextStock }).eq('group_id', currentGroupId()).eq('id', resolvedItemId)
-  if (stockErr) throw stockErr
-
-  if (shouldMoveCash) {
-    const currentCash = toNonNegative(cashItem?.stock)
-    const nextCash = args.mode === 'sell' ? currentCash + totalAmount : currentCash - totalAmount
-    const { error: cashErr } = await supabase.from('catalog_items').update({ stock: nextCash }).eq('group_id', currentGroupId()).eq('id', cashItem?.id as string)
-    if (cashErr) throw cashErr
+  const toErrorMessage = (error: unknown) => {
+    if (!error) return ''
+    if (typeof error === 'string') return error
+    if (typeof error === 'object' && 'message' in error) return String((error as { message?: unknown }).message || '')
+    return ''
+  }
+  const isPaymentModeEnumError = (error: unknown) => {
+    const message = toErrorMessage(error).toLowerCase()
+    if (message.includes('payment_mode')) return true
+    if (message.includes('financepaymentmode')) return true
+    if (message.includes('invalid input value for enum')) return true
+    return false
+  }
+  async function insertFinanceRow(paymentMode: FinancePaymentMode) {
+    const { data, error } = await supabase
+      .from('finance_transactions')
+      .insert({
+        group_id: currentGroupId(),
+        item_id: resolvedItemId,
+        mode: args.mode,
+        quantity: qty,
+        unit_price: unit,
+        total: totalAmount,
+        counterparty: args.counterparty || null,
+        notes: args.notes || null,
+        payment_mode: paymentMode,
+      })
+      .select('*')
+      .single<FinanceTransaction>()
+    if (error) throw error
+    return data
   }
 
-  const { data, error } = await supabase
-    .from('finance_transactions')
-    .insert({
-      group_id: currentGroupId(),
-      item_id: resolvedItemId,
-      mode: args.mode,
-      quantity: qty,
-      unit_price: unit,
-      total: totalAmount,
-      counterparty: args.counterparty || null,
-      notes: args.notes || null,
-      payment_mode: args.payment_mode || 'cash',
-    })
-    .select('*')
-    .single<FinanceTransaction>()
+  const requestedPaymentMode = (args.payment_mode || 'cash') as FinancePaymentMode
+  const fallbackModes: FinancePaymentMode[] = []
+  for (const candidate of [requestedPaymentMode, requestedPaymentMode === 'stock_in' || requestedPaymentMode === 'stock_out' ? 'other' : null, 'cash'] as Array<FinancePaymentMode | null>) {
+    if (!candidate) continue
+    if (!fallbackModes.includes(candidate)) fallbackModes.push(candidate)
+  }
 
-  if (error) throw error
+  let data: FinanceTransaction | null = null
+  let lastInsertError: unknown = null
+  for (const mode of fallbackModes) {
+    try {
+      data = await insertFinanceRow(mode)
+      break
+    } catch (insertError: unknown) {
+      lastInsertError = insertError
+      if (!isPaymentModeEnumError(insertError)) throw insertError
+    }
+  }
+  if (!data) throw lastInsertError || new Error('Impossible de créer la transaction finance.')
+
+  try {
+    const { error: stockErr } = await supabase
+      .from('catalog_items')
+      .update({ stock: nextStock })
+      .eq('group_id', currentGroupId())
+      .eq('id', resolvedItemId)
+    if (stockErr) throw stockErr
+    if (shouldMoveCash) {
+      const currentCash = toNonNegative(cashItem?.stock)
+      const nextCash = args.mode === 'sell' ? currentCash + totalAmount : currentCash - totalAmount
+      const { error: cashErr } = await supabase.from('catalog_items').update({ stock: nextCash }).eq('group_id', currentGroupId()).eq('id', cashItem?.id as string)
+      if (cashErr) throw cashErr
+    }
+  } catch (syncError) {
+    await supabase.from('finance_transactions').delete().eq('group_id', currentGroupId()).eq('id', data.id)
+    throw syncError
+  }
+
   void createAppLog({
     area: 'finance.transactions',
     action: args.mode,

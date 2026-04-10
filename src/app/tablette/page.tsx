@@ -80,6 +80,22 @@ export default function TablettePage() {
       week: stats?.week.runs ?? runs.length,
     }
   }, [stats, runs.length])
+  const remainingAfterByRunId = useMemo(() => {
+    const map = new Map<string, number>()
+    if (!budget) return map
+
+    const todayRunsAsc = runs
+      .filter((row) => row.day_key === today)
+      .slice()
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+    let rolling = Math.max(0, Number(budget.budget_initial || 0))
+    for (const row of todayRunsAsc) {
+      rolling = Math.max(0, Number((rolling - Math.max(0, Number(row.total_cost || 0))).toFixed(2)))
+      map.set(row.id, rolling)
+    }
+    return map
+  }, [budget, runs, today])
 
   const forceLogout = useCallback(async () => {
     clearTenantSession()
@@ -348,11 +364,12 @@ export default function TablettePage() {
                 ) : runs.length === 0 ? (
                   <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
                 ) : (
-                  runs.map((row, index) => {
-                    const deductedUntilRow = runs
-                      .slice(index)
-                      .reduce((sum, entry) => sum + Math.max(0, Number(entry.total_cost || 0)), 0)
-                    const remainingAfter = Math.max(0, Number(budget?.budget_initial || 0) - deductedUntilRow)
+                  runs.map((row) => {
+                    const serverRemaining = row.remaining_after == null ? null : Math.max(0, Number(row.remaining_after || 0))
+                    const computedRemaining = remainingAfterByRunId.has(row.id)
+                      ? Math.max(0, Number(remainingAfterByRunId.get(row.id) || 0))
+                      : null
+                    const remainingAfter = serverRemaining ?? computedRemaining
                     return (
                     <tr key={row.id}>
                       <td className="px-3 py-2 text-white/70">{formatDateTime(row.created_at)}</td>
@@ -360,7 +377,7 @@ export default function TablettePage() {
                       <td className="px-3 py-2">{row.total_items}</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
-                      <td className="px-3 py-2">{remainingAfter.toFixed(2)} $</td>
+                      <td className="px-3 py-2">{remainingAfter == null ? '—' : `${remainingAfter.toFixed(2)} $`}</td>
                     </tr>
                   )})
                 )}

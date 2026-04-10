@@ -9,6 +9,7 @@ import { Panel } from '@/components/ui/Panel'
 import { GlassSelect } from '@/components/ui/GlassSelect'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/design-system'
 import { createCatalogItem, createFinanceTransaction, listCatalogItemsUnified } from '@/lib/itemsApi'
+import { markStockInNote, markStockOutNote } from '@/lib/financeStockFlow'
 import { getTypeFilterOptions, matchesTypeFilter, normalizeCatalogCategory, type UnifiedTypeFilterValue } from '@/lib/catalogConfig'
 import { computeItemStockCategoryStats } from '@/lib/itemStockStats'
 import { getTenantSession } from '@/lib/tenantSession'
@@ -312,12 +313,36 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       toast.error('Ajoute au moins un article.')
       return
     }
+    if (variant === 'stockFlow') {
+      const manualSortie = selectedItems.find((entry) => entry.mode === 'sortie' && entry.isManual)
+      if (manualSortie) {
+        toast.error('La sortie d’un item non listé est impossible. Choisis un item existant.')
+        return
+      }
+
+      const requestedByItemId = new Map<string, number>()
+      for (const entry of selectedItems) {
+        if (entry.mode !== 'sortie' || entry.isManual) continue
+        requestedByItemId.set(entry.id, (requestedByItemId.get(entry.id) || 0) + Math.max(0, Number(entry.quantity || 0)))
+      }
+      for (const [itemId, requested] of requestedByItemId.entries()) {
+        const available = Math.max(0, Number(stockById[itemId] || 0))
+        if (requested > available) {
+          const itemName = selectedItems.find((entry) => entry.id === itemId)?.name || 'Item'
+          toast.error(`Stock insuffisant pour ${itemName} (${requested} demandé, ${available} dispo).`)
+          return
+        }
+      }
+    }
 
     setIsSubmitting(true)
     try {
       for (const entry of selectedItems) {
         const manualLabel = entry.isManual ? (entry.manualLabel?.trim() || 'Autres / item non listé') : ''
-        const notes = [member.trim() ? `Membre: ${member.trim()}` : null, entry.isManual ? `Item non listé: ${manualLabel}` : null].filter(Boolean).join(' • ') || undefined
+        const baseNotes = [member.trim() ? `Membre: ${member.trim()}` : null, entry.isManual ? `Item non listé: ${manualLabel}` : null].filter(Boolean).join(' • ') || ''
+        const notes = variant === 'stockFlow'
+          ? (entry.mode === 'entree' ? markStockInNote(baseNotes) : markStockOutNote(baseNotes))
+          : (baseNotes || undefined)
         const resolvedItemId = entry.isManual ? await ensureManualCatalogItemId(manualLabel) : entry.id
         await createFinanceTransaction({
           item_id: resolvedItemId,
@@ -326,7 +351,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           unit_price: variant === 'trade' ? entry.price : 0,
           counterparty: counterparty.trim() || (entry.isManual ? manualLabel : undefined),
           notes,
-          payment_mode: 'other',
+          payment_mode: variant === 'stockFlow' ? (entry.mode === 'entree' ? 'stock_in' : 'stock_out') : 'other',
         })
       }
 

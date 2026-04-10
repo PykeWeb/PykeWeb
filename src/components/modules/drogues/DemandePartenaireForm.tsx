@@ -102,9 +102,16 @@ function computeSummary(form: DemandFormValue): SummaryMetrics {
 }
 
 function normalizeInitialMode(initial: DemandFormValue): DemandMode {
-  if (initial.type === 'meth') return 'tables_purchase'
+  if (String(initial.type || '').toLowerCase().includes('meth')) return 'tables_purchase'
   if (initial.mode === 'leaf_to_brick' || initial.mode === 'brick_to_pouch' || initial.mode === 'leaf_to_pouch') return initial.mode
   return 'leaf_to_pouch'
+}
+
+function normalizeFormType(rawType: DemandFormValue['type'] | string): ProductionType {
+  const value = String(rawType || '').toLowerCase()
+  if (value.includes('meth')) return 'meth'
+  if (value.includes('coke')) return 'coke'
+  return 'other'
 }
 
 export function DemandePartenaireForm({
@@ -120,7 +127,7 @@ export function DemandePartenaireForm({
 }) {
   const [form, setForm] = useState<DemandFormValue>({
     ...initial,
-    type: initial.type === 'meth' ? 'meth' : 'coke',
+    type: normalizeFormType(initial.type),
     mode: normalizeInitialMode(initial),
   })
   const [showNote, setShowNote] = useState(Boolean(initial.note))

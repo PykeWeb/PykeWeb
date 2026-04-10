@@ -38,6 +38,14 @@ type FinanceTransactionRow = {
   catalog_items: FinanceTransactionJoinItem[] | FinanceTransactionJoinItem | null
 }
 
+function isLegacyStockFlowRow(row: Pick<FinanceTransactionRow, 'payment_mode' | 'unit_price' | 'notes'>) {
+  if (row.payment_mode !== 'other') return false
+  const unitPrice = Number(row.unit_price ?? 0)
+  if (unitPrice !== 0) return false
+  const notes = String(row.notes || '').toLowerCase()
+  return notes.includes('membre:') || notes.includes('item non listé:')
+}
+
 function isMissingImageSnapshotColumn(errorMessage: string | null | undefined) {
   const msg = String(errorMessage || '').toLowerCase()
   return msg.includes('image_url_snapshot') || msg.includes('column')
@@ -229,8 +237,8 @@ export async function listFinanceEntries(limit = 500): Promise<FinanceEntry[]> {
       id: groupedId,
       source: 'finance_transactions',
       movement_type: group.mode === 'buy'
-        ? ((group.payment_mode === 'stock_in' || isStockInNote(group.notes)) ? 'stock_in' : 'purchase')
-        : (group.payment_mode === 'stock_out' || isStockOutNote(group.notes))
+        ? ((group.payment_mode === 'stock_in' || isStockInNote(group.notes) || isLegacyStockFlowRow(first)) ? 'stock_in' : 'purchase')
+        : (group.payment_mode === 'stock_out' || isStockOutNote(group.notes) || isLegacyStockFlowRow(first))
           ? 'stock_out'
           : 'sale',
       category: (first.item?.category as FinanceCategory) || 'other',
