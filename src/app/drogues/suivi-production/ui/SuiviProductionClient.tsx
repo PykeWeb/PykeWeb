@@ -120,7 +120,7 @@ export default function SuiviProductionClient() {
     try {
       const data = await listDrugProductionTrackings()
       setRows(data)
-      setSelectedId((prev) => prev ?? data[0]?.id ?? null)
+      setSelectedId((prev) => (prev && data.some((row) => row.id === prev) ? prev : null))
     } catch {
       toast.error('Impossible de charger les demandes transfo.')
     } finally {

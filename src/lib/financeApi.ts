@@ -150,7 +150,9 @@ export async function listFinanceEntries(limit = 500): Promise<FinanceEntry[]> {
     entries.push({
       id: tx.id,
       source: 'transactions',
-      movement_type: tx.type === 'purchase' ? 'purchase' : 'sale',
+      movement_type: tx.type === 'purchase'
+        ? (isStockInNote(tx.notes) ? 'stock_in' : 'purchase')
+        : (isStockOutNote(tx.notes) ? 'stock_out' : 'sale'),
       category: 'objects',
       item_label: itemName,
       item_image_url: txItems.length > 1 ? null : firstImage,

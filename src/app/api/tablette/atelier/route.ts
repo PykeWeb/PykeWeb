@@ -270,15 +270,16 @@ async function appendTabletCashHistory(args: {
   }
 }
 
-function buildGroupStats(runs: TabletDailyRun[]): GroupTabletStats {
+function buildGroupStats(runs: TabletDailyRun[], todayBudget: StoredBudget | null): GroupTabletStats {
   const today = toDayKey()
   const weekPrefix = today.slice(0, 8)
+  const visibleRuns = runs.filter((run) => isRunVisibleForCurrentWindow(run, todayBudget))
 
-  const todayRuns = runs.filter((run) => run.day_key === today)
-  const weekRuns = runs.filter((run) => run.day_key.startsWith(weekPrefix))
+  const todayRuns = visibleRuns.filter((run) => run.day_key === today)
+  const weekRuns = visibleRuns.filter((run) => run.day_key.startsWith(weekPrefix))
 
   const memberMap = new Map<string, { total_runs: number; total_items: number; total_cost: number; did_today: boolean; last_day_key: string }>()
-  for (const run of runs) {
+  for (const run of visibleRuns) {
     const key = run.member_name.trim().toLowerCase()
     const entry = memberMap.get(key) ?? { total_runs: 0, total_items: 0, total_cost: 0, did_today: false, last_day_key: run.day_key }
     entry.total_runs += 1
@@ -322,6 +323,7 @@ type StoredBudget = {
   paid_runs: number
   distributed_total: number
   paid_members: string[]
+  reset_at?: string | null
 }
 
 function parseBudgetOrder(dayKey: string, order: string[] | null | undefined): StoredBudget | null {
@@ -334,6 +336,7 @@ function parseBudgetOrder(dayKey: string, order: string[] | null | undefined): S
   const payoutPerRun = Number(map.get('payout_per_run') || 0)
   const paidRuns = Number(map.get('paid_runs') || 0)
   const distributedTotal = Number(map.get('distributed_total') || 0)
+  const resetAt = String(map.get('reset_at') || '').trim() || null
   const paidMembers = String(map.get('paid_members') || '')
     .split('|')
     .map((entry) => entry.trim())
@@ -346,6 +349,7 @@ function parseBudgetOrder(dayKey: string, order: string[] | null | undefined): S
     paid_runs: Math.max(0, Math.floor(paidRuns || 0)),
     distributed_total: Math.max(0, distributedTotal),
     paid_members: paidMembers,
+    reset_at: resetAt,
   }
 }
 
@@ -356,7 +360,17 @@ function serializeBudgetOrder(budget: StoredBudget) {
     `paid_runs:${budget.paid_runs}`,
     `distributed_total:${budget.distributed_total}`,
     `paid_members:${budget.paid_members.join('|')}`,
+    `reset_at:${budget.reset_at || ''}`,
   ]
+}
+
+function isRunVisibleForCurrentWindow(run: TabletDailyRun, budget: StoredBudget | null) {
+  const resetAt = String(budget?.reset_at || '').trim()
+  if (!resetAt) return true
+  const runTs = new Date(run.created_at).getTime()
+  const resetTs = new Date(resetAt).getTime()
+  if (!Number.isFinite(runTs) || !Number.isFinite(resetTs)) return true
+  return runTs >= resetTs
 }
 
 async function loadTodayBudget(groupId: string, dayKey: string): Promise<StoredBudget | null> {
@@ -429,7 +443,7 @@ export async function GET(request: Request) {
 
     let budget = canManageTabletBudget(session) ? await loadTodayBudget(session.groupId, today) : null
     if (budget) {
-      const todayRuns = runs.filter((run) => run.day_key === today)
+      const todayRuns = runs.filter((run) => run.day_key === today && isRunVisibleForCurrentWindow(run, budget))
       const distributedFromRuns = Number(todayRuns.reduce((sum, run) => sum + Math.max(0, Number(run.total_cost || 0)), 0).toFixed(2))
       if (budget.distributed_total !== distributedFromRuns || budget.paid_runs !== todayRuns.length) {
         budget = { ...budget, distributed_total: distributedFromRuns, paid_runs: todayRuns.length }
@@ -440,7 +454,7 @@ export async function GET(request: Request) {
       today,
       items: await getGlobalTabletOptions(),
       runs,
-      stats: buildGroupStats(runs),
+      stats: buildGroupStats(runs, budget),
       budget: toPublicBudget(today, budget),
     })
   } catch (error: unknown) {
@@ -459,7 +473,7 @@ export async function POST(request: Request) {
     }
     const options = await getGlobalTabletOptions()
     const dayKey = toDayKey()
-    if (body.action === 'init_budget' || body.action === 'update_budget') {
+  if (body.action === 'init_budget' || body.action === 'update_budget') {
       if (!canManageTabletBudget(session)) {
         return NextResponse.json({ error: 'Action non autorisée.' }, { status: 403 })
       }
@@ -472,6 +486,7 @@ export async function POST(request: Request) {
         paid_runs: existing?.paid_runs ?? 0,
         distributed_total: existing?.distributed_total ?? 0,
         paid_members: existing?.paid_members ?? [],
+        reset_at: existing?.reset_at || null,
       }
       await saveTodayBudget(session.groupId, nextBudget)
       return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, nextBudget) })
@@ -487,6 +502,7 @@ export async function POST(request: Request) {
         paid_runs: 0,
         distributed_total: 0,
         paid_members: [],
+        reset_at: new Date().toISOString(),
       }
       await saveTodayBudget(session.groupId, resetBudget)
       return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, resetBudget) })
@@ -526,16 +542,32 @@ export async function POST(request: Request) {
     const legacyKitQty = lines.find((line) => line.key === 'kit_cambus')?.quantity ?? 0
 
     const supabase = getSupabaseAdmin()
-    const { data: exists } = await supabase
+    const { data: existingRuns } = await supabase
       .from('tablet_daily_runs')
-      .select('id')
+      .select('id,created_at')
       .eq('group_id', session.groupId)
       .eq('day_key', dayKey)
       .eq('member_name_normalized', member.normalized)
-      .limit(1)
-      .maybeSingle<{ id: string }>()
+      .limit(20)
 
-    if (exists?.id) {
+    const hasAlreadyRunInCurrentWindow = (existingRuns ?? []).some((row) => {
+      const run = row as { id: string; created_at: string }
+      return isRunVisibleForCurrentWindow(
+        {
+          id: run.id,
+          member_name: member.raw,
+          day_key: dayKey,
+          disqueuse_qty: 0,
+          kit_cambus_qty: 0,
+          total_items: 0,
+          total_cost: 0,
+          created_at: run.created_at,
+        },
+        budget,
+      )
+    })
+
+    if (hasAlreadyRunInCurrentWindow) {
       return NextResponse.json({ error: 'Ce membre a déjà fait la tablette aujourd’hui.' }, { status: 409 })
     }
 
