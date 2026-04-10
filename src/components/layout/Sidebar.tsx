@@ -148,6 +148,7 @@ export function Sidebar() {
     { id: 'annuaire', href: '/annuaire', label: 'Annuaire', icon: <BookUser className="h-5 w-5" />, active: pathname.startsWith('/annuaire') },
     { id: 'activites', href: '/activites', label: 'Activités', icon: <ClipboardList className="h-5 w-5" />, active: pathname.startsWith('/activites') || pathname.startsWith('/tablette') },
     { id: 'drogues', href: '/drogues', label: labels.nav_drogues || 'Drogues', icon: <Pill className="h-5 w-5" />, active: pathname.startsWith('/drogues') },
+    { id: 'logs', href: '/logs', label: 'Logs', icon: <ScrollText className="h-5 w-5" />, active: pathname.startsWith('/logs') },
   ]
 
   const hasFullAccess = allowedPrefixes.includes('/')
