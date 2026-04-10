@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { decodeTenantSession, isValidTenantSession, TENANT_SESSION_COOKIE_KEY } from '@/lib/tenantSessionShared'
 import { canAccessPath, getDefaultRouteForSession } from '@/lib/accessControl'
+import { normalizeAppPath } from '@/lib/appRoutes'
 
 const PUBLIC_PATHS = new Set(['/login', '/auth/bridge'])
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const normalizedPath = normalizeAppPath(pathname)
+  if (normalizedPath !== pathname) {
+    return NextResponse.redirect(new URL(normalizedPath, request.url))
+  }
   if (pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname === '/favicon.ico') {
     return NextResponse.next()
   }

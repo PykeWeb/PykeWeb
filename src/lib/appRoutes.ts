@@ -1,5 +1,7 @@
 const DEPRECATED_ROUTE_MAP: Record<string, string> = {
   '/dashboard': '/',
+  '/index.html': '/',
+  '/home': '/',
   '/tablette/coffre': '/tablette',
   '/drogues/partenaires': '/drogues/sessions',
 }

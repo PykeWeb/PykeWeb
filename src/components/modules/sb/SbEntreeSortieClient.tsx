@@ -313,6 +313,27 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
       toast.error('Ajoute au moins un article.')
       return
     }
+    if (variant === 'stockFlow') {
+      const manualSortie = selectedItems.find((entry) => entry.mode === 'sortie' && entry.isManual)
+      if (manualSortie) {
+        toast.error('La sortie d’un item non listé est impossible. Choisis un item existant.')
+        return
+      }
+
+      const requestedByItemId = new Map<string, number>()
+      for (const entry of selectedItems) {
+        if (entry.mode !== 'sortie' || entry.isManual) continue
+        requestedByItemId.set(entry.id, (requestedByItemId.get(entry.id) || 0) + Math.max(0, Number(entry.quantity || 0)))
+      }
+      for (const [itemId, requested] of requestedByItemId.entries()) {
+        const available = Math.max(0, Number(stockById[itemId] || 0))
+        if (requested > available) {
+          const itemName = selectedItems.find((entry) => entry.id === itemId)?.name || 'Item'
+          toast.error(`Stock insuffisant pour ${itemName} (${requested} demandé, ${available} dispo).`)
+          return
+        }
+      }
+    }
 
     setIsSubmitting(true)
     try {
@@ -330,7 +351,7 @@ export function SbEntreeSortieClient({ variant = 'stockFlow' }: SbEntreeSortieCl
           unit_price: variant === 'trade' ? entry.price : 0,
           counterparty: counterparty.trim() || (entry.isManual ? manualLabel : undefined),
           notes,
-          payment_mode: 'other',
+          payment_mode: variant === 'stockFlow' ? (entry.mode === 'entree' ? 'stock_in' : 'stock_out') : 'other',
         })
       }
 
