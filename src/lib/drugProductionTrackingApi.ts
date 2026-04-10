@@ -37,6 +37,20 @@ function isMissingColumnError(error: { message?: string } | null | undefined, co
   return message.includes(column.toLowerCase()) && message.includes('could not find')
 }
 
+function normalizeProductionType(value: unknown): ProductionType {
+  const raw = String(value || '').toLowerCase()
+  if (raw.includes('meth')) return 'meth'
+  if (raw.includes('coke')) return 'coke'
+  return 'other'
+}
+
+function normalizeProductionRow(row: DrugProductionTrackingRow): DrugProductionTrackingRow {
+  return {
+    ...row,
+    type: normalizeProductionType(row.type),
+  }
+}
+
 export async function listDrugProductionTrackings(): Promise<DrugProductionTrackingRow[]> {
   const { data, error } = await supabase
     .from('drug_production_tracking')
@@ -45,7 +59,7 @@ export async function listDrugProductionTrackings(): Promise<DrugProductionTrack
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message || 'Erreur chargement suivi production')
-  return (data ?? []) as DrugProductionTrackingRow[]
+  return ((data ?? []) as DrugProductionTrackingRow[]).map(normalizeProductionRow)
 }
 
 export async function createDrugProductionTracking(payload: {
@@ -83,7 +97,7 @@ export async function createDrugProductionTracking(payload: {
   const insertPayload = {
     group_id: currentGroupId(),
     partner_name: payload.partnerName,
-    type: payload.type,
+    type: normalizeProductionType(payload.type),
     quantity_sent: quantitySent,
     ratio,
     expected_output: expectedOutput,
@@ -104,7 +118,7 @@ export async function createDrugProductionTracking(payload: {
     .select('*')
     .single()
 
-  if (!error) return data as DrugProductionTrackingRow
+  if (!error) return normalizeProductionRow(data as DrugProductionTrackingRow)
 
   const pricingColumnMissing =
     isMissingColumnError(error, 'seed_price')
@@ -129,7 +143,7 @@ export async function createDrugProductionTracking(payload: {
     .single()
 
   if (legacyError) throw new Error(legacyError.message || 'Erreur création demande')
-  return legacyData as DrugProductionTrackingRow
+  return normalizeProductionRow(legacyData as DrugProductionTrackingRow)
 }
 
 export async function updateDrugProductionTracking(id: string, payload: {
@@ -184,7 +198,7 @@ export async function updateDrugProductionTracking(id: string, payload: {
 
   const updatePayload = {
     partner_name: payload.partnerName?.trim() || current.partner_name,
-    type: payload.type ?? current.type,
+    type: payload.type ?? normalizeProductionType(current.type),
     quantity_sent: nextQuantitySent,
     expected_output: nextExpectedOutput,
     received_output: Math.min(nextReceived, nextExpectedOutput),
@@ -206,7 +220,7 @@ export async function updateDrugProductionTracking(id: string, payload: {
     .select('*')
     .single()
 
-  if (!error) return data as DrugProductionTrackingRow
+  if (!error) return normalizeProductionRow(data as DrugProductionTrackingRow)
 
   const pricingColumnMissing =
     isMissingColumnError(error, 'seed_price')
@@ -233,7 +247,7 @@ export async function updateDrugProductionTracking(id: string, payload: {
     .single()
 
   if (legacyError) throw new Error(legacyError.message || 'Erreur mise à jour demande')
-  return legacyData as DrugProductionTrackingRow
+  return normalizeProductionRow(legacyData as DrugProductionTrackingRow)
 }
 
 export async function deleteDrugProductionTracking(id: string) {
