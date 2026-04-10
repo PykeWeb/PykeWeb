@@ -1394,7 +1394,19 @@ export async function createFinanceTransaction(args: {
     if (nextCash < 0) throw new Error('Argent insuffisant pour cet achat.')
   }
 
-  const isPaymentModeEnumError = (message: string | null | undefined) => String(message || '').toLowerCase().includes('payment_mode')
+  const toErrorMessage = (error: unknown) => {
+    if (!error) return ''
+    if (typeof error === 'string') return error
+    if (typeof error === 'object' && 'message' in error) return String((error as { message?: unknown }).message || '')
+    return ''
+  }
+  const isPaymentModeEnumError = (error: unknown) => {
+    const message = toErrorMessage(error).toLowerCase()
+    if (message.includes('payment_mode')) return true
+    if (message.includes('financepaymentmode')) return true
+    if (message.includes('invalid input value for enum')) return true
+    return false
+  }
   async function insertFinanceRow(paymentMode: FinancePaymentMode) {
     const { data, error } = await supabase
       .from('finance_transactions')
@@ -1416,17 +1428,24 @@ export async function createFinanceTransaction(args: {
   }
 
   const requestedPaymentMode = (args.payment_mode || 'cash') as FinancePaymentMode
-  let data: FinanceTransaction
-  try {
-    data = await insertFinanceRow(requestedPaymentMode)
-  } catch (insertError: unknown) {
-    const canFallbackToOther = requestedPaymentMode === 'stock_in' || requestedPaymentMode === 'stock_out'
-    if (canFallbackToOther && insertError instanceof Error && isPaymentModeEnumError(insertError.message)) {
-      data = await insertFinanceRow('other')
-    } else {
-      throw insertError
+  const fallbackModes: FinancePaymentMode[] = []
+  for (const candidate of [requestedPaymentMode, requestedPaymentMode === 'stock_in' || requestedPaymentMode === 'stock_out' ? 'other' : null, 'cash'] as Array<FinancePaymentMode | null>) {
+    if (!candidate) continue
+    if (!fallbackModes.includes(candidate)) fallbackModes.push(candidate)
+  }
+
+  let data: FinanceTransaction | null = null
+  let lastInsertError: unknown = null
+  for (const mode of fallbackModes) {
+    try {
+      data = await insertFinanceRow(mode)
+      break
+    } catch (insertError: unknown) {
+      lastInsertError = insertError
+      if (!isPaymentModeEnumError(insertError)) throw insertError
     }
   }
+  if (!data) throw lastInsertError || new Error('Impossible de créer la transaction finance.')
 
   try {
     const { error: stockErr } = await supabase
