@@ -16,6 +16,7 @@ import {
   type DrugProductionTrackingRow,
   type ProductionStatus
 } from '@/lib/drugProductionTrackingApi'
+import { toDrugShortLabel } from '@/lib/drugLabels'
 
 type RequestMeta = {
   mode: string
@@ -24,6 +25,7 @@ type RequestMeta = {
   estimatedPouches: number
   tableQty?: number
   imageUrl?: string | null
+  receivedMoney?: number
 }
 
 const NEW_REQUEST_INITIAL: DemandFormValue = {
@@ -58,10 +60,6 @@ function toModeLabel(mode: string) {
   if (mode === 'leaf_to_pouch') return 'Feuille → Pochon'
   if (mode === 'tables_purchase') return 'Achat tables meth'
   return mode || '—'
-}
-
-function typeLabel(type: string) {
-  return String(type || '').toLowerCase().includes('meth') ? 'Meth' : 'Coke'
 }
 
 function statusLabel(status: ProductionStatus) {
@@ -251,23 +249,25 @@ export default function SuiviProductionClient() {
                   <th className="px-3 py-2 text-left">Mode</th>
                   <th className="px-3 py-2 text-left">Envoyé</th>
                   <th className="px-3 py-2 text-left">Récupéré</th>
+                  <th className="px-3 py-2 text-left">Argent reçu</th>
                   <th className="px-3 py-2 text-left">Statut</th>
                   <th className="px-3 py-2 text-left">Date</th>
                   <th className="px-3 py-2 text-left">Bénéf. estimé</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {loading ? <tr><td className="px-3 py-6 text-center text-white/65" colSpan={8}>Chargement…</td></tr> : null}
-                {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-6 text-center text-white/65" colSpan={8}>Aucune demande.</td></tr> : null}
+                {loading ? <tr><td className="px-3 py-6 text-center text-white/65" colSpan={9}>Chargement…</td></tr> : null}
+                {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-6 text-center text-white/65" colSpan={9}>Aucune demande.</td></tr> : null}
                 {!loading ? visibleRows.map((row) => {
                   const meta = parseMeta(row.note)
                   return (
                     <tr key={row.id} className="cursor-pointer hover:bg-white/[0.03]" onClick={() => router.push(`/drogues/suivi-production/${row.id}`)}>
                       <td className="px-3 py-2 font-medium"><span className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />{row.partner_name}</span></td>
-                      <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5">{String(row.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}{typeLabel(String(row.type || ''))}</span></td>
+                      <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5">{String(row.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}{toDrugShortLabel(String(row.type || ''))}</span></td>
                       <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><Tags className="h-3.5 w-3.5 text-white/60" />{toModeLabel(meta?.mode || '')}</span></td>
                       <td className="px-3 py-2">{meta?.sentQty ?? row.quantity_sent}</td>
                       <td className="px-3 py-2">{row.received_output}/{row.expected_output}</td>
+                      <td className="px-3 py-2">{Math.max(0, Number(meta?.receivedMoney || 0))} $</td>
                       <td className="px-3 py-2"><span className={`rounded-lg border px-2 py-1 text-xs ${statusClass(row.status)}`}>{statusLabel(row.status)}</span></td>
                       <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-white/60" />{new Date(row.created_at).toLocaleDateString('fr-FR')}</span></td>
                       <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><CircleDollarSign className="h-3.5 w-3.5 text-emerald-200" />{Math.round(computeEstimatedProfit(row))} $</span></td>

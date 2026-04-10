@@ -10,12 +10,13 @@ import { Panel } from '@/components/ui/Panel'
 import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
 import { adjustDrugStock, listDrugItems } from '@/lib/drugsApi'
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
+import { toDrugShortLabel } from '@/lib/drugLabels'
 
 function parseTransfoMeta(note: string | null | undefined) {
   const raw = String(note || '').trim()
   if (!raw.startsWith('[transfo:v2]')) return null
   try {
-    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; tableQty?: number; imageUrl?: string | null }
+    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; tableQty?: number; imageUrl?: string | null; receivedMoney?: number }
   } catch {
     return null
   }
@@ -27,14 +28,6 @@ function parseUserNote(note: string | null | undefined) {
   const raw = String(note || '').trim()
   if (raw.startsWith('[transfo:v2]')) return ''
   return raw
-}
-
-function uiTypeLabel(rawType: string) {
-  const type = String(rawType || '').trim().toLowerCase()
-  if (type.includes('coke')) return 'Coke'
-  if (type.includes('meth')) return 'Meth'
-  if (type.includes('autre') || type.includes('other')) return 'Autres'
-  return String(rawType || '').split('(')[0].trim() || 'Autres'
 }
 
 function normalizedTypeToken(rawType: string) {
@@ -79,7 +72,7 @@ export default function DemandeDetailPage() {
       type: value.type,
       quantitySent,
       expectedOutput,
-      note: `[transfo:v2]${JSON.stringify({ mode: value.mode, sentQty: value.type === 'meth' ? value.quantityLeaves : quantitySent, tableQty: value.type === 'meth' ? value.quantitySeeds : undefined, imageUrl: parseTransfoMeta(row.note)?.imageUrl || null, note: value.note || '' })}`,
+      note: `[transfo:v2]${JSON.stringify({ mode: value.mode, sentQty: value.type === 'meth' ? value.quantityLeaves : quantitySent, tableQty: value.type === 'meth' ? value.quantitySeeds : undefined, imageUrl: parseTransfoMeta(row.note)?.imageUrl || null, note: value.note || '', receivedMoney: Number(parseTransfoMeta(row.note)?.receivedMoney || 0) })}`,
       expectedDate: value.expectedDate || null,
       createdAt: value.createdAt,
       seedPrice: value.seedPrice,
@@ -122,9 +115,10 @@ export default function DemandeDetailPage() {
             </div>
           ) : null}
           <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:grid-cols-2">
-            <p className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />Groupe: <b>{row.partner_name}</b></p><p className="inline-flex items-center gap-1.5">{String(row.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}Type: <b>{uiTypeLabel(String(row.type))}</b></p>
+            <p className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />Groupe: <b>{row.partner_name}</b></p><p className="inline-flex items-center gap-1.5">{String(row.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}Type: <b>{toDrugShortLabel(String(row.type))}</b></p>
             <p className="inline-flex items-center gap-1.5"><Factory className="h-3.5 w-3.5 text-white/60" />Envoyé: <b>{parseTransfoMeta(row.note)?.sentQty ?? row.quantity_sent}</b></p><p className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-white/60" />Attendu: <b>{row.expected_output}</b></p>
             <p className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-cyan-200" />Reçu: <b>{row.received_output}</b></p><p className="inline-flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-white/60" />Date: <b>{new Date(row.created_at).toLocaleDateString('fr-FR')}</b></p>
+            <p>Argent reçu: <b>{Math.max(0, Number(parseTransfoMeta(row.note)?.receivedMoney || 0))} $</b></p>
             <p>Date retour: <b>{row.expected_date || '—'}</b></p><p>Statut: <b>{row.status}</b></p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">

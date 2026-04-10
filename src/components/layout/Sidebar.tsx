@@ -58,6 +58,7 @@ export function Sidebar() {
   const [passwordBusy, setPasswordBusy] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [groupLogoUrl, setGroupLogoUrl] = useState('/logo.png')
 
   useEffect(() => {
     const session = getTenantSession()
@@ -70,6 +71,9 @@ export function Sidebar() {
     setRoleLabel(session?.roleLabel || (session?.role === 'member' ? 'Membre' : session?.role === 'chef' ? 'Boss' : ''))
     setMemberName(session?.memberName || (session?.role === 'chef' ? 'Boss' : session?.roleLabel || 'Membre'))
     setAllowedPrefixes(Array.isArray(session?.allowedPrefixes) ? expandAccessPrefixes(session.allowedPrefixes) : [])
+    const sessionLogo = String(session?.groupLogoUrl || '').trim()
+    const logoWithBust = sessionLogo ? `${sessionLogo}${sessionLogo.includes('?') ? '&' : '?'}v=${encodeURIComponent(String(session?.groupId || 'group'))}` : '/logo.png'
+    setGroupLogoUrl(logoWithBust)
     const scope = `${nextGroupName} ${nextGroupBadge}`.toLowerCase()
     setIsPwrGroup(scope.includes('pwr'))
     setIsSbGroup(isSbTenantSession(session))
@@ -190,12 +194,18 @@ export function Sidebar() {
       <aside className="hidden w-[300px] shrink-0 flex-col gap-4 md:flex md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
       <div className="rounded-[2rem] border border-[#5b6fc7]/28 bg-gradient-to-br from-[#11173a]/95 via-[#101633]/95 to-[#0b1027]/96 p-5 shadow-[0_16px_42px_rgba(4,8,28,0.58)] backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/15 bg-white/[0.08]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={groupLogoUrl} alt={`Logo ${groupName}`} className="h-full w-full object-cover" onError={(event) => { (event.currentTarget as HTMLImageElement).src = '/logo.png' }} />
+            </div>
+            <div className="min-w-0">
             <p className="text-[1.45rem] font-semibold leading-tight tracking-tight text-white break-words">{isAdmin ? (labels.site_name || BRAND.name) : groupName}</p>
             <p className="mt-1 inline-flex items-center gap-1.5 text-[0.9rem] text-white/68">
               <Sparkles className="h-3.5 w-3.5 text-cyan-200/75" />
               {labels.nav_dashboard || 'Dashboard'}
             </p>
+            </div>
           </div>
           <div className="mt-1 flex shrink-0 flex-col items-end gap-0">
             <button

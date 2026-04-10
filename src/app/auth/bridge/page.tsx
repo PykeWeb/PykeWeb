@@ -3,16 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getTenantSession, syncTenantSessionToServer } from '@/lib/tenantSession'
-
-function normalizeNextPath(input: string | null) {
-  if (!input || !input.startsWith('/')) return '/'
-  return input.startsWith('/auth/bridge') ? '/' : input
-}
+import { normalizeAppPath } from '@/lib/appRoutes'
 
 export default function AuthBridgePage() {
   const params = useSearchParams()
   const [error, setError] = useState<string | null>(null)
-  const nextPath = useMemo(() => normalizeNextPath(params.get('next')), [params])
+  const nextPath = useMemo(() => normalizeAppPath(params.get('next')), [params])
 
   useEffect(() => {
     const session = getTenantSession()

@@ -10,14 +10,15 @@ import { Panel } from '@/components/ui/Panel'
 import { SecondaryButton } from '@/components/ui/design-system'
 import { DemandePartenaireForm, type DemandFormValue } from '@/components/modules/drogues/DemandePartenaireForm'
 import { deleteDrugProductionTracking, listDrugProductionTrackings, updateDrugProductionTracking, type DrugProductionTrackingRow } from '@/lib/drugProductionTrackingApi'
+import { toDrugShortLabel } from '@/lib/drugLabels'
 
-type TransfoMeta = { sentQty?: number; mode?: string; tableQty?: number; imageUrl?: string | null; note?: string } | null
+type TransfoMeta = { sentQty?: number; mode?: string; tableQty?: number; imageUrl?: string | null; note?: string; receivedMoney?: number } | null
 
 function parseTransfoMeta(note: string | null | undefined): TransfoMeta {
   const raw = String(note || '').trim()
   if (!raw.startsWith('[transfo:v2]')) return null
   try {
-    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; mode?: string; tableQty?: number; imageUrl?: string | null; note?: string }
+    return JSON.parse(raw.slice('[transfo:v2]'.length)) as { sentQty?: number; mode?: string; tableQty?: number; imageUrl?: string | null; note?: string; receivedMoney?: number }
   } catch {
     return null
   }
@@ -54,17 +55,12 @@ function normalizeDemandType(rawType: string): DemandFormValue['type'] {
   return 'other'
 }
 
-function uiTypeLabel(rawType: string) {
-  if (isMethType(rawType)) return 'Meth'
-  if (String(rawType || '').toLowerCase().includes('coke')) return 'Coke'
-  return 'Autres'
-}
-
 export default function EditSuiviProductionClient({ id }: { id: string }) {
   const router = useRouter()
   const [row, setRow] = useState<DrugProductionTrackingRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [receivedDraft, setReceivedDraft] = useState('0')
+  const [receivedMoneyDraft, setReceivedMoneyDraft] = useState('0')
 
   useEffect(() => {
     void (async () => {
@@ -73,6 +69,7 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
         const found = rows.find((entry) => entry.id === id) || null
         setRow(found)
         setReceivedDraft(String(Math.max(0, Number(found?.received_output || 0))))
+        setReceivedMoneyDraft(String(Math.max(0, Number(parseTransfoMeta(found?.note)?.receivedMoney || 0))))
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : 'Impossible de charger la transaction.')
       } finally {
@@ -93,8 +90,9 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
           ? Math.max(0, Number(value.quantityLeaves || 0))
           : Math.max(0, Number(value.quantitySeeds || 0)))
     const previousMeta = parseTransfoMeta(row.note)
+    const nextReceivedMoney = Math.max(0, Number(receivedMoneyDraft || 0))
     const updated = await updateDrugProductionTracking(row.id, {
-      note: `[transfo:v2]${JSON.stringify({ mode: value.mode, sentQty: isMethType(row.type) ? Math.max(0, Number(value.quantityLeaves || 0)) : nextQuantitySent, tableQty: isMethType(row.type) ? Math.max(0, Number(value.quantitySeeds || 0)) : undefined, imageUrl: previousMeta?.imageUrl || null, note: value.note || '' })}`,
+      note: `[transfo:v2]${JSON.stringify({ mode: value.mode, sentQty: isMethType(row.type) ? Math.max(0, Number(value.quantityLeaves || 0)) : nextQuantitySent, tableQty: isMethType(row.type) ? Math.max(0, Number(value.quantitySeeds || 0)) : undefined, imageUrl: previousMeta?.imageUrl || null, note: value.note || '', receivedMoney: nextReceivedMoney })}`,
       quantitySent: isMethType(row.type) ? Math.max(0, Number(value.quantityLeaves || 0)) : nextQuantitySent,
       expectedOutput,
       seedPrice: value.seedPrice,
@@ -109,20 +107,39 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
     router.replace('/drogues/suivi-production')
   }
 
-  async function quickStatus(action: 'received' | 'completed' | 'in_progress' | 'cancelled') {
+  async function recordReceived() {
     if (!row) return
     try {
-      if (action === 'received') {
-        const updated = await updateDrugProductionTracking(row.id, {
-          receivedOutput: row.expected_output,
-          status: 'completed',
-        })
-        setRow(updated)
-        toast.success('Statut: Reçu.')
+      const receivedOutput = Math.max(0, Number(receivedDraft || 0))
+      const receivedMoney = Math.max(0, Number(receivedMoneyDraft || 0))
+      const meta = parseTransfoMeta(row.note)
+      const updated = await updateDrugProductionTracking(row.id, {
+        receivedOutput,
+        status: row.status === 'cancelled' ? 'cancelled' : 'in_progress',
+        note: `[transfo:v2]${JSON.stringify({
+          mode: meta?.mode || inferDemandMode(row.note),
+          sentQty: meta?.sentQty ?? row.quantity_sent,
+          tableQty: meta?.tableQty,
+          imageUrl: meta?.imageUrl || null,
+          note: getUserNote(row.note),
+          receivedMoney,
+        })}`,
+      })
+      setRow(updated)
+      toast.success('Réception enregistrée.')
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Enregistrement impossible.')
+    }
+  }
+
+  async function quickStatus(action: 'completed' | 'in_progress' | 'cancelled') {
+    if (!row) return
+    try {
+      if (action === 'completed' && Math.max(0, Number(receivedDraft || row.received_output || 0)) <= 0) {
+        toast.error('Enregistre une quantité reçue avant de valider.')
         return
       }
-
-      const nextStatus = action === 'completed' ? 'completed' : action
+      const nextStatus = action
       const updated = await updateDrugProductionTracking(row.id, { status: nextStatus })
       setRow(updated)
       toast.success(`Statut mis à jour: ${nextStatus}.`)
@@ -157,7 +174,7 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/65">Actions rapides</p>
               <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void quickStatus('received')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-100"><PackageCheck className="h-4 w-4" />Reçu</button>
+              <button type="button" onClick={() => void recordReceived()} className="inline-flex h-10 min-w-[148px] items-center justify-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-100"><PackageCheck className="h-4 w-4" />Enregistrer reçu</button>
               <button type="button" onClick={() => void quickStatus('completed')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100"><CheckCircle2 className="h-4 w-4" />Valider</button>
               <button type="button" onClick={() => void quickStatus('in_progress')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-sky-300/35 bg-sky-500/15 px-4 text-sm font-semibold text-sky-100"><Clock3 className="h-4 w-4" />En attente</button>
               <button type="button" onClick={() => void quickStatus('cancelled')} className="inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-xl border border-rose-300/35 bg-rose-500/15 px-4 text-sm font-semibold text-rose-100"><Ban className="h-4 w-4" />Annuler</button>
@@ -179,11 +196,20 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
                 <p className="text-xs text-cyan-100/80">Valeur actuelle enregistrée</p>
                 <p className="mt-1 font-semibold">{Math.max(0, Number(row.received_output || 0))}</p>
               </div>
+              <label className="text-sm text-white/75">
+                <span className="mb-1 block text-xs text-white/60">Argent reçu ($)</span>
+                <input
+                  value={receivedMoneyDraft}
+                  onChange={(event) => setReceivedMoneyDraft(event.target.value)}
+                  inputMode="decimal"
+                  className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white outline-none"
+                />
+              </label>
             </div>
             <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm sm:grid-cols-3">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className="inline-flex items-center gap-1.5 text-xs text-white/65"><FlaskConical className="h-3.5 w-3.5" />Type</p>
-                <p className="mt-1 font-semibold">{uiTypeLabel(String(row.type || ''))}</p>
+                <p className="mt-1 font-semibold">{toDrugShortLabel(String(row.type || ''))}</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className="inline-flex items-center gap-1.5 text-xs text-white/65"><Coins className="h-3.5 w-3.5" />Bénéfice estimé</p>
