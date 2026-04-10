@@ -54,6 +54,12 @@ function normalizeDemandType(rawType: string): DemandFormValue['type'] {
   return 'other'
 }
 
+function uiTypeLabel(rawType: string) {
+  if (isMethType(rawType)) return 'Meth'
+  if (String(rawType || '').toLowerCase().includes('coke')) return 'Coke'
+  return 'Autres'
+}
+
 export default function EditSuiviProductionClient({ id }: { id: string }) {
   const router = useRouter()
   const [row, setRow] = useState<DrugProductionTrackingRow | null>(null)
@@ -177,7 +183,7 @@ export default function EditSuiviProductionClient({ id }: { id: string }) {
             <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm sm:grid-cols-3">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className="inline-flex items-center gap-1.5 text-xs text-white/65"><FlaskConical className="h-3.5 w-3.5" />Type</p>
-                <p className="mt-1 font-semibold">{String(row.type || '').toUpperCase()}</p>
+                <p className="mt-1 font-semibold">{uiTypeLabel(String(row.type || ''))}</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className="inline-flex items-center gap-1.5 text-xs text-white/65"><Coins className="h-3.5 w-3.5" />Bénéfice estimé</p>

@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { Beaker, CalendarClock, CheckCircle2, CircleDollarSign, Factory, FlaskConical, Package, Plus, Rows3, Tags, User2, XCircle } from 'lucide-react'
+import { Beaker, CalendarClock, CircleDollarSign, FlaskConical, Plus, Rows3, Tags, User2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Panel } from '@/components/ui/Panel'
@@ -12,9 +13,8 @@ import { DemandePartenaireForm, type DemandFormValue } from '@/components/module
 import {
   createDrugProductionTracking,
   listDrugProductionTrackings,
-  updateDrugProductionTracking,
   type DrugProductionTrackingRow,
-  type ProductionStatus,
+  type ProductionStatus
 } from '@/lib/drugProductionTrackingApi'
 
 type RequestMeta = {
@@ -88,17 +88,15 @@ function computeEstimatedProfit(row: DrugProductionTrackingRow) {
 }
 
 export default function SuiviProductionClient() {
+  const router = useRouter()
   const [rows, setRows] = useState<DrugProductionTrackingRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [validationDraft, setValidationDraft] = useState('0')
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'cancelled'>('all')
   const [proofImageUrl, setProofImageUrl] = useState<string | null>(null)
   const [uploadingProof, setUploadingProof] = useState(false)
 
-  const selected = useMemo(() => rows.find((row) => row.id === selectedId) ?? null, [rows, selectedId])
   const counters = useMemo(() => {
     const pending = rows.filter((row) => row.status === 'in_progress')
     return {
@@ -120,7 +118,6 @@ export default function SuiviProductionClient() {
     try {
       const data = await listDrugProductionTrackings()
       setRows(data)
-      setSelectedId((prev) => (prev && data.some((row) => row.id === prev) ? prev : null))
     } catch {
       toast.error('Impossible de charger les demandes transfo.')
     } finally {
@@ -149,10 +146,6 @@ export default function SuiviProductionClient() {
   useEffect(() => {
     void loadRows()
   }, [])
-
-  useEffect(() => {
-    setValidationDraft(String(Math.max(0, Number(selected?.received_output || 0))))
-  }, [selected?.id, selected?.received_output])
 
   async function createRequest(form: DemandFormValue, expectedOutput: number) {
     const isMeth = form.type === 'meth'
@@ -203,32 +196,6 @@ export default function SuiviProductionClient() {
     }
   }
 
-  async function validateSelected() {
-    if (!selected) return
-    const received = Math.max(0, Math.floor(Number(validationDraft || 0) || 0))
-    try {
-      const updated = await updateDrugProductionTracking(selected.id, {
-        receivedOutput: received,
-        status: received >= Math.max(0, Number(selected.expected_output || 0)) ? 'completed' : 'in_progress',
-      })
-      setRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
-      toast.success('Validation enregistrée.')
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Validation impossible.')
-    }
-  }
-
-  async function cancelSelected() {
-    if (!selected) return
-    try {
-      const updated = await updateDrugProductionTracking(selected.id, { status: 'cancelled' })
-      setRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
-      toast.success('Demande annulée.')
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Annulation impossible.')
-    }
-  }
-
   return (
     <div className="space-y-8 pb-6">
       <PageHeader title="Transfo groupes" subtitle="Coke/Meth séparés, estimation métier claire et validation finale de la quantité réellement récupérée." />
@@ -236,7 +203,7 @@ export default function SuiviProductionClient() {
       <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
         <div className="flex flex-wrap gap-2">
           <PrimaryButton onClick={() => setCreating(true)}><Plus className="h-4 w-4" />Nouvelle demande</PrimaryButton>
-          <Link href={selected ? `/drogues/demandes/${selected.id}` : '/drogues/suivi-production'} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"><Rows3 className="h-4 w-4" />Vue détails</Link>
+          <Link href="/drogues/suivi-production" className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 text-sm font-semibold hover:bg-white/[0.12]"><Rows3 className="h-4 w-4" />Liste</Link>
         </div>
       </div>
 
@@ -269,7 +236,7 @@ export default function SuiviProductionClient() {
         </div>
       </div>
 
-      <div className={`grid gap-6 ${selected ? 'xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]' : 'xl:grid-cols-1'}`}>
+      <div className="grid gap-6 xl:grid-cols-1">
         <Panel className="space-y-4 p-5">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base font-semibold">Liste des demandes</h3>
@@ -294,9 +261,8 @@ export default function SuiviProductionClient() {
                 {!loading && visibleRows.length === 0 ? <tr><td className="px-3 py-6 text-center text-white/65" colSpan={8}>Aucune demande.</td></tr> : null}
                 {!loading ? visibleRows.map((row) => {
                   const meta = parseMeta(row.note)
-                  const isSelected = selectedId === row.id
                   return (
-                    <tr key={row.id} className={`cursor-pointer ${isSelected ? 'bg-cyan-500/[0.08]' : 'hover:bg-white/[0.03]'}`} onClick={() => setSelectedId(row.id)}>
+                    <tr key={row.id} className="cursor-pointer hover:bg-white/[0.03]" onClick={() => router.push(`/drogues/suivi-production/${row.id}`)}>
                       <td className="px-3 py-2 font-medium"><span className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />{row.partner_name}</span></td>
                       <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5">{String(row.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}{typeLabel(String(row.type || ''))}</span></td>
                       <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><Tags className="h-3.5 w-3.5 text-white/60" />{toModeLabel(meta?.mode || '')}</span></td>
@@ -312,46 +278,6 @@ export default function SuiviProductionClient() {
             </table>
           </div>
         </Panel>
-
-        {selected ? (
-        <Panel className="space-y-5 p-5 xl:sticky xl:top-6 xl:self-start">
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/[0.08] p-3">
-            <h3 className="text-base font-semibold text-cyan-100">Validation finale</h3>
-            <p className="mt-1 text-xs text-cyan-100/75">Confirme la quantité reçue et clôture la demande proprement.</p>
-          </div>
-            <div className="space-y-5">
-              <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm sm:grid-cols-2">
-                <p className="inline-flex items-center gap-1.5"><User2 className="h-3.5 w-3.5 text-white/60" />Groupe: <b>{selected.partner_name}</b></p>
-                <p className="inline-flex items-center gap-1.5">{String(selected.type || '').toLowerCase().includes('meth') ? <FlaskConical className="h-3.5 w-3.5 text-fuchsia-200" /> : <Beaker className="h-3.5 w-3.5 text-sky-200" />}Type: <b>{typeLabel(String(selected.type || ''))}</b></p>
-                <p className="inline-flex items-center gap-1.5"><Factory className="h-3.5 w-3.5 text-white/60" />Envoyé: <b>{parseMeta(selected.note)?.sentQty ?? selected.quantity_sent}</b></p>
-                <p className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-white/60" />Pochons prévus: <b>{selected.expected_output}</b></p>
-                <p className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-cyan-200" />Pochons reçus: <b>{selected.received_output}</b></p>
-                <p>Statut: <b>{statusLabel(selected.status)}</b></p>
-              </div>
-              {parseMeta(selected.note)?.imageUrl ? (
-                <div className="overflow-hidden rounded-xl border border-white/15 bg-white/[0.04] p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={parseMeta(selected.note)?.imageUrl || ''} alt="Preuve demande" className="max-h-56 w-full rounded-lg object-cover" />
-                </div>
-              ) : null}
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
-                <label className="space-y-1 text-sm text-white/80">
-                  <span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-cyan-200" />Quantité réellement reçue (validation)</span>
-                  <Input value={validationDraft} onChange={(e) => setValidationDraft(e.target.value)} inputMode="numeric" />
-                </label>
-                <p className="mt-2 text-xs text-white/60">La demande passe en validée si la quantité reçue couvre le prévu.</p>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                <PrimaryButton onClick={() => void validateSelected()}><CheckCircle2 className="h-4 w-4" />Valider la demande</PrimaryButton>
-                <SecondaryButton onClick={() => void cancelSelected()}><XCircle className="h-4 w-4" />Annuler la demande</SecondaryButton>
-              </div>
-
-              <Link href={`/drogues/suivi-production/${selected.id}`} className="inline-flex h-10 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/25">Ouvrir la page détail / édition</Link>
-            </div>
-        </Panel>
-        ) : null}
       </div>
 
       {creating ? (
