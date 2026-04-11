@@ -441,7 +441,8 @@ export async function GET(request: Request) {
 
     const runs = (data ?? []) as TabletDailyRun[]
 
-    let budget = canManageTabletBudget(session) ? await loadTodayBudget(session.groupId, today) : null
+    const canManageBudget = canManageTabletBudget(session)
+    let budget = await loadTodayBudget(session.groupId, today)
     if (budget) {
       const todayRuns = runs.filter((run) => run.day_key === today && isRunVisibleForCurrentWindow(run, budget))
       const distributedFromRuns = Number(todayRuns.reduce((sum, run) => sum + Math.max(0, Number(run.total_cost || 0)), 0).toFixed(2))
@@ -473,7 +474,7 @@ export async function GET(request: Request) {
       items: await getGlobalTabletOptions(),
       runs: runsWithRemaining,
       stats: buildGroupStats(runsWithRemaining, budget),
-      budget: toPublicBudget(today, budget),
+      budget: canManageBudget ? toPublicBudget(today, budget) : null,
     })
   } catch (error: unknown) {
     return NextResponse.json({ error: toErrorMessage(error) }, { status: toStatusCode(error) })
