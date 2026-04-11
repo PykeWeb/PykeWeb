@@ -75,16 +75,31 @@ export default function LogsPage() {
   const [endDate, setEndDate] = useState('')
   const [toast, setToast] = useState<string | null>(null)
 
-  const session = getTenantSession()
+  const [session] = useState(() => getTenantSession())
   const canAccessLogs = sessionCanAccessPrefix(session, '/logs')
   const canManageWebhook = sessionCanManageSensitiveGroupSettings(session)
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (overrides?: {
+    query?: string
+    member?: string
+    category?: AppLogCategory | 'all'
+    actionType?: AppLogActionType | 'all'
+    startDate?: string
+    endDate?: string
+  }) => {
     try {
       setLoading(true)
       setError(null)
       const [nextRows, nextSummary, nextWebhook] = await Promise.all([
-        listGroupLogs({ query, member, category, actionType, startDate, endDate, limit: 400 }),
+        listGroupLogs({
+          query: overrides?.query ?? query,
+          member: overrides?.member ?? member,
+          category: overrides?.category ?? category,
+          actionType: overrides?.actionType ?? actionType,
+          startDate: overrides?.startDate ?? startDate,
+          endDate: overrides?.endDate ?? endDate,
+          limit: 250,
+        }),
         listGroupLogsSummary(),
         getGroupWebhookStatus(),
       ])
@@ -108,7 +123,8 @@ export default function LogsPage() {
       return
     }
     void loadData()
-  }, [canAccessLogs, loadData, session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const memberOptions = useMemo(() => {
     const names = new Set<string>()

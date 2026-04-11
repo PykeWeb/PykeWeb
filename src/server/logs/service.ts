@@ -97,6 +97,17 @@ export async function readGroupWebhookStatus(groupId: string): Promise<GroupWebh
   }
 }
 
+
+function resolveFinanceFlow(body: Record<string, unknown>, payload: Record<string, unknown> | null) {
+  const paymentMode = toText(body.payment_mode) ?? toText(payload?.payment_mode)
+  if (paymentMode === 'stock_in') return { action: 'entree', actionType: 'entree' as AppLogActionType, category: 'stock' as AppLogCategory }
+  if (paymentMode === 'stock_out') return { action: 'sortie', actionType: 'sortie' as AppLogActionType, category: 'stock' as AppLogCategory }
+  const rawAction = toText(body.action)
+  if (rawAction === 'buy') return { action: 'achat', actionType: 'achat' as AppLogActionType, category: inferCategory(toText(body.area) || '', body.category) }
+  if (rawAction === 'sell') return { action: 'vente', actionType: 'vente' as AppLogActionType, category: inferCategory(toText(body.area) || '', body.category) }
+  return null
+}
+
 export function buildLogRecord(input: {
   session: AppServerSession
   actorName: string | null
@@ -110,8 +121,10 @@ export function buildLogRecord(input: {
   body: Record<string, unknown>
 }) {
   const payload = input.payload
-  const category = inferCategory(input.area, input.body.category ?? payload?.category)
-  const actionType = inferActionType(input.action, input.body.action_type ?? payload?.action_type)
+  const financeFlow = resolveFinanceFlow(input.body, payload)
+  const category = financeFlow?.category ?? inferCategory(input.area, input.body.category ?? payload?.category)
+  const actionType = financeFlow?.actionType ?? inferActionType(input.action, input.body.action_type ?? payload?.action_type)
+  const normalizedAction = financeFlow?.action ?? input.action
 
   return {
     group_id: input.session.groupId,
@@ -123,7 +136,7 @@ export function buildLogRecord(input: {
     source: (toText(input.body.source) as AppLogSource | null) ?? input.actorSource,
     area: input.area,
     category,
-    action: input.action,
+    action: normalizedAction,
     action_type: actionType,
     target_type: toText(input.body.target_type) ?? toText(input.body.entity_type) ?? input.entityType,
     target_name: toText(input.body.target_name) ?? toText(payload?.item_name),

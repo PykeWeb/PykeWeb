@@ -8,7 +8,7 @@ import { buildLogRecord, sendDiscordLogIfConfigured } from '@/server/logs/servic
 function toSafeLimit(raw: string | null, fallback: number) {
   const n = Number(raw)
   if (!Number.isFinite(n)) return fallback
-  return Math.min(1000, Math.max(1, Math.floor(n)))
+  return Math.min(500, Math.max(1, Math.floor(n)))
 }
 
 function toText(value: unknown): string | null {
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     }
 
     const params = new URL(request.url).searchParams
-    const limit = toSafeLimit(params.get('limit'), 300)
+    const limit = toSafeLimit(params.get('limit'), 200)
     const query = toText(params.get('query'))
     const member = toText(params.get('member'))
     const category = toText(params.get('category'))

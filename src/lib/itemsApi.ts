@@ -1468,10 +1468,10 @@ export async function createFinanceTransaction(args: {
   void createAppLog({
     area: 'finance.transactions',
     action: args.mode,
-    message: `${args.mode === 'buy' ? 'Achat' : 'Vente'}: ${item.name} x${qty} (${totalAmount.toFixed(2)} $)`,
+    message: `${requestedPaymentMode === 'stock_in' ? 'Entrée' : requestedPaymentMode === 'stock_out' ? 'Sortie' : args.mode === 'buy' ? 'Achat' : 'Vente'}: ${item.name} x${qty} (${totalAmount.toFixed(2)} $)`,
     entity_type: 'finance_transaction',
     entity_id: data.id,
-    payload: { item_id: resolvedItemId, item_name: item.name, quantity: qty, unit_price: unit, total: totalAmount, cash_item_id: cashItem?.id || null, cash_moved: shouldMoveCash ? totalAmount : 0 },
+    payload: { item_id: resolvedItemId, item_name: item.name, quantity: qty, unit_price: unit, total: totalAmount, payment_mode: requestedPaymentMode, cash_item_id: cashItem?.id || null, cash_moved: shouldMoveCash ? totalAmount : 0 },
   })
   return data
 }

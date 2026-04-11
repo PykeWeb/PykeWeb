@@ -22,11 +22,11 @@ export async function GET(request: Request) {
 
     const { data, error } = await supabase
       .from('app_logs')
-      .select('*')
+      .select('created_at,category,action_type,actor_name,user_name,amount,note')
       .eq('group_id', session.groupId)
       .gte('created_at', todayIso)
       .order('created_at', { ascending: false })
-      .limit(600)
+      .limit(200)
 
     if (error) throw error
 
