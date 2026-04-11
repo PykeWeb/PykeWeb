@@ -71,6 +71,14 @@ function getCurrentWeekRange() {
   return { weekStart, weekEnd }
 }
 
+
+function isPaymentModeConstraintError(error: unknown) {
+  const message = toErrorMessage(error, '').toLowerCase()
+  return message.includes('finance_transactions_payment_mode_check')
+    || message.includes('payment_mode')
+    || message.includes('invalid input value for enum')
+}
+
 function toNonNegative(value: unknown) {
   const parsed = Number(value ?? 0)
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
@@ -459,9 +467,25 @@ export async function POST(request: Request) {
       }),
     ]
 
-    if (financeRows.length > 0) {
-      const { error: financeError } = await supabase.from('finance_transactions').insert(financeRows)
-      if (financeError) throw financeError
+    for (const row of financeRows) {
+      const preferredMode = String(row.payment_mode || 'other')
+      const fallbacks = preferredMode === 'stock_in' || preferredMode === 'stock_out'
+        ? [preferredMode, 'other', 'cash']
+        : [preferredMode, 'other']
+
+      let inserted = false
+      let lastError: unknown = null
+      for (const mode of fallbacks) {
+        const { error: financeError } = await supabase.from('finance_transactions').insert({ ...row, payment_mode: mode })
+        if (!financeError) {
+          inserted = true
+          break
+        }
+        lastError = financeError
+        if (!isPaymentModeConstraintError(financeError)) break
+      }
+
+      if (!inserted && lastError) throw lastError
     }
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
