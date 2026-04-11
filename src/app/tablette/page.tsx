@@ -76,6 +76,8 @@ export default function TablettePage() {
       }, 0),
     [items, quantities]
   )
+  const projectedKitStock = useMemo(() => Math.max(0, Number(projectedStockByKey.kit_cambus || 0)), [projectedStockByKey])
+  const projectedDisqueuseStock = useMemo(() => Math.max(0, Number(projectedStockByKey.disqueuse || 0)), [projectedStockByKey])
 
   const canSubmit = memberName.trim().length > 0 && totalQty > 0 && !saving
 
@@ -374,6 +376,14 @@ export default function TablettePage() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <h2 className="text-base font-semibold">Récapitulatif</h2>
           <p className="mb-3 text-xs text-white/60">Historique des membres ayant fait la tablette.</p>
+          <div className="mb-3 grid gap-2 text-sm md:grid-cols-2">
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+              Kit après ajout: <span className="font-semibold">{projectedKitStock}</span>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+              Disqueuse après ajout: <span className="font-semibold">{projectedDisqueuseStock}</span>
+            </div>
+          </div>
           <div className="overflow-hidden rounded-xl border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.03] text-white/70">
