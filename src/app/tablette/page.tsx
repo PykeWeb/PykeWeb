@@ -22,6 +22,7 @@ type AtelierResponse = {
   stats: GroupTabletStats
   budget: TabletDailyBudget | null
 }
+type BubbleStats = { today: number; week: number }
 
 function formatDay(value: string) {
   const date = new Date(value)
@@ -50,6 +51,8 @@ export default function TablettePage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [memberOptions, setMemberOptions] = useState<string[]>([])
+  const [activitiesStats, setActivitiesStats] = useState<BubbleStats>({ today: 0, week: 0 })
+  const [depenseStats, setDepenseStats] = useState<BubbleStats>({ today: 0, week: 0 })
   const session = getTenantSession()
   const allowedPrefixes = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
   const canSeeTabletBudget = Boolean(session?.isAdmin || allowedPrefixes.includes('/') || allowedPrefixes.includes('/tablette/coffre'))
@@ -92,6 +95,23 @@ export default function TablettePage() {
       week: stats?.week.runs ?? runs.length,
     }
   }, [stats, runs.length])
+  const dayRange = useMemo(() => {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 1)
+    return { start, end }
+  }, [])
+  const weekRange = useMemo(() => {
+    const start = new Date()
+    const day = start.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() + diff)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 7)
+    return { start, end }
+  }, [])
   const remainingAfterByRunId = useMemo(() => {
     const map = new Map<string, number>()
     if (!budget) return map
@@ -192,12 +212,53 @@ export default function TablettePage() {
         }
         return next
       })
+
+      const [activitiesRes, expensesRes] = await Promise.all([
+        fetch('/api/activities?scope=all', withTenantSessionHeader({ cache: 'no-store' })).catch(() => null),
+        fetch('/api/expenses', withTenantSessionHeader({ cache: 'no-store' })).catch(() => null),
+      ])
+
+      if (activitiesRes?.ok) {
+        const payload = (await activitiesRes.json()) as { entries?: Array<{ created_at?: string | null }> }
+        const entries = Array.isArray(payload.entries) ? payload.entries : []
+        const nextStats = entries.reduce(
+          (acc, entry) => {
+            const ts = new Date(String(entry.created_at || '')).getTime()
+            if (!Number.isFinite(ts)) return acc
+            if (ts >= dayRange.start.getTime() && ts < dayRange.end.getTime()) acc.today += 1
+            if (ts >= weekRange.start.getTime() && ts < weekRange.end.getTime()) acc.week += 1
+            return acc
+          },
+          { today: 0, week: 0 },
+        )
+        setActivitiesStats(nextStats)
+      } else {
+        setActivitiesStats({ today: 0, week: 0 })
+      }
+
+      if (expensesRes?.ok) {
+        const payload = (await expensesRes.json()) as { rows?: Array<{ created_at?: string | null }> }
+        const rows = Array.isArray(payload.rows) ? payload.rows : []
+        const nextStats = rows.reduce(
+          (acc, row) => {
+            const ts = new Date(String(row.created_at || '')).getTime()
+            if (!Number.isFinite(ts)) return acc
+            if (ts >= dayRange.start.getTime() && ts < dayRange.end.getTime()) acc.today += 1
+            if (ts >= weekRange.start.getTime() && ts < weekRange.end.getTime()) acc.week += 1
+            return acc
+          },
+          { today: 0, week: 0 },
+        )
+        setDepenseStats(nextStats)
+      } else {
+        setDepenseStats({ today: 0, week: 0 })
+      }
     } catch (loadError: unknown) {
       setError(loadError instanceof Error ? loadError.message : 'Impossible de charger la tablette.')
     } finally {
       setLoading(false)
     }
-  }, [forceLogout, syncTabletSession])
+  }, [dayRange.end, dayRange.start, forceLogout, syncTabletSession, weekRange.end, weekRange.start])
 
   useEffect(() => {
     const sessionMember = String(getTenantSession()?.memberName || '').trim()
@@ -226,7 +287,7 @@ export default function TablettePage() {
       <div className="space-y-4">
         <div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <ActivitiesCategoryTabs active="tablette" tabletteStats={tabletteBubbleStats} />
+            <ActivitiesCategoryTabs active="tablette" activitiesStats={activitiesStats} tabletteStats={tabletteBubbleStats} depenseStats={depenseStats} />
             <div className="grid gap-2 text-sm md:grid-cols-2">
               <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
                 Kit après ajout: <span className="font-semibold">{projectedKitStock}</span>
