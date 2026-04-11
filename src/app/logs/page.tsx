@@ -18,6 +18,8 @@ const CATEGORY_OPTIONS: Array<{ value: AppLogCategory | 'all'; label: string }> 
   { value: 'admin', label: 'Admin' },
   { value: 'discord', label: 'Discord' },
   { value: 'system', label: 'Système' },
+  { value: 'tablet', label: 'Tablette' },
+  { value: 'activity', label: 'Activité' },
 ]
 
 const ACTION_OPTIONS: Array<{ value: AppLogActionType | 'all'; label: string }> = [

@@ -1,6 +1,6 @@
 export type AppLogSource = 'web' | 'fivem' | 'system' | 'api' | 'discord' | 'admin'
 
-export type AppLogCategory = 'finance' | 'stock' | 'drugs' | 'weapons' | 'admin' | 'discord' | 'system' | 'other'
+export type AppLogCategory = 'finance' | 'stock' | 'drugs' | 'weapons' | 'admin' | 'discord' | 'system' | 'tablet' | 'activity' | 'other'
 
 export type AppLogActionType =
   | 'creation'

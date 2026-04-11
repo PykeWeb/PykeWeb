@@ -32,12 +32,14 @@ function stringifyValue(value: unknown): string | null {
 
 export function inferCategory(area: string, explicit: unknown): AppLogCategory {
   const asText = toText(explicit)
-  if (asText && ['finance', 'stock', 'drugs', 'weapons', 'admin', 'discord', 'system', 'other'].includes(asText)) {
+  if (asText && ['finance', 'stock', 'drugs', 'weapons', 'admin', 'discord', 'system', 'tablet', 'activity', 'other'].includes(asText)) {
     return asText as AppLogCategory
   }
   const normalized = area.toLowerCase()
   if (normalized.includes('finance') || normalized.includes('cash') || normalized.includes('expense')) return 'finance'
-  if (normalized.includes('stock') || normalized.includes('items') || normalized.includes('tablette')) return 'stock'
+  if (normalized.includes('tablette') || normalized.includes('tablet')) return 'tablet'
+  if (normalized.includes('activit')) return 'activity'
+  if (normalized.includes('stock') || normalized.includes('items')) return 'stock'
   if (normalized.includes('drog') || normalized.includes('meth')) return 'drugs'
   if (normalized.includes('arme') || normalized.includes('weapon')) return 'weapons'
   if (normalized.includes('admin') || normalized.includes('group') || normalized.includes('permission')) return 'admin'
