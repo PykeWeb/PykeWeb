@@ -488,6 +488,47 @@ export async function POST(request: Request) {
       if (!inserted && lastError) throw lastError
     }
 
+    await supabase.from('app_logs').insert([
+      {
+        group_id: session.groupId,
+        group_name: session.groupName,
+        user_id: session.memberId ?? null,
+        user_name: session.memberName ?? memberName,
+        actor_name: session.memberName ?? memberName,
+        actor_source: 'web',
+        source: 'web',
+        area: 'activities',
+        category: 'stock',
+        action: 'entree',
+        action_type: 'entree',
+        target_type: 'activity',
+        target_name: activityType,
+        quantity: normalizedObjectLines.reduce((sum, line) => sum + Math.max(1, Math.floor(Number(line.quantity) || 1)), 0),
+        message: `Activité ${activityType} enregistrée (${memberName})`,
+        note: financeNotes,
+      },
+      ...(normalizedEquipmentLines.length > 0
+        ? [{
+          group_id: session.groupId,
+          group_name: session.groupName,
+          user_id: session.memberId ?? null,
+          user_name: session.memberName ?? memberName,
+          actor_name: session.memberName ?? memberName,
+          actor_source: 'web',
+          source: 'web',
+          area: 'activities',
+          category: 'stock',
+          action: 'sortie',
+          action_type: 'sortie',
+          target_type: 'equipment',
+          target_name: activityType,
+          quantity: normalizedEquipmentLines.reduce((sum, line) => sum + Math.max(1, Math.floor(Number(line.quantity) || 1)), 0),
+          message: `Équipements consommés pour ${activityType}`,
+          note: financeNotes,
+        }]
+        : []),
+    ])
+
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
   } catch (error: unknown) {
     return NextResponse.json({ error: toErrorMessage(error, "Impossible d'enregistrer l'activité.") }, { status: 400 })

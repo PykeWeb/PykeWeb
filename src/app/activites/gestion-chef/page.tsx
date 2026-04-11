@@ -82,7 +82,7 @@ function summarizeMemberActivities(entries: ActivityEntry[]): MemberActivitySumm
       const name = (match?.[1] || rawEquip).trim()
       const qty = Math.max(1, Number(match?.[2] || 1) || 1)
       const existing = current.equipmentLines.find((line) => line.name === name)
-      if (existing) existing.qty += qty
+      if (existing) existing.qty = Math.max(existing.qty, qty)
       else current.equipmentLines.push({ name, qty })
     }
     summaryMap.set(key, current)
