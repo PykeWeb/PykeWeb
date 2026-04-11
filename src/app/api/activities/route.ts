@@ -488,7 +488,7 @@ export async function POST(request: Request) {
       if (!inserted && lastError) throw lastError
     }
 
-    await supabase.from('app_logs').insert([
+    const logRows = [
       {
         group_id: session.groupId,
         group_name: session.groupName,
@@ -527,7 +527,27 @@ export async function POST(request: Request) {
           note: financeNotes,
         }]
         : []),
-    ])
+    ]
+
+    const { error: logError } = await supabase.from('app_logs').insert(logRows)
+    if (logError) {
+      const fallbackRows = logRows.map((row) => ({
+        group_id: session.groupId,
+        group_name: session.groupName,
+        user_id: session.memberId ?? null,
+        user_name: session.memberName ?? memberName,
+        actor_name: session.memberName ?? memberName,
+        actor_source: 'web',
+        source: 'web',
+        area: 'activities',
+        category: 'activity',
+        action: 'activity_logged',
+        action_type: 'autre',
+        message: String(row.message || `Activité ${activityType}`),
+        note: financeNotes,
+      }))
+      await supabase.from('app_logs').insert(fallbackRows)
+    }
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
   } catch (error: unknown) {
