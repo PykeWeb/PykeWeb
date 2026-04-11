@@ -34,6 +34,7 @@ type GroupAccessRow = {
 }
 
 type CashItemRow = { id: string; stock: number | null; name: string }
+type StockRow = { name: string; stock: number | null }
 
 class ApiError extends Error {
   status: number
@@ -215,6 +216,33 @@ async function findCashItem(groupId: string): Promise<CashItemRow> {
   if (cashLoadError) throw cashLoadError
   if (!cashItem?.id) throw new ApiError('Item "argent" introuvable dans le catalogue.', 400)
   return cashItem
+}
+
+async function loadTabletOptionStocks(groupId: string, options: TabletCatalogItemConfig[]) {
+  if (!options.length) return {} as Record<string, number>
+  const supabase = getSupabaseAdmin()
+  const optionNames = options.map((option) => option.name)
+  const { data, error } = await supabase
+    .from('catalog_items')
+    .select('name,stock')
+    .eq('group_id', groupId)
+    .eq('is_active', true)
+    .in('name', optionNames)
+
+  if (error) throw error
+
+  const byName = new Map<string, number>()
+  for (const row of (data ?? []) as StockRow[]) {
+    const normalizedName = String(row.name || '').trim().toLowerCase()
+    if (!normalizedName) continue
+    byName.set(normalizedName, Math.max(0, Number(row.stock || 0)))
+  }
+
+  return options.reduce<Record<string, number>>((acc, option) => {
+    const normalizedName = option.name.trim().toLowerCase()
+    acc[option.key] = byName.get(normalizedName) ?? 0
+    return acc
+  }, {})
 }
 
 async function appendTabletCashHistory(args: {
@@ -432,6 +460,7 @@ export async function GET(request: Request) {
     await assertGroupTabletAccess(session.groupId)
     const supabase = getSupabaseAdmin()
     const today = toDayKey()
+    const options = await getGlobalTabletOptions()
 
     const { data, error } = await supabase
       .from('tablet_daily_runs')
@@ -474,7 +503,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       today,
-      items: await getGlobalTabletOptions(),
+      items: options,
+      stock_by_key: await loadTabletOptionStocks(session.groupId, options),
       runs: runsWithRemaining,
       stats: buildGroupStats(runsWithRemaining, budget),
       budget: canManageBudget ? toPublicBudget(today, budget) : null,

@@ -17,6 +17,7 @@ import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 type AtelierResponse = {
   today: string
   items: TabletCatalogItemConfig[]
+  stock_by_key?: Record<string, number>
   runs: TabletDailyRun[]
   stats: GroupTabletStats
   budget: TabletDailyBudget | null
@@ -38,6 +39,7 @@ export default function TablettePage() {
   const [memberName, setMemberName] = useState('')
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [items, setItems] = useState<TabletCatalogItemConfig[]>([])
+  const [stockByKey, setStockByKey] = useState<Record<string, number>>({})
   const [runs, setRuns] = useState<TabletDailyRun[]>([])
   const [stats, setStats] = useState<GroupTabletStats | null>(null)
   const [today, setToday] = useState('')
@@ -58,6 +60,14 @@ export default function TablettePage() {
   }, [memberName, memberOptions])
 
   const totalQty = useMemo(() => Object.values(quantities).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0), [quantities])
+  const projectedStockByKey = useMemo(() => (
+    items.reduce<Record<string, number>>((acc, item) => {
+      const current = Math.max(0, Number(stockByKey[item.key] || 0))
+      const added = Math.max(0, Number(quantities[item.key] || 0))
+      acc[item.key] = current + added
+      return acc
+    }, {})
+  ), [items, quantities, stockByKey])
   const totalCost = useMemo(
     () =>
       items.reduce((sum, item) => {
@@ -138,6 +148,7 @@ export default function TablettePage() {
       }
       const data = (await res.json()) as AtelierResponse
       setItems(data.items)
+      setStockByKey(data.stock_by_key || {})
       setRuns(data.runs)
       setToday(data.today)
       setStats(data.stats)
@@ -289,6 +300,13 @@ export default function TablettePage() {
                     min={0}
                     max={Math.max(0, item.max_per_day)}
                   />
+                  <div className="mt-2 grid gap-1 text-xs text-white/70">
+                    <p>Stock actuel: <span className="font-semibold text-white">{Math.max(0, Number(stockByKey[item.key] || 0))}</span></p>
+                    <p>
+                      Avec cet ajout: <span className="font-semibold text-emerald-200">+{Math.max(0, Number(quantities[item.key] || 0))}</span>
+                      {' '}→ <span className="font-semibold text-white">{Math.max(0, Number(projectedStockByKey[item.key] || 0))}</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -298,6 +316,16 @@ export default function TablettePage() {
             <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Jour: <span className="font-semibold">{formatDay(today)}</span></div>
             <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Quantité totale: <span className="font-semibold">{totalQty}</span></div>
             <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Coût total: <span className="font-semibold">{totalCost.toFixed(2)} $</span></div>
+          </div>
+          <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70">
+            {items.map((item) => {
+              const added = Math.max(0, Number(quantities[item.key] || 0))
+              if (added <= 0) return null
+              const current = Math.max(0, Number(stockByKey[item.key] || 0))
+              const next = Math.max(0, Number(projectedStockByKey[item.key] || 0))
+              return <p key={`projection-${item.key}`}>{item.name}: {current} + {added} = <span className="font-semibold text-white">{next}</span></p>
+            })}
+            {totalQty <= 0 ? <p>Aucune projection (aucun item ajouté).</p> : null}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
