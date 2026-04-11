@@ -249,7 +249,6 @@ export default function LogsPage() {
               </div>
               <p className="mt-2 text-sm"><span className="font-semibold">{log.user_name || log.actor_name || 'Membre inconnu'}</span> a effectué <span className="font-semibold">{log.action}</span></p>
               <div className="mt-2 grid gap-1 text-xs text-white/80 md:grid-cols-2 xl:grid-cols-3">
-                <p>Catégorie : <span className="text-white">{log.category}</span></p>
                 <p>Élément : <span className="text-white">{log.target_name || log.entity_type || '—'}</span></p>
                 <p>Source : <span className="text-white">{log.source}</span></p>
                 <p>Quantité : <span className="text-white">{log.quantity ?? '—'}</span></p>

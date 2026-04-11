@@ -171,19 +171,25 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url)
     const rawWeekStart = url.searchParams.get('weekStart')
+    const scope = url.searchParams.get('scope') === 'all' ? 'all' : 'week'
     const weekStart = rawWeekStart ? new Date(rawWeekStart) : toWeekStart()
     if (Number.isNaN(weekStart.getTime())) return NextResponse.json({ error: 'Semaine invalide.' }, { status: 400 })
     const weekEnd = toWeekEnd(weekStart)
 
     const supabase = getSupabaseAdmin()
     const [{ data: entries, error: entriesError }, { data: settings, error: settingsError }] = await Promise.all([
-      supabase
-        .from('group_activity_entries')
-        .select('*')
-        .eq('group_id', session.groupId)
-        .gte('created_at', weekStart.toISOString())
-        .lt('created_at', weekEnd.toISOString())
-        .order('created_at', { ascending: false }),
+      (() => {
+        let query = supabase
+          .from('group_activity_entries')
+          .select('*')
+          .eq('group_id', session.groupId)
+          .order('created_at', { ascending: false })
+          .limit(scope === 'all' ? 2000 : 800)
+        if (scope !== 'all') {
+          query = query.gte('created_at', weekStart.toISOString()).lt('created_at', weekEnd.toISOString())
+        }
+        return query
+      })(),
       supabase
         .from('group_activity_settings')
         .select('group_id, default_percent_per_object')
@@ -415,6 +421,47 @@ export async function POST(request: Request) {
         if (updateEquipmentStockErr) throw updateEquipmentStockErr
         equipmentItem.stock = currentStock - qty
       }
+    }
+
+    const financeNotes = `Activité ${activityType} - ${memberName}`
+    const financeRows = [
+      ...normalizedObjectLines.map((line) => {
+        const item = objectMap.get(line.object_item_id) as CatalogItemRow
+        const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        const unit = Math.max(0, Number(item.buy_price) || 0)
+        return {
+          group_id: session.groupId,
+          item_id: item.id,
+          mode: 'buy',
+          quantity: qty,
+          unit_price: unit,
+          total: Number((qty * unit).toFixed(2)),
+          counterparty: memberName,
+          notes: financeNotes,
+          payment_mode: 'stock_in',
+        }
+      }),
+      ...normalizedEquipmentLines.map((line) => {
+        const item = equipmentStockMap.get(line.equipment_item_id) as CatalogItemRow
+        const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        const unit = Math.max(0, Number(item.buy_price) || 0)
+        return {
+          group_id: session.groupId,
+          item_id: item.id,
+          mode: 'sell',
+          quantity: qty,
+          unit_price: unit,
+          total: Number((qty * unit).toFixed(2)),
+          counterparty: memberName,
+          notes: financeNotes,
+          payment_mode: 'stock_out',
+        }
+      }),
+    ]
+
+    if (financeRows.length > 0) {
+      const { error: financeError } = await supabase.from('finance_transactions').insert(financeRows)
+      if (financeError) throw financeError
     }
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })

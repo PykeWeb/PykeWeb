@@ -27,8 +27,11 @@ export type ActivityListResponse = {
   settings: ActivitySettings
 }
 
-export async function listActivities(weekStartIso?: string): Promise<ActivityListResponse> {
-  const query = weekStartIso ? `?weekStart=${encodeURIComponent(weekStartIso)}` : ''
+export async function listActivities(options?: { weekStartIso?: string; scope?: 'week' | 'all' }): Promise<ActivityListResponse> {
+  const params = new URLSearchParams()
+  if (options?.weekStartIso) params.set('weekStart', options.weekStartIso)
+  if (options?.scope) params.set('scope', options.scope)
+  const query = params.toString() ? `?${params.toString()}` : ''
   const res = await fetch(`/api/activities${query}`, withTenantSessionHeader({ cache: 'no-store' }))
   if (!res.ok) throw new Error(await readApiError(res, 'Impossible de charger les activités.'))
   return res.json() as Promise<ActivityListResponse>
