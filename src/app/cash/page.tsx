@@ -32,7 +32,7 @@ export default function CashPage() {
     void (async () => {
       try {
         setLoading(true)
-        const [items, groupLogs] = await Promise.all([listCatalogItemsUnified(), listGroupLogs(300)])
+        const [items, groupLogs] = await Promise.all([listCatalogItemsUnified(), listGroupLogs({ limit: 300 })])
         const cash = items.find((item) => String(item.name || '').trim().toLowerCase() === 'argent') || null
         setCashItem(cash)
         setValue(String(Math.max(0, Number(cash?.stock || 0))))

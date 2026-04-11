@@ -33,6 +33,7 @@ export const ROLE_ACCESS_OPTIONS = [
   { label: 'Coffre tablette', prefix: '/tablette/coffre' },
   { label: 'Licence', prefix: '/tablette/paiement' },
   { label: 'Gestion chef', prefix: '/activites/gestion-chef' },
+  { label: 'Logs', prefix: '/logs' },
 ] as const
 
 export function normalizeRolePrefixes(prefixes: string[]) {

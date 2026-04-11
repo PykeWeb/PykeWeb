@@ -73,13 +73,17 @@ function summarizeMemberActivities(entries: ActivityEntry[]): MemberActivitySumm
       else current.objectLines.push({ name: objName, qty: Math.max(0, Number(entry.quantity) || 0) })
     }
 
-    const equipParts = String(entry.equipment_name || '').split(',').map((part) => part.trim()).filter(Boolean)
+    const equipParts = String(entry.equipment_name || '')
+      .split('•')
+      .map((part) => part.trim())
+      .filter(Boolean)
     for (const rawEquip of equipParts) {
-      const [name, qtyPart] = rawEquip.split(' x')
-      const qty = Math.max(1, Number(qtyPart || 1) || 1)
-      const existing = current.equipmentLines.find((line) => line.name === name.trim())
-      if (existing) existing.qty += qty
-      else current.equipmentLines.push({ name: name.trim(), qty })
+      const match = rawEquip.match(/^(.*)\sx(\d+)$/i)
+      const name = (match?.[1] || rawEquip).trim()
+      const qty = Math.max(1, Number(match?.[2] || 1) || 1)
+      const existing = current.equipmentLines.find((line) => line.name === name)
+      if (existing) existing.qty = Math.max(existing.qty, qty)
+      else current.equipmentLines.push({ name, qty })
     }
     summaryMap.set(key, current)
   }
@@ -110,7 +114,7 @@ export default function ActivitesGestionChefPage() {
 
   async function refresh() {
     try {
-      const response = await listActivities()
+      const response = await listActivities({ scope: 'all' })
       setData(response)
       const initialPercent = Math.max(0.01, Number(response.settings.default_percent_per_object) || 2)
       setPercentDraft(String(initialPercent))
@@ -196,7 +200,7 @@ export default function ActivitesGestionChefPage() {
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glow">
         <h2 className="text-xl font-semibold">Activités par membre</h2>
         <div className="mt-4 space-y-3">
-          {groupedForChef.length === 0 ? <p className="text-sm text-white/65">Aucune activité cette semaine.</p> : null}
+          {groupedForChef.length === 0 ? <p className="text-sm text-white/65">Aucune activité enregistrée.</p> : null}
 
           {groupedForChef.map((member) => {
             const isOpen = expandedMember === member.memberName

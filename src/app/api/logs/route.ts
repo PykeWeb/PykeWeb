@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { requireSession } from '@/server/auth/requireSession'
+import { sessionCanAccessPrefix } from '@/server/auth/access'
 import type { AppLogEntry, AppLogSource, CreateAppLogInput } from '@/lib/types/logs'
+import { buildLogRecord, sendDiscordLogIfConfigured } from '@/server/logs/service'
 
 function toSafeLimit(raw: string | null, fallback: number) {
   const n = Number(raw)
   if (!Number.isFinite(n)) return fallback
-  return Math.min(1000, Math.max(1, Math.floor(n)))
+  return Math.min(500, Math.max(1, Math.floor(n)))
 }
 
 function toText(value: unknown): string | null {
@@ -33,7 +35,7 @@ function pickPayloadText(payload: Record<string, unknown> | null | undefined, ke
 }
 
 function normalizeActorSource(value: unknown): AppLogSource {
-  return value === 'fivem' || value === 'system' ? value : 'web'
+  return value === 'fivem' || value === 'system' || value === 'api' || value === 'discord' || value === 'admin' ? value : 'web'
 }
 
 function mergeActorPayload(args: {
@@ -62,18 +64,47 @@ function mergeActorPayload(args: {
 export async function GET(request: Request) {
   try {
     const session = await requireSession(request)
-    const limit = toSafeLimit(new URL(request.url).searchParams.get('limit'), 250)
+    if (!sessionCanAccessPrefix(session, '/logs')) {
+      return NextResponse.json({ error: 'Permission insuffisante pour consulter les logs.' }, { status: 403 })
+    }
+
+    const params = new URL(request.url).searchParams
+    const limit = toSafeLimit(params.get('limit'), 200)
+    const query = toText(params.get('query'))
+    const member = toText(params.get('member'))
+    const category = toText(params.get('category'))
+    const actionType = toText(params.get('actionType'))
+    const startDate = toText(params.get('startDate'))
+    const endDate = toText(params.get('endDate'))
+
     const supabase = getSupabaseAdmin()
 
-    const { data, error } = await supabase
+    let dbQuery = supabase
       .from('app_logs')
       .select('*')
       .eq('group_id', session.groupId)
       .order('created_at', { ascending: false })
       .limit(limit)
 
+    if (category) dbQuery = dbQuery.eq('category', category)
+    if (actionType) dbQuery = dbQuery.eq('action_type', actionType)
+    if (member) dbQuery = dbQuery.or(`actor_name.ilike.%${member}%,user_name.ilike.%${member}%`)
+    if (startDate) dbQuery = dbQuery.gte('created_at', new Date(startDate).toISOString())
+    if (endDate) {
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      dbQuery = dbQuery.lte('created_at', end.toISOString())
+    }
+
+    const { data, error } = await dbQuery
     if (error) throw error
-    return NextResponse.json((data ?? []) as AppLogEntry[])
+
+    const rows = (data ?? []) as AppLogEntry[]
+    if (!query) return NextResponse.json(rows)
+
+    const q = query.toLowerCase()
+    const filtered = rows.filter((log) => `${log.actor_name || ''} ${log.user_name || ''} ${log.category} ${log.action} ${log.message} ${log.target_name || ''} ${log.note || ''}`.toLowerCase().includes(q))
+    return NextResponse.json(filtered)
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Impossible de charger les logs.' }, { status: 400 })
   }
@@ -87,7 +118,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'area/action/message sont requis.' }, { status: 400 })
     }
 
-    const actorSource = normalizeActorSource(body.actor_source)
+    const actorSource = normalizeActorSource(body.actor_source ?? body.source)
     const headerPlayerName = toText(request.headers.get('x-fivem-player-name'))
     const headerCharacterName = toText(request.headers.get('x-fivem-character-name'))
     const headerSteamName = toText(request.headers.get('x-fivem-steam-name'))
@@ -129,31 +160,36 @@ export async function POST(request: Request) {
       session.groupName,
     )
 
-    const supabase = getSupabaseAdmin()
-    const payload = {
-      group_id: session.groupId,
-      group_name: session.groupName,
-      actor_name: actorName,
-      actor_source: actorSource,
+    const payload = mergeActorPayload({
+      payload: body.payload,
+      actorSource,
+      memberName: toText(session.memberName),
+      characterName,
+      steamName,
+      steamIdentifier,
+      fivemLicense,
+      playerName: headerPlayerName,
+    })
+
+    const record = buildLogRecord({
+      session,
+      actorName,
+      actorSource,
       area: body.area.trim(),
       action: body.action.trim(),
-      entity_type: body.entity_type?.trim() || null,
-      entity_id: body.entity_id?.trim() || null,
       message: body.message.trim(),
-      payload: mergeActorPayload({
-        payload: body.payload,
-        actorSource,
-        memberName: toText(session.memberName),
-        characterName,
-        steamName,
-        steamIdentifier,
-        fivemLicense,
-        playerName: headerPlayerName,
-      }),
-    }
+      payload,
+      entityType: body.entity_type?.trim() || null,
+      entityId: body.entity_id?.trim() || null,
+      body: body as Record<string, unknown>,
+    })
 
-    const { error } = await supabase.from('app_logs').insert(payload)
+    const supabase = getSupabaseAdmin()
+    const { data, error } = await supabase.from('app_logs').insert(record).select('*').single<AppLogEntry>()
     if (error) throw error
+
+    if (data) void sendDiscordLogIfConfigured(data)
+
     return NextResponse.json({ ok: true })
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Impossible d'écrire le log." }, { status: 400 })

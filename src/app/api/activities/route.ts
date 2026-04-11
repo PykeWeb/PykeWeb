@@ -71,6 +71,14 @@ function getCurrentWeekRange() {
   return { weekStart, weekEnd }
 }
 
+
+function isPaymentModeConstraintError(error: unknown) {
+  const message = toErrorMessage(error, '').toLowerCase()
+  return message.includes('finance_transactions_payment_mode_check')
+    || message.includes('payment_mode')
+    || message.includes('invalid input value for enum')
+}
+
 function toNonNegative(value: unknown) {
   const parsed = Number(value ?? 0)
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
@@ -171,19 +179,25 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url)
     const rawWeekStart = url.searchParams.get('weekStart')
+    const scope = url.searchParams.get('scope') === 'all' ? 'all' : 'week'
     const weekStart = rawWeekStart ? new Date(rawWeekStart) : toWeekStart()
     if (Number.isNaN(weekStart.getTime())) return NextResponse.json({ error: 'Semaine invalide.' }, { status: 400 })
     const weekEnd = toWeekEnd(weekStart)
 
     const supabase = getSupabaseAdmin()
     const [{ data: entries, error: entriesError }, { data: settings, error: settingsError }] = await Promise.all([
-      supabase
-        .from('group_activity_entries')
-        .select('*')
-        .eq('group_id', session.groupId)
-        .gte('created_at', weekStart.toISOString())
-        .lt('created_at', weekEnd.toISOString())
-        .order('created_at', { ascending: false }),
+      (() => {
+        let query = supabase
+          .from('group_activity_entries')
+          .select('*')
+          .eq('group_id', session.groupId)
+          .order('created_at', { ascending: false })
+          .limit(scope === 'all' ? 2000 : 800)
+        if (scope !== 'all') {
+          query = query.gte('created_at', weekStart.toISOString()).lt('created_at', weekEnd.toISOString())
+        }
+        return query
+      })(),
       supabase
         .from('group_activity_settings')
         .select('group_id, default_percent_per_object')
@@ -416,6 +430,104 @@ export async function POST(request: Request) {
         equipmentItem.stock = currentStock - qty
       }
     }
+
+    const financeNotes = `Activité ${activityType} - ${memberName}`
+    const financeRows = [
+      ...normalizedObjectLines.map((line) => {
+        const item = objectMap.get(line.object_item_id) as CatalogItemRow
+        const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        const unit = Math.max(0, Number(item.buy_price) || 0)
+        return {
+          group_id: session.groupId,
+          item_id: item.id,
+          mode: 'buy',
+          quantity: qty,
+          unit_price: unit,
+          total: Number((qty * unit).toFixed(2)),
+          counterparty: memberName,
+          notes: financeNotes,
+          payment_mode: 'stock_in',
+        }
+      }),
+      ...normalizedEquipmentLines.map((line) => {
+        const item = equipmentStockMap.get(line.equipment_item_id) as CatalogItemRow
+        const qty = Math.max(1, Math.floor(Number(line.quantity) || 1))
+        const unit = Math.max(0, Number(item.buy_price) || 0)
+        return {
+          group_id: session.groupId,
+          item_id: item.id,
+          mode: 'sell',
+          quantity: qty,
+          unit_price: unit,
+          total: Number((qty * unit).toFixed(2)),
+          counterparty: memberName,
+          notes: financeNotes,
+          payment_mode: 'stock_out',
+        }
+      }),
+    ]
+
+    for (const row of financeRows) {
+      const preferredMode = String(row.payment_mode || 'other')
+      const fallbacks = preferredMode === 'stock_in' || preferredMode === 'stock_out'
+        ? [preferredMode, 'other', 'cash']
+        : [preferredMode, 'other']
+
+      let inserted = false
+      let lastError: unknown = null
+      for (const mode of fallbacks) {
+        const { error: financeError } = await supabase.from('finance_transactions').insert({ ...row, payment_mode: mode })
+        if (!financeError) {
+          inserted = true
+          break
+        }
+        lastError = financeError
+        if (!isPaymentModeConstraintError(financeError)) break
+      }
+
+      if (!inserted && lastError) throw lastError
+    }
+
+    await supabase.from('app_logs').insert([
+      {
+        group_id: session.groupId,
+        group_name: session.groupName,
+        user_id: session.memberId ?? null,
+        user_name: session.memberName ?? memberName,
+        actor_name: session.memberName ?? memberName,
+        actor_source: 'web',
+        source: 'web',
+        area: 'activities',
+        category: 'activity',
+        action: 'entree',
+        action_type: 'entree',
+        target_type: 'activity',
+        target_name: activityType,
+        quantity: normalizedObjectLines.reduce((sum, line) => sum + Math.max(1, Math.floor(Number(line.quantity) || 1)), 0),
+        message: `Activité ${activityType} enregistrée (${memberName})`,
+        note: financeNotes,
+      },
+      ...(normalizedEquipmentLines.length > 0
+        ? [{
+          group_id: session.groupId,
+          group_name: session.groupName,
+          user_id: session.memberId ?? null,
+          user_name: session.memberName ?? memberName,
+          actor_name: session.memberName ?? memberName,
+          actor_source: 'web',
+          source: 'web',
+          area: 'activities',
+          category: 'activity',
+          action: 'sortie',
+          action_type: 'sortie',
+          target_type: 'equipment',
+          target_name: activityType,
+          quantity: normalizedEquipmentLines.reduce((sum, line) => sum + Math.max(1, Math.floor(Number(line.quantity) || 1)), 0),
+          message: `Équipements consommés pour ${activityType}`,
+          note: financeNotes,
+        }]
+        : []),
+    ])
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
   } catch (error: unknown) {

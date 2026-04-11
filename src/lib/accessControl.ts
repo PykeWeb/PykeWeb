@@ -28,6 +28,7 @@ function resolveRequiredPrefix(pathname: string) {
   if (path === '/activites' || path.startsWith('/activites/')) return '/operations'
   if (path === '/finance' || path.startsWith('/finance/')) return '/finance'
   if (path === '/group' || path.startsWith('/group/')) return '/group'
+  if (path === '/logs' || path.startsWith('/logs/')) return '/logs'
   if (path === '/cash' || path.startsWith('/cash/')) return '/cash'
   if (path === '/annuaire' || path.startsWith('/annuaire/')) return '/annuaire'
   if (path === '/items' || path.startsWith('/items/')) return '/items'

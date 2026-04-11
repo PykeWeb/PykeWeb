@@ -251,8 +251,11 @@ async function appendTabletCashHistory(args: {
     group_name: null,
     actor_name: args.memberName,
     actor_source: 'web',
+    source: 'web',
     area: 'tablette',
+    category: 'tablet',
     action: 'run_validated',
+    action_type: 'autre',
     entity_type: 'tablet_daily_run',
     entity_id: args.runId,
     message: notes,
@@ -441,7 +444,8 @@ export async function GET(request: Request) {
 
     const runs = (data ?? []) as TabletDailyRun[]
 
-    let budget = canManageTabletBudget(session) ? await loadTodayBudget(session.groupId, today) : null
+    const canManageBudget = canManageTabletBudget(session)
+    let budget = await loadTodayBudget(session.groupId, today)
     if (budget) {
       const todayRuns = runs.filter((run) => run.day_key === today && isRunVisibleForCurrentWindow(run, budget))
       const distributedFromRuns = Number(todayRuns.reduce((sum, run) => sum + Math.max(0, Number(run.total_cost || 0)), 0).toFixed(2))
@@ -473,7 +477,7 @@ export async function GET(request: Request) {
       items: await getGlobalTabletOptions(),
       runs: runsWithRemaining,
       stats: buildGroupStats(runsWithRemaining, budget),
-      budget: toPublicBudget(today, budget),
+      budget: canManageBudget ? toPublicBudget(today, budget) : null,
     })
   } catch (error: unknown) {
     return NextResponse.json({ error: toErrorMessage(error) }, { status: toStatusCode(error) })
