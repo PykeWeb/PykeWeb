@@ -4,6 +4,7 @@ import { requireGroupSession } from '@/server/auth/requireSession'
 import { normalizeTabletOptions, TABLET_DAILY_ITEM_OPTIONS, toDayKey } from '@/lib/tabletteItems'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyBudget, TabletDailyRun, TabletRunItemLine, TabletSubmitPayload } from '@/lib/types/tablette'
 import { expandAccessPrefixes } from '@/lib/types/groupRoles'
+import { sendDiscordLogIfConfigured } from '@/server/logs/service'
 
 type TabletDailyRunRow = {
   id: string
@@ -274,7 +275,7 @@ async function appendTabletCashHistory(args: {
     .single<{ id: string }>()
   if (financeError) throw financeError
 
-  const { error: logError } = await supabase.from('app_logs').insert({
+  const { data: logEntry, error: logError } = await supabase.from('app_logs').insert({
     group_id: args.groupId,
     group_name: null,
     actor_name: args.memberName,
@@ -294,11 +295,13 @@ async function appendTabletCashHistory(args: {
       item_lines: args.lines,
       finance_transaction_id: financeRow.id,
     },
-  })
+  }).select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at').maybeSingle()
   if (logError) {
     // Le log ne doit pas bloquer la validation tablette.
     // On conserve la transaction finance créée pour éviter les incohérences côté métier.
+    return
   }
+  if (logEntry) await sendDiscordLogIfConfigured(logEntry)
 }
 
 async function appendTabletAuditLog(args: {
@@ -314,7 +317,7 @@ async function appendTabletAuditLog(args: {
   payload?: Record<string, unknown> | null
 }) {
   const supabase = getSupabaseAdmin()
-  const { error } = await supabase.from('app_logs').insert({
+  const { data, error } = await supabase.from('app_logs').insert({
     group_id: args.groupId,
     group_name: null,
     actor_name: args.actorName,
@@ -330,10 +333,12 @@ async function appendTabletAuditLog(args: {
     amount: args.amount ?? null,
     message: args.message,
     payload: args.payload || null,
-  })
+  }).select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at').maybeSingle()
   if (error) {
     // Best effort: on ne bloque jamais le flux tablette sur l'écriture du log.
+    return
   }
+  if (data) await sendDiscordLogIfConfigured(data)
 }
 
 function buildGroupStats(runs: TabletDailyRun[], todayBudget: StoredBudget | null): GroupTabletStats {

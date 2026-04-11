@@ -7,6 +7,7 @@ import {
   type ActivityObjectLineInput,
   type ActivityType,
 } from '@/lib/types/activities'
+import { sendDiscordLogIfConfigured } from '@/server/logs/service'
 
 type CatalogItemRow = { id: string; name: string; category: string; buy_price: number | null; stock?: number | null }
 type GlobalCatalogRow = {
@@ -529,7 +530,10 @@ export async function POST(request: Request) {
         : []),
     ]
 
-    const { error: logError } = await supabase.from('app_logs').insert(logRows)
+    const { data: insertedLogs, error: logError } = await supabase
+      .from('app_logs')
+      .insert(logRows)
+      .select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at')
     if (logError) {
       const fallbackRows = logRows.map((row) => ({
         group_id: session.groupId,
@@ -546,7 +550,17 @@ export async function POST(request: Request) {
         message: String(row.message || `Activité ${activityType}`),
         note: financeNotes,
       }))
-      await supabase.from('app_logs').insert(fallbackRows)
+      const { data: fallbackLogs } = await supabase
+        .from('app_logs')
+        .insert(fallbackRows)
+        .select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at')
+      for (const entry of fallbackLogs ?? []) {
+        await sendDiscordLogIfConfigured(entry)
+      }
+    } else {
+      for (const entry of insertedLogs ?? []) {
+        await sendDiscordLogIfConfigured(entry)
+      }
     }
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
