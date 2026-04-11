@@ -296,8 +296,43 @@ async function appendTabletCashHistory(args: {
     },
   })
   if (logError) {
-    await supabase.from('finance_transactions').delete().eq('id', financeRow.id).eq('group_id', args.groupId)
-    throw logError
+    // Le log ne doit pas bloquer la validation tablette.
+    // On conserve la transaction finance créée pour éviter les incohérences côté métier.
+  }
+}
+
+async function appendTabletAuditLog(args: {
+  groupId: string
+  actorName: string
+  action: string
+  actionType: 'creation' | 'modification' | 'autre' | 'achat'
+  message: string
+  amount?: number | null
+  quantity?: number | null
+  entityType?: string | null
+  entityId?: string | null
+  payload?: Record<string, unknown> | null
+}) {
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.from('app_logs').insert({
+    group_id: args.groupId,
+    group_name: null,
+    actor_name: args.actorName,
+    actor_source: 'web',
+    source: 'web',
+    area: 'tablette',
+    category: 'tablet',
+    action: args.action,
+    action_type: args.actionType,
+    entity_type: args.entityType || null,
+    entity_id: args.entityId || null,
+    quantity: args.quantity ?? null,
+    amount: args.amount ?? null,
+    message: args.message,
+    payload: args.payload || null,
+  })
+  if (error) {
+    // Best effort: on ne bloque jamais le flux tablette sur l'écriture du log.
   }
 }
 
@@ -541,6 +576,21 @@ export async function POST(request: Request) {
         reset_at: existing?.reset_at || null,
       }
       await saveTodayBudget(session.groupId, nextBudget)
+      await appendTabletAuditLog({
+        groupId: session.groupId,
+        actorName: session.memberName || 'Système',
+        action: body.action === 'init_budget' ? 'budget_initialized' : 'budget_updated',
+        actionType: body.action === 'init_budget' ? 'creation' : 'modification',
+        message: `Budget tablette ${body.action === 'init_budget' ? 'initialisé' : 'modifié'}: ${budgetInitial.toFixed(2)} $`,
+        amount: budgetInitial,
+        entityType: 'tablet_daily_budget',
+        entityId: dayKey,
+        payload: {
+          day_key: dayKey,
+          budget_initial: budgetInitial,
+          previous_budget_initial: existing?.budget_initial ?? null,
+        },
+      })
       return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, nextBudget) })
     }
     if (body.action === 'reset_budget') {
@@ -557,6 +607,19 @@ export async function POST(request: Request) {
         reset_at: new Date().toISOString(),
       }
       await saveTodayBudget(session.groupId, resetBudget)
+      await appendTabletAuditLog({
+        groupId: session.groupId,
+        actorName: session.memberName || 'Système',
+        action: 'budget_reset',
+        actionType: 'modification',
+        message: 'Budget tablette réinitialisé.',
+        entityType: 'tablet_daily_budget',
+        entityId: dayKey,
+        payload: {
+          day_key: dayKey,
+          reset_at: resetBudget.reset_at,
+        },
+      })
       return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, resetBudget) })
     }
 
@@ -673,6 +736,24 @@ export async function POST(request: Request) {
       }
       await saveTodayBudget(session.groupId, nextBudget)
     }
+
+    await appendTabletAuditLog({
+      groupId: session.groupId,
+      actorName: member.raw,
+      action: 'run_validated',
+      actionType: 'achat',
+      message: `Tablette validée: ${member.raw} • ${totalItems} items • ${totalCost.toFixed(2)} $`,
+      quantity: totalItems,
+      amount: totalCost,
+      entityType: 'tablet_daily_run',
+      entityId: inserted.id,
+      payload: {
+        day_key: dayKey,
+        items: lines,
+        kit_cambus_qty: legacyKitQty,
+        disqueuse_qty: legacyDisqueuseQty,
+      },
+    })
 
     return NextResponse.json(inserted)
   } catch (error: unknown) {
