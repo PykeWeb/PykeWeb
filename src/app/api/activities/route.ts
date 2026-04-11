@@ -7,6 +7,7 @@ import {
   type ActivityObjectLineInput,
   type ActivityType,
 } from '@/lib/types/activities'
+import { sendDiscordLogIfConfigured } from '@/server/logs/service'
 
 type CatalogItemRow = { id: string; name: string; category: string; buy_price: number | null; stock?: number | null }
 type GlobalCatalogRow = {
@@ -488,7 +489,7 @@ export async function POST(request: Request) {
       if (!inserted && lastError) throw lastError
     }
 
-    await supabase.from('app_logs').insert([
+    const logRows = [
       {
         group_id: session.groupId,
         group_name: session.groupName,
@@ -527,7 +528,40 @@ export async function POST(request: Request) {
           note: financeNotes,
         }]
         : []),
-    ])
+    ]
+
+    const { data: insertedLogs, error: logError } = await supabase
+      .from('app_logs')
+      .insert(logRows)
+      .select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at')
+    if (logError) {
+      const fallbackRows = logRows.map((row) => ({
+        group_id: session.groupId,
+        group_name: session.groupName,
+        user_id: session.memberId ?? null,
+        user_name: session.memberName ?? memberName,
+        actor_name: session.memberName ?? memberName,
+        actor_source: 'web',
+        source: 'web',
+        area: 'activities',
+        category: 'activity',
+        action: 'activity_logged',
+        action_type: 'autre',
+        message: String(row.message || `Activité ${activityType}`),
+        note: financeNotes,
+      }))
+      const { data: fallbackLogs } = await supabase
+        .from('app_logs')
+        .insert(fallbackRows)
+        .select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at')
+      for (const entry of fallbackLogs ?? []) {
+        await sendDiscordLogIfConfigured(entry)
+      }
+    } else {
+      for (const entry of insertedLogs ?? []) {
+        await sendDiscordLogIfConfigured(entry)
+      }
+    }
 
     return NextResponse.json({ ok: true, inserted: rowsToInsert.length })
   } catch (error: unknown) {

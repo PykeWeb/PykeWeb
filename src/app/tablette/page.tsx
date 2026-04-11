@@ -17,10 +17,12 @@ import { expandAccessPrefixes } from '@/lib/types/groupRoles'
 type AtelierResponse = {
   today: string
   items: TabletCatalogItemConfig[]
+  stock_by_key?: Record<string, number>
   runs: TabletDailyRun[]
   stats: GroupTabletStats
   budget: TabletDailyBudget | null
 }
+type BubbleStats = { today: number; week: number }
 
 function formatDay(value: string) {
   const date = new Date(value)
@@ -38,6 +40,7 @@ export default function TablettePage() {
   const [memberName, setMemberName] = useState('')
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [items, setItems] = useState<TabletCatalogItemConfig[]>([])
+  const [stockByKey, setStockByKey] = useState<Record<string, number>>({})
   const [runs, setRuns] = useState<TabletDailyRun[]>([])
   const [stats, setStats] = useState<GroupTabletStats | null>(null)
   const [today, setToday] = useState('')
@@ -48,6 +51,8 @@ export default function TablettePage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [memberOptions, setMemberOptions] = useState<string[]>([])
+  const [activitiesStats, setActivitiesStats] = useState<BubbleStats>({ today: 0, week: 0 })
+  const [depenseStats, setDepenseStats] = useState<BubbleStats>({ today: 0, week: 0 })
   const session = getTenantSession()
   const allowedPrefixes = expandAccessPrefixes(Array.isArray(session?.allowedPrefixes) ? session.allowedPrefixes : [])
   const canSeeTabletBudget = Boolean(session?.isAdmin || allowedPrefixes.includes('/') || allowedPrefixes.includes('/tablette/coffre'))
@@ -58,6 +63,14 @@ export default function TablettePage() {
   }, [memberName, memberOptions])
 
   const totalQty = useMemo(() => Object.values(quantities).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0), [quantities])
+  const projectedStockByKey = useMemo(() => (
+    items.reduce<Record<string, number>>((acc, item) => {
+      const current = Math.max(0, Number(stockByKey[item.key] || 0))
+      const added = Math.max(0, Number(quantities[item.key] || 0))
+      acc[item.key] = current + added
+      return acc
+    }, {})
+  ), [items, quantities, stockByKey])
   const totalCost = useMemo(
     () =>
       items.reduce((sum, item) => {
@@ -66,6 +79,8 @@ export default function TablettePage() {
       }, 0),
     [items, quantities]
   )
+  const projectedKitStock = useMemo(() => Math.max(0, Number(projectedStockByKey.kit_cambus || 0)), [projectedStockByKey])
+  const projectedDisqueuseStock = useMemo(() => Math.max(0, Number(projectedStockByKey.disqueuse || 0)), [projectedStockByKey])
 
   const canSubmit = memberName.trim().length > 0 && totalQty > 0 && !saving
 
@@ -80,6 +95,23 @@ export default function TablettePage() {
       week: stats?.week.runs ?? runs.length,
     }
   }, [stats, runs.length])
+  const dayRange = useMemo(() => {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 1)
+    return { start, end }
+  }, [])
+  const weekRange = useMemo(() => {
+    const start = new Date()
+    const day = start.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() + diff)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 7)
+    return { start, end }
+  }, [])
   const remainingAfterByRunId = useMemo(() => {
     const map = new Map<string, number>()
     if (!budget) return map
@@ -96,6 +128,35 @@ export default function TablettePage() {
     }
     return map
   }, [budget, runs, today])
+  const stockAfterByRunId = useMemo(() => {
+    const map = new Map<string, { kit: number; disqueuse: number }>()
+    let consumedKit = 0
+    let consumedDisqueuse = 0
+    const currentKit = Math.max(0, Number(stockByKey.kit_cambus || 0))
+    const currentDisqueuse = Math.max(0, Number(stockByKey.disqueuse || 0))
+
+    const runsDesc = runs
+      .slice()
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+    for (const row of runsDesc) {
+      map.set(row.id, {
+        kit: Math.max(0, currentKit - consumedKit),
+        disqueuse: Math.max(0, currentDisqueuse - consumedDisqueuse),
+      })
+      const itemLines = Array.isArray(row.items_json) ? row.items_json : []
+      const kitQty = itemLines
+        .filter((line) => String(line.key) === 'kit_cambus')
+        .reduce((sum, line) => sum + Math.max(0, Number(line.quantity || 0)), 0)
+      const disqueuseQty = itemLines
+        .filter((line) => String(line.key) === 'disqueuse')
+        .reduce((sum, line) => sum + Math.max(0, Number(line.quantity || 0)), 0)
+      consumedKit += kitQty
+      consumedDisqueuse += disqueuseQty
+    }
+
+    return map
+  }, [runs, stockByKey])
 
   const forceLogout = useCallback(async () => {
     clearTenantSession()
@@ -138,6 +199,7 @@ export default function TablettePage() {
       }
       const data = (await res.json()) as AtelierResponse
       setItems(data.items)
+      setStockByKey(data.stock_by_key || {})
       setRuns(data.runs)
       setToday(data.today)
       setStats(data.stats)
@@ -150,12 +212,53 @@ export default function TablettePage() {
         }
         return next
       })
+
+      const [activitiesRes, expensesRes] = await Promise.all([
+        fetch('/api/activities?scope=all', withTenantSessionHeader({ cache: 'no-store' })).catch(() => null),
+        fetch('/api/expenses', withTenantSessionHeader({ cache: 'no-store' })).catch(() => null),
+      ])
+
+      if (activitiesRes?.ok) {
+        const payload = (await activitiesRes.json()) as { entries?: Array<{ created_at?: string | null }> }
+        const entries = Array.isArray(payload.entries) ? payload.entries : []
+        const nextStats = entries.reduce(
+          (acc, entry) => {
+            const ts = new Date(String(entry.created_at || '')).getTime()
+            if (!Number.isFinite(ts)) return acc
+            if (ts >= dayRange.start.getTime() && ts < dayRange.end.getTime()) acc.today += 1
+            if (ts >= weekRange.start.getTime() && ts < weekRange.end.getTime()) acc.week += 1
+            return acc
+          },
+          { today: 0, week: 0 },
+        )
+        setActivitiesStats(nextStats)
+      } else {
+        setActivitiesStats({ today: 0, week: 0 })
+      }
+
+      if (expensesRes?.ok) {
+        const payload = (await expensesRes.json()) as { rows?: Array<{ created_at?: string | null }> }
+        const rows = Array.isArray(payload.rows) ? payload.rows : []
+        const nextStats = rows.reduce(
+          (acc, row) => {
+            const ts = new Date(String(row.created_at || '')).getTime()
+            if (!Number.isFinite(ts)) return acc
+            if (ts >= dayRange.start.getTime() && ts < dayRange.end.getTime()) acc.today += 1
+            if (ts >= weekRange.start.getTime() && ts < weekRange.end.getTime()) acc.week += 1
+            return acc
+          },
+          { today: 0, week: 0 },
+        )
+        setDepenseStats(nextStats)
+      } else {
+        setDepenseStats({ today: 0, week: 0 })
+      }
     } catch (loadError: unknown) {
       setError(loadError instanceof Error ? loadError.message : 'Impossible de charger la tablette.')
     } finally {
       setLoading(false)
     }
-  }, [forceLogout, syncTabletSession])
+  }, [dayRange.end, dayRange.start, forceLogout, syncTabletSession, weekRange.end, weekRange.start])
 
   useEffect(() => {
     const sessionMember = String(getTenantSession()?.memberName || '').trim()
@@ -183,8 +286,16 @@ export default function TablettePage() {
     <Panel>
       <div className="space-y-4">
         <div>
-          <div className="mb-3">
-            <ActivitiesCategoryTabs active="tablette" tabletteStats={tabletteBubbleStats} />
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <ActivitiesCategoryTabs active="tablette" activitiesStats={activitiesStats} tabletteStats={tabletteBubbleStats} depenseStats={depenseStats} />
+            <div className="grid gap-2 text-sm md:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Kit après ajout: <span className="font-semibold">{projectedKitStock}</span>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Disqueuse après ajout: <span className="font-semibold">{projectedDisqueuseStock}</span>
+              </div>
+            </div>
           </div>
           <PageHeader title="Tablette" subtitle="Quota journalier par membre (00:00 → 00:00). Un membre ne peut valider qu’une fois par jour." />
         </div>
@@ -289,6 +400,13 @@ export default function TablettePage() {
                     min={0}
                     max={Math.max(0, item.max_per_day)}
                   />
+                  <div className="mt-2 grid gap-1 text-xs text-white/70">
+                    <p>Stock actuel: <span className="font-semibold text-white">{Math.max(0, Number(stockByKey[item.key] || 0))}</span></p>
+                    <p>
+                      Avec cet ajout: <span className="font-semibold text-emerald-200">+{Math.max(0, Number(quantities[item.key] || 0))}</span>
+                      {' '}→ <span className="font-semibold text-white">{Math.max(0, Number(projectedStockByKey[item.key] || 0))}</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -298,6 +416,16 @@ export default function TablettePage() {
             <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Jour: <span className="font-semibold">{formatDay(today)}</span></div>
             <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Quantité totale: <span className="font-semibold">{totalQty}</span></div>
             <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">Coût total: <span className="font-semibold">{totalCost.toFixed(2)} $</span></div>
+          </div>
+          <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70">
+            {items.map((item) => {
+              const added = Math.max(0, Number(quantities[item.key] || 0))
+              if (added <= 0) return null
+              const current = Math.max(0, Number(stockByKey[item.key] || 0))
+              const next = Math.max(0, Number(projectedStockByKey[item.key] || 0))
+              return <p key={`projection-${item.key}`}>{item.name}: {current} + {added} = <span className="font-semibold text-white">{next}</span></p>
+            })}
+            {totalQty <= 0 ? <p>Aucune projection (aucun item ajouté).</p> : null}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -356,13 +484,14 @@ export default function TablettePage() {
                   <th className="px-3 py-2 text-left">Total</th>
                   <th className="px-3 py-2 text-left">Retiré coffre</th>
                   <th className="px-3 py-2 text-left">Restant</th>
+                  <th className="px-3 py-2 text-left">Kit / Disq</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {loading ? (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
                 ) : runs.length === 0 ? (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
                 ) : (
                   runs.map((row) => {
                     const serverRemaining = row.remaining_after == null ? null : Math.max(0, Number(row.remaining_after || 0))
@@ -370,6 +499,7 @@ export default function TablettePage() {
                       ? Math.max(0, Number(remainingAfterByRunId.get(row.id) || 0))
                       : null
                     const remainingAfter = serverRemaining ?? computedRemaining
+                    const stockAfter = stockAfterByRunId.get(row.id)
                     return (
                     <tr key={row.id}>
                       <td className="px-3 py-2 text-white/70">{formatDateTime(row.created_at)}</td>
@@ -378,6 +508,7 @@ export default function TablettePage() {
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
                       <td className="px-3 py-2">{remainingAfter == null ? '—' : `${remainingAfter.toFixed(2)} $`}</td>
+                      <td className="px-3 py-2">{stockAfter ? `${stockAfter.kit} / ${stockAfter.disqueuse}` : '—'}</td>
                     </tr>
                   )})
                 )}

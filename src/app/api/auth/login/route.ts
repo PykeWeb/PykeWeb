@@ -41,6 +41,7 @@ type RoleRow = {
 }
 
 const ROLE_TABLE_CANDIDATES = ['group_roles', 'group_member_grades'] as const
+const TRANSIENT_DB_ERROR_HINTS = ['timeout', '522', 'network', 'fetch failed', 'cloudflare']
 
 function isAdminGroup(group: Pick<GroupRow, 'login' | 'badge' | 'name'>) {
   return group.login.trim().toLowerCase() === 'admin'
@@ -77,6 +78,34 @@ function isMissingColumnError(message: string, column: string) {
   return lower.includes(column.toLowerCase()) && (lower.includes('does not exist') || lower.includes('could not find') || lower.includes('column'))
 }
 
+function cleanDatabaseErrorMessage(message: string) {
+  const raw = String(message || '')
+  if (raw.includes('<!DOCTYPE html>') || raw.includes('<html')) {
+    return 'Connexion à la base impossible (timeout). Réessaie dans quelques secondes.'
+  }
+  return raw
+}
+
+function isTransientDatabaseError(message: string) {
+  const lower = String(message || '').toLowerCase()
+  return TRANSIENT_DB_ERROR_HINTS.some((hint) => lower.includes(hint))
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  let lastError: unknown = null
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      const msg = error instanceof Error ? error.message : String(error || '')
+      if (!isTransientDatabaseError(msg) || attempt === retries) break
+      await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)))
+    }
+  }
+  throw lastError
+}
+
 async function resolveMemberRoleInfo(groupId: string, gradeId: string | null) {
   if (!gradeId) return { name: 'Membre', permissions: [] as string[] }
   const supabase = getSupabaseAdmin()
@@ -96,11 +125,11 @@ async function resolveMemberRoleInfo(groupId: string, gradeId: string | null) {
 
 async function findGroupByPrimaryLogin(login: string) {
   const supabase = getSupabaseAdmin()
-  let { data, error } = await supabase
+  let { data, error } = await withRetry(async () => supabase
     .from('tenant_groups')
     .select('id,name,badge,login,password,active,paid_until,image_url')
     .eq('login', login)
-    .maybeSingle<GroupRow>()
+    .maybeSingle<GroupRow>())
 
   if (error && isMissingColumnError(error.message, 'image_url')) {
     const fallback = await supabase
@@ -112,29 +141,29 @@ async function findGroupByPrimaryLogin(login: string) {
     data = fallback.data ? { ...fallback.data, image_url: null } as GroupRow : null
   }
 
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(cleanDatabaseErrorMessage(error.message))
   return data
 }
 
 async function findGroupByMemberLogin(login: string, password: string) {
   const supabase = getSupabaseAdmin()
-  const { data: members, error: membersError } = await supabase
+  const { data: members, error: membersError } = await withRetry(async () => supabase
     .from('group_members')
     .select('id,group_id,player_name,player_identifier,password,is_admin,grade_id')
     .eq('player_identifier', login)
-    .eq('password', password)
+    .eq('password', password))
 
-  if (membersError) throw new Error(membersError.message)
+  if (membersError) throw new Error(cleanDatabaseErrorMessage(membersError.message))
   const matchedMembers = (members ?? []) as GroupMemberRow[]
   if (matchedMembers.length === 0) return null
   if (matchedMembers.length > 1) throw new Error('Ce mot de passe pour cet identifiant est déjà utilisé par un autre groupe. Utilisez un mot de passe unique.')
 
   const member = matchedMembers[0]
-  let { data: group, error: groupError } = await supabase
+  let { data: group, error: groupError } = await withRetry(async () => supabase
     .from('tenant_groups')
     .select('id,name,badge,login,password,active,paid_until,image_url')
     .eq('id', member.group_id)
-    .maybeSingle<GroupRow>()
+    .maybeSingle<GroupRow>())
 
   if (groupError && isMissingColumnError(groupError.message, 'image_url')) {
     const fallback = await supabase
@@ -146,7 +175,7 @@ async function findGroupByMemberLogin(login: string, password: string) {
     group = fallback.data ? { ...fallback.data, image_url: null } as GroupRow : null
   }
 
-  if (groupError) throw new Error(groupError.message)
+  if (groupError) throw new Error(cleanDatabaseErrorMessage(groupError.message))
   if (!group) return null
 
   const roleInfo = member.is_admin ? { name: 'Boss', permissions: ['/'] } : await resolveMemberRoleInfo(group.id, member.grade_id)

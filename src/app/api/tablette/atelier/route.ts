@@ -4,6 +4,7 @@ import { requireGroupSession } from '@/server/auth/requireSession'
 import { normalizeTabletOptions, TABLET_DAILY_ITEM_OPTIONS, toDayKey } from '@/lib/tabletteItems'
 import type { GroupTabletStats, TabletCatalogItemConfig, TabletDailyBudget, TabletDailyRun, TabletRunItemLine, TabletSubmitPayload } from '@/lib/types/tablette'
 import { expandAccessPrefixes } from '@/lib/types/groupRoles'
+import { sendDiscordLogIfConfigured } from '@/server/logs/service'
 
 type TabletDailyRunRow = {
   id: string
@@ -34,6 +35,7 @@ type GroupAccessRow = {
 }
 
 type CashItemRow = { id: string; stock: number | null; name: string }
+type StockRow = { name: string; stock: number | null }
 
 class ApiError extends Error {
   status: number
@@ -117,7 +119,7 @@ async function assertGroupTabletAccess(groupId: string) {
   }
 }
 
-async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qty: number) {
+async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qty: number, actorName = 'Système') {
   if (qty <= 0) return
 
   const supabase = getSupabaseAdmin()
@@ -134,6 +136,7 @@ async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qt
   if (loadError) throw loadError
 
   if (existing?.id) {
+    const currentStock = Math.max(0, Number(existing.stock ?? 0))
     const nextStock = Math.max(0, Number(existing.stock ?? 0) + qty)
     const { error: updateError } = await supabase
       .from('catalog_items')
@@ -141,6 +144,16 @@ async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qt
       .eq('group_id', groupId)
       .eq('id', existing.id)
     if (updateError) throw updateError
+    await appendItemStockMovementLog({
+      groupId,
+      actorName,
+      itemName: option.name,
+      quantity: qty,
+      before: currentStock,
+      after: nextStock,
+      actionType: 'entree',
+      note: 'Ajout automatique via Tablette',
+    })
     return
   }
 
@@ -168,9 +181,51 @@ async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qt
   })
 
   if (insertError) throw insertError
+  await appendItemStockMovementLog({
+    groupId,
+    actorName,
+    itemName: option.name,
+    quantity: qty,
+    before: 0,
+    after: qty,
+    actionType: 'entree',
+    note: 'Création et ajout automatique via Tablette',
+  })
 }
 
-async function adjustCashStock(groupId: string, delta: number) {
+async function appendItemStockMovementLog(args: {
+  groupId: string
+  actorName: string
+  itemName: string
+  quantity: number
+  before: number
+  after: number
+  actionType: 'entree' | 'sortie' | 'depot' | 'retrait'
+  note: string
+}) {
+  const supabase = getSupabaseAdmin()
+  const { data } = await supabase.from('app_logs').insert({
+    group_id: args.groupId,
+    group_name: null,
+    actor_name: args.actorName,
+    actor_source: 'web',
+    source: 'web',
+    area: 'items.stock',
+    category: 'stock',
+    action: args.actionType,
+    action_type: args.actionType,
+    target_type: 'catalog_item',
+    target_name: args.itemName,
+    quantity: Math.max(0, Number(args.quantity || 0)),
+    before_value: String(Math.max(0, Number(args.before || 0))),
+    after_value: String(Math.max(0, Number(args.after || 0))),
+    message: `${args.itemName}: ${args.actionType === 'entree' || args.actionType === 'depot' ? '+' : '-'}${Math.max(0, Number(args.quantity || 0))} (stock ${Math.max(0, Number(args.before || 0))} -> ${Math.max(0, Number(args.after || 0))})`,
+    note: args.note,
+  }).select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at').maybeSingle()
+  if (data) await sendDiscordLogIfConfigured(data)
+}
+
+async function adjustCashStock(groupId: string, delta: number, actorName = 'Système') {
   if (delta === 0) return
   const supabase = getSupabaseAdmin()
   const { data: cashItem, error: cashLoadError } = await supabase
@@ -199,6 +254,17 @@ async function adjustCashStock(groupId: string, delta: number) {
     .eq('id', cashItem.id)
 
   if (updateCashError) throw updateCashError
+
+  await appendItemStockMovementLog({
+    groupId,
+    actorName,
+    itemName: cashItem.name || 'argent',
+    quantity: Math.abs(delta),
+    before: currentStock,
+    after: nextStock,
+    actionType: delta < 0 ? 'retrait' : 'depot',
+    note: 'Mouvement automatique via Tablette',
+  })
 }
 
 async function findCashItem(groupId: string): Promise<CashItemRow> {
@@ -215,6 +281,33 @@ async function findCashItem(groupId: string): Promise<CashItemRow> {
   if (cashLoadError) throw cashLoadError
   if (!cashItem?.id) throw new ApiError('Item "argent" introuvable dans le catalogue.', 400)
   return cashItem
+}
+
+async function loadTabletOptionStocks(groupId: string, options: TabletCatalogItemConfig[]) {
+  if (!options.length) return {} as Record<string, number>
+  const supabase = getSupabaseAdmin()
+  const optionNames = options.map((option) => option.name)
+  const { data, error } = await supabase
+    .from('catalog_items')
+    .select('name,stock')
+    .eq('group_id', groupId)
+    .eq('is_active', true)
+    .in('name', optionNames)
+
+  if (error) throw error
+
+  const byName = new Map<string, number>()
+  for (const row of (data ?? []) as StockRow[]) {
+    const normalizedName = String(row.name || '').trim().toLowerCase()
+    if (!normalizedName) continue
+    byName.set(normalizedName, Math.max(0, Number(row.stock || 0)))
+  }
+
+  return options.reduce<Record<string, number>>((acc, option) => {
+    const normalizedName = option.name.trim().toLowerCase()
+    acc[option.key] = byName.get(normalizedName) ?? 0
+    return acc
+  }, {})
 }
 
 async function appendTabletCashHistory(args: {
@@ -246,7 +339,7 @@ async function appendTabletCashHistory(args: {
     .single<{ id: string }>()
   if (financeError) throw financeError
 
-  const { error: logError } = await supabase.from('app_logs').insert({
+  const { data: logEntry, error: logError } = await supabase.from('app_logs').insert({
     group_id: args.groupId,
     group_name: null,
     actor_name: args.memberName,
@@ -266,11 +359,50 @@ async function appendTabletCashHistory(args: {
       item_lines: args.lines,
       finance_transaction_id: financeRow.id,
     },
-  })
+  }).select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at').maybeSingle()
   if (logError) {
-    await supabase.from('finance_transactions').delete().eq('id', financeRow.id).eq('group_id', args.groupId)
-    throw logError
+    // Le log ne doit pas bloquer la validation tablette.
+    // On conserve la transaction finance créée pour éviter les incohérences côté métier.
+    return
   }
+  if (logEntry) await sendDiscordLogIfConfigured(logEntry)
+}
+
+async function appendTabletAuditLog(args: {
+  groupId: string
+  actorName: string
+  action: string
+  actionType: 'creation' | 'modification' | 'autre' | 'achat'
+  message: string
+  amount?: number | null
+  quantity?: number | null
+  entityType?: string | null
+  entityId?: string | null
+  payload?: Record<string, unknown> | null
+}) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase.from('app_logs').insert({
+    group_id: args.groupId,
+    group_name: null,
+    actor_name: args.actorName,
+    actor_source: 'web',
+    source: 'web',
+    area: 'tablette',
+    category: 'tablet',
+    action: args.action,
+    action_type: args.actionType,
+    entity_type: args.entityType || null,
+    entity_id: args.entityId || null,
+    quantity: args.quantity ?? null,
+    amount: args.amount ?? null,
+    message: args.message,
+    payload: args.payload || null,
+  }).select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at').maybeSingle()
+  if (error) {
+    // Best effort: on ne bloque jamais le flux tablette sur l'écriture du log.
+    return
+  }
+  if (data) await sendDiscordLogIfConfigured(data)
 }
 
 function buildGroupStats(runs: TabletDailyRun[], todayBudget: StoredBudget | null): GroupTabletStats {
@@ -432,6 +564,7 @@ export async function GET(request: Request) {
     await assertGroupTabletAccess(session.groupId)
     const supabase = getSupabaseAdmin()
     const today = toDayKey()
+    const options = await getGlobalTabletOptions()
 
     const { data, error } = await supabase
       .from('tablet_daily_runs')
@@ -474,7 +607,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       today,
-      items: await getGlobalTabletOptions(),
+      items: options,
+      stock_by_key: await loadTabletOptionStocks(session.groupId, options),
       runs: runsWithRemaining,
       stats: buildGroupStats(runsWithRemaining, budget),
       budget: canManageBudget ? toPublicBudget(today, budget) : null,
@@ -511,6 +645,21 @@ export async function POST(request: Request) {
         reset_at: existing?.reset_at || null,
       }
       await saveTodayBudget(session.groupId, nextBudget)
+      await appendTabletAuditLog({
+        groupId: session.groupId,
+        actorName: session.memberName || 'Système',
+        action: body.action === 'init_budget' ? 'budget_initialized' : 'budget_updated',
+        actionType: body.action === 'init_budget' ? 'creation' : 'modification',
+        message: `Budget tablette ${body.action === 'init_budget' ? 'initialisé' : 'modifié'}: ${budgetInitial.toFixed(2)} $`,
+        amount: budgetInitial,
+        entityType: 'tablet_daily_budget',
+        entityId: dayKey,
+        payload: {
+          day_key: dayKey,
+          budget_initial: budgetInitial,
+          previous_budget_initial: existing?.budget_initial ?? null,
+        },
+      })
       return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, nextBudget) })
     }
     if (body.action === 'reset_budget') {
@@ -527,6 +676,19 @@ export async function POST(request: Request) {
         reset_at: new Date().toISOString(),
       }
       await saveTodayBudget(session.groupId, resetBudget)
+      await appendTabletAuditLog({
+        groupId: session.groupId,
+        actorName: session.memberName || 'Système',
+        action: 'budget_reset',
+        actionType: 'modification',
+        message: 'Budget tablette réinitialisé.',
+        entityType: 'tablet_daily_budget',
+        entityId: dayKey,
+        payload: {
+          day_key: dayKey,
+          reset_at: resetBudget.reset_at,
+        },
+      })
       return NextResponse.json({ ok: true, budget: toPublicBudget(dayKey, resetBudget) })
     }
 
@@ -612,11 +774,11 @@ export async function POST(request: Request) {
     if (insertError) throw insertError
 
     try {
-      await adjustCashStock(session.groupId, -totalCost)
+      await adjustCashStock(session.groupId, -totalCost, member.raw)
       const lineOptions = lines
         .map((line) => ({ line, option: options.find((item) => item.key === line.key) }))
         .filter((entry): entry is { line: TabletRunItemLine; option: TabletCatalogItemConfig } => Boolean(entry.option))
-      await Promise.all(lineOptions.map(({ line, option }) => addToCatalog(session.groupId, option, line.quantity)))
+      await Promise.all(lineOptions.map(({ line, option }) => addToCatalog(session.groupId, option, line.quantity, member.raw)))
       await appendTabletCashHistory({
         groupId: session.groupId,
         memberName: member.raw,
@@ -627,7 +789,7 @@ export async function POST(request: Request) {
     } catch (catalogError: unknown) {
       await supabase.from('tablet_daily_runs').delete().eq('id', inserted.id).eq('group_id', session.groupId)
       try {
-        await adjustCashStock(session.groupId, totalCost)
+        await adjustCashStock(session.groupId, totalCost, member.raw)
       } catch {
         // noop: preserve original error path
       }
@@ -643,6 +805,24 @@ export async function POST(request: Request) {
       }
       await saveTodayBudget(session.groupId, nextBudget)
     }
+
+    await appendTabletAuditLog({
+      groupId: session.groupId,
+      actorName: member.raw,
+      action: 'run_validated',
+      actionType: 'achat',
+      message: `Tablette validée: ${member.raw} • ${totalItems} items • ${totalCost.toFixed(2)} $`,
+      quantity: totalItems,
+      amount: totalCost,
+      entityType: 'tablet_daily_run',
+      entityId: inserted.id,
+      payload: {
+        day_key: dayKey,
+        items: lines,
+        kit_cambus_qty: legacyKitQty,
+        disqueuse_qty: legacyDisqueuseQty,
+      },
+    })
 
     return NextResponse.json(inserted)
   } catch (error: unknown) {
