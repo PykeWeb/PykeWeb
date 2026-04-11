@@ -20,6 +20,20 @@ type Props = {
   groupId: string
 }
 
+
+function buildMemberAccessMessage(identifier: string, password: string) {
+  const baseUrl = (typeof window !== 'undefined' ? window.location.origin : 'https://pykestock-ten.vercel.app').replace(/\/$/, '')
+  return [
+    'Voici tes identifiants pour la tablette du groupe :',
+    `${baseUrl}/`,
+    '',
+    `Identifiant: ${identifier || '—'}`,
+    `Mot de passe: ${password || '—'}`,
+    '',
+    'Tu peux modifier ton mot de passe avec le bouton "Mdp" en bas à droite de la tablette.',
+  ].join('\n')
+}
+
 function applyPayload(
   setRoles: (next: GroupMemberRole[]) => void,
   setMembers: (next: GroupMember[]) => void,
@@ -482,15 +496,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                     onClick={() => {
                       const identifier = (member.player_identifier || '').trim()
                       const password = (member.password || '').trim()
-                      const content = [
-                        'Voici tes identifiants pour la tablette du groupe :',
-                        'https://pykestock-ten.vercel.app/',
-                        '',
-                        `Identifiant: ${identifier || '—'}`,
-                        `Mot de passe: ${password || '—'}`,
-                        '',
-                        'Tu peux modifier ton mot de passe avec le bouton "Mdp" en bas à droite de la tablette.',
-                      ].join('\n')
+                      const content = buildMemberAccessMessage(identifier, password)
                       void copyToClipboard(content)
                     }}
                     className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/85 hover:bg-white/20"
@@ -548,15 +554,7 @@ export function GroupMembersGradesSection({ groupId }: Props) {
                       onClick={() => {
                         const identifier = (selectedMember.player_identifier || '').trim()
                         const password = (selectedMember.password || '').trim()
-                        const content = [
-                          'Voici tes identifiants pour la tablette du groupe :',
-                          'https://pykestock-ten.vercel.app/',
-                          '',
-                          `Identifiant: ${identifier || '—'}`,
-                          `Mot de passe: ${password || '—'}`,
-                          '',
-                          'Tu peux modifier ton mot de passe avec le bouton "Mdp" en bas à droite de la tablette.',
-                        ].join('\n')
+                        const content = buildMemberAccessMessage(identifier, password)
                         void copyToClipboard(content)
                       }}
                       className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white/90 hover:bg-white/20"
