@@ -119,7 +119,7 @@ async function assertGroupTabletAccess(groupId: string) {
   }
 }
 
-async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qty: number) {
+async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qty: number, actorName = 'Système') {
   if (qty <= 0) return
 
   const supabase = getSupabaseAdmin()
@@ -136,6 +136,7 @@ async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qt
   if (loadError) throw loadError
 
   if (existing?.id) {
+    const currentStock = Math.max(0, Number(existing.stock ?? 0))
     const nextStock = Math.max(0, Number(existing.stock ?? 0) + qty)
     const { error: updateError } = await supabase
       .from('catalog_items')
@@ -143,6 +144,16 @@ async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qt
       .eq('group_id', groupId)
       .eq('id', existing.id)
     if (updateError) throw updateError
+    await appendItemStockMovementLog({
+      groupId,
+      actorName,
+      itemName: option.name,
+      quantity: qty,
+      before: currentStock,
+      after: nextStock,
+      actionType: 'entree',
+      note: 'Ajout automatique via Tablette',
+    })
     return
   }
 
@@ -170,9 +181,51 @@ async function addToCatalog(groupId: string, option: TabletCatalogItemConfig, qt
   })
 
   if (insertError) throw insertError
+  await appendItemStockMovementLog({
+    groupId,
+    actorName,
+    itemName: option.name,
+    quantity: qty,
+    before: 0,
+    after: qty,
+    actionType: 'entree',
+    note: 'Création et ajout automatique via Tablette',
+  })
 }
 
-async function adjustCashStock(groupId: string, delta: number) {
+async function appendItemStockMovementLog(args: {
+  groupId: string
+  actorName: string
+  itemName: string
+  quantity: number
+  before: number
+  after: number
+  actionType: 'entree' | 'sortie' | 'depot' | 'retrait'
+  note: string
+}) {
+  const supabase = getSupabaseAdmin()
+  const { data } = await supabase.from('app_logs').insert({
+    group_id: args.groupId,
+    group_name: null,
+    actor_name: args.actorName,
+    actor_source: 'web',
+    source: 'web',
+    area: 'items.stock',
+    category: 'stock',
+    action: args.actionType,
+    action_type: args.actionType,
+    target_type: 'catalog_item',
+    target_name: args.itemName,
+    quantity: Math.max(0, Number(args.quantity || 0)),
+    before_value: String(Math.max(0, Number(args.before || 0))),
+    after_value: String(Math.max(0, Number(args.after || 0))),
+    message: `${args.itemName}: ${args.actionType === 'entree' || args.actionType === 'depot' ? '+' : '-'}${Math.max(0, Number(args.quantity || 0))} (stock ${Math.max(0, Number(args.before || 0))} -> ${Math.max(0, Number(args.after || 0))})`,
+    note: args.note,
+  }).select('group_id,group_name,actor_name,category,action,action_type,target_name,quantity,amount,before_value,after_value,note,message,created_at').maybeSingle()
+  if (data) await sendDiscordLogIfConfigured(data)
+}
+
+async function adjustCashStock(groupId: string, delta: number, actorName = 'Système') {
   if (delta === 0) return
   const supabase = getSupabaseAdmin()
   const { data: cashItem, error: cashLoadError } = await supabase
@@ -201,6 +254,17 @@ async function adjustCashStock(groupId: string, delta: number) {
     .eq('id', cashItem.id)
 
   if (updateCashError) throw updateCashError
+
+  await appendItemStockMovementLog({
+    groupId,
+    actorName,
+    itemName: cashItem.name || 'argent',
+    quantity: Math.abs(delta),
+    before: currentStock,
+    after: nextStock,
+    actionType: delta < 0 ? 'retrait' : 'depot',
+    note: 'Mouvement automatique via Tablette',
+  })
 }
 
 async function findCashItem(groupId: string): Promise<CashItemRow> {
@@ -710,11 +774,11 @@ export async function POST(request: Request) {
     if (insertError) throw insertError
 
     try {
-      await adjustCashStock(session.groupId, -totalCost)
+      await adjustCashStock(session.groupId, -totalCost, member.raw)
       const lineOptions = lines
         .map((line) => ({ line, option: options.find((item) => item.key === line.key) }))
         .filter((entry): entry is { line: TabletRunItemLine; option: TabletCatalogItemConfig } => Boolean(entry.option))
-      await Promise.all(lineOptions.map(({ line, option }) => addToCatalog(session.groupId, option, line.quantity)))
+      await Promise.all(lineOptions.map(({ line, option }) => addToCatalog(session.groupId, option, line.quantity, member.raw)))
       await appendTabletCashHistory({
         groupId: session.groupId,
         memberName: member.raw,
@@ -725,7 +789,7 @@ export async function POST(request: Request) {
     } catch (catalogError: unknown) {
       await supabase.from('tablet_daily_runs').delete().eq('id', inserted.id).eq('group_id', session.groupId)
       try {
-        await adjustCashStock(session.groupId, totalCost)
+        await adjustCashStock(session.groupId, totalCost, member.raw)
       } catch {
         // noop: preserve original error path
       }
