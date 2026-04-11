@@ -108,6 +108,35 @@ export default function TablettePage() {
     }
     return map
   }, [budget, runs, today])
+  const stockAfterByRunId = useMemo(() => {
+    const map = new Map<string, { kit: number; disqueuse: number }>()
+    let consumedKit = 0
+    let consumedDisqueuse = 0
+    const currentKit = Math.max(0, Number(stockByKey.kit_cambus || 0))
+    const currentDisqueuse = Math.max(0, Number(stockByKey.disqueuse || 0))
+
+    const runsDesc = runs
+      .slice()
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+    for (const row of runsDesc) {
+      map.set(row.id, {
+        kit: Math.max(0, currentKit - consumedKit),
+        disqueuse: Math.max(0, currentDisqueuse - consumedDisqueuse),
+      })
+      const itemLines = Array.isArray(row.items_json) ? row.items_json : []
+      const kitQty = itemLines
+        .filter((line) => String(line.key) === 'kit_cambus')
+        .reduce((sum, line) => sum + Math.max(0, Number(line.quantity || 0)), 0)
+      const disqueuseQty = itemLines
+        .filter((line) => String(line.key) === 'disqueuse')
+        .reduce((sum, line) => sum + Math.max(0, Number(line.quantity || 0)), 0)
+      consumedKit += kitQty
+      consumedDisqueuse += disqueuseQty
+    }
+
+    return map
+  }, [runs, stockByKey])
 
   const forceLogout = useCallback(async () => {
     clearTenantSession()
@@ -196,8 +225,16 @@ export default function TablettePage() {
     <Panel>
       <div className="space-y-4">
         <div>
-          <div className="mb-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <ActivitiesCategoryTabs active="tablette" tabletteStats={tabletteBubbleStats} />
+            <div className="grid gap-2 text-sm md:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Kit après ajout: <span className="font-semibold">{projectedKitStock}</span>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Disqueuse après ajout: <span className="font-semibold">{projectedDisqueuseStock}</span>
+              </div>
+            </div>
           </div>
           <PageHeader title="Tablette" subtitle="Quota journalier par membre (00:00 → 00:00). Un membre ne peut valider qu’une fois par jour." />
         </div>
@@ -376,14 +413,6 @@ export default function TablettePage() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <h2 className="text-base font-semibold">Récapitulatif</h2>
           <p className="mb-3 text-xs text-white/60">Historique des membres ayant fait la tablette.</p>
-          <div className="mb-3 grid gap-2 text-sm md:grid-cols-2">
-            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-              Kit après ajout: <span className="font-semibold">{projectedKitStock}</span>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-              Disqueuse après ajout: <span className="font-semibold">{projectedDisqueuseStock}</span>
-            </div>
-          </div>
           <div className="overflow-hidden rounded-xl border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.03] text-white/70">
@@ -394,13 +423,14 @@ export default function TablettePage() {
                   <th className="px-3 py-2 text-left">Total</th>
                   <th className="px-3 py-2 text-left">Retiré coffre</th>
                   <th className="px-3 py-2 text-left">Restant</th>
+                  <th className="px-3 py-2 text-left">Kit / Disq</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {loading ? (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-white/60">Chargement…</td></tr>
                 ) : runs.length === 0 ? (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-white/60">Aucun passage tablette.</td></tr>
                 ) : (
                   runs.map((row) => {
                     const serverRemaining = row.remaining_after == null ? null : Math.max(0, Number(row.remaining_after || 0))
@@ -408,6 +438,7 @@ export default function TablettePage() {
                       ? Math.max(0, Number(remainingAfterByRunId.get(row.id) || 0))
                       : null
                     const remainingAfter = serverRemaining ?? computedRemaining
+                    const stockAfter = stockAfterByRunId.get(row.id)
                     return (
                     <tr key={row.id}>
                       <td className="px-3 py-2 text-white/70">{formatDateTime(row.created_at)}</td>
@@ -416,6 +447,7 @@ export default function TablettePage() {
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
                       <td className="px-3 py-2">{Number(row.total_cost).toFixed(2)} $</td>
                       <td className="px-3 py-2">{remainingAfter == null ? '—' : `${remainingAfter.toFixed(2)} $`}</td>
+                      <td className="px-3 py-2">{stockAfter ? `${stockAfter.kit} / ${stockAfter.disqueuse}` : '—'}</td>
                     </tr>
                   )})
                 )}
